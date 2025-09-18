@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".", // <- make @ resolve from apps/mobile
+    "paths": {
+      "@/*": ["./*"],
+      "networking": ["../../packages/networking/src/index.ts"],
+      "networking/*": ["../../packages/networking/src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "core": ["packages/core/src/index.ts"],
+      "core/*": ["packages/core/src/*"],
+      "networking": ["packages/networking/src/index.ts"],
+      "networking/*": ["packages/networking/src/*"]
+    },
+    "strict": true,
+    "jsx": "react-jsx",
+    "types": ["node"]
+  }
+}
