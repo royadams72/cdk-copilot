@@ -22,10 +22,9 @@
 
 ## Enforcement layers
 
-1. **API layer** (Node/Next.js): check **JWT (JSON Web Token)** claims on each request.
+1. **API layer** (Next.js): check **JWT (JSON Web Token)** claims on each request.
 2. **Service layer:** gate sensitive functions for Clinical reads/writes.
 3. **Database layer:**
-   - PostgreSQL: enable **RLS (Row‑Level Security)** and policies keyed to session settings.
    - MongoDB: split collections and use different database users/roles.
 4. **Auditing:** log who/when/which record; never log payloads.
 
