@@ -10,5 +10,5 @@
 - `userId` · string · **FK → UserPII.id**
 - `pseudonymId` · string (for analytics/research only)
 - `fitnessPlans` array of objects with current/past fitplans[{`overview`: {title, copy}, `weeklySchedule`: {title, days: [{day: string, title, exercises: [exercise, action, video?]}]},`nutritionLifestyleTips` · object of {title, tips: [{tips: string, action: string}]}, conclusion: {title, copy} }]
-- `form` · a dump of the redux store { aboutYou, injuries, yourGoals, preferences}
+- `form` · a copy of the redux store form only { aboutYou, injuries, yourGoals, preferences}
 - `createdAt` / `updatedAt`
