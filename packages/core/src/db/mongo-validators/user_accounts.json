@@ -1,0 +1,40 @@
+{
+  "collMod": "users_accounts",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "authId",
+        "orgId",
+        "role",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "authId": { "bsonType": "string" },
+        "orgId": { "bsonType": "string" },
+        "role": { "enum": ["patient", "clinician", "dietitian", "admin"] },
+        "scopes": { "bsonType": "array", "items": { "bsonType": "string" } },
+        "facilityIds": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "careTeamIds": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "allowedPatientIds": {
+          "bsonType": "array",
+          "items": { "bsonType": "string", "pattern": "^[0-9a-fA-F]{24}$" }
+        },
+        "isActive": { "bsonType": "bool" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

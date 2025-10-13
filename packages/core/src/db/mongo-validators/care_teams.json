@@ -1,0 +1,22 @@
+{
+  "collMod": "care_teams",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["orgId", "name", "createdAt", "updatedAt"],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "memberUserIds": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

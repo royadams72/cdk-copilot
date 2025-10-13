@@ -1,0 +1,31 @@
+{
+  "collMod": "measurements_ledger",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "kind",
+        "value",
+        "at",
+        "source",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "kind": { "enum": ["weight", "bp", "steps", "sleep"] },
+        "value": { "bsonType": "object" },
+        "at": { "bsonType": "date" },
+        "source": { "enum": ["manual", "apple", "google", "withings"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

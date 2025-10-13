@@ -63,3 +63,7 @@ db.medications.createIndex({ orgId: 1, patientId: 1, status: 1 });
 db.medications.createIndex({ patientId: 1, startAt: -1 });
 db.medications.createIndex({ dmplusdCode: 1 });
 ```
+
+## Retention
+
+- Retain with the patient record. Do not delete historical rows; mark with status and endAt.

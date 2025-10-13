@@ -1,0 +1,21 @@
+{
+  "collMod": "users_clinical",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["orgId", "patientId", "createdAt", "updatedAt"],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "problems": { "bsonType": "array", "items": { "bsonType": "string" } },
+        "allergies": { "bsonType": "array", "items": { "bsonType": "string" } },
+        "notes": { "bsonType": "string" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

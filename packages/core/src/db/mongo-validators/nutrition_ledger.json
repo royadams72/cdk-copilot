@@ -1,0 +1,47 @@
+{
+  "collMod": "nutrition_ledger",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "items",
+        "mealType",
+        "at",
+        "source",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "items": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["foodId", "quantity"],
+            "properties": {
+              "foodId": { "bsonType": "string" },
+              "name": { "bsonType": "string" },
+              "quantity": { "bsonType": ["double", "int"] },
+              "unit": { "bsonType": "string" },
+              "nutrients": { "bsonType": "object" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "mealType": {
+          "enum": ["breakfast", "lunch", "dinner", "snack", "other"]
+        },
+        "at": { "bsonType": "date" },
+        "source": { "enum": ["manual", "scan", "photo", "import"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

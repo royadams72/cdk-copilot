@@ -1,0 +1,28 @@
+{
+  "collMod": "app_error_logs",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["at", "level", "service", "env", "message"],
+      "properties": {
+        "at": { "bsonType": "date" },
+        "level": { "enum": ["error", "warn", "info"] },
+        "service": { "bsonType": "string" },
+        "env": { "enum": ["local", "dev", "staging", "prod"] },
+        "orgId": { "bsonType": "string" },
+        "actorAuthId": { "bsonType": "string" },
+        "route": { "bsonType": "string" },
+        "code": { "bsonType": "string" },
+        "message": { "bsonType": "string" },
+        "stack": { "bsonType": "string" },
+        "context": { "bsonType": "object" },
+        "requestId": { "bsonType": "string" },
+        "resolvedAt": { "bsonType": "date" },
+        "tags": { "bsonType": "array", "items": { "bsonType": "string" } }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

@@ -1,0 +1,19 @@
+{
+  "collMod": "patients",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["orgId", "summary", "createdAt", "updatedAt"],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "summary": { "bsonType": "object" },
+        "stage": { "enum": ["1", "2", "3a", "3b", "4", "5", "5D", "Tx"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

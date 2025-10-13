@@ -1,0 +1,65 @@
+{
+  "collMod": "care_plans",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "ownerUserId",
+        "title",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "ownerUserId": { "bsonType": "string" },
+        "title": { "bsonType": "string" },
+        "goals": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["key", "label"],
+            "properties": {
+              "key": { "bsonType": "string" },
+              "label": { "bsonType": "string" },
+              "target": { "bsonType": "object" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "tasks": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["key", "label", "freq", "status"],
+            "properties": {
+              "key": { "bsonType": "string" },
+              "label": { "bsonType": "string" },
+              "freq": { "enum": ["daily", "weekly", "once"] },
+              "dueRule": { "bsonType": "string" },
+              "instructions": { "bsonType": "string" },
+              "status": { "enum": ["open", "paused", "done"] }
+            },
+            "additionalProperties": true
+          }
+        },
+        "status": { "enum": ["draft", "active", "completed", "archived"] },
+        "sources": {
+          "bsonType": "array",
+          "items": { "enum": ["manual", "ai", "template"] }
+        },
+        "notes": { "bsonType": "string" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "activatedAt": { "bsonType": "date" },
+        "completedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}
