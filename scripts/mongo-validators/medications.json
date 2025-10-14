@@ -1,0 +1,43 @@
+{
+  "collMod": "medications",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "name",
+        "dose",
+        "frequency",
+        "startAt",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "drugRefId": { "bsonType": "objectId" },
+        "dmplusdCode": { "bsonType": "string" },
+        "snomedCode": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "form": { "bsonType": "string" },
+        "strength": { "bsonType": "string" },
+        "route": { "bsonType": "string" },
+        "dose": { "bsonType": "string" },
+        "frequency": { "bsonType": "string" },
+        "instructions": { "bsonType": "string" },
+        "startAt": { "bsonType": "date" },
+        "endAt": { "bsonType": "date" },
+        "status": { "enum": ["active", "paused", "stopped", "completed"] },
+        "authorUserId": { "bsonType": "string" },
+        "source": { "enum": ["manual", "import", "integration"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

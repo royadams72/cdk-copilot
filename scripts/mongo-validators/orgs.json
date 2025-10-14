@@ -1,0 +1,19 @@
+{
+  "collMod": "orgs",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["slug", "name", "status", "createdAt", "updatedAt"],
+      "properties": {
+        "slug": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "status": { "enum": ["active", "suspended"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

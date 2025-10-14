@@ -1,0 +1,19 @@
+{
+  "collMod": "facilities",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["orgId", "code", "name", "createdAt", "updatedAt"],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "code": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

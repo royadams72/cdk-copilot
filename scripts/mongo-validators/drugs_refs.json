@@ -1,0 +1,26 @@
+{
+  "collMod": "drugs_ref",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["dmplusdCode", "name", "sourceVersion", "updatedAt"],
+      "properties": {
+        "dmplusdCode": { "bsonType": "string" },
+        "snomedCode": { "bsonType": "string" },
+        "rxnormCode": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "form": { "bsonType": "string" },
+        "strength": { "bsonType": "string" },
+        "route": { "bsonType": "string" },
+        "isBlacklisted": { "bsonType": "bool" },
+        "synonyms": { "bsonType": "array", "items": { "bsonType": "string" } },
+        "atcCode": { "bsonType": "string" },
+        "sourceVersion": { "bsonType": "string" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}

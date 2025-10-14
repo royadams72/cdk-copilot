@@ -7,6 +7,12 @@
 **.pnp.js
 **.yarn/install-state.gz
 
+# Expo / React Native (managed)
+.expo/
+.expo-shared/
+web-build/
+dist/
+build/
 
 # testing
 **/coverage
@@ -21,7 +27,7 @@
 # misc
 **.DS_Store
 *.pem
-
+ckd-copilot-du.txt
 # debug
 **npm-debug.log*
 **yarn-debug.log*

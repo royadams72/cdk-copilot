@@ -18,7 +18,7 @@ export default function App() {
     <View style={s.container}>
       <Text>{status}</Text>
       <Pressable onPress={ping}>
-        <Text>Press bbrrrr</Text>
+        <Text>Presskkk</Text>
       </Pressable>
     </View>
   );

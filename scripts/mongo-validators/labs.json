@@ -1,0 +1,54 @@
+{
+  "collMod": "labs",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "code",
+        "name",
+        "takenAt",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "code": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "value": {
+          "oneOf": [
+            { "bsonType": "double" },
+            { "bsonType": "int" },
+            { "bsonType": "string" }
+          ]
+        },
+        "unit": { "bsonType": "string" },
+        "refRange": {
+          "bsonType": "object",
+          "properties": {
+            "low": { "bsonType": ["double", "int"] },
+            "high": { "bsonType": ["double", "int"] },
+            "text": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+        "takenAt": { "bsonType": "date" },
+        "reportedAt": { "bsonType": "date" },
+        "source": { "enum": ["import", "integration", "manual"] },
+        "status": {
+          "enum": ["final", "corrected", "preliminary", "cancelled"]
+        },
+        "abnormalFlag": { "enum": ["L", "LL", "H", "HH", "A", "N"] },
+        "note": { "bsonType": "string" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error"
+}
