@@ -1,7 +1,12 @@
 // scripts/apply-mongo-validators.ts
 import { MongoClient, Document } from "mongodb";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
+import { config as dotenv } from "dotenv";
+
+// load root .env and then .env.local (if present) so .env.local overrides
+dotenv({ path: path.resolve(process.cwd(), ".env") });
+dotenv({ path: path.resolve(process.cwd(), ".env.local") });
 
 type CollModLike = {
   collMod?: string;
@@ -26,9 +31,9 @@ function extractSchemaFromCollMod(cmd: CollModLike) {
 }
 
 async function run() {
-  const MONGODB_URI = process.env.MONGODB_URI;
+  const MONGODB_URI = process.env.MONGODB_URI_MIGRATIONS;
   const DB_NAME = process.env.DB_NAME;
-  const DIR = process.argv[2] || "mongo-validators";
+  const DIR = process.argv[2] || "scripts/mongo-validators";
 
   if (!MONGODB_URI || !DB_NAME) {
     console.error("Missing MONGODB_URI or DB_NAME env vars.");
