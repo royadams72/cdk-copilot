@@ -20,7 +20,8 @@
     "next": "^15.5.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "zod": "^4.1.8"
+    "zod": "^4.1.8",
+    "@ckd/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.5.0",

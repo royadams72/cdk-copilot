@@ -1,6 +1,6 @@
 // db/models/users.pii.model.ts
-import { Schema, model } from "mongoose";
-
+import { Schema, model, models } from "mongoose";
+import { connectMongo } from "./db/connect";
 const DeviceSchema = new Schema(
   {
     platform: { type: String, enum: ["ios", "android", "web"], required: true },
@@ -85,4 +85,10 @@ const UserPIISchema = new Schema(
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );
 
-export const UserPIIModel = model("users_pii", UserPIISchema);
+UserPIISchema.index({ authProvider: 1, authProviderId: 1 }, { sparse: true });
+UserPIISchema.index({ email: 1 }, { unique: true });
+
+export async function UsersPiiModel() {
+  await connectMongo();
+  return models.UsersPii || model("UsersPii", UserPIISchema, "users_pii");
+}

@@ -7,10 +7,17 @@ settings:
 importers:
 
   .:
+    dependencies:
+      mongodb:
+        specifier: ^6.20.0
+        version: 6.20.0
     devDependencies:
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       tsx:
         specifier: ^4.20.5
         version: 4.20.5
@@ -23,6 +30,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@ckd/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@sentry/nextjs':
         specifier: ^10.19.0
         version: 10.19.0(@opentelemetry/context-async-hooks@2.1.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.1.0(@opentelemetry/api@1.9.0))(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)(webpack@5.102.1)
@@ -57,6 +67,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@ckd/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@expo/metro-runtime':
         specifier: ~6.1.2
         version: 6.1.2(expo@54.0.8)(react-dom@19.1.0(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.13)(react@19.1.0))(react@19.1.0)
@@ -160,6 +173,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@ckd/core':
+        specifier: workspace:*
+        version: 'link:'
       mongoose:
         specifier: ^8.19.1
         version: 8.19.1
@@ -3091,6 +3107,10 @@ packages:
 
   dotenv@16.4.7:
     resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
+    engines: {node: '>=12'}
+
+  dotenv@17.2.3:
+    resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -9277,6 +9297,8 @@ snapshots:
       dotenv: 16.4.7
 
   dotenv@16.4.7: {}
+
+  dotenv@17.2.3: {}
 
   dunder-proto@1.0.1:
     dependencies:
