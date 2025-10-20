@@ -3,9 +3,10 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["orgId", "summary", "createdAt", "updatedAt"],
+      "required": ["patientId", "summary", "createdAt", "updatedAt"],
       "properties": {
         "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
         "summary": { "bsonType": "object" },
         "stage": { "enum": ["1", "2", "3a", "3b", "4", "5", "5D", "Tx"] },
         "createdAt": { "bsonType": "date" },
@@ -15,5 +16,12 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "orgId": 1, "updatedAt": -1 }
+    },
+    { "key": { "orgId": 1, "facilityId": 1, "updatedAt": -1 } },
+    { "key": { "orgId": 1, "careTeamId": 1, "updatedAt": -1 } }
+  ]
 }

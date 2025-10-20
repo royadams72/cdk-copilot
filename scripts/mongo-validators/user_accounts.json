@@ -36,5 +36,10 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "authId": 1 }, "options": { "unique": true } },
+    { "key": { "authId": 1, "isActive": 1 } },
+    { "key": { "orgId": 1, "role": 1 } }
+  ]
 }

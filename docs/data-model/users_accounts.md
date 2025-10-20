@@ -48,6 +48,8 @@
 - `facilityIds/careTeamIds` (membership),
 - `allowedPatientIds` (explicit grants)
 
+## Indexes
+
 ```js
 db.users_accounts.createIndex({ authId: 1 }, { unique: true });
 db.users_accounts.createIndex({ authId: 1, isActive: 1 });

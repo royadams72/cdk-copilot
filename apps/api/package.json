@@ -14,14 +14,15 @@
   "license": "ISC",
   "packageManager": "pnpm@10.16.1",
   "dependencies": {
+    "@ckd/core": "workspace:*",
     "@sentry/nextjs": "^10.19.0",
     "core": "^1.0.113",
+    "jose": "^6.1.0",
     "mongodb": "^6.20.0",
     "next": "^15.5.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "zod": "^4.1.8",
-    "@ckd/core": "workspace:*"
+    "zod": "^4.1.8"
   },
   "devDependencies": {
     "@types/node": "^24.5.0",

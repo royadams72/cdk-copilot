@@ -47,7 +47,7 @@ const UserClinicalSchema = new Schema(
       index: true,
       unique: true,
     },
-    ckdStage: { type: Number, min: 1, max: 5 },
+    ckdStage: { type: String, enum: ["1", "2", "3a", "3b", "4", "5"] },
     egfrCurrent: Number,
     acrCategory: { type: String, enum: ["A1", "A2", "A3"] },
     dialysisStatus: {

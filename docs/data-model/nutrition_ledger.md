@@ -125,4 +125,4 @@ export async function GET(req: Request) {
 ## Privacy & retention
 
 - Treat as **Clinical**: scope by `userId`, restrict by role, and audit access.
-- Retention policy: keep for user value (trends, goal tracking); allow user to delete individual entries; purge on account deletion.
+- Retention policy: keep for user value (trends, goal tracking); allow user to sudo delete individual entries; purge on account deletion.

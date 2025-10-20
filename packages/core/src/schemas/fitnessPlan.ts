@@ -1,5 +1,9 @@
-// zod-schemas/fitnessPlan.ts
 import { z } from "zod";
+import { objectIdHex } from "./common";
+import { InjuriesSchema } from "./injuries";
+import { AboutYouSchema } from "./aboutYou";
+import { PreferencesSchema } from "./preferences";
+import { YourGoalsSchema } from "./yourGoals";
 
 const Exercise = z.object({
   exercise: z.string(),
@@ -22,8 +26,16 @@ const WeeklySchedule = z.object({
   title: z.string(),
   days: z.array(Day).min(1),
 });
+// { aboutYou, injuries, yourGoals, preferences}
+const Form = z.object({
+  aboutYou: AboutYouSchema,
+  injuries: InjuriesSchema,
+  yourGoals: YourGoalsSchema,
+  preferences: PreferencesSchema,
+});
 
 export const FitnessPlanSchema = z.object({
+  patientId: objectIdHex,
   overview: TextSection,
   weeklySchedule: WeeklySchedule,
   nutritionLifestyleTips: z.object({
@@ -36,6 +48,7 @@ export const FitnessPlanSchema = z.object({
     ),
   }),
   conclusion: TextSection,
+  form: Form,
 });
 
 export type TFitnessPlan = z.infer<typeof FitnessPlanSchema>;

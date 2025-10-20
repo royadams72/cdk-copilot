@@ -1,0 +1,51 @@
+{
+  "collMod": "fit_plans",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "planId",
+        "version",
+        "status",
+        "generatedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "patientId": { "bsonType": "objectId" },
+        "planId": { "bsonType": "string" },
+        "version": { "bsonType": "int" },
+        "status": { "enum": ["draft", "current", "superseded"] },
+        "generatedAt": { "bsonType": "date" },
+        "effectiveFrom": { "bsonType": "date" },
+        "effectiveTo": { "bsonType": "date" },
+        "overview": { "bsonType": "object" },
+        "weeklySchedule": { "bsonType": "object" },
+        "nutritionLifestyleTips": { "bsonType": "object" },
+        "conclusion": { "bsonType": "object" },
+        "form": { "bsonType": "object" },
+        "meta": { "bsonType": "object" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "patientId": 1, "status": 1, "updatedAt": -1 } },
+    { "key": { "patientId": 1, "generatedAt": -1 } },
+    { "key": { "patientId": 1, "planId": 1 }, "options": { "unique": true } },
+    { "key": { "patientId": 1, "version": -1 } },
+    { "key": { "status": 1, "updatedAt": -1 } },
+    {
+      "key": { "patientId": 1, "status": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": { "status": "current" }
+      }
+    }
+  ]
+}

@@ -4,7 +4,6 @@
     "$jsonSchema": {
       "bsonType": "object",
       "required": [
-        "orgId",
         "patientId",
         "ownerUserId",
         "title",

@@ -3,7 +3,7 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["orgId", "patientId", "createdAt", "updatedAt"],
+      "required": ["patientId", "createdAt", "updatedAt"],
       "properties": {
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
@@ -17,5 +17,10 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "orgId": 1, "patientId": 1 }, "options": { "unique": true } },
+    { "key": { "orgId": 1, "updatedAt": -1 } },
+    { "key": { "patientId": 1 } }
+  ]
 }

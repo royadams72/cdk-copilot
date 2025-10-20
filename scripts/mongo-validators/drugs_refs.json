@@ -22,5 +22,10 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "dmplusdCode": 1 }, "options": { "unique": true } },
+    { "key": { "name": "text", "synonyms": "text" } },
+    { "key": { "snomedCode": 1 } }
+  ]
 }

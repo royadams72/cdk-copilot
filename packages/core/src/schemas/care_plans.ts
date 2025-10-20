@@ -28,7 +28,7 @@ export const CarePlanGoal = z.object({
 });
 
 export const CarePlanDoc = z.object({
-  orgId: z.string().min(1),
+  orgId: z.string().min(1).optional(),
   patientId: objectIdHex,
   ownerUserId: z.string().min(1),
   title: z.string().min(1),

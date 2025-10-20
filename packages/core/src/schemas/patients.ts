@@ -1,6 +1,6 @@
 // lib/schemas/patients.ts
 import { z } from "zod";
-import { dateAsISOString } from "./common";
+import { dateAsISOString, objectIdHex } from "./common";
 
 export const CKDStage = z.enum(["1", "2", "3a", "3b", "4", "5", "5D", "Tx"]);
 
@@ -14,7 +14,8 @@ export const PatientSummary = z
 
 export const PatientDoc = z.object({
   // _id handled by Mongo; when needed, validate with objectIdHex
-  orgId: z.string().min(1),
+  patientId: objectIdHex,
+  orgId: z.string().min(1).optional(),
   facilityId: z.string().min(1).optional(),
   careTeamId: z.string().min(1).optional(),
   summary: PatientSummary.default({}),
@@ -28,7 +29,7 @@ export type PatientDoc = z.infer<typeof PatientDoc>;
 
 // For your GET projection:
 export const PatientListProjection = z.object({
-  _id: z.any(), // or objectIdHex if you serialize first
+  patientId: objectIdHex, // or objectIdHex if you serialize first
   summary: PatientSummary,
   stage: CKDStage.optional(),
   flags: z.array(z.string()).optional(),

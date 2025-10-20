@@ -6,7 +6,7 @@
 
 ## Fields (summary)
 
-- `_id` · ObjectId · **Primary Key (PK)** (patient id across the system)
+- `patientId` · ObjectId · **Primary Key (PK)** (patient id across the system)
 - `orgId` · string · owning organisation
 - `facilityId` · string · optional · site/clinic identifier
 - `careTeamId` · string · optional · team identifier
@@ -23,7 +23,7 @@
 
 ```json
 {
-  "_id": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+  "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
   "orgId": "org_rf_london",
   "facilityId": "edgware_renal",
   "careTeamId": "ctm_northwest",
@@ -42,7 +42,7 @@
 ```js
 db.patients.createIndex({ orgId: 1, facilityId: 1, updatedAt: -1 });
 db.patients.createIndex({ orgId: 1, careTeamId: 1, updatedAt: -1 });
-db.patients.createIndex({ orgId: 1, _id: 1 }); // helps when using allowedPatientIds
+db.patients.createIndex({ orgId: 1, patientId: 1 }); // helps when using allowedPatientIds
 ```
 
 **Access Control:**
@@ -61,7 +61,7 @@ AND one of:
 
 - careTeamId user.careTeamIds
 
-- \_id user.allowedPatientIds (as ObjectIds)
+- \patientId user.allowedPatientIds (as ObjectIds)
 
 - If the user has no facility/team/grants, consider returning nothing (see “Hardening” note below).
 
