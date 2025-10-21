@@ -1,8 +1,8 @@
-# medications
+# medications_ledger (Medications Ledger)
 
-**Purpose:** Record a patient’s current and historical medicines, dosages, and status.
+**Purpose:** Record a patient’s append-only timeline of medicines, dosages, and status. per user
 **Contains PII (Personally Identifiable Information):** No (references only)
-**Access:** Staff with `medications.read` (view) and `medications.write` (create/update). Patients may read their own list if enabled.
+**Access:** Staff and Patients with `medications.read` (view) and `medications.write` (create/update).
 
 ## Fields (summary)
 
