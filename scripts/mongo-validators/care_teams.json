@@ -18,5 +18,10 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "orgId": 1, "name": 1 }, "options": { "unique": true } },
+    { "key": { "orgId": 1, "updatedAt": -1 } },
+    { "key": { "orgId": 1, "memberUserIds": 1 } }
+  ]
 }

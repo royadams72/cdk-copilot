@@ -7,7 +7,7 @@
 
 ## Fields (summary)
 
-- `userId` · string · **FK → UserPII.id**
+- `patientId` · ObjectId (ref: patients)
 - `pseudonymId` · string (for analytics/research only)
 - `fitnessPlans` array of objects with current/past fitplans[{`overview`: {title, copy}, `weeklySchedule`: {title, days: [{day: string, title, exercises: [exercise, action, video?]}]},`nutritionLifestyleTips` · object of {title, tips: [{tips: string, action: string}]}, conclusion: {title, copy} }]
 - `form` · a copy of the redux store form only { aboutYou, injuries, yourGoals, preferences}

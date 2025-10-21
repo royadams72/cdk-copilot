@@ -7,7 +7,7 @@
 
 ## Fields (summary)
 
-- `id` · string · **Primary Key (PK)**
+- `patientId` · ObjectId (ref: patients)
 - `email` · string · unique · example: `roy@example.com`
 - `emailVerifiedAt` · Date|null
 - `passwordHash` · string (when using password auth)

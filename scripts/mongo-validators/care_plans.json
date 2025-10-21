@@ -60,5 +60,9 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "orgId": 1, "patientId": 1, "status": 1 } },
+    { "key": { "ownerUserId": 1, "status": 1 } }
+  ]
 }

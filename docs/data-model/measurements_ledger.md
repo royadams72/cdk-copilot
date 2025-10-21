@@ -8,7 +8,7 @@
 ## Shape (summary)
 
 - `kind` · string · one of: `weight`, `blood_pressure`, `heart_rate`, `steps`, `sleep`, `egfr`, `creatinine`, `acr`
-- `userId` · string · **FK (Foreign Key)** → `users_pii.id`
+- `patientId` · ObjectId (ref: patients)
 - `measuredAt` · Date · when the measurement happened
 - `receivedAt` · Date · when the app stored it
 - `source` · `user|device|api|provider`

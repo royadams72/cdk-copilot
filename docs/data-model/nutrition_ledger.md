@@ -6,7 +6,7 @@
 
 ## Shape (summary)
 
-- `userId` · string · **FK** → `users_pii.id`
+- `patientId` · ObjectId (ref: patients)
 - `eatenAt` · Date · when consumed
 - `recordedAt` · Date · when stored
 - `mealType` · `breakfast|lunch|dinner|snack|drink`
