@@ -9,7 +9,6 @@
 - `_id` · ObjectId · **PK**
 - `orgId` · string
 - `patientId` · ObjectId (ref: patients)
-- `ownerUserId` · string (ref: users_accounts.authId) · the clinician/dietitian responsible
 - `title` · string
 - `goals` · array of { `key` string, `label` string, `target?` object }
 - `tasks` · array of { `key` string, `label` string, `freq` enum (`daily|weekly|once`), `dueRule?` string (RRULE), `instructions?` string, `status` enum (`open|paused|done`) }
@@ -18,6 +17,7 @@
 - `notes` · string? (non-PII operational notes)
 - `createdAt` / `updatedAt` · Date
 - `activatedAt?` / `completedAt?` · Date
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Access Control
 

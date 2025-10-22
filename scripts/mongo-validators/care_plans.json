@@ -4,18 +4,31 @@
     "$jsonSchema": {
       "bsonType": "object",
       "required": [
+        "orgId",
         "patientId",
-        "ownerUserId",
         "title",
         "status",
         "createdAt",
-        "updatedAt"
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
       ],
       "properties": {
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
-        "ownerUserId": { "bsonType": "string" },
         "title": { "bsonType": "string" },
+
+        "createdBy": {
+          "bsonType": "string",
+          "description": "app-generated UUID",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        "updatedBy": {
+          "bsonType": "string",
+          "description": "app-generated UUID",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+
         "goals": {
           "bsonType": "array",
           "items": {
@@ -63,6 +76,6 @@
   "validationAction": "error",
   "indexes": [
     { "key": { "orgId": 1, "patientId": 1, "status": 1 } },
-    { "key": { "ownerUserId": 1, "status": 1 } }
+    { "key": { "orgId": 1, "status": 1, "updatedAt": -1 } }
   ]
 }

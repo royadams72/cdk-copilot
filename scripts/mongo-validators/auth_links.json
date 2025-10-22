@@ -1,0 +1,67 @@
+{
+  "collMod": "auth_links",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "provider",
+        "credentialId",
+        "principalId",
+        "active",
+        "createdAt"
+      ],
+      "properties": {
+        "provider": {
+          "enum": ["password", "apple", "google", "nhs", "azuread", "magic"]
+        },
+        "credentialId": { "bsonType": "string", "minLength": 3 },
+        "principalId": { "bsonType": "string", "minLength": 3 },
+        "email": {
+          "bsonType": "string",
+          "description": "Optional; recommended lowercased",
+          "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+        },
+        "providerSubject": { "bsonType": "string" },
+        "active": { "bsonType": "bool" },
+        "createdAt": { "bsonType": "date" },
+        "deactivatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "strict",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "provider": 1, "credentialId": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": { "active": true }
+      }
+    },
+    {
+      "key": { "provider": 1, "providerSubject": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": {
+          "active": true,
+          "providerSubject": { "$type": "string" }
+        }
+      }
+    },
+    {
+      "key": { "provider": 1, "email": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": {
+          "active": true,
+          "provider": "password",
+          "email": { "$type": "string" }
+        }
+      }
+    },
+    {
+      "key": { "principalId": 1, "active": 1 }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 # UserClinical (Sensitive Clinical Data)
 
 **Purpose:** Kidney-related clinical baseline and metadata used to drive guidance (separate from PII and FitPlans).
-**Contains PII:** No direct PII; linked to `UserPII` by `userId`.
+**Contains PII:** No direct PII; linked to `UserPII` by `patientId`.
 **Access:** Strict. Only the user (self), app server, and assigned clinicians (if applicable).
 **Logging:** All reads/writes are audited (who/when/which user). Payloads are **not** logged.
 

@@ -6,18 +6,15 @@
 
 ## Fields (summary)
 
-- `_id` · ObjectId · **Primary Key (PK)** (patient id across the system)
-- `authId` · string · unique · from Identity Provider (IdP) / JSON Web Token (JWT) subject (e.g., `cognito|abc123`)
+- `_id` · ObjectId · **Primary Key (PK)** (mapped to patientId across the system)
+- `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
 - `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`
 - `orgId` · string · owning organisation optional
-- `facilityId` · string · optional · site/clinic identifier
-- `careTeamId` · string · optional · team identifier
 - `summary` · object · lightweight UI summary (safe fields only)
   - `lastContactAt` · Date · optional
   - `risk` · enum (`green|amber|red`) · optional
   - `dietitianAssigned` · boolean · optional
   - _(may include additional future keys)_
-- `stage` · enum (`1|2|3a|3b|4|5|5D|Tx`) · optional · CKD (Chronic Kidney Disease) stage
 - `flags` · string[] · optional · tags like `["diet-support","exercise-plan"]`
 - `createdAt` / `updatedAt` · Date (ISO 8601)
 

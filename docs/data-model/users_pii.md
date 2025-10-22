@@ -11,8 +11,6 @@
 - `email` · string · unique · example: `roy@example.com`
 - `emailVerifiedAt` · Date|null
 - `passwordHash` · string (when using password auth)
-- `authProvider` · enum (`password|google|apple|auth0|github`)
-- `authProviderId` · string|null
 - `phoneE164` · string|null · E.164 format
 - `firstName` / `lastName` · string
 - `dateOfBirth` · Date|null
