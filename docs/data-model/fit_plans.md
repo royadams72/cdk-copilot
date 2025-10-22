@@ -2,8 +2,7 @@
 
 **Purpose:** Storing the fitness plan with exercises.
 **Contains PII:** No direct PII; linked to `UserPII` by `userId`.
-**Access:** Strict. Only the user (self), app server, and assigned clinicians (if applicable).
-**Logging:** All reads/writes are audited (who/when/which user). Payloads are **not** logged.
+**Access:** Strict. Only the user (self), app server (This may change in the future)
 
 ## Fields (summary)
 

@@ -14,6 +14,7 @@
 - `name` (string, required)
 - `status` (“active” | “suspended”, required)
 - `createdAt` / `updatedAt` (date, required)
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Indexes
 

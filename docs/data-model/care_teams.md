@@ -10,6 +10,7 @@
 - `name` (string, required)
 - `memberUserIds` (string[], optional) – list of user ids in the team
 - `createdAt` / `updatedAt`
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 - Additional properties allowed
 
 ## Indexes

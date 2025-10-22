@@ -28,7 +28,7 @@ export const EmailString = z
 export const AuthLinkBase = z.object({
   provider: AuthLinkProvider,
   credentialId: z.string().min(3), // goes into JWT `sub`
-  principalId: z.string().min(3), // your stable person id (acc_… / pat_…)
+  principalId: z.uuid(), // stable person id (acc_… / pat_…)
   email: EmailString.optional(),
   providerSubject: z.string().min(1).optional(),
   active: z.boolean().default(true),

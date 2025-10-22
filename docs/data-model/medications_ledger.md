@@ -25,6 +25,7 @@
 - `authorUserId?` · string (ref: users_accounts.authId; who created/last edited)
 - `source` · enum (`manual|import|integration`) · default `manual`
 - `createdAt` / `updatedAt` · Date
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Example
 

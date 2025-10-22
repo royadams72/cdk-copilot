@@ -21,6 +21,7 @@
 - `careTeam` · array of { role, name?, org?, contact? }
 - `lastClinicalUpdateAt` · Date|null
 - `createdAt` / `updatedAt`
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Retention
 

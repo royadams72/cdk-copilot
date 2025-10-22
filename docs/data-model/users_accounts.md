@@ -7,7 +7,7 @@
 ## Fields (summary)
 
 - `_id` · ObjectId · **Primary Key (PK)**
-- `authId` · string · unique · from Identity Provider (IdP) / JSON Web Token (JWT) subject (e.g., `cognito|abc123`)
+- `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
 - `orgId` · string · organisation identifier (NHS Trust / provider)
 - `role` · enum (`patient|clinician|dietitian|admin`)
 - `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`
@@ -23,6 +23,7 @@
 
 - `isActive` · boolean
 - `createdAt` / `updatedAt` · Date (ISO 8601)
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Example document
 
