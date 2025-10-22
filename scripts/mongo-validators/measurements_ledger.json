@@ -27,5 +27,15 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "userId": 1, "superseded": 1, "measuredAt": -1 } },
+    { "key": { "userId": 1, "type": 1, "superseded": 1, "measuredAt": -1 } },
+    { "key": { "userId": 1, "createdAt": -1 } },
+    { "key": { "correctionOf": 1 } },
+    {
+      "key": { "userId": 1, "idemKey": 1 },
+      "options": { "unique": true, "sparse": true }
+    }
+  ]
 }

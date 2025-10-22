@@ -43,5 +43,9 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "userId": 1, "mealAt": -1 } },
+    { "key": { "userId": 1, "createdAt": -1 } }
+  ]
 }

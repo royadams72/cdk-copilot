@@ -1,11 +1,24 @@
-import path from "node:path";
-import { config as dotenv } from "dotenv";
-import { expand } from "dotenv-expand";
-
-expand(dotenv({ path: path.resolve(__dirname, "../../.env") }));
-// Optionally also load .env.local if present at root:
-expand(dotenv({ path: path.resolve(__dirname, "../../.env.local") }));
-
 /** @type {import('next').NextConfig} */
-const nextConfig = { transpilePackages: ["@ckd/core"] };
+
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import dotenv from "dotenv";
+import dotenvExpand from "dotenv-expand";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load from repo root (../../ relative to this file)
+const rootEnv = dotenv.config({ path: resolve(__dirname, "../../.env") });
+dotenvExpand.expand(rootEnv);
+
+const rootEnvLocal = dotenv.config({
+  path: resolve(__dirname, "../../.env.local"),
+});
+dotenvExpand.expand(rootEnvLocal);
+
+const nextConfig = {
+  transpilePackages: ["@ckd/core"],
+};
+
 export default nextConfig;

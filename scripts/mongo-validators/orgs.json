@@ -15,5 +15,10 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "slug": 1 }, "options": { "unique": true } },
+    { "key": { "name": 1 } },
+    { "key": { "status": 1, "updatedAt": -1 } }
+  ]
 }

@@ -6,7 +6,7 @@
 
 ## Shape (summary)
 
-- `userId` · string · **FK** → `users_pii.id`
+- `patientId` · ObjectId (ref: patients)
 - `eatenAt` · Date · when consumed
 - `recordedAt` · Date · when stored
 - `mealType` · `breakfast|lunch|dinner|snack|drink`
@@ -125,4 +125,4 @@ export async function GET(req: Request) {
 ## Privacy & retention
 
 - Treat as **Clinical**: scope by `userId`, restrict by role, and audit access.
-- Retention policy: keep for user value (trends, goal tracking); allow user to delete individual entries; purge on account deletion.
+- Retention policy: keep for user value (trends, goal tracking); allow user to sudo delete individual entries; purge on account deletion.

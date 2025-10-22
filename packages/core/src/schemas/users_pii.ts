@@ -57,6 +57,7 @@ export const UserPII_Base = z
   .object({
     id: z.string().optional(), // internal Primary Key (PK) (server-generated)
     email: EmailLower,
+    orgId: z.string().optional(),
     emailVerifiedAt: z.coerce.date().nullable().optional(),
     passwordHash: z.string().min(10).optional(), // required if authProvider = password
     authProvider: AuthProvider,
@@ -100,6 +101,8 @@ export const UserPII_Base = z
     lastActiveAt: z.coerce.date().nullable().optional(),
     status: UserStatus.default("active"),
     createdAt: z.coerce.date().optional(),
+    createdBy: z.string().optional(),
+    requestId: z.string().optional(),
     updatedAt: z.coerce.date().optional(),
   })
   .superRefine((val, ctx) => {

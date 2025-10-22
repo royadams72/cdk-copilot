@@ -6,16 +6,15 @@
 
 ## Fields (summary)
 
-- `_id` · ObjectId · **Primary Key (PK)** (patient id across the system)
-- `orgId` · string · owning organisation
-- `facilityId` · string · optional · site/clinic identifier
-- `careTeamId` · string · optional · team identifier
+- `_id` · ObjectId · **Primary Key (PK)** (mapped to patientId across the system)
+- `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
+- `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`
+- `orgId` · string · owning organisation optional
 - `summary` · object · lightweight UI summary (safe fields only)
   - `lastContactAt` · Date · optional
   - `risk` · enum (`green|amber|red`) · optional
   - `dietitianAssigned` · boolean · optional
   - _(may include additional future keys)_
-- `stage` · enum (`1|2|3a|3b|4|5|5D|Tx`) · optional · CKD (Chronic Kidney Disease) stage
 - `flags` · string[] · optional · tags like `["diet-support","exercise-plan"]`
 - `createdAt` / `updatedAt` · Date (ISO 8601)
 
@@ -61,7 +60,7 @@ AND one of:
 
 - careTeamId user.careTeamIds
 
-- \_id user.allowedPatientIds (as ObjectIds)
+- patientId user.allowedPatientIds (as ObjectIds)
 
 - If the user has no facility/team/grants, consider returning nothing (see “Hardening” note below).
 

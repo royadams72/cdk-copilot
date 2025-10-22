@@ -3,14 +3,16 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["orgId", "patientId", "createdAt", "updatedAt"],
+      "required": ["createdAt", "updatedAt"],
       "properties": {
         "orgId": { "bsonType": "string" },
-        "patientId": { "bsonType": "objectId" },
         "firstName": { "bsonType": "string" },
         "lastName": { "bsonType": "string" },
         "dateOfBirth": { "bsonType": "date" },
-        "sexAtBirth": { "enum": ["female", "male", "intersex", "unknown"] },
+        "sexAtBirth": {
+          "bsonType": "string",
+          "enum": ["female", "male", "intersex", "unknown"]
+        },
         "genderIdentity": { "bsonType": "string" },
         "ethnicity": { "bsonType": "string" },
         "phoneE164": { "bsonType": "string" },
@@ -33,5 +35,52 @@
     }
   },
   "validationLevel": "moderate",
-  "validationAction": "error"
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "orgId": 1, "updatedAt": -1 }
+    },
+    {
+      "key": { "orgId": 1, "email": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": {
+          "orgId": { "$type": "string" },
+          "email": { "$type": "string" }
+        }
+      }
+    },
+
+    {
+      "key": { "email": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": {
+          "orgId": { "$exists": false },
+          "email": { "$type": "string" }
+        }
+      }
+    },
+    {
+      "key": { "orgId": 1, "phoneE164": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": {
+          "orgId": { "$type": "string" },
+          "phoneE164": { "$type": "string" }
+        }
+      }
+    },
+    {
+      "key": { "phoneE164": 1 },
+      "options": {
+        "unique": true,
+        "partialFilterExpression": {
+          "orgId": { "$exists": false },
+          "phoneE164": { "$type": "string" }
+        }
+      }
+    },
+    { "key": { "lastName": 1, "firstName": 1, "dateOfBirth": 1 } }
+  ]
 }
