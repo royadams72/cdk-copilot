@@ -4,38 +4,89 @@
     "$jsonSchema": {
       "bsonType": "object",
       "required": [
-        "orgId",
-        "patientId",
         "kind",
-        "value",
-        "at",
+        "patientId",
+        "orgId",
+        "measuredAt",
+        "receivedAt",
         "source",
-        "createdAt",
-        "updatedAt"
+        "createdBy",
+        "updatedBy"
       ],
       "properties": {
-        "orgId": { "bsonType": "string" },
+        "kind": {
+          "enum": [
+            "weight",
+            "blood_pressure",
+            "heart_rate",
+            "steps",
+            "exercise",
+            "sleep"
+          ]
+        },
         "patientId": { "bsonType": "objectId" },
-        "kind": { "enum": ["weight", "bp", "steps", "sleep"] },
-        "value": { "bsonType": "object" },
-        "at": { "bsonType": "date" },
-        "source": { "enum": ["manual", "apple", "google", "withings"] },
-        "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" }
+        "orgId": { "bsonType": "string" },
+        "measuredAt": { "bsonType": "date" },
+        "receivedAt": { "bsonType": "date" },
+        "source": { "enum": ["patient", "device", "api", "provider"] },
+        "device": {
+          "bsonType": "object",
+          "properties": {
+            "name": { "bsonType": "string" },
+            "platform": { "bsonType": "string" },
+            "externalId": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+        "notes": { "bsonType": "string" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" },
+
+        "valueKg": { "bsonType": ["double", "int", "long", "decimal"] },
+        "systolicMmHg": { "bsonType": ["int", "long", "double", "decimal"] },
+        "diastolicMmHg": { "bsonType": ["int", "long", "double", "decimal"] },
+        "pulseBpm": { "bsonType": ["int", "long", "double", "decimal"] },
+        "bpm": { "bsonType": ["int", "long", "double", "decimal"] },
+        "count": { "bsonType": ["int", "long", "double", "decimal"] },
+        "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
+        "quality": { "enum": ["poor", "fair", "good", "excellent"] }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     }
   },
   "validationLevel": "moderate",
   "validationAction": "error",
   "indexes": [
-    { "key": { "userId": 1, "superseded": 1, "measuredAt": -1 } },
-    { "key": { "userId": 1, "type": 1, "superseded": 1, "measuredAt": -1 } },
-    { "key": { "userId": 1, "createdAt": -1 } },
-    { "key": { "correctionOf": 1 } },
     {
-      "key": { "userId": 1, "idemKey": 1 },
-      "options": { "unique": true, "sparse": true }
+      "key": { "patientId": 1, "kind": 1, "measuredAt": -1 },
+      "options": { "name": "byPatientKind_latest" }
+    },
+    {
+      "key": { "patientId": 1, "measuredAt": -1 },
+      "options": { "name": "byPatient_time" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "kind": 1, "measuredAt": -1 },
+      "options": { "name": "byOrgPatientKind_time" }
+    },
+    {
+      "key": {
+        "orgId": 1,
+        "patientId": 1,
+        "kind": 1,
+        "device.externalId": 1,
+        "measuredAt": 1
+      },
+      "options": {
+        "name": "dedupe_byDevice_ext_measuredAt",
+        "unique": true,
+        "partialFilterExpression": { "device.externalId": { "$exists": true } }
+      }
+    },
+    { "key": { "receivedAt": -1 }, "options": { "name": "byReceived_desc" } },
+    {
+      "key": { "createdBy": 1, "measuredAt": -1 },
+      "options": { "name": "byCreatedBy_time" }
     }
   ]
 }

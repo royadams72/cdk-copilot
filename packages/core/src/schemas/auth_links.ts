@@ -16,10 +16,7 @@ export const AuthLinkProvider = z.enum([
 /**
  * Very light email check; keep server-side normalization (lowercase/trim).
  */
-export const EmailString = z
-  .string()
-  .email()
-  .transform((s) => s.trim().toLowerCase());
+export const EmailString = z.email().transform((s) => s.trim().toLowerCase());
 
 /**
  * Core schema for an auth link (credential ↔ principal mapping).
@@ -27,7 +24,7 @@ export const EmailString = z
  */
 export const AuthLinkBase = z.object({
   provider: AuthLinkProvider,
-  credentialId: z.string().min(3), // goes into JWT `sub`
+  credentialId: z.uuid(), // goes into JWT `sub`
   principalId: z.uuid(), // stable person id (acc_… / pat_…)
   email: EmailString.optional(),
   providerSubject: z.string().min(1).optional(),

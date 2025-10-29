@@ -1,105 +1,87 @@
-// zod-schemas/measurements.ts
 import { z } from "zod";
+import { objectIdHex, PrincipalId } from "./common";
 
-const Source = z.enum(["user", "device", "api", "provider"]); // where it came from
+const Source = z.enum(["patient", "device", "api", "provider"]);
+const SleepQuality = z.enum(["poor", "fair", "good", "excellent"]);
+
+const DeviceMeta = z
+  .object({
+    name: z.string().min(1).optional(),
+    platform: z.string().min(1).optional(),
+    externalId: z.string().min(1).optional(),
+  })
+  .strict();
 
 const Base = z.object({
-  id: z.string().optional(), // DB id if you attach one client-side
-  userId: z.string().min(1), // FK (Foreign Key) → UserPII.id
-  measuredAt: z.coerce.date(), // when it actually happened (sample time)
-  receivedAt: z.coerce.date().default(() => new Date()), // when we stored it
+  kind: z.enum([
+    "weight",
+    "blood_pressure",
+    "heart_rate",
+    "steps",
+    "exercise",
+    "sleep",
+  ]),
+  patientId: objectIdHex,
+  orgId: z.string().min(1),
+  measuredAt: z.date(),
+  receivedAt: z.date(),
   source: Source,
-  device: z
-    .object({
-      name: z.string().optional(), // e.g., "Apple Watch S7"
-      platform: z.string().optional(), // "iOS", "Android", "Withings"
-      externalId: z.string().optional(), // vendor event id to dedupe
-    })
-    .optional(),
-  notes: z.string().optional(),
+  device: DeviceMeta.optional(),
+  notes: z.string().min(1).optional(),
+  createdBy: PrincipalId,
+  updatedBy: PrincipalId,
 });
 
-// ---- Vitals / activity ----
-const MWeight = Base.extend({
+// per-kind payloads
+const Weight = z.object({
   kind: z.literal("weight"),
-  valueKg: z.number().positive().max(500),
+  valueKg: z.number().finite().min(10).max(500),
 });
 
-const MBloodPressure = Base.extend({
-  kind: z.literal("blood_pressure"),
-  systolicMmHg: z.number().int().min(60).max(260),
-  diastolicMmHg: z.number().int().min(30).max(160),
-  pulseBpm: z.number().int().min(20).max(250).optional(),
-});
+const BloodPressure = z
+  .object({
+    kind: z.literal("blood_pressure"),
+    systolicMmHg: z.number().int().min(40).max(300),
+    diastolicMmHg: z.number().int().min(20).max(200),
+    pulseBpm: z.number().int().min(20).max(240).optional(),
+  })
+  .refine((o) => o.systolicMmHg > o.diastolicMmHg, {
+    message: "systolicMmHg must be greater than diastolicMmHg",
+  });
 
-const MHeartRate = Base.extend({
+const HeartRate = z.object({
   kind: z.literal("heart_rate"),
-  bpm: z.number().int().min(20).max(250),
+  bpm: z.number().int().min(10).max(250),
 });
-
-const MSteps = Base.extend({
+const Steps = z.object({
   kind: z.literal("steps"),
-  count: z.number().int().min(0).max(200_000),
+  count: z.number().int().min(0),
 });
-
-const MSleep = Base.extend({
+const Exercise = z.object({
+  kind: z.literal("exercise"),
+  durationMin: z.number().int().min(0),
+});
+const Sleep = z.object({
   kind: z.literal("sleep"),
-  durationMin: z
-    .number()
-    .int()
-    .min(0)
-    .max(24 * 60),
-  quality: z.enum(["poor", "fair", "good", "excellent"]).optional(),
+  durationMin: z.number().int().min(0),
+  quality: SleepQuality.optional(),
 });
 
-// ---- Labs (keep flexible with units) ----
-const MEgfr = Base.extend({
-  kind: z.literal("egfr"),
-  value: z.number().positive().max(200), // mL/min/1.73m²
-  method: z.enum(["CKD-EPI-2009", "CKD-EPI-2021"]).optional(),
-  units: z.literal("mL/min/1.73m²").default("mL/min/1.73m²"),
-  lab: z
-    .object({
-      name: z.string().optional(),
-      referenceRange: z.string().optional(),
-    })
-    .optional(),
-});
-
-const MCreatinine = Base.extend({
-  kind: z.literal("creatinine"),
-  value: z.number().positive().max(3000),
-  units: z.enum(["µmol/L", "mg/dL"]).default("µmol/L"),
-  lab: z
-    .object({
-      name: z.string().optional(),
-      referenceRange: z.string().optional(),
-    })
-    .optional(),
-});
-
-const MACR = Base.extend({
-  kind: z.literal("acr"), // Albumin-to-Creatinine Ratio
-  value: z.number().positive().max(5000),
-  units: z.enum(["mg/g", "mg/mmol"]).default("mg/mmol"),
-  category: z.enum(["A1", "A2", "A3"]).optional(),
-  lab: z
-    .object({
-      name: z.string().optional(),
-      referenceRange: z.string().optional(),
-    })
-    .optional(),
-});
-
-export const Measurement = z.discriminatedUnion("kind", [
-  MWeight,
-  MBloodPressure,
-  MHeartRate,
-  MSteps,
-  MSleep,
-  MEgfr,
-  MCreatinine,
-  MACR,
+const KindUnion = z.discriminatedUnion("kind", [
+  Weight,
+  BloodPressure,
+  HeartRate,
+  Steps,
+  Exercise,
+  Sleep,
 ]);
 
-export type TMeasurement = z.infer<typeof Measurement>;
+export const Measurement = Base.and(KindUnion);
+
+// Create schema: drop server-set fields BEFORE intersecting
+const BaseCreate = Base.omit({
+  receivedAt: true,
+  createdBy: true,
+  updatedBy: true,
+});
+export const MeasurementCreate = BaseCreate.and(KindUnion);

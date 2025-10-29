@@ -30,12 +30,12 @@
 ```json
 {
   "_id": { "$oid": "66f1b6809e3f48ad93d8b3c1" },
-  "authId": "cognito|abc123",
   "orgId": "org_rf_london",
   "role": "clinician",
   "scopes": ["patients.read", "patients.flags.write"],
   "facilityIds": ["edgware_renal"],
   "careTeamIds": ["ctm_northwest"],
+  "principalId": "acc_mock_001",
   "allowedPatientIds": ["66f1b7e9c2ab4a0c9f3a1e21"],
   "isActive": true,
   "createdAt": "2025-07-01T09:00:00.000Z",
@@ -52,9 +52,27 @@
 ## Indexes
 
 ```js
-db.users_accounts.createIndex({ authId: 1 }, { unique: true });
-db.users_accounts.createIndex({ authId: 1, isActive: 1 });
+db.users_accounts.createIndex({ principalId: 1 }, { unique: true });
+
+// Common queries
 db.users_accounts.createIndex({ orgId: 1, role: 1 });
+db.users_accounts.createIndex({ orgId: 1, isActive: 1 });
+
+// Membership lookups (multikey)
+db.users_accounts.createIndex(
+  { orgId: 1, facilityIds: 1 },
+  { name: "byOrgFacility" }
+);
+db.users_accounts.createIndex(
+  { orgId: 1, careTeamIds: 1 },
+  { name: "byOrgCareTeam" }
+);
+
+// Explicit patient grants
+db.users_accounts.createIndex(
+  { allowedPatientIds: 1 },
+  { name: "byAllowedPatient" }
+);
 ```
 
 ## Privacy & retention

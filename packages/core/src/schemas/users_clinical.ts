@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PrincipalId } from "./common";
 
 export const DialysisStatus = z.enum([
   "none",
@@ -61,11 +62,15 @@ export const UserClinical_Base = z.object({
   lastClinicalUpdateAt: z.coerce.date().nullable().optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
+  createdBy: PrincipalId.optional(),
+  updatedBy: PrincipalId.optional(),
 });
 
 export const UserClinical_Create = UserClinical_Base.omit({
   createdAt: true,
   updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
 });
 export const UserClinical_Update = UserClinical_Base.partial();
 

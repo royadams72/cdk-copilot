@@ -3,22 +3,54 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["slug", "name", "status", "createdAt", "updatedAt"],
+      "required": [
+        "slug",
+        "name",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
       "properties": {
-        "slug": { "bsonType": "string" },
+        "_id": { "bsonType": "objectId" },
+        "slug": {
+          "bsonType": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$"
+        },
+        "aliases": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "string",
+            "pattern": "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$"
+          },
+          "uniqueItems": true
+        },
         "name": { "bsonType": "string" },
         "status": { "enum": ["active", "suspended"] },
         "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" }
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     }
   },
   "validationLevel": "moderate",
   "validationAction": "error",
   "indexes": [
-    { "key": { "slug": 1 }, "options": { "unique": true } },
-    { "key": { "name": 1 } },
-    { "key": { "status": 1, "updatedAt": -1 } }
+    {
+      "key": { "slug": 1 },
+      "options": { "unique": true, "name": "uniq_slug" }
+    },
+    {
+      "key": { "aliases": 1 },
+      "options": { "unique": true, "sparse": true, "name": "uniq_alias" }
+    },
+    { "key": { "name": 1 }, "options": { "name": "byName" } },
+    {
+      "key": { "status": 1, "updatedAt": -1 },
+      "options": { "name": "byStatus_updatedDesc" }
+    }
   ]
 }

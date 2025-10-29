@@ -3,7 +3,13 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["patientId", "createdAt", "updatedAt"],
+      "required": [
+        "patientId",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
       "properties": {
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
@@ -11,7 +17,9 @@
         "allergies": { "bsonType": "array", "items": { "bsonType": "string" } },
         "notes": { "bsonType": "string" },
         "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" }
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
       },
       "additionalProperties": true
     }

@@ -1,5 +1,6 @@
 // zod-schemas/nutrition.ts
 import { z } from "zod";
+import { PrincipalId } from "./common";
 
 const MealType = z.enum(["breakfast", "lunch", "dinner", "snack", "drink"]);
 
@@ -31,17 +32,18 @@ const FoodItem = z.object({
 });
 
 export const NutritionEntry = z.object({
-  id: z.string().optional(),
-  userId: z.string().min(1), // FK → UserPII.id
+  patientId: PrincipalId,
   eatenAt: z.coerce.date(), // when the meal was consumed
   recordedAt: z.coerce.date().default(() => new Date()),
   mealType: MealType,
   items: z.array(FoodItem).min(1),
   totals: Nutrients, // sum of items (precomputed)
   tags: z.array(z.string()).default([]), // e.g., ["high-protein"]
-  photos: z.array(z.string().url()).default([]),
+  photos: z.array(z.url()).default([]),
   recipeId: z.string().optional(), // if linked to a saved recipe
   notes: z.string().optional(),
+  createdBy: PrincipalId.optional(),
+  updatedBy: PrincipalId.optional(),
   version: z.number().int().default(1),
 });
 

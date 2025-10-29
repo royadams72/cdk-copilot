@@ -8,6 +8,7 @@
 ## Fields (summary)
 
 - `patientId` · ObjectId (ref: patients)
+
 - `ckdStage` · `1|2|3a|3b|4|5|null` (**CKD = Chronic Kidney Disease**)
 - `egfrCurrent` · number|null (mL/min/1.73m²) (**eGFR = estimated Glomerular Filtration Rate**)
 - `acrCategory` · `A1|A2|A3|null` (**ACR = Albumin‑to‑Creatinine Ratio**)
@@ -22,6 +23,14 @@
 - `lastClinicalUpdateAt` · Date|null
 - `createdAt` / `updatedAt`
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
+
+  **Fields derived from labs_ledger**
+
+- `ckdStage` `egfrCurrent` `acrCategory`
+
+  **Fields derived from medications_ledger**
+
+- `medications`
 
 ## Retention
 

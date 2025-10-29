@@ -1,8 +1,8 @@
 # measurements_ledger (Measurement Ledger)
 
-**Purpose:** Single, append-only timeline of measurements (vitals, activity, labs) per user.
+**Purpose:** Single, append-only timeline of measurements (vitals, activity, labs) per patient.
 **Contains PII (Personally Identifiable Information):** No direct PII; linked via `patientId`.
-**Access:** User (self), app server; clinicians if assigned. All access **audited** (who/when/which id).
+**Access:** Patient (self), app server; clinicians if assigned. All access **audited** (who/when/which id).
 **Notes:** Store both **`measuredAt`** (when taken) and **`receivedAt`** (ingest time) to handle out‑of‑order device syncs.
 
 ## Shape (summary)
@@ -12,7 +12,7 @@
 - `orgId` · string
 - `measuredAt` · Date · when the measurement happened
 - `receivedAt` · Date · when the app stored it
-- `source` · `user|device|api|provider`
+- `source` · `patient|device|api|provider`
 - `device?` · { name?, platform?, externalId? }
 - `notes?` · string?
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts

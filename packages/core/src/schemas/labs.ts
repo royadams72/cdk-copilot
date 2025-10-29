@@ -1,10 +1,8 @@
 import { z } from "zod";
+import { objectIdHex, PrincipalId } from "./common";
 
 // Helpers
-export const ObjectIdString = z
-  .string()
-  .regex(/^[a-f0-9]{24}$/i, "Invalid ObjectId");
-export const PrincipalId = z.string().uuid(); // if not UUIDs in your app, relax to z.string().min(1)
+// if not UUIDs in your app, relax to z.string().min(1)
 
 export const LabSource = z.enum(["import", "integration", "manual"]);
 export const LabStatus = z.enum([
@@ -27,9 +25,9 @@ export const RefRange = z
   );
 
 export const LabResult_Base = z.object({
-  _id: ObjectIdString, // Primary Key (PK)
+  _id: objectIdHex, // Primary Key (PK)
   orgId: z.string().min(1),
-  patientId: ObjectIdString, // ref: patients
+  patientId: objectIdHex, // ref: patients
   code: z.string().min(1), // LOINC/SNOMED where possible
   name: z.string().min(1), // e.g. "eGFR"
   value: z.union([z.number(), z.string().min(1)]),

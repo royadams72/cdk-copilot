@@ -22,7 +22,6 @@
 - `startAt` · Date
 - `endAt?` · Date
 - `status` · enum (`active|paused|stopped|completed`)
-- `authorUserId?` · string (ref: users_accounts.authId; who created/last edited)
 - `source` · enum (`manual|import|integration`) · default `manual`
 - `createdAt` / `updatedAt` · Date
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
@@ -46,7 +45,6 @@
   "instructions": "Swallow whole with water.",
   "startAt": "2025-09-01T00:00:00.000Z",
   "status": "active",
-  "authorUserId": "cognito|abc123",
   "source": "manual",
   "createdAt": "2025-09-01T10:00:00.000Z",
   "updatedAt": "2025-10-08T18:44:00.000Z"

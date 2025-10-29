@@ -4,17 +4,19 @@
     "$jsonSchema": {
       "bsonType": "object",
       "required": [
-        "authId",
         "orgId",
         "role",
+        "principalId",
         "isActive",
         "createdAt",
-        "updatedAt"
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
       ],
       "properties": {
-        "authId": { "bsonType": "string" },
         "orgId": { "bsonType": "string" },
         "role": { "enum": ["patient", "clinician", "dietitian", "admin"] },
+        "principalId": { "bsonType": "string", "minLength": 3 },
         "scopes": { "bsonType": "array", "items": { "bsonType": "string" } },
         "facilityIds": {
           "bsonType": "array",
@@ -30,7 +32,9 @@
         },
         "isActive": { "bsonType": "bool" },
         "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" }
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
       },
       "additionalProperties": true
     }
@@ -38,8 +42,10 @@
   "validationLevel": "moderate",
   "validationAction": "error",
   "indexes": [
-    { "key": { "authId": 1 }, "options": { "unique": true } },
-    { "key": { "authId": 1, "isActive": 1 } },
-    { "key": { "orgId": 1, "role": 1 } }
+    { "key": { "principalId": 1 }, "options": { "unique": true } },
+    { "key": { "orgId": 1, "isActive": 1 } },
+    { "key": { "orgId": 1, "role": 1 } },
+    { "key": { "orgId": 1, "facilityIds": 1 } },
+    { "key": { "orgId": 1, "careTeamIds": 1 } }
   ]
 }
