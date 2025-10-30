@@ -12,7 +12,9 @@
         "startAt",
         "status",
         "createdAt",
-        "updatedAt"
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
       ],
       "properties": {
         "orgId": { "bsonType": "string" },
@@ -33,7 +35,9 @@
         "authorUserId": { "bsonType": "string" },
         "source": { "enum": ["manual", "import", "integration"] },
         "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" }
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
       },
       "additionalProperties": true
     }
@@ -43,6 +47,10 @@
   "indexes": [
     { "key": { "orgId": 1, "patientId": 1, "status": 1 } },
     { "key": { "patientId": 1, "startAt": -1 } },
-    { "key": { "dmplusdCode": 1 } }
+    { "key": { "dmplusdCode": 1 } },
+    {
+      "key": { "createdBy": 1, "measuredAt": -1 },
+      "options": { "name": "byCreatedBy_time" }
+    }
   ]
 }

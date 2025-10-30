@@ -16,9 +16,11 @@
 - `reportedAt?` · Date · when result reported
 - `source` · enum (`import|integration|manual`) · default `import`
 - `status` · enum (`final|corrected|preliminary|cancelled`) · default `final`
+- `correctionOf?` · ObjectId (if this row corrects another)
 - `abnormalFlag?` · enum (`L|LL|H|HH|A|N`) · low/high/abnormal/normal flags if supplied
 - `note?` · string (non-PII operational note)
 - `createdAt` / `updatedAt` · Date
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Example
 
@@ -37,8 +39,11 @@
   "source": "import",
   "status": "final",
   "abnormalFlag": "L",
+  "correctionOf": { "$oid": "66fb00a2e129040c5a1d111" },
   "createdAt": "2025-09-28T12:05:01.000Z",
-  "updatedAt": "2025-09-28T12:05:01.000Z"
+  "updatedAt": "2025-09-28T12:05:01.000Z",
+  "createdBy": "bdea23a9-405b-4abd-b51e-d996047cf063",
+  "updatedBy": "bdea23a9-405b-4abd-b51e-d996047cf063"
 }
 ```
 

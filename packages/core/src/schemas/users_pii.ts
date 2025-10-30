@@ -3,13 +3,6 @@ import { z } from "zod";
 /** Enums */
 export const SexAtBirth = z.enum(["female", "male", "intersex", "unknown"]);
 export const Units = z.enum(["metric", "imperial"]);
-export const AuthProvider = z.enum([
-  "password",
-  "google",
-  "apple",
-  "auth0",
-  "github",
-]);
 export const DataSharingScope = z.enum(["minimal", "standard", "broad"]);
 export const Platform = z.enum(["ios", "android", "web"]);
 export const UserStatus = z.enum(["active", "suspended", "deleted"]);
@@ -59,9 +52,6 @@ export const UserPII_Base = z
     email: EmailLower,
     orgId: z.string().optional(),
     emailVerifiedAt: z.coerce.date().nullable().optional(),
-    passwordHash: z.string().min(10).optional(), // required if authProvider = password
-    authProvider: AuthProvider,
-    authProviderId: z.string().nullable().optional(),
     phoneE164: E164.nullable().optional(),
 
     firstName: z.string().optional(),
@@ -106,13 +96,6 @@ export const UserPII_Base = z
     updatedAt: z.coerce.date().optional(),
   })
   .superRefine((val, ctx) => {
-    if (val.authProvider === "password" && !val.passwordHash) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passwordHash"],
-        message: "passwordHash required for password auth",
-      });
-    }
     if (val.consentResearchAt && !val.consentPrivacyAt) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

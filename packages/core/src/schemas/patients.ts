@@ -10,10 +10,9 @@ export const PatientSummary = z
     risk: z.enum(["green", "amber", "red"]).optional(),
     dietitianAssigned: z.boolean().optional(),
   })
-  .passthrough(); // allow future summary keys
+  .loose(); // allow future summary keys
 
 export const PatientDoc = z.object({
-  // _id handled by Mongo; when needed, validate with objectIdHex
   patientId: objectIdHex,
   orgId: z.string().min(1).optional(),
   facilityId: z.string().min(1).optional(),
@@ -25,8 +24,6 @@ export const PatientDoc = z.object({
   updatedAt: dateAsISOString,
 });
 
-export type PatientDoc = z.infer<typeof PatientDoc>;
-
 // For your GET projection:
 export const PatientListProjection = z.object({
   patientId: objectIdHex, // or objectIdHex if you serialize first
@@ -35,4 +32,6 @@ export const PatientListProjection = z.object({
   flags: z.array(z.string()).optional(),
   updatedAt: dateAsISOString,
 });
+
+export type TPatientDoc = z.infer<typeof PatientDoc>;
 export type PatientListProjection = z.infer<typeof PatientListProjection>;

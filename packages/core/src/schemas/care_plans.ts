@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectIdHex } from "./common";
+import { objectIdHex, PrincipalId } from "./common";
 
 export const CarePlanStatus = z.enum([
   "draft",
@@ -10,13 +10,6 @@ export const CarePlanStatus = z.enum([
 export const CarePlanSource = z.enum(["manual", "ai", "template"]);
 export const TaskFreq = z.enum(["daily", "weekly", "once"]);
 export const TaskStatus = z.enum(["open", "paused", "done"]);
-
-const uuid = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    "Must be a UUID"
-  );
 
 export const CarePlanTask = z.object({
   key: z.string().min(1),
@@ -44,8 +37,8 @@ export const CarePlanDoc = z.object({
   notes: z.string().max(4000).optional(),
 
   // UUID actor IDs
-  createdBy: uuid,
-  updatedBy: uuid,
+  createdBy: PrincipalId,
+  updatedBy: PrincipalId,
 
   // store as Date in Mongo; coerce inputs
   createdAt: z.coerce.date(),

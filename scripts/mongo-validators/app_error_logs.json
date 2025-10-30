@@ -26,12 +26,13 @@
   "validationLevel": "moderate",
   "validationAction": "error",
   "indexes": [
-    { "at": -1 },
-    { "service": 1, "level": 1, "at": -1 },
-    { "context.patientId": 1, "at": -1 },
-    { "context.route": 1, "at": -1 },
-
-    { "at": 1 },
-    { "expireAfterSeconds": 2592000 }
+    { "key": { "at": -1 }, "name": "byAtDesc" },
+    {
+      "key": { "service": 1, "level": 1, "at": -1 },
+      "name": "byServiceLevelAt"
+    },
+    { "key": { "context.patientId": 1, "at": -1 }, "name": "byPatientAt" },
+    { "key": { "route": 1, "at": -1 }, "name": "byRouteAt" },
+    { "key": { "at": 1 }, "name": "ttlByAt", "expireAfterSeconds": 2592000 }
   ]
 }

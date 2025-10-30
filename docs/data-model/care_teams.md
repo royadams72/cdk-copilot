@@ -1,7 +1,7 @@
 # CareTeams
 
 **Purpose:** Teams of clinicians/staff within an organisation used to group responsibility for patients, tasks, and care plans.
-**Contains PII:** No direct PII. References users by their `userId` (`application auth id`) rather than names/emails.
+**Contains PII:** No direct PII. References users by their `patientId` (`application auth id`) rather than names/emails.
 **Access:** Read: org admins; members of the team; services with careteams:read. Write: org admins; services with careteams:write. Audit: All writes logged with actorAuthId, requestId, timestamps.
 
 ## Fields (summary)
@@ -10,6 +10,7 @@
 - `name` (string, required)
 - `memberUserIds` (string[], optional) – list of user ids in the team
 - `createdAt` / `updatedAt`
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 - Additional properties allowed
 
 ## Indexes
@@ -32,6 +33,6 @@
 
 ```js
 db.care_teams.find({ orgId }).sort({ updatedAt: -1 }).limit(50);
-db.care_teams.find({ orgId, memberUserIds: userId });
+db.care_teams.find({ orgId, memberUserIds: patientId });
 db.care_teams.findOne({ orgId, name });
 ```

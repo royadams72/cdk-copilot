@@ -1,0 +1,100 @@
+{
+  "collMod": "labs_ledger",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "code",
+        "name",
+        "value",
+        "takenAt",
+        "source",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "code": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "value": { "bsonType": ["double", "string", "int", "long", "decimal"] },
+        "unit": { "bsonType": "string" },
+        "refRange": {
+          "bsonType": "object",
+          "properties": {
+            "low": { "bsonType": ["double", "int", "long", "decimal"] },
+            "high": { "bsonType": ["double", "int", "long", "decimal"] },
+            "text": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+        "takenAt": { "bsonType": "date" },
+        "reportedAt": { "bsonType": "date" },
+        "source": { "enum": ["import", "integration", "manual"] },
+        "status": {
+          "enum": ["final", "corrected", "preliminary", "cancelled"]
+        },
+        "correctionOf": { "bsonType": "objectId" },
+        "abnormalFlag": { "enum": ["L", "LL", "H", "HH", "A", "N"] },
+        "note": { "bsonType": "string" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "code": 1, "takenAt": -1 },
+      "options": { "name": "byPatient_code_time" }
+    },
+    {
+      "key": { "patientId": 1, "takenAt": -1 },
+      "options": { "name": "byPatient_time" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "takenAt": -1 },
+      "options": { "name": "byOrgPatient_time" }
+    },
+    {
+      "key": { "orgId": 1, "abnormalFlag": 1, "takenAt": -1 },
+      "options": { "name": "abnormal_review" }
+    },
+    {
+      "key": { "orgId": 1, "status": 1, "takenAt": -1 },
+      "options": { "name": "byStatus_time" }
+    },
+    {
+      "key": {
+        "orgId": 1,
+        "patientId": 1,
+        "code": 1,
+        "takenAt": 1,
+        "value": 1,
+        "source": 1
+      },
+      "options": {
+        "name": "dedupe_byOrgPatientCodeTimeValueSource",
+        "unique": true
+      }
+    },
+    {
+      "key": { "correctionOf": 1, "takenAt": -1 },
+      "options": {
+        "name": "byCorrectionOf",
+        "partialFilterExpression": { "correctionOf": { "$exists": true } }
+      }
+    },
+    { "key": { "createdAt": -1 }, "options": { "name": "byCreated_desc" } }
+  ]
+}

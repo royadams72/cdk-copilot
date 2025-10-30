@@ -10,7 +10,6 @@
 - `patientId` · ObjectId (ref: patients)
 - `email` · string · unique · example: `roy@example.com`
 - `emailVerifiedAt` · Date|null
-- `passwordHash` · string (when using password auth)
 - `phoneE164` · string|null · E.164 format
 - `firstName` / `lastName` · string
 - `dateOfBirth` · Date|null

@@ -1,7 +1,7 @@
 # nutrition_entries (Nutrition Ledger)
 
 **Purpose:** Food logs per meal with precomputed totals for fast daily/weekly dashboards.
-**Contains PII (Personally Identifiable Information):** No direct PII; linked via `userId`.
+**Contains PII (Personally Identifiable Information):** No direct PII; linked via `patientId`.
 **Access:** User (self), app server; clinicians if assigned. Audited.
 
 ## Shape (summary)
@@ -23,13 +23,14 @@
 - `photos[]` · URLs
 - `recipeId?` · string
 - `notes?` · string
+- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 - `version` · number
 
 ## Example document
 
 ```json
 {
-  "userId": "u_123",
+  "patientId": "u_123",
   "eatenAt": "2025-09-26T12:45:00Z",
   "recordedAt": "2025-09-26T12:50:00Z",
   "mealType": "lunch",
@@ -72,9 +73,9 @@
 ## Indexes (MongoDB shell)
 
 ```js
-db.nutrition_entries.createIndex({ userId: 1, eatenAt: -1 }); // day views
-db.nutrition_entries.createIndex({ userId: 1, mealType: 1, eatenAt: -1 }); // filters
-db.nutrition_entries.createIndex({ userId: 1, "totals.phosphorusMg": 1 }); // renal queries
+db.nutrition_entries.createIndex({ patientId: 1, eatenAt: -1 }); // day views
+db.nutrition_entries.createIndex({ patientId: 1, mealType: 1, eatenAt: -1 }); // filters
+db.nutrition_entries.createIndex({ patientId: 1, "totals.phosphorusMg": 1 }); // renal queries
 ```
 
 ## API snippets
@@ -105,7 +106,7 @@ export async function GET(req: Request) {
   const agg = await db
     .collection("nutrition_entries")
     .aggregate([
-      { $match: { userId: claims.sub, eatenAt: { $gte: date, $lt: next } } },
+      { $match: { patientId: claims.sub, eatenAt: { $gte: date, $lt: next } } },
       {
         $group: {
           _id: null,
@@ -124,5 +125,5 @@ export async function GET(req: Request) {
 
 ## Privacy & retention
 
-- Treat as **Clinical**: scope by `userId`, restrict by role, and audit access.
+- Treat as **Clinical**: scope by `patientId`, restrict by role, and audit access.
 - Retention policy: keep for user value (trends, goal tracking); allow user to sudo delete individual entries; purge on account deletion.
