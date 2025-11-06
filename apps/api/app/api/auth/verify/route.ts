@@ -1,84 +1,139 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { createHash, randomBytes } from "crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { ObjectId } from "mongodb";
+import { COLLECTION_TYPE } from "../../patients/signup-init/route";
+import { COLLECTIONS } from "@/packages/core/src";
+
+const EXPECTED = 32;
+const PEPPER_B64 = process.env.AUTH_TOKEN_PEPPER || "";
+if (!PEPPER_B64) throw new Error("AUTH_TOKEN_PEPPER missing");
+const PEPPER = Buffer.from(PEPPER_B64, "base64");
+if (PEPPER.length < 32) throw new Error("AUTH_TOKEN_PEPPER too short");
+
+export function parseToken(raw: string) {
+  const [idB64, secB64] = raw.split(".");
+  if (!idB64 || !secB64) return null;
+  const toBuf = (s: string) =>
+    Buffer.from(
+      s.replace(/-/g, "+").replace(/_/g, "/") + "==".slice((s.length + 3) % 4),
+      "base64"
+    );
+  return { id: idB64, secret: toBuf(secB64) };
+}
+
+function b64url(buf: Buffer) {
+  return buf
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function mac(buf: Buffer) {
+  return createHmac("sha256", PEPPER).update(buf).digest(); // 32 bytes
+}
 
 export async function GET(req: NextRequest) {
   const db = await getDb();
   const sp = req.nextUrl.searchParams;
-  const token = sp.get("token") ?? "";
-  const rawRedirect = sp.get("redirectUri") ?? "";
-  const redirectUri = rawRedirect.includes("%")
-    ? decodeURIComponent(rawRedirect)
-    : rawRedirect;
+  const rawToken = sp.get("token") ?? "";
+  const parsed = parseToken(rawToken);
+  if (!rawToken || !parsed) throw new Error("bad_token");
+  const auth_tokens = db.collection(COLLECTIONS.AuthTokens);
 
-  // console.log("VERIFY params", {
-  //   tokenLen: token.length,
-  //   redirectUri,
-  //   redirectLen: redirectUri.length,
-  //   full: req.url,
-  // });
+  const auth_token_doc = await auth_tokens.findOne({
+    type: "email_verify",
+    id: parsed.id,
+  });
 
-  if (!token || !redirectUri) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "missing_params",
-        tokenLen: token.length,
-        redirectLen: redirectUri.length,
-      },
-      { status: 400 }
-    );
-  }
-
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  // console.log("VERIFY hash", tokenHash);
-
-  const verifs = db.collection("email_verifications");
-  const rec = await verifs.findOne({ tokenHash });
-  // console.log("VERIFY rec?", !!rec, {
-  //   usedAt: rec?.usedAt,
-  //   exp: rec?.expiresAt,
-  // });
-
-  if (!rec)
+  if (!auth_token_doc)
     return NextResponse.json(
       { ok: false, error: "not_found" },
       { status: 400 }
     );
-  if (rec.usedAt)
+  if (auth_token_doc.usedAt)
     return NextResponse.json(
       { ok: false, error: "already_used" },
       { status: 400 }
     );
-  if (new Date() > rec.expiresAt)
+  const exp =
+    auth_token_doc.expiresAt instanceof Date
+      ? auth_token_doc.expiresAt
+      : new Date(auth_token_doc.expiresAt);
+  if (isNaN(+exp) || new Date() > exp) {
     return NextResponse.json({ ok: false, error: "expired" }, { status: 400 });
+  }
 
-  const patients = db.collection("patients");
-  const patient = await patients.findOne({ _id: rec.patientId });
-  if (!patient)
+  let storedSecret = Buffer.from(auth_token_doc.secretHash, "base64");
+  const lenOK = storedSecret.length === EXPECTED;
+
+  /* This equalises the length of storedSecret if !lenOK,
+  this makes sure the error is returned in equal time to guard against time bases attacks*/
+
+  if (!lenOK) storedSecret = Buffer.alloc(EXPECTED);
+
+  const presented = createHmac(
+    "sha256",
+    Buffer.from(process.env.AUTH_TOKEN_PEPPER!, "base64")
+  )
+    .update(parsed.secret)
+    .digest();
+
+  const ok = lenOK && timingSafeEqual(storedSecret, presented); // both 32 bytes, constant-time
+  if (!ok) {
     return NextResponse.json(
-      { ok: false, error: "patient_missing" },
+      { ok: false, error: "invalid_token" },
+      { status: 400 }
+    );
+  }
+
+  const redirectUri = auth_token_doc.redirectUri;
+
+  if (!redirectUri || redirectUri !== process.env.REDIRECT_URI) {
+    return NextResponse.json(
+      { ok: false, error: "Issue with params" },
+      { status: 400 }
+    );
+  }
+
+  const now = new Date();
+  const mark = await auth_tokens.findOneAndUpdate(
+    { _id: auth_token_doc._id, usedAt: null },
+    { $set: { usedAt: now } },
+    { returnDocument: "after" }
+  );
+
+  if (!mark)
+    return NextResponse.json(
+      { ok: false, error: "invalid_token" },
       { status: 400 }
     );
 
-  await verifs.updateOne({ _id: rec._id }, { $set: { usedAt: new Date() } });
+  const codeId = randomBytes(16); // 128-bit
+  const codeSecret = randomBytes(32); // 256-bit
+  const codeHashB64 = mac(codeSecret).toString("base64");
+  const codeToken = `${b64url(codeId)}.${b64url(codeSecret)}`; // send this
 
-  const authCode = new ObjectId(); // one-time code
-  await db.collection("auth_codes").insertOne({
-    _id: authCode,
-    principalId: patient.principalId,
-    patientId: patient._id, // keep as ObjectId in DB
-    orgId: patient.orgId ?? null,
-    scopes: patient.scopes,
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    createdAt: new Date(),
-  });
-
-  console.log("authCode::", authCode.toString());
+  const new_auth_token_doc = {
+    _id: new ObjectId(),
+    type: COLLECTION_TYPE.OauthCode,
+    id: b64url(codeId), // public lookup key
+    secretHash: codeHashB64, // constant-time compare later
+    principalId: auth_token_doc.principalId,
+    patientId: auth_token_doc._id,
+    orgId: auth_token_doc.orgId ?? null,
+    scopes: auth_token_doc.scopes, // consider narrowing
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
+    usedAt: null,
+    clientId: auth_token_doc.clientId ?? null,
+    redirectUri,
+  };
+  await auth_tokens.insertOne(new_auth_token_doc);
 
   const url = new URL(redirectUri);
-  url.searchParams.set("code", authCode.toString());
+  url.searchParams.set("code", codeToken);
   return NextResponse.redirect(url);
 }

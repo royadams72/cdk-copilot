@@ -21,6 +21,7 @@ export const COLLECTIONS = {
   FeatureFlags: "feature_flags",
   Files: "files", // uploads/attachments
   Migrations: "migrations", // applied migration records
+  AuthTokens: "auth_tokens",
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];
