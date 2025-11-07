@@ -1,0 +1,47 @@
+import { useEffect } from "react";
+import { ActivityIndicator, Platform, View } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { useLocalSearchParams, useRouter } from "expo-router";
+
+const API =
+  Platform.select({
+    ios: "http://127.0.0.1:3000",
+    android: "http://10.0.2.2:3000",
+    default: "http://localhost:3000",
+  }) || "http://localhost:3000";
+
+export default function VerifyScreen() {
+  const { code } = useLocalSearchParams<{ code?: string }>();
+  const router = useRouter();
+
+  useEffect(() => {
+    (async () => {
+      if (!code) return; // fallback could be router.replace('/')
+
+      // exchange for JWT
+      const res = await fetch(`${API}/api/auth/exchange`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      console.log("res::verify.tsx", res);
+
+      if (res.ok) {
+        const { jwt } = await res.json();
+        // store JWT (SecureStore) if you prefer doing it here
+        await SecureStore.setItemAsync("ckd_jwt", jwt);
+        // await SecureStore.setItemAsync('ckd_jwt', jwt);
+        router.replace("/onboarding/profile");
+      } else {
+        // optional: show an error screen
+        router.replace("/check-email");
+      }
+    })();
+  }, [code]);
+
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <ActivityIndicator />
+    </View>
+  );
+}

@@ -3,10 +3,11 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["patientId", "summary", "createdAt", "updatedAt"],
+      "required": ["_id", "principalId", "createdAt", "updatedAt"],
       "properties": {
+        "_id": { "bsonType": "objectId" },
+        "principalId": { "bsonType": "string", "minLength": 6 },
         "orgId": { "bsonType": "string" },
-        "patientId": { "bsonType": "objectId" },
         "summary": { "bsonType": "object" },
         "createdAt": { "bsonType": "date" },
         "updatedAt": { "bsonType": "date" }
@@ -18,9 +19,20 @@
   "validationAction": "error",
   "indexes": [
     {
-      "key": { "orgId": 1, "updatedAt": -1 }
+      "key": { "principalId": 1 },
+      "options": { "unique": true, "name": "uniq_principalId" }
     },
-    { "key": { "orgId": 1, "facilityId": 1, "updatedAt": -1 } },
-    { "key": { "orgId": 1, "careTeamId": 1, "updatedAt": -1 } }
+    {
+      "key": { "orgId": 1, "updatedAt": -1 },
+      "options": { "name": "byOrgUpdated" }
+    },
+    {
+      "key": { "orgId": 1, "facilityId": 1, "updatedAt": -1 },
+      "options": { "name": "byOrgFacilityUpdated" }
+    },
+    {
+      "key": { "orgId": 1, "careTeamId": 1, "updatedAt": -1 },
+      "options": { "name": "byOrgCareTeamUpdated" }
+    }
   ]
 }

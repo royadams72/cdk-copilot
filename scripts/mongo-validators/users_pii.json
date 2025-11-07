@@ -3,8 +3,9 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["createdAt", "updatedAt"],
+      "required": ["patientId", "createdAt", "updatedAt"],
       "properties": {
+        "patientId": { "bsonType": "objectId" },
         "orgId": { "bsonType": "string" },
         "firstName": { "bsonType": "string" },
         "lastName": { "bsonType": "string" },
@@ -38,33 +39,44 @@
   "validationAction": "error",
   "indexes": [
     {
-      "key": { "orgId": 1, "updatedAt": -1 }
+      "key": { "patientId": 1 },
+      "options": { "unique": true, "name": "uniq_patientId" }
     },
+    {
+      "key": { "orgId": 1, "updatedAt": -1 },
+      "options": { "name": "byOrgUpdated" }
+    },
+
     {
       "key": { "orgId": 1, "email": 1 },
       "options": {
         "unique": true,
+        "name": "uniq_org_email_ci",
         "partialFilterExpression": {
           "orgId": { "$type": "string" },
           "email": { "$type": "string" }
-        }
+        },
+        "collation": { "locale": "en", "strength": 2 }
       }
     },
-
     {
       "key": { "email": 1 },
       "options": {
         "unique": true,
+        "name": "uniq_global_email_ci",
         "partialFilterExpression": {
           "orgId": { "$exists": false },
           "email": { "$type": "string" }
-        }
+        },
+        "collation": { "locale": "en", "strength": 2 }
       }
     },
+
     {
       "key": { "orgId": 1, "phoneE164": 1 },
       "options": {
         "unique": true,
+        "name": "uniq_org_phone",
         "partialFilterExpression": {
           "orgId": { "$type": "string" },
           "phoneE164": { "$type": "string" }
@@ -75,12 +87,17 @@
       "key": { "phoneE164": 1 },
       "options": {
         "unique": true,
+        "name": "uniq_global_phone",
         "partialFilterExpression": {
           "orgId": { "$exists": false },
           "phoneE164": { "$type": "string" }
         }
       }
     },
-    { "key": { "lastName": 1, "firstName": 1, "dateOfBirth": 1 } }
+
+    {
+      "key": { "lastName": 1, "firstName": 1, "dateOfBirth": 1 },
+      "options": { "name": "byNameDob" }
+    }
   ]
 }
