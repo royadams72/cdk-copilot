@@ -28,12 +28,9 @@ export default function VerifyScreen() {
 
       if (res.ok) {
         const { jwt } = await res.json();
-        // store JWT (SecureStore) if you prefer doing it here
         await SecureStore.setItemAsync("ckd_jwt", jwt);
-        // await SecureStore.setItemAsync('ckd_jwt', jwt);
-        router.replace("/onboarding/profile");
+        router.replace("./profile");
       } else {
-        // optional: show an error screen
         router.replace("/check-email");
       }
     })();

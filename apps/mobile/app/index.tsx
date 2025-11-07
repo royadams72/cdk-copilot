@@ -1,1 +1,1 @@
-export { default } from "./src/screens/EmailSighup";
+export { default } from "./src/screens/onboarding/EmailSighup";
