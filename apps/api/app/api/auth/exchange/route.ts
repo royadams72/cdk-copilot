@@ -28,13 +28,10 @@ export async function POST(req: NextRequest) {
     COLLECTION_TYPE.OauthCode,
     parsed
   );
-  console.log("res:", res);
   if (!res.ok)
     return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
-  console.log("res:", res);
 
   const consumed = await consumeAuth(auth_tokens, res.doc._id);
-
   if (!consumed.ok)
     return NextResponse.json(
       { ok: false, error: consumed.error },

@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
-import { COLLECTIONS } from "@/packages/core/src";
+import { COLLECTIONS, SCOPES } from "@/packages/core/src";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,10 @@ export enum COLLECTION_TYPE {
 }
 const Body = z.object({ email: z.email() });
 
-const DEFAULT_SCOPES = ["patients.read", "patients.flags.write"] as const;
+const DEFAULT_SCOPES = [
+  SCOPES.PATIENTS_READ,
+  SCOPES.PATIENTS_FLAGS_WRITE,
+] as const;
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
 const VERIFY_URL = (process.env.VERIFY_URL as unknown as URL) || null;

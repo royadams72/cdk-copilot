@@ -27,6 +27,8 @@ export const SCOPES = {
   LOGS_READ: "logs:read",
   ADMIN_USERS: "admin:users",
   ADMIN_DB: "admin:db",
+  PATIENTS_READ: "patients.read",
+  PATIENTS_FLAGS_WRITE: "patients.flags.write",
   // optional super-scope
   STAR: "*",
 };
