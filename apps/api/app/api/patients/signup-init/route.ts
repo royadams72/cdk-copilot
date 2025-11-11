@@ -28,7 +28,6 @@ const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
 const VERIFY_URL = (process.env.VERIFY_URL as unknown as URL) || null;
 const REDIRECT_URI = process.env.REDIRECT_URI || null;
 const EMAIL_FROM = process.env.EMAIL_FROM || null;
-const PEPPER = process.env.AUTH_TOKEN_PEPPER || null;
 const APP_ORIGIN = process.env.APP_ORIGIN || null;
 
 export async function POST(req: NextRequest) {
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     // Create patient record
     const patients = db.collection(COLLECTIONS.Patients);
-    const auth_tokens = db.collection("auth_tokens");
+    const auth_tokens = db.collection(COLLECTIONS.AuthTokens);
 
     // Generate identifiers
     const patientId = new ObjectId();
@@ -65,7 +64,6 @@ export async function POST(req: NextRequest) {
     const patientDoc = {
       _id: patientId,
       principalId,
-      scopes,
       orgId: "",
       summary: {},
       flags: [],
@@ -88,8 +86,8 @@ export async function POST(req: NextRequest) {
       email,
       redirectUri: REDIRECT_URI,
       secretHash: secretHash.toString("base64"),
-      patientId,
-      principalId,
+      patientId, // Which record we're updating
+      principalId, // Who is updating
       scopes,
       expiresAt,
       usedAt: null as Date | null,

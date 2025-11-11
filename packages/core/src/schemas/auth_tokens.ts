@@ -33,7 +33,7 @@ export const AuthTokenZ = z.object({
   orgId: z.string().min(1).optional().nullable(),
 
   /** Flow-specific fields */
-  email: z.string().email().optional(),
+  email: z.email().optional(),
   clientId: z.string().min(1).optional().nullable(),
   redirectUri: z.string().url().optional().nullable(),
   grantedScopes: z.array(Scope).optional(), // if you snapshot scopes at issuance

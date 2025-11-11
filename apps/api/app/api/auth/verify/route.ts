@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     id: b64url(id), // public lookup key
     secretHash: secretHash.toString("base64"),
     principalId: res.doc.principalId,
-    patientId: res.doc._id,
+    patientId: res.doc.patientId,
     orgId: res.doc.orgId ?? null,
     scopes: res.doc.scopes, // consider narrowing
     createdAt: now,
@@ -67,8 +67,9 @@ export async function GET(req: NextRequest) {
     redirectUri,
   };
   await auth_tokens.insertOne(new_auth_token_doc);
+  console.log("token", token);
 
   const url = new URL(redirectUri);
-  url.searchParams.set("code", token);
+  url.searchParams.set("token", token);
   return NextResponse.redirect(url);
 }

@@ -95,9 +95,9 @@ type ValidateResult =
 export async function validateAuth(
   collection: Collection<AuthTokenDoc>,
   type: ColType,
-  parsed: Parsed
+  parsedToken: Parsed
 ): Promise<ValidateResult> {
-  const doc = await collection.findOne({ type, id: parsed.id });
+  const doc = await collection.findOne({ type, id: parsedToken.id });
   if (!doc) return { ok: false, error: "not_found" };
 
   if (doc.usedAt) return { ok: false, error: "already_used" };
@@ -112,7 +112,7 @@ export async function validateAuth(
   const lenOK = stored.length === EXPECTED;
   if (!lenOK) stored = Buffer.alloc(EXPECTED);
 
-  const presented = hmac(parsed.secret); // always 32 bytes
+  const presented = hmac(parsedToken.secret); // always 32 bytes
 
   const match = lenOK && timingSafeEqual(stored, presented);
   if (!match) return { ok: false, error: "invalid_token" };

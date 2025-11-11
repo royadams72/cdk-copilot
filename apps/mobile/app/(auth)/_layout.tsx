@@ -18,10 +18,7 @@ export default function RootLayout() {
         name="check-email"
         options={{ title: "Check your email" }}
       />
-      <Stack.Screen
-        name="onboarding/profile"
-        options={{ title: "Your profile" }}
-      />
+      <Stack.Screen name="profile" options={{ title: "Your profile" }} />
     </Stack>
   );
 }

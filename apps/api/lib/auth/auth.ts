@@ -61,72 +61,11 @@ export async function requireUser(
   const db = await getDb();
 
   // --- Dev mocks (headers) ---
-  const mockAuthId = req.headers.get("x-mock-auth-id");
-  if (!isProd && mockAuthId) {
-    const scopes = (req.headers.get("x-mock-scopes") || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const role =
-      (req.headers.get("x-mock-role") as SessionUser["role"]) || "admin";
-    const orgId = req.headers.get("x-mock-org-id") || "org_demo";
-    const provider = getProviderFromReq(req);
 
-    // Try to infer patient vs staff for convenience
-    // If patient, try to find a patients row by principalId OR authId if you've set them equal in mocks.
-    const principalId =
-      req.headers.get("x-mock-principal-id") ||
-      (role === "patient" ? "pat_mock_001" : "acc_mock_001");
-
-    // Build mock user (no DB lookups). Use "*" when not provided.
-    const user: SessionUser = {
-      authId: mockAuthId,
-      provider,
-      principalId,
-      role,
-      orgId,
-      scopes: scopes.length ? scopes : ["*"],
-      patientId:
-        role === "patient"
-          ? req.headers.get("x-mock-patient-id") || "656565656565656565656565"
-          : undefined,
-      facilityIds: (req.headers.get("x-mock-facility-ids") || "")
-        .split(",")
-        .filter(Boolean),
-      careTeamIds: (req.headers.get("x-mock-care-team-ids") || "")
-        .split(",")
-        .filter(Boolean),
-    };
-
-    if (
-      (neededScopes as string[]).length &&
-      !hasScopes(user.scopes, neededScopes)
-    ) {
-      throw Object.assign(new Error("Forbidden"), { status: 403 });
-    }
-    return user;
-  }
+  // Build mock user (no DB lookups). Use "*" when not provided.
 
   // --- Dev mocks (mock bearer) ---
   const token = getBearer(req);
-  if (!isProd && token.startsWith("mock-")) {
-    const provider = getProviderFromReq(req);
-    const user: SessionUser = {
-      authId: token.replace("mock-", "cred_mock_"),
-      provider,
-      principalId: "acc_mock_001",
-      role: "admin",
-      orgId: "org_demo",
-      scopes: ["*"],
-    };
-    if (
-      (neededScopes as string[]).length &&
-      !hasScopes(user.scopes, neededScopes)
-    ) {
-      throw Object.assign(new Error("Forbidden"), { status: 403 });
-    }
-    return user;
-  }
 
   // --- Real auth path ---
   if (!token) throw Object.assign(new Error("Unauthorized"), { status: 401 });

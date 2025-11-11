@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
     // 1) AuthZ (staff with USERS_PII_WRITE, or patient self-write if you support it)
     const user: SessionUser = await requireUser(req, SCOPES.USERS_PII_WRITE);
 
-    // 2) Validate input
     const body = await req.json();
     const parsed = UserPII_Create.safeParse(body);
     if (!parsed.success) {
@@ -40,9 +39,8 @@ export async function POST(req: NextRequest) {
 
     // 4) Audit actor
     const actor = {
-      principalId: user.principalId, // stable person id (acc_* or pat_*)
+      principalId: user.principalId, // stable person id (acc_* or pr_*)
       authId: user.authId, // credentialId used (JWT sub)
-      kind: user.role === "patient" ? "patient" : "staff",
       role: user.role,
       orgId: user.orgId,
     } as const;
@@ -58,7 +56,6 @@ export async function POST(req: NextRequest) {
       createdAt: now,
       updatedAt: now,
       createdBy: actor,
-      updatedBy: actor,
       requestId, // handy to keep on the record for traceability
     } as any;
 
