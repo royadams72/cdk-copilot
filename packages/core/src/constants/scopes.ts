@@ -33,6 +33,12 @@ export const SCOPES = {
   STAR: "*",
 };
 
+export const ROLES = {
+  Patient: "patient",
+  Clinician: "clinician",
+  Dietitian: "dietitian",
+} as const;
+
 export type Scope = (typeof SCOPES)[keyof typeof SCOPES];
 export type Role = "patient" | "clinician" | "dietitian" | "admin";
 

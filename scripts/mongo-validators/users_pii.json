@@ -3,7 +3,7 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["patientId", "createdAt", "updatedAt"],
+      "required": ["patientId", "updatedAt"],
       "properties": {
         "patientId": { "bsonType": "objectId" },
         "orgId": { "bsonType": "string" },

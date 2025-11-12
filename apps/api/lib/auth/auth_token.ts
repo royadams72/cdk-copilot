@@ -1,7 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { colType } from "../../app/api/patients/signup-init/route";
-import { NextResponse } from "next/server";
-import { AuthToken } from "@/packages/core/src";
+import { Role } from "@/packages/core/src";
 
 const EXPECTED = 32; // HMAC-SHA256
 const PEPPER_B64 = process.env.AUTH_TOKEN_PEPPER || "";
@@ -77,6 +75,7 @@ export type AuthTokenDoc = {
   email?: string;
   redirectUri?: string | null;
   scopes?: string[];
+  role: Role;
   createdAt: Date;
   expiresAt: Date;
   usedAt?: Date | null;

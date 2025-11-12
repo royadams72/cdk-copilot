@@ -8,6 +8,7 @@
 
 - `_id` · ObjectId · **Primary Key (PK)**
 - `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
+- `email` · string · unique · example: `roy@example.com`
 - `orgId` · string · organisation identifier (NHS Trust / provider)
 - `role` · enum (`patient|clinician|dietitian|admin`)
 - `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`

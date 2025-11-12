@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/apps/api/lib/db/mongodb";
+import { randomBytes, randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
+import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
-import { COLLECTIONS } from "@/packages/core/src";
+import { COLLECTIONS, TUsersAccountCreate } from "@/packages/core/src";
 import {
   AuthTokenDoc,
   b64url,
@@ -13,7 +14,7 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 
-const EXPECTED = 32;
+import { TUserPIICreate } from "@/packages/core/src/";
 
 export async function GET(req: NextRequest) {
   const db = await getDb();
@@ -31,6 +32,49 @@ export async function GET(req: NextRequest) {
 
   if (!res.ok)
     return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
+
+  const { principalId, patientId, email, role, scopes, orgId } = res.doc;
+  if (!email || !principalId)
+    return NextResponse.json(
+      { error: "missing information_v" },
+      { status: 400 }
+    );
+
+  const now = new Date();
+  const users_pii = db.collection(COLLECTIONS.UsersPII);
+  const accounts = db.collection(COLLECTIONS.UsersAccounts);
+
+  const base_user_acc = {
+    email,
+    principalId,
+    role,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+    scopes,
+  };
+  const user_pii_doc: TUserPIICreate = {
+    ...base_user_acc,
+    patientId,
+    onboardingCompleted: false,
+    onboardingSteps: [],
+    emailVerifiedAt: now,
+    pseudonymId: randomBytes(12).toString("hex"),
+    lastActiveAt: now,
+    status: "active",
+  };
+
+  const users_account_doc: TUsersAccountCreate = {
+    ...base_user_acc,
+    createdBy: principalId,
+    updatedBy: principalId,
+  };
+  console.log(users_account_doc);
+
+  const users_res = await users_pii.insertOne(user_pii_doc);
+  const accountss_res = await accounts.insertOne(users_account_doc);
+
+  console.log(accountss_res);
 
   const consumed = await consumeAuth(auth_tokens, res.doc._id);
 
@@ -50,17 +94,17 @@ export async function GET(req: NextRequest) {
   }
 
   const { id, token, secretHash } = setToken();
-  const now = new Date();
 
   const new_auth_token_doc = {
     _id: new ObjectId(),
     type: COLLECTION_TYPE.OauthCode,
     id: b64url(id), // public lookup key
     secretHash: secretHash.toString("base64"),
-    principalId: res.doc.principalId,
-    patientId: res.doc.patientId,
+    principalId,
+    patientId,
     orgId: res.doc.orgId ?? null,
-    scopes: res.doc.scopes, // consider narrowing
+    scopes, // consider narrowing
+    role,
     createdAt: now,
     expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
     usedAt: null,

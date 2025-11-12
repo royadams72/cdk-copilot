@@ -1,8 +1,7 @@
-// lib/auth.ts (server-only)
 import { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { hasScopes, Scope } from "@ckd/core/";
+import { COLLECTIONS, hasScopes, Scope, SCOPES } from "@ckd/core/";
 
 // ---- Types ----
 export type AuthProvider =
@@ -17,10 +16,8 @@ export type SessionUser = {
   // Who authenticated THIS request (credential)
   authId: string; // credentialId from JWT sub
   provider: AuthProvider;
-
   // Who the person IS in your domain (stable principal)
   principalId: string; // acc_* or pat_* (or whatever you use)
-
   role: "patient" | "clinician" | "dietitian" | "admin";
   orgId?: string;
   facilityIds?: string[];
@@ -30,6 +27,12 @@ export type SessionUser = {
   scopes: string[]; // always present
 };
 
+// --- Constants ---
+const ROLE_SCOPES: Record<string, string[]> = {
+  patient: [SCOPES.PATIENTS_READ, SCOPES.PATIENTS_FLAGS_WRITE], // minimal default
+  clinician: [SCOPES.USERS_CLINICAL_READ],
+  admin: [],
+};
 const isProd = process.env.NODE_ENV === "production";
 const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret";
 
@@ -60,10 +63,6 @@ export async function requireUser(
 ): Promise<SessionUser> {
   const db = await getDb();
 
-  // --- Dev mocks (headers) ---
-
-  // Build mock user (no DB lookups). Use "*" when not provided.
-
   // --- Dev mocks (mock bearer) ---
   const token = getBearer(req);
 
@@ -77,7 +76,6 @@ export async function requireUser(
 
   const provider = getProviderFromReq(req);
 
-  // 1) Resolve credential -> principal via auth_links (must be active)
   const link = await db.collection("auth_links").findOne({
     provider,
     credentialId,
@@ -87,59 +85,45 @@ export async function requireUser(
   if (!link) throw Object.assign(new Error("Forbidden"), { status: 403 });
 
   const principalId: string = link.principalId;
-
-  // 2) Try staff principal first (users_accounts)
-  const staff = await db.collection("users_accounts").findOne({
-    principalId,
-    isActive: true,
-  });
-
-  if (staff) {
-    const user: SessionUser = {
-      authId: credentialId, // the credential used (for audit, sessions)
-      provider,
-      principalId, // stable person id
-      role: staff.role,
-      orgId: staff.orgId,
-      facilityIds: staff.facilityIds ?? [],
-      careTeamIds: staff.careTeamIds ?? [],
-      scopes: staff.scopes ?? [],
-      // no patientId on staff
-    };
-
-    if (
-      (neededScopes as string[]).length &&
-      !hasScopes(user.scopes, neededScopes)
-    ) {
-      throw Object.assign(new Error("Forbidden"), { status: 403 });
+  const acct = await db.collection(COLLECTIONS.UsersAccounts).findOne(
+    { principalId, isActive: true },
+    {
+      projection: {
+        role: 1,
+        orgId: 1,
+        facilityIds: 1,
+        careTeamIds: 1,
+        scopes: 1,
+        grants: 1,
+        patientId: 1,
+        allowedPatientIds: 1,
+      },
     }
-    return user;
-  }
+  );
 
-  // 3) Else try patient principal (patients)
-  const patient = await db.collection("patients").findOne({
-    principalId,
-    isActive: true,
-  });
+  if (!acct) throw Object.assign(new Error("Forbidden"), { status: 403 });
 
-  if (patient) {
-    const user: SessionUser = {
-      authId: credentialId,
-      provider,
-      principalId,
-      role: "patient",
-      orgId: patient.orgId,
-      patientId: String(patient._id), // canonical patient PK for joins
-      scopes: patient.scopes ?? [],
-    };
+  const roleScopes = ROLE_SCOPES[acct.role] ?? [];
+  const grants = [...(acct.scopes ?? []), ...(acct.grants ?? [])];
+  const scopes = Array.from(new Set([...roleScopes, ...grants]));
 
-    if (
-      (neededScopes as string[]).length &&
-      !hasScopes(user.scopes, neededScopes)
-    ) {
-      throw Object.assign(new Error("Forbidden"), { status: 403 });
-    }
-    return user;
+  const user: SessionUser = {
+    authId: credentialId,
+    provider,
+    principalId: link.principalId,
+    role: acct.role,
+    orgId: acct.orgId,
+    facilityIds: acct.facilityIds ?? [],
+    careTeamIds: acct.careTeamIds ?? [],
+    patientId: acct.patientId ? String(acct.patientId) : undefined,
+    allowedPatientIds: acct.allowedPatientIds ?? [],
+    scopes,
+  };
+  if (
+    (neededScopes as string[]).length &&
+    !hasScopes(user.scopes, neededScopes)
+  ) {
+    throw Object.assign(new Error("Forbidden"), { status: 403 });
   }
 
   // Neither staff nor patient found for this principal

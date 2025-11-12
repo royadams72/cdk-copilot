@@ -1,7 +1,7 @@
 // app/api/measurements/latest/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { requireUser } from "@/apps/api/lib/auth/auth";
+import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 
 export const runtime = "nodejs";
 

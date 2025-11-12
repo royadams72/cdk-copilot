@@ -1,7 +1,7 @@
 // app/api/users/pii/[userId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb"; // or your getDb()
-import { requireUser } from "@/apps/api/lib/auth/auth";
+import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRequestId } from "@/apps/api/lib/http/request";
 import { z } from "zod";
 

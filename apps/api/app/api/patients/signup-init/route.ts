@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
-import { COLLECTIONS, SCOPES } from "@/packages/core/src";
+import { COLLECTIONS, ROLES, SCOPES } from "@/packages/core/src";
 
 export const runtime = "nodejs";
 
@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
       redirectUri: REDIRECT_URI,
       secretHash: secretHash.toString("base64"),
       patientId, // Which record we're updating
-      principalId, // Who is updating
+      principalId,
+      role: ROLES.Patient,
       scopes,
       expiresAt,
       usedAt: null as Date | null,

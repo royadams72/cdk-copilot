@@ -7,6 +7,7 @@ import type { Db, Collection, Document as MongoDocument } from "mongodb";
 export const COLLECTIONS = {
   UsersPII: "users_pii", // personally identifiable information
   UsersAuth: "users_auth", // auth profiles / credentials (no secrets in code)
+  UsersAccounts: "users_accounts",
   Patients: "patients",
   Orgs: "orgs", // organisations
   Encounters: "encounters", // clinical visits/interactions

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { ObjectId } from "mongodb";
+import { EmailLower } from "./common";
 
 /** Enums */
 export const SexAtBirth = z.enum(["female", "male", "intersex", "unknown"]);
@@ -8,10 +10,7 @@ export const Platform = z.enum(["ios", "android", "web"]);
 export const UserStatus = z.enum(["active", "suspended", "deleted"]);
 
 /** Helpers */
-const EmailLower = z
-  .string()
-  .email()
-  .transform((e) => e.toLowerCase());
+
 const E164 = z
   .string()
   .regex(/^\+?[1-9]\d{1,14}$/, "Use E.164 format, e.g. +447911123456");
@@ -48,12 +47,12 @@ const Integrations = z.object({
 /** Base */
 export const UserPII_Base = z
   .object({
-    id: z.string().optional(), // internal Primary Key (PK) (server-generated)
+    patientId: ObjectId, // internal Primary Key (PK) (server-generated)
     email: EmailLower,
     orgId: z.string().optional(),
     emailVerifiedAt: z.coerce.date().nullable().optional(),
     phoneE164: E164.nullable().optional(),
-
+    principalId: z.string(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     dateOfBirth: z.coerce.date().nullable().optional(),
@@ -84,7 +83,7 @@ export const UserPII_Base = z
     consentAppTosAt: z.coerce.date(), // TOS = Terms of Service
     consentPrivacyAt: z.coerce.date(),
     consentResearchAt: z.coerce.date().nullable().optional(),
-    pseudonymId: z.string().min(10), // pseudonymous analytics/research ID
+    pseudonymId: Buffer, // pseudonymous analytics/research ID
     dataSharingScope: DataSharingScope.default("standard"),
 
     // System
@@ -106,14 +105,23 @@ export const UserPII_Base = z
   });
 
 /** Variants */
-export const UserPII_Create = UserPII_Base.omit({
-  id: true,
+export const UserPII_Create = UserPII_Base.pick({
+  patientId: true,
+  email: true,
+  onboardingCompleted: true,
+  onboardingSteps: true,
+  emailVerifiedAt: true,
+  lastActiveAt: true,
+  status: true,
   createdAt: true,
   updatedAt: true,
+  pseudonymId: true,
+  principalId: true,
 });
+
 export const UserPII_Update = UserPII_Base.partial();
 export const UserPII_Public = UserPII_Base.pick({
-  id: true,
+  patientId: true,
   email: true,
   firstName: true,
   lastName: true,

@@ -3,7 +3,7 @@ import { SignJWT } from "jose";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 
-import { COLLECTIONS, SCOPES, TPatientDoc } from "@/packages/core/src";
+import { COLLECTIONS, SCOPES } from "@/packages/core/src";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
 import {
   AuthTokenDoc,
@@ -40,8 +40,7 @@ export async function POST(req: NextRequest) {
     },
     { projection: { _id: 1 } }
   );
-  console.log("exchange patient", patient);
-  console.log("res.doc.patientId::", res.doc.patientId);
+
   if (!patient)
     return NextResponse.json(
       { ok: false, error: "There is no patient record" },

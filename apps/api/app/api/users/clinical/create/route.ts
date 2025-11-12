@@ -14,7 +14,7 @@ import {
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
-import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth";
+import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 
 export const runtime = "nodejs";
 
