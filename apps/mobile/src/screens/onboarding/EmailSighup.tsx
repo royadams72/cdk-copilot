@@ -1,10 +1,7 @@
 // EmailSignup.tsx
+import { API } from "@/constants/api";
 import { useState } from "react";
-import { View, TextInput, Button, Alert, Platform } from "react-native";
-
-const API =
-  Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://127.0.0.1:3000";
-const REDIRECT = "ckdapp://verify"; // or https://ckd.app/ul/verify
+import { View, TextInput, Button, Alert } from "react-native";
 
 export default function EmailSignup() {
   const [email, setEmail] = useState("");

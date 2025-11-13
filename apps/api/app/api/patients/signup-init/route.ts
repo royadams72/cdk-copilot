@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
 import { COLLECTIONS, ROLES, SCOPES } from "@/packages/core/src";
+import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 
 export const runtime = "nodejs";
 
@@ -32,6 +33,11 @@ const APP_ORIGIN = process.env.APP_ORIGIN || null;
 
 export async function POST(req: NextRequest) {
   try {
+    // TODO create one off guard with server secret for first time signup
+    const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
+      allowBootstrap: true,
+    });
+
     const db = await getDb();
     const body = await req.json().catch(() => null);
     const parsed = Body.safeParse(body);

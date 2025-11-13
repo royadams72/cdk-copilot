@@ -29,6 +29,8 @@ export const SCOPES = {
   ADMIN_DB: "admin:db",
   PATIENTS_READ: "patients.read",
   PATIENTS_FLAGS_WRITE: "patients.flags.write",
+
+  AUTH_TOKENS_ISSUE: "auth_tokens.issue",
   // optional super-scope
   STAR: "*",
 };
@@ -77,12 +79,12 @@ export const ROLE_SCOPES: Record<Role, readonly Scope[]> = {
 
 // tiny checker
 export function hasScopes(
-  have: readonly Scope[] | undefined,
-  need: Scope | Scope[]
+  has: readonly Scope[] | undefined,
+  needs: Scope | Scope[]
 ) {
-  if (!have?.length) return false;
-  const set = new Set(have);
+  if (!has?.length) return false;
+  const set = new Set(has);
   if (set.has(SCOPES.STAR)) return true;
-  const list = Array.isArray(need) ? need : [need];
+  const list = Array.isArray(needs) ? needs : [needs];
   return list.every((s) => set.has(s));
 }

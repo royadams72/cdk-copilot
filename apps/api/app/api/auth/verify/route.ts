@@ -69,12 +69,9 @@ export async function GET(req: NextRequest) {
     createdBy: principalId,
     updatedBy: principalId,
   };
-  console.log(users_account_doc);
 
-  const users_res = await users_pii.insertOne(user_pii_doc);
-  const accountss_res = await accounts.insertOne(users_account_doc);
-
-  console.log(accountss_res);
+  await users_pii.insertOne(user_pii_doc);
+  await accounts.insertOne(users_account_doc);
 
   const consumed = await consumeAuth(auth_tokens, res.doc._id);
 
@@ -105,13 +102,13 @@ export async function GET(req: NextRequest) {
     orgId: res.doc.orgId ?? null,
     scopes, // consider narrowing
     role,
+    email,
     createdAt: now,
     expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
     usedAt: null,
     redirectUri,
   };
   await auth_tokens.insertOne(new_auth_token_doc);
-  console.log("token", token);
 
   const url = new URL(redirectUri);
   url.searchParams.set("token", token);

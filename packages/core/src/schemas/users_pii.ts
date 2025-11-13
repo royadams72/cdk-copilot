@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { ObjectId } from "mongodb";
-import { EmailLower } from "./common";
+import { any, z } from "zod";
+
+import { EmailLower, objectIdHex, PrincipalId } from "./common";
 
 /** Enums */
 export const SexAtBirth = z.enum(["female", "male", "intersex", "unknown"]);
@@ -47,12 +47,12 @@ const Integrations = z.object({
 /** Base */
 export const UserPII_Base = z
   .object({
-    patientId: ObjectId, // internal Primary Key (PK) (server-generated)
+    patientId: PrincipalId, // internal Primary Key (PK) (server-generated)
     email: EmailLower,
     orgId: z.string().optional(),
     emailVerifiedAt: z.coerce.date().nullable().optional(),
     phoneE164: E164.nullable().optional(),
-    principalId: z.string(),
+    principalId: PrincipalId,
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     dateOfBirth: z.coerce.date().nullable().optional(),
@@ -83,7 +83,7 @@ export const UserPII_Base = z
     consentAppTosAt: z.coerce.date(), // TOS = Terms of Service
     consentPrivacyAt: z.coerce.date(),
     consentResearchAt: z.coerce.date().nullable().optional(),
-    pseudonymId: Buffer, // pseudonymous analytics/research ID
+    pseudonymId: PrincipalId, // pseudonymous analytics/research ID
     dataSharingScope: DataSharingScope.default("standard"),
 
     // System
@@ -136,7 +136,34 @@ export const UserPII_Public = UserPII_Base.pick({
   devices: true,
   status: true,
 });
+// --- Form ---
+const E164_RE = /^\+[1-9]\d{7,14}$/; // strict E.164
+const TimeZone_RE = /^(?:[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?)$/; // basic IANA tz format check
 
+export const PiiForm = z.object({
+  phoneE164: z
+    .string()
+    .regex(E164_RE, "Use E.164, e.g. +447911123456")
+    .nullable(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  dateOfBirth: z
+    .string()
+    .transform((v) => (v ? new Date(v) : null))
+    .refine((v) => v === null || v instanceof Date, { message: "Invalid date" })
+    .nullable(),
+  sexAtBirth: z.enum(["female", "male", "intersex", "unknown"]),
+  genderIdentity: z.string().nullable(),
+  ethnicity: z.string().nullable(),
+  units: z.enum(["metric", "imperial"]),
+
+  notificationPrefs: z.object({
+    email: z.boolean(),
+    push: z.boolean(),
+    sms: z.boolean(),
+  }),
+});
+export type TPiiInput = z.infer<typeof PiiForm>;
 export type TUserPII = z.infer<typeof UserPII_Base>;
 export type TUserPIICreate = z.infer<typeof UserPII_Create>;
 export type TUserPIIUpdate = z.infer<typeof UserPII_Update>;

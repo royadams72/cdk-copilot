@@ -24,12 +24,11 @@ export default function VerifyScreen() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ token }),
       });
-      console.log("res::verify.tsx", res);
 
       if (res.ok) {
         const { jwt } = await res.json();
         await SecureStore.setItemAsync("ckd_jwt", jwt);
-        router.replace("./profile");
+        router.replace("./onboarding/pii-form");
       } else {
         router.replace("./check-email");
       }

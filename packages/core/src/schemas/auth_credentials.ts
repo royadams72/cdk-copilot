@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { ObjectId } from "mongodb";
 
-const ObjectIdSchema = z.instanceof(ObjectId);
+import { objectIdHex } from "./common";
 
 export const AlgoEnum = z.enum(["argon2id", "scrypt"]).default("argon2id");
 export const AuthCredentialsStatusEnum = z
@@ -27,7 +26,7 @@ export const MfaSchema = z.object({
 
 export const AuthCredentialsSchema = z
   .object({
-    _id: ObjectIdSchema, // used as credentialId in auth_links
+    _id: objectIdHex, // used as credentialId in auth_links
     provider: z.literal("password"),
     hash: z.string().min(20), // e.g., $argon2id$...
     algo: AlgoEnum,

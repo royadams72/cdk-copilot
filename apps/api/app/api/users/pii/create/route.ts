@@ -25,10 +25,10 @@ export async function POST(req: NextRequest) {
     const user: SessionUser = await requireUser(req, SCOPES.USERS_PII_WRITE);
 
     const body = await req.json();
-    const parsed = UserPII_Create.safeParse(body);
-    if (!parsed.success) {
-      return bad("Validation failed", treeifyError(parsed.error));
-    }
+    // const parsed = UserPII_Create.safeParse(body);
+    // if (!parsed.success) {
+    //   return bad("Validation failed", treeifyError(parsed.error));
+    // }
 
     // 3) Optional guard: patients can only write their own PII (if you allow self-write)
     // If you don't allow patients to write PII at all, just forbid when role === "patient".
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
     // if (user.role === "patient" && parsed.data.patientId !== user.patientId) {
     //   return bad("Forbidden", { requestId }, 403);
     // }
+    console.log("user::", user, "body::", body);
 
     // 4) Audit actor
     const actor = {
@@ -51,25 +52,29 @@ export async function POST(req: NextRequest) {
     // NOTE: if your TUserPII currently expects createdBy: string,
     // update it to accept the actor envelope shown here.
     const doc: Omit<TUserPII, "id"> = {
-      ...parsed.data,
+      ...body,
       ...(user.orgId ? { orgId: user.orgId } : {}),
-      createdAt: now,
       updatedAt: now,
-      createdBy: actor,
+
       requestId, // handy to keep on the record for traceability
     } as any;
 
     // 6) Insert
     const database = await getDb();
     type UserPIIDoc = MongoDocument & TUserPII;
-    const collection = getCollection<UserPIIDoc>(
+    const userPII_db = getCollection<UserPIIDoc>(
       database,
       COLLECTIONS.UsersPII
     );
 
-    const { insertedId } = await collection.insertOne(doc as UserPIIDoc);
+    await userPII_db.updateOne(
+      { principalId: user.principalId },
+      {
+        $set: doc as UserPIIDoc,
+      }
+    );
 
-    return ok({ _id: insertedId, requestId }, 201);
+    return ok({ requestId }, 201);
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", { requestId }, status);

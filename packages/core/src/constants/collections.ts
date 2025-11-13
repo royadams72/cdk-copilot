@@ -23,6 +23,7 @@ export const COLLECTIONS = {
   Files: "files", // uploads/attachments
   Migrations: "migrations", // applied migration records
   AuthTokens: "auth_tokens",
+  AuthLinks: "auth_links",
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

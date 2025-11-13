@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { objectIdHex } from "./common";
 
 /**
  * Providers you support today.
@@ -57,7 +58,7 @@ export const AuthLinkUpdate = z
  * Full DB shape including _id (when reading from Mongo).
  */
 export const AuthLinkDb = AuthLinkBase.extend({
-  _id: z.any(), // ObjectId; use a branded type in your codebase if you have one
+  _id: objectIdHex, // ObjectId; use a branded type in your codebase if you have one
 });
 
 export type TAuthLinkProvider = z.infer<typeof AuthLinkProvider>;

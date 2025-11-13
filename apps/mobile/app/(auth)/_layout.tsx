@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 
 const API =
   Platform.select({
@@ -9,8 +9,6 @@ const API =
   }) || "http://localhost:3000";
 
 export default function RootLayout() {
-  const router = useRouter();
-
   return (
     <Stack initialRouteName="index">
       <Stack.Screen name="index" options={{ title: "Create account" }} />
