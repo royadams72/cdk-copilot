@@ -4,14 +4,52 @@
   "private": true,
   "description": "Shared models/schemas for CKD Copilot",
   "packageManager": "pnpm@10.16.1",
-  "exports": {
-    ".": "./src/index.ts"
+  "main": "./dist/isomorphic/index.cjs",
+  "module": "./dist/isomorphic/index.js",
+  "types": "./dist/isomorphic/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist || rm -rf dist",
+    "build": "tsup src/isomorphic/index.ts --dts --format esm,cjs --out-dir dist/isomorphic --clean && tsup src/server/index.ts --dts --format esm,cjs --out-dir dist/server"
   },
-  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "react-native": {
+        "types": "./dist/isomorphic/index.d.ts",
+        "default": "./dist/isomorphic/index.js"
+      },
+      "import": {
+        "types": "./dist/isomorphic/index.d.ts",
+        "default": "./dist/isomorphic/index.js"
+      },
+      "require": "./dist/isomorphic/index.cjs"
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/server/index.d.ts",
+        "default": "./dist/server/index.js"
+      },
+      "require": "./dist/server/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "server": [
+        "dist/server/index.d.ts"
+      ],
+      "*": [
+        "dist/isomorphic/index.d.ts"
+      ]
+    }
+  },
   "sideEffects": false,
   "dependencies": {
+    "@ckd/core": "workspace:*",
     "mongoose": "^8.19.1",
-    "zod": "^4.1.8",
-    "@ckd/core": "workspace:*"
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "rimraf": "^6.1.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   }
 }

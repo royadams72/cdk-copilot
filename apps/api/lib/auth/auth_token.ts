@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { Role } from "@/packages/core/src";
+import { Role } from "@ckd/core/server";
 
 const EXPECTED = 32; // HMAC-SHA256
 const PEPPER_B64 = process.env.AUTH_TOKEN_PEPPER || "";

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { randomUUID } from "crypto";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { COLLECTIONS, hasScopes, SCOPES, type Scope } from "@ckd/core";
+import { COLLECTIONS, hasScopes, SCOPES, type Scope } from "@ckd/core/server";
 
 export type AuthProvider =
   | "password"

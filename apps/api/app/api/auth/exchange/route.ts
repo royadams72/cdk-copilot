@@ -3,7 +3,7 @@ import { SignJWT } from "jose";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 
-import { COLLECTIONS, SCOPES } from "@/packages/core/src";
+import { COLLECTIONS, SCOPES } from "@ckd/core/server";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
 import {
   AuthTokenDoc,

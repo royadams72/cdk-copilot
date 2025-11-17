@@ -2,18 +2,13 @@ import { NextRequest } from "next/server";
 import { treeifyError } from "zod";
 import type { Document as MongoDocument } from "mongodb";
 
-import {
-  COLLECTIONS,
-  getCollection,
-  SCOPES,
-  UserPII_Create,
-  TUserPII,
-} from "@ckd/core/";
+import { COLLECTIONS, getCollection, SCOPES } from "@ckd/core/server";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { TUserPII } from "@ckd/core";
 
 export const runtime = "nodejs";
 

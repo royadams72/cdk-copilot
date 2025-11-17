@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
-import { COLLECTIONS, TUsersAccountCreate } from "@/packages/core/src";
+import { COLLECTIONS } from "@ckd/core/server";
 import {
   AuthTokenDoc,
   b64url,
@@ -14,7 +14,7 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 
-import { TUserPIICreate } from "@/packages/core/src/";
+import { TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
 
 export async function GET(req: NextRequest) {
   const db = await getDb();
@@ -33,12 +33,18 @@ export async function GET(req: NextRequest) {
   if (!res.ok)
     return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
 
-  const { principalId, patientId, email, role, scopes, orgId } = res.doc;
+  const { principalId, patientId, email, role, scopes } = res.doc;
   if (!email || !principalId)
     return NextResponse.json(
       { error: "missing information_v" },
       { status: 400 }
     );
+
+  // ---- Convert patientId to hex string for DTOs ----
+  const patientIdHex: string =
+    typeof patientId === "string"
+      ? patientId
+      : (patientId as ObjectId).toHexString();
 
   const now = new Date();
   const users_pii = db.collection(COLLECTIONS.UsersPII);
@@ -53,13 +59,13 @@ export async function GET(req: NextRequest) {
     updatedAt: now,
     scopes,
   };
-  const user_pii_doc: TUserPIICreate = {
+  const user_pii_dto: TUserPIICreate = {
     ...base_user_acc,
-    patientId,
+    patientId: patientIdHex,
     onboardingCompleted: false,
     onboardingSteps: [],
     emailVerifiedAt: now,
-    pseudonymId: randomBytes(12).toString("hex"),
+    pseudonymId: `ps_${randomBytes(12).toString("hex")}`,
     lastActiveAt: now,
     status: "active",
   };
@@ -70,7 +76,11 @@ export async function GET(req: NextRequest) {
     updatedBy: principalId,
   };
 
-  await users_pii.insertOne(user_pii_doc);
+  // ---- Convert back to ObjectId ONLY for persistence ----
+  await users_pii.insertOne({
+    ...user_pii_dto,
+    patientId: new ObjectId(patientIdHex),
+  });
   await accounts.insertOne(users_account_doc);
 
   const consumed = await consumeAuth(auth_tokens, res.doc._id);

@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
-import { COLLECTIONS, ROLES, SCOPES } from "@/packages/core/src";
+import { COLLECTIONS, ROLES, SCOPES } from "@ckd/core/server";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 
 export const runtime = "nodejs";
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       email,
       redirectUri: REDIRECT_URI,
       secretHash: secretHash.toString("base64"),
-      patientId, // Which record we're updating
+      patientId: new ObjectId(patientId), // Which record we're updating
       principalId,
       role: ROLES.Patient,
       scopes,
