@@ -11,30 +11,29 @@ const API =
   }) || "http://localhost:3000";
 
 export default function VerifyScreen() {
-  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { token } = useLocalSearchParams<{ token?: string }>();
   const router = useRouter();
+  console.log("verify.tsx token::", token);
 
   useEffect(() => {
     (async () => {
-      if (!code) return; // fallback could be router.replace('/')
-
+      if (!token) return; // fallback could be router.replace('/')
       // exchange for JWT
       const res = await fetch(`${API}/api/auth/exchange`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ token }),
       });
-      console.log("res::verify.tsx", res);
 
       if (res.ok) {
         const { jwt } = await res.json();
         await SecureStore.setItemAsync("ckd_jwt", jwt);
-        router.replace("./profile");
+        router.replace("./onboarding/pii-form");
       } else {
-        router.replace("/check-email");
+        router.replace("./check-email");
       }
     })();
-  }, [code]);
+  }, [token]);
 
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

@@ -3,13 +3,7 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": [
-        "provider",
-        "credentialId",
-        "principalId",
-        "active",
-        "createdAt"
-      ],
+      "required": ["principalId"],
       "properties": {
         "provider": {
           "enum": ["password", "apple", "google", "nhs", "azuread", "magic"]
@@ -62,6 +56,9 @@
     },
     {
       "key": { "principalId": 1, "active": 1 }
+    },
+    {
+      "key": { "credentialId": 1, "active": 1 }
     }
   ]
 }

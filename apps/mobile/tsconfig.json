@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".", // <- make @ resolve from apps/mobile
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["src/*"],
       "networking": ["../../packages/networking/src/index.ts"],
       "networking/*": ["../../packages/networking/src/*"]
     }

@@ -1,7 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { colType } from "../../app/api/patients/signup-init/route";
-import { NextResponse } from "next/server";
-import { AuthToken } from "@/packages/core/src";
+import { Collection, WithId, ObjectId } from "mongodb";
+import { Role } from "@ckd/core/server";
 
 const EXPECTED = 32; // HMAC-SHA256
 const PEPPER_B64 = process.env.AUTH_TOKEN_PEPPER || "";
@@ -62,7 +61,6 @@ export function setToken() {
 }
 
 // auth_tokens.validate.ts
-import { Collection, WithId, ObjectId } from "mongodb";
 
 export type ColType = "oauth_code" | "email_verify" | "password_reset";
 
@@ -77,6 +75,7 @@ export type AuthTokenDoc = {
   email?: string;
   redirectUri?: string | null;
   scopes?: string[];
+  role: Role;
   createdAt: Date;
   expiresAt: Date;
   usedAt?: Date | null;
@@ -95,9 +94,9 @@ type ValidateResult =
 export async function validateAuth(
   collection: Collection<AuthTokenDoc>,
   type: ColType,
-  parsed: Parsed
+  parsedToken: Parsed
 ): Promise<ValidateResult> {
-  const doc = await collection.findOne({ type, id: parsed.id });
+  const doc = await collection.findOne({ type, id: parsedToken.id });
   if (!doc) return { ok: false, error: "not_found" };
 
   if (doc.usedAt) return { ok: false, error: "already_used" };
@@ -112,7 +111,7 @@ export async function validateAuth(
   const lenOK = stored.length === EXPECTED;
   if (!lenOK) stored = Buffer.alloc(EXPECTED);
 
-  const presented = hmac(parsed.secret); // always 32 bytes
+  const presented = hmac(parsedToken.secret); // always 32 bytes
 
   const match = lenOK && timingSafeEqual(stored, presented);
   if (!match) return { ok: false, error: "invalid_token" };

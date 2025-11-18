@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/apps/api/lib/db/mongodb";
+import { randomBytes, randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
+import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
-import { COLLECTIONS } from "@/packages/core/src";
+import { COLLECTIONS, SCOPES } from "@ckd/core/server";
 import {
   AuthTokenDoc,
   b64url,
@@ -13,13 +14,22 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 
-const EXPECTED = 32;
+import { TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
+import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { bad } from "@/apps/api/lib/http/responses";
 
 export async function GET(req: NextRequest) {
+  const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
+    allowBootstrap: true,
+  });
+
+  if (!user) return bad("Forbidden", "", 403);
+
   const db = await getDb();
   const sp = req.nextUrl.searchParams;
   const rawToken = sp.get("token") ?? "";
   const parsed = parseToken(rawToken);
+
   if (!rawToken || !parsed) throw new Error("bad_token");
   const auth_tokens = db.collection<AuthTokenDoc>(COLLECTIONS.AuthTokens);
 
@@ -31,6 +41,57 @@ export async function GET(req: NextRequest) {
 
   if (!res.ok)
     return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
+
+  const { principalId, patientId, email, role, scopes } = res.doc;
+  if (!email || !principalId)
+    return NextResponse.json(
+      { error: "missing information_v" },
+      { status: 400 }
+    );
+
+  // ---- Convert patientId to hex string for DTOs (Data Transfer Object) ----
+  const patientIdHex: string =
+    typeof patientId === "string"
+      ? patientId
+      : (patientId as ObjectId).toHexString();
+
+  const now = new Date();
+  const users_pii = db.collection(COLLECTIONS.UsersPII);
+  const accounts = db.collection(COLLECTIONS.UsersAccounts);
+
+  const base_user_acc = {
+    email,
+    principalId,
+    role,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+    scopes,
+  };
+
+  const user_pii_dto: TUserPIICreate = {
+    ...base_user_acc,
+    patientId: patientIdHex,
+    onboardingCompleted: false,
+    onboardingSteps: [],
+    emailVerifiedAt: now,
+    pseudonymId: `ps_${randomBytes(12).toString("hex")}`,
+    lastActiveAt: now,
+    status: "active",
+  };
+
+  const users_account_doc: TUsersAccountCreate = {
+    ...base_user_acc,
+    createdBy: principalId,
+    updatedBy: principalId,
+  };
+
+  // ---- Convert back to ObjectId ONLY for persistence ----
+  await users_pii.insertOne({
+    ...user_pii_dto,
+    patientId: new ObjectId(patientIdHex),
+  });
+  await accounts.insertOne(users_account_doc);
 
   const consumed = await consumeAuth(auth_tokens, res.doc._id);
 
@@ -50,17 +111,18 @@ export async function GET(req: NextRequest) {
   }
 
   const { id, token, secretHash } = setToken();
-  const now = new Date();
 
   const new_auth_token_doc = {
     _id: new ObjectId(),
     type: COLLECTION_TYPE.OauthCode,
     id: b64url(id), // public lookup key
     secretHash: secretHash.toString("base64"),
-    principalId: res.doc.principalId,
-    patientId: res.doc._id,
+    principalId,
+    patientId,
     orgId: res.doc.orgId ?? null,
-    scopes: res.doc.scopes, // consider narrowing
+    scopes, // consider narrowing
+    role,
+    email,
     createdAt: now,
     expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
     usedAt: null,
@@ -69,6 +131,6 @@ export async function GET(req: NextRequest) {
   await auth_tokens.insertOne(new_auth_token_doc);
 
   const url = new URL(redirectUri);
-  url.searchParams.set("code", token);
+  url.searchParams.set("token", token);
   return NextResponse.redirect(url);
 }

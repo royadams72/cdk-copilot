@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { randomBytes } from "crypto";
@@ -7,9 +8,8 @@ import { z } from "zod";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
-import { COLLECTIONS, SCOPES } from "@/packages/core/src";
-
-export const runtime = "nodejs";
+import { COLLECTIONS, ROLES, SCOPES } from "@ckd/core/server";
+import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 
 export type colType = "oauth_code" | "email_verify" | "password_reset";
 export enum COLLECTION_TYPE {
@@ -22,20 +22,27 @@ const Body = z.object({ email: z.email() });
 const DEFAULT_SCOPES = [
   SCOPES.PATIENTS_READ,
   SCOPES.PATIENTS_FLAGS_WRITE,
+  SCOPES.AUTH_TOKENS_ISSUE,
 ] as const;
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
 const VERIFY_URL = (process.env.VERIFY_URL as unknown as URL) || null;
 const REDIRECT_URI = process.env.REDIRECT_URI || null;
 const EMAIL_FROM = process.env.EMAIL_FROM || null;
-const PEPPER = process.env.AUTH_TOKEN_PEPPER || null;
 const APP_ORIGIN = process.env.APP_ORIGIN || null;
 
 export async function POST(req: NextRequest) {
   try {
+    // TODO create one off guard with server secret for first time signup
+    // const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
+    //   allowBootstrap: true,
+    // });
+
     const db = await getDb();
+
     const body = await req.json().catch(() => null);
     const parsed = Body.safeParse(body);
+    console.log(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
@@ -54,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     // Create patient record
     const patients = db.collection(COLLECTIONS.Patients);
-    const auth_tokens = db.collection("auth_tokens");
+    const auth_tokens = db.collection(COLLECTIONS.AuthTokens);
 
     // Generate identifiers
     const patientId = new ObjectId();
@@ -65,7 +72,6 @@ export async function POST(req: NextRequest) {
     const patientDoc = {
       _id: patientId,
       principalId,
-      scopes,
       orgId: "",
       summary: {},
       flags: [],
@@ -88,8 +94,9 @@ export async function POST(req: NextRequest) {
       email,
       redirectUri: REDIRECT_URI,
       secretHash: secretHash.toString("base64"),
-      patientId,
+      patientId: new ObjectId(patientId), // Which record we're updating
       principalId,
+      role: ROLES.Patient,
       scopes,
       expiresAt,
       usedAt: null as Date | null,

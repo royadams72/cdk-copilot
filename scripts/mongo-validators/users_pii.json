@@ -3,7 +3,7 @@
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": ["patientId", "createdAt", "updatedAt"],
+      "required": ["patientId", "updatedAt"],
       "properties": {
         "patientId": { "bsonType": "objectId" },
         "orgId": { "bsonType": "string" },
@@ -46,7 +46,6 @@
       "key": { "orgId": 1, "updatedAt": -1 },
       "options": { "name": "byOrgUpdated" }
     },
-
     {
       "key": { "orgId": 1, "email": 1 },
       "options": {
@@ -65,13 +64,12 @@
         "unique": true,
         "name": "uniq_global_email_ci",
         "partialFilterExpression": {
-          "orgId": { "$exists": false },
+          "orgId": null,
           "email": { "$type": "string" }
         },
         "collation": { "locale": "en", "strength": 2 }
       }
     },
-
     {
       "key": { "orgId": 1, "phoneE164": 1 },
       "options": {
@@ -89,12 +87,11 @@
         "unique": true,
         "name": "uniq_global_phone",
         "partialFilterExpression": {
-          "orgId": { "$exists": false },
+          "orgId": null,
           "phoneE164": { "$type": "string" }
         }
       }
     },
-
     {
       "key": { "lastName": 1, "firstName": 1, "dateOfBirth": 1 },
       "options": { "name": "byNameDob" }

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
-const { MONGODB_URI = "" } = process.env;
-if (!MONGODB_URI) throw new Error("MONGODB_URI is not set");
+const { MONGODB_URI_APP = "" } = process.env;
+if (!MONGODB_URI_APP) throw new Error("MONGODB_URI_APP is not set");
 
 declare global {
   // allow global caching in dev/hot reload
@@ -11,7 +11,7 @@ declare global {
 
 export function connectMongo() {
   if (!global.__mongooseConn) {
-    global.__mongooseConn = mongoose.connect(MONGODB_URI, {
+    global.__mongooseConn = mongoose.connect(MONGODB_URI_APP, {
       // keep defaults sane; add options if needed
       // dbName: "ckd",
       // maxPoolSize: 5,
