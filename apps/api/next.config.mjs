@@ -19,6 +19,31 @@ dotenvExpand.expand(rootEnvLocal);
 
 const nextConfig = {
   transpilePackages: ["@ckd/core"],
+
+  experimental: {
+    serverComponentsExternalPackages: ["mongodb", "bson"],
+  },
+
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Tell webpack not to bundle/resolve optional native deps
+      const externalsMap = {
+        kerberos: "commonjs kerberos",
+        snappy: "commonjs snappy",
+        "@mongodb-js/zstd": "commonjs @mongodb-js/zstd",
+        socks: "commonjs socks",
+        aws4: "commonjs aws4",
+        "gcp-metadata": "commonjs gcp-metadata",
+        "mongodb-client-encryption": "commonjs mongodb-client-encryption",
+        "@aws-sdk/credential-providers":
+          "commonjs @aws-sdk/credential-providers",
+      };
+      config.externals = Array.isArray(config.externals)
+        ? [...config.externals, externalsMap]
+        : [config.externals, externalsMap].filter(Boolean);
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

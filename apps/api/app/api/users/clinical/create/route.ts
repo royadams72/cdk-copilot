@@ -7,12 +7,7 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import {
-  TUserPII,
-  TUserPIICreate,
-  UserPII_Base,
-  UserPII_Create,
-} from "@ckd/core";
+import { TUserPII, UserPII_Base, UserPII_Create } from "@ckd/core";
 import { ObjectId } from "mongodb";
 
 export const runtime = "nodejs";

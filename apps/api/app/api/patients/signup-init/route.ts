@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { randomBytes } from "crypto";
@@ -10,8 +11,6 @@ import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
 import { COLLECTIONS, ROLES, SCOPES } from "@ckd/core/server";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 
-export const runtime = "nodejs";
-
 export type colType = "oauth_code" | "email_verify" | "password_reset";
 export enum COLLECTION_TYPE {
   OauthCode = "oauth_code",
@@ -23,6 +22,7 @@ const Body = z.object({ email: z.email() });
 const DEFAULT_SCOPES = [
   SCOPES.PATIENTS_READ,
   SCOPES.PATIENTS_FLAGS_WRITE,
+  SCOPES.AUTH_TOKENS_ISSUE,
 ] as const;
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
@@ -34,13 +34,15 @@ const APP_ORIGIN = process.env.APP_ORIGIN || null;
 export async function POST(req: NextRequest) {
   try {
     // TODO create one off guard with server secret for first time signup
-    const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
-      allowBootstrap: true,
-    });
+    // const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
+    //   allowBootstrap: true,
+    // });
 
     const db = await getDb();
+
     const body = await req.json().catch(() => null);
     const parsed = Body.safeParse(body);
+    console.log(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });

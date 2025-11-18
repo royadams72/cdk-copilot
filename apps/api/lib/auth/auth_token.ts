@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { Collection, WithId, ObjectId } from "mongodb";
 import { Role } from "@ckd/core/server";
 
 const EXPECTED = 32; // HMAC-SHA256
@@ -60,7 +61,6 @@ export function setToken() {
 }
 
 // auth_tokens.validate.ts
-import { Collection, WithId, ObjectId } from "mongodb";
 
 export type ColType = "oauth_code" | "email_verify" | "password_reset";
 

@@ -61,10 +61,10 @@ export async function POST(req: NextRequest) {
 
     const auth_links = db.collection(COLLECTIONS.AuthLinks);
     const provider = "password";
-
+    const credentialId = `cred_${randomBytes(12).toString("hex")}`;
     const user_auth_link = {
       provider,
-      credentialId: `cred_${randomBytes(12).toString("hex")}`,
+      credentialId,
       email: res.doc.email,
       principalId: String(res.doc.principalId),
       active: true,
@@ -72,11 +72,21 @@ export async function POST(req: NextRequest) {
     };
     await auth_links.insertOne(user_auth_link);
 
-    const scopes = [...(res.doc.scopes ?? []), SCOPES.USERS_PII_WRITE];
+    const scopes = [...(res.doc.scopes ?? []), SCOPES.USERS_PII_WRITE].filter(
+      (s) => s !== SCOPES.AUTH_TOKENS_ISSUE
+    );
+    const user_rec = db.collection(COLLECTIONS.UsersAccounts);
+
+    await user_rec.findOneAndUpdate(
+      {
+        principalId: res.doc.principalId,
+      },
+      { $set: { scopes: scopes } }
+    );
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({
-      sub: res.doc.principalId,
+      sub: credentialId,
       patientId: res.doc.patientId ?? null,
       orgId: res.doc.orgId,
       scopes,

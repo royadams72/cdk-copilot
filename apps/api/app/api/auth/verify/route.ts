@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
-import { COLLECTIONS } from "@ckd/core/server";
+import { COLLECTIONS, SCOPES } from "@ckd/core/server";
 import {
   AuthTokenDoc,
   b64url,
@@ -15,12 +15,21 @@ import {
 } from "@/apps/api/lib/auth/auth_token";
 
 import { TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
+import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { bad } from "@/apps/api/lib/http/responses";
 
 export async function GET(req: NextRequest) {
+  const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
+    allowBootstrap: true,
+  });
+
+  if (!user) return bad("Forbidden", "", 403);
+
   const db = await getDb();
   const sp = req.nextUrl.searchParams;
   const rawToken = sp.get("token") ?? "";
   const parsed = parseToken(rawToken);
+
   if (!rawToken || !parsed) throw new Error("bad_token");
   const auth_tokens = db.collection<AuthTokenDoc>(COLLECTIONS.AuthTokens);
 
@@ -40,7 +49,7 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
 
-  // ---- Convert patientId to hex string for DTOs ----
+  // ---- Convert patientId to hex string for DTOs (Data Transfer Object) ----
   const patientIdHex: string =
     typeof patientId === "string"
       ? patientId
@@ -59,6 +68,7 @@ export async function GET(req: NextRequest) {
     updatedAt: now,
     scopes,
   };
+
   const user_pii_dto: TUserPIICreate = {
     ...base_user_acc,
     patientId: patientIdHex,

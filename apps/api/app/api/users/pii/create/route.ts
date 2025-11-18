@@ -46,32 +46,28 @@ export async function POST(req: NextRequest) {
     // 5) Assemble doc (mutable → set created+updated fields)
     // NOTE: if your TUserPII currently expects createdBy: string,
     // update it to accept the actor envelope shown here.
-    const doc: Omit<TUserPII, "id"> = {
+    const doc = {
       ...body,
       ...(user.orgId ? { orgId: user.orgId } : {}),
       updatedAt: now,
-
-      requestId, // handy to keep on the record for traceability
     } as any;
 
     // 6) Insert
     const database = await getDb();
-    type UserPIIDoc = MongoDocument & TUserPII;
-    const userPII_db = getCollection<UserPIIDoc>(
-      database,
-      COLLECTIONS.UsersPII
-    );
+    type UserPIIDoc = TUserPII;
+
+    const userPII_db = getCollection(database, COLLECTIONS.UsersPII);
 
     await userPII_db.updateOne(
-      { principalId: user.principalId },
+      { patientId: user.patientId },
       {
-        $set: doc as UserPIIDoc,
+        $set: doc,
       }
     );
 
     return ok({ requestId }, 201);
   } catch (err: any) {
-    const status = err?.status || 500;
+    const status = err?.code === 121 ? 400 : err?.status || 500;
     return bad(err?.message || "Server error", { requestId }, status);
   }
 }

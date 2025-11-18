@@ -1,27 +1,34 @@
-"use client";
-
 import React, { useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
-
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Alert,
+  Switch,
+  Platform,
+} from "react-native";
+import { useForm, Controller, type Resolver } from "react-hook-form";
+import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+import { PiiForm, type TPiiInput } from "@ckd/core";
 import { authFetch } from "@/lib/authFetch";
-import { Alert } from "react-native";
-import { PiiForm, TPiiInput } from "@ckd/core";
 import { API } from "@/constants/api";
 
-// -----------------
-// React form component
-// -----------------
+type SexAtBirth = TPiiInput["sexAtBirth"];
+type Units = TPiiInput["units"];
+
 export default function OnboardingPiiForm({
   defaults,
 }: {
   defaults?: Partial<TPiiInput>;
 }) {
-  const tzGuess =
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+  const [saving, setSaving] = useState(false);
 
   const {
-    register,
+    control,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
@@ -31,7 +38,7 @@ export default function OnboardingPiiForm({
       phoneE164: null,
       firstName: "",
       lastName: "",
-      dateOfBirth: null,
+      dateOfBirth: null, // store as ISO string or null; convert for picker
       sexAtBirth: "unknown",
       genderIdentity: null,
       ethnicity: null,
@@ -39,16 +46,21 @@ export default function OnboardingPiiForm({
       notificationPrefs: { email: true, push: true, sms: false },
       ...defaults,
     },
+    mode: "onSubmit",
   });
 
-  const [saving, setSaving] = useState(false);
-
-  async function onSubmit(payload: any) {
+  async function onSubmit(payload: TPiiInput) {
     try {
       setSaving(true);
+
+      // If your API expects a Date, convert ISO->Date server-side.
+      // Ensure dateOfBirth is ISO string or null.
+      const body = JSON.stringify(payload);
+
       const res = await authFetch(`${API}/api/users/pii/create`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        headers: { "content-type": "application/json" },
+        body,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -56,114 +68,276 @@ export default function OnboardingPiiForm({
       }
       Alert.alert("Saved");
     } catch (e: any) {
-      Alert.alert("Error", e.message ?? "Failed");
+      Alert.alert("Error", e?.message ?? "Failed");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-xl">
-      <fieldset className="grid grid-cols-2 gap-3">
-        <label className="col-span-1">
-          <div>First name</div>
-          <input className="input" {...register("firstName")} />
-          {errors.firstName && (
-            <p className="text-red-600 text-sm">{errors.firstName.message}</p>
-          )}
-        </label>
-        <label className="col-span-1">
-          <div>Last name</div>
-          <input className="input" {...register("lastName")} />
-          {errors.lastName && (
-            <p className="text-red-600 text-sm">{errors.lastName.message}</p>
-          )}
-        </label>
-      </fieldset>
-
-      <label>
-        <div>Phone (E.164)</div>
-        <input
-          className="input"
-          placeholder="+447911123456"
-          {...register("phoneE164")}
-        />
-        {errors.phoneE164 && (
-          <p className="text-red-600 text-sm">
-            {String(errors.phoneE164.message)}
-          </p>
+    <View style={{ padding: 16, gap: 12 }}>
+      {/* First name */}
+      <Controller
+        control={control}
+        name="firstName"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <View>
+            <Text>First name</Text>
+            <TextInput
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder="Jane"
+              autoCapitalize="words"
+              style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
+            />
+            {!!errors.firstName && (
+              <Text style={{ color: "red" }}>
+                {String(errors.firstName.message)}
+              </Text>
+            )}
+          </View>
         )}
-      </label>
+      />
 
-      <label>
-        <div>Date of birth</div>
-        <input
-          type="date"
-          className="input"
-          {...register("dateOfBirth", { setValueAs: (v) => v || null })}
-        />
-        {errors.dateOfBirth && (
-          <p className="text-red-600 text-sm">
-            {String(errors.dateOfBirth.message)}
-          </p>
+      {/* Last name */}
+      <Controller
+        control={control}
+        name="lastName"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <View>
+            <Text>Last name</Text>
+            <TextInput
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder="Doe"
+              autoCapitalize="words"
+              style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
+            />
+            {!!errors.lastName && (
+              <Text style={{ color: "red" }}>
+                {String(errors.lastName.message)}
+              </Text>
+            )}
+          </View>
         )}
-      </label>
+      />
 
-      <label>
-        <div>Sex at birth</div>
-        <select className="input" {...register("sexAtBirth")}>
-          <option value="female">female</option>
-          <option value="male">male</option>
-          <option value="intersex">intersex</option>
-          <option value="unknown">unknown</option>
-        </select>
-      </label>
+      {/* Phone (E.164) */}
+      <Controller
+        control={control}
+        name="phoneE164"
+        render={({ field: { onChange, value } }) => (
+          <View>
+            <Text>Phone (E.164)</Text>
+            <TextInput
+              value={value ?? ""}
+              onChangeText={(t) => onChange(t.trim() === "" ? null : t.trim())}
+              placeholder="+447911123456"
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
+            />
+            {!!errors.phoneE164 && (
+              <Text style={{ color: "red" }}>
+                {String(errors.phoneE164.message)}
+              </Text>
+            )}
+          </View>
+        )}
+      />
 
-      <label>
-        <div>Gender identity</div>
-        <input className="input" {...register("genderIdentity")} />
-      </label>
+      {/* Date of birth (ISO string in form state) */}
+      <Controller
+        control={control}
+        name="dateOfBirth"
+        render={({ field: { onChange, value } }) => {
+          const [show, setShow] = useState(false);
+          const dateVal = value ? new Date(value) : null;
 
-      <label>
-        <div>Ethnicity</div>
-        <input className="input" {...register("ethnicity")} />
-      </label>
+          return (
+            <View>
+              <Text>Date of birth</Text>
+              <Text
+                onPress={() => setShow(true)}
+                style={{
+                  borderWidth: 1,
+                  padding: 10,
+                  borderRadius: 8,
+                  color: dateVal ? "black" : "#888",
+                }}
+              >
+                {dateVal ? dateVal.toISOString().slice(0, 10) : "Tap to select"}
+              </Text>
+              {show && (
+                <DateTimePicker
+                  value={dateVal ?? new Date(2000, 0, 1)}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(_, selected) => {
+                    setShow(Platform.OS === "ios"); // keep open on iOS spinner
+                    if (selected) {
+                      // Persist as ISO date-only (midnight UTC) or full ISO; align with your API expectations
+                      const iso = new Date(
+                        Date.UTC(
+                          selected.getFullYear(),
+                          selected.getMonth(),
+                          selected.getDate()
+                        )
+                      ).toISOString();
+                      onChange(iso);
+                    }
+                  }}
+                />
+              )}
+              {!!errors.dateOfBirth && (
+                <Text style={{ color: "red" }}>
+                  {String(errors.dateOfBirth.message)}
+                </Text>
+              )}
+            </View>
+          );
+        }}
+      />
 
-      <fieldset className="grid grid-cols-2 gap-3">
-        <label>
-          <div>Units</div>
-          <select className="input" {...register("units")}>
-            <option value="metric">metric</option>
-            <option value="imperial">imperial</option>
-          </select>
-        </label>
-      </fieldset>
+      {/* Sex at birth */}
+      <Controller
+        control={control}
+        name="sexAtBirth"
+        render={({ field: { onChange, value } }) => (
+          <View>
+            <Text>Sex at birth</Text>
+            <View style={{ borderWidth: 1, borderRadius: 8 }}>
+              <Picker
+                selectedValue={value as SexAtBirth}
+                onValueChange={(v) => onChange(v as SexAtBirth)}
+              >
+                <Picker.Item label="female" value="female" />
+                <Picker.Item label="male" value="male" />
+                <Picker.Item label="intersex" value="intersex" />
+                <Picker.Item label="unknown" value="unknown" />
+              </Picker>
+            </View>
+            {!!errors.sexAtBirth && (
+              <Text style={{ color: "red" }}>
+                {String(errors.sexAtBirth.message)}
+              </Text>
+            )}
+          </View>
+        )}
+      />
 
-      <fieldset className="space-y-1">
-        <div>Notifications</div>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" {...register("notificationPrefs.email")} />{" "}
-          Email
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" {...register("notificationPrefs.push")} /> Push
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" {...register("notificationPrefs.sms")} /> SMS
-        </label>
-      </fieldset>
+      {/* Gender identity */}
+      <Controller
+        control={control}
+        name="genderIdentity"
+        render={({ field: { onChange, value } }) => (
+          <View>
+            <Text>Gender identity</Text>
+            <TextInput
+              value={value ?? ""}
+              onChangeText={(t) => onChange(t.trim() === "" ? null : t)}
+              style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
+            />
+            {!!errors.genderIdentity && (
+              <Text style={{ color: "red" }}>
+                {String(errors.genderIdentity.message)}
+              </Text>
+            )}
+          </View>
+        )}
+      />
 
-      {errors.root && (
-        <p className="text-red-600 text-sm">{errors.root.message}</p>
+      {/* Ethnicity */}
+      <Controller
+        control={control}
+        name="ethnicity"
+        render={({ field: { onChange, value } }) => (
+          <View>
+            <Text>Ethnicity</Text>
+            <TextInput
+              value={value ?? ""}
+              onChangeText={(t) => onChange(t.trim() === "" ? null : t)}
+              style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
+            />
+            {!!errors.ethnicity && (
+              <Text style={{ color: "red" }}>
+                {String(errors.ethnicity.message)}
+              </Text>
+            )}
+          </View>
+        )}
+      />
+
+      {/* Units */}
+      <Controller
+        control={control}
+        name="units"
+        render={({ field: { onChange, value } }) => (
+          <View>
+            <Text>Units</Text>
+            <View style={{ borderWidth: 1, borderRadius: 8 }}>
+              <Picker
+                selectedValue={value as Units}
+                onValueChange={(v) => onChange(v as Units)}
+              >
+                <Picker.Item label="metric" value="metric" />
+                <Picker.Item label="imperial" value="imperial" />
+              </Picker>
+            </View>
+            {!!errors.units && (
+              <Text style={{ color: "red" }}>
+                {String(errors.units.message)}
+              </Text>
+            )}
+          </View>
+        )}
+      />
+
+      {/* Notifications */}
+      <Text>Notifications</Text>
+
+      <Controller
+        control={control}
+        name="notificationPrefs.email"
+        render={({ field: { onChange, value } }) => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Switch value={!!value} onValueChange={onChange} />
+            <Text>Email</Text>
+          </View>
+        )}
+      />
+      <Controller
+        control={control}
+        name="notificationPrefs.push"
+        render={({ field: { onChange, value } }) => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Switch value={!!value} onValueChange={onChange} />
+            <Text>Push</Text>
+          </View>
+        )}
+      />
+      <Controller
+        control={control}
+        name="notificationPrefs.sms"
+        render={({ field: { onChange, value } }) => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Switch value={!!value} onValueChange={onChange} />
+            <Text>SMS</Text>
+          </View>
+        )}
+      />
+
+      {!!errors.root && (
+        <Text style={{ color: "red" }}>{String(errors.root.message)}</Text>
       )}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="px-4 py-2 rounded bg-black text-white"
-      >
-        {isSubmitting ? "Saving…" : "Save"}
-      </button>
-    </form>
+      <Button
+        title={isSubmitting || saving ? "Saving…" : "Save"}
+        disabled={isSubmitting || saving}
+        onPress={handleSubmit(onSubmit)}
+      />
+    </View>
   );
 }
