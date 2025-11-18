@@ -2,13 +2,14 @@ import { NextRequest } from "next/server";
 import { treeifyError } from "zod";
 import type { Document as MongoDocument } from "mongodb";
 
-import { COLLECTIONS, getCollection, SCOPES } from "@ckd/core/server";
+import { COLLECTIONS, getCollection } from "@ckd/core/server";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { TUserPII } from "@ckd/core";
+import { SCOPES, TUserPII } from "@ckd/core";
+import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,11 @@ export async function POST(req: NextRequest) {
         $set: doc,
       }
     );
+
+    await updateScopes(user, [
+      SCOPES.USERS_PII_READ,
+      SCOPES.USERS_CLINICAL_WRITE,
+    ]);
 
     return ok({ requestId }, 201);
   } catch (err: any) {

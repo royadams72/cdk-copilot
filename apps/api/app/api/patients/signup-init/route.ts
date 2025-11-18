@@ -8,8 +8,8 @@ import { z } from "zod";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
-import { COLLECTIONS, ROLES, SCOPES } from "@ckd/core/server";
-import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { COLLECTIONS } from "@ckd/core/server";
+import { ROLES, DEFAULT_SCOPES } from "@ckd/core";
 
 export type colType = "oauth_code" | "email_verify" | "password_reset";
 export enum COLLECTION_TYPE {
@@ -19,11 +19,6 @@ export enum COLLECTION_TYPE {
 }
 const Body = z.object({ email: z.email() });
 
-const DEFAULT_SCOPES = [
-  SCOPES.PATIENTS_READ,
-  SCOPES.PATIENTS_FLAGS_WRITE,
-  SCOPES.AUTH_TOKENS_ISSUE,
-] as const;
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
 const VERIFY_URL = (process.env.VERIFY_URL as unknown as URL) || null;
@@ -94,7 +89,7 @@ export async function POST(req: NextRequest) {
       email,
       redirectUri: REDIRECT_URI,
       secretHash: secretHash.toString("base64"),
-      patientId: new ObjectId(patientId), // Which record we're updating
+      patientId: new ObjectId(patientId),
       principalId,
       role: ROLES.Patient,
       scopes,

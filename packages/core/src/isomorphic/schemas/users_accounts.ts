@@ -5,7 +5,6 @@ import {
   objectIdHex,
   PrincipalId,
 } from "./common";
-import { Role } from "../../server/constants";
 
 export const UsersAccount_Base = z.object({
   orgId: z.string().min(1),

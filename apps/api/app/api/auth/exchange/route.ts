@@ -3,7 +3,7 @@ import { SignJWT } from "jose";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 
-import { COLLECTIONS, SCOPES } from "@ckd/core/server";
+import { COLLECTIONS } from "@ckd/core/server";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
 import {
   AuthTokenDoc,
@@ -13,9 +13,13 @@ import {
 } from "@/apps/api/lib/auth/auth_token";
 import { ObjectId } from "mongodb";
 import { randomBytes } from "crypto";
+import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
+import { SessionUser, requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { DEFAULT_SCOPES, SCOPES } from "@ckd/core";
 
 export async function POST(req: NextRequest) {
   try {
+    const user: SessionUser = await requireUser(req, DEFAULT_SCOPES);
     const db = await getDb();
     const { token } = await req.json().catch(() => ({}));
 
@@ -72,17 +76,10 @@ export async function POST(req: NextRequest) {
     };
     await auth_links.insertOne(user_auth_link);
 
-    const scopes = [...(res.doc.scopes ?? []), SCOPES.USERS_PII_WRITE].filter(
-      (s) => s !== SCOPES.AUTH_TOKENS_ISSUE
-    );
-    const user_rec = db.collection(COLLECTIONS.UsersAccounts);
-
-    await user_rec.findOneAndUpdate(
-      {
-        principalId: res.doc.principalId,
-      },
-      { $set: { scopes: scopes } }
-    );
+    const scopes = await updateScopes(user, [
+      SCOPES.USERS_PII_READ,
+      SCOPES.USERS_CLINICAL_WRITE,
+    ]);
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({

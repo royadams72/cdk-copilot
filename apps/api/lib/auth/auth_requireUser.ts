@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { randomUUID } from "crypto";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { COLLECTIONS, hasScopes, SCOPES, type Scope } from "@ckd/core/server";
+import { COLLECTIONS } from "@ckd/core/server";
+import { SCOPES, Scope, hasScopes } from "@ckd/core";
 
 export type AuthProvider =
   | "password"
@@ -33,29 +34,11 @@ const ROLE_SCOPES: Record<string, string[]> = {
 const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret";
 const SIGNUP_INIT_KEY = process.env.SIGNUP_INIT_KEY || ""; // set in env for prod
 
-function needs(scopeList: Scope | Scope[], s: string) {
-  return Array.isArray(scopeList)
-    ? scopeList.includes(s as Scope)
-    : scopeList === (s as Scope);
-}
 function getBearer(req: NextRequest) {
   const h = req.headers.get("authorization") || "";
   return h.startsWith("Bearer ") ? h.slice(7) : "";
 }
-function getProviderFromReq(req: NextRequest): AuthProvider {
-  const raw = (req.headers.get("x-auth-provider") || "password").toLowerCase();
-  const allowed: AuthProvider[] = [
-    "password",
-    "apple",
-    "google",
-    "nhs",
-    "azuread",
-    "magic",
-  ];
-  return (allowed as readonly string[]).includes(raw)
-    ? (raw as AuthProvider)
-    : "password";
-}
+
 async function verifyJWT(token: string) {
   const secret = new TextEncoder().encode(JWT_SECRET);
   const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
@@ -76,7 +59,6 @@ export async function requireUser(
     const credentialId = claims.sub as string;
     if (!credentialId)
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
-    console.log("claims::", claims);
 
     const link = await db
       .collection(COLLECTIONS.AuthLinks)
@@ -110,7 +92,7 @@ export async function requireUser(
     const roleScopes = ROLE_SCOPES[acct.role] ?? [];
     const grants = [...(acct.scopes ?? []), ...(acct.grants ?? [])];
     const scopes = Array.from(new Set([...roleScopes, ...grants]));
-    if ((neededScopes as string[]).length && !hasScopes(scopes, neededScopes)) {
+    if (neededScopes.length && !hasScopes(scopes, neededScopes)) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
     }
 

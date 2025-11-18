@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTION_TYPE } from "../../patients/signup-init/route";
-import { COLLECTIONS, SCOPES } from "@ckd/core/server";
+import { COLLECTIONS } from "@ckd/core/server";
 import {
   AuthTokenDoc,
   b64url,
@@ -14,7 +14,7 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 
-import { TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
+import { SCOPES, TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad } from "@/apps/api/lib/http/responses";
 
@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (!user) return bad("Forbidden", "", 403);
+  console.log(user);
 
   const db = await getDb();
   const sp = req.nextUrl.searchParams;

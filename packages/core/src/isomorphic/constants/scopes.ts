@@ -33,7 +33,13 @@ export const SCOPES = {
   AUTH_TOKENS_ISSUE: "auth_tokens.issue",
   // optional super-scope
   STAR: "*",
-};
+} as const;
+
+export const DEFAULT_SCOPES = [
+  SCOPES.PATIENTS_READ,
+  SCOPES.PATIENTS_FLAGS_WRITE,
+  SCOPES.AUTH_TOKENS_ISSUE,
+];
 
 export const ROLES = {
   Patient: "patient",
