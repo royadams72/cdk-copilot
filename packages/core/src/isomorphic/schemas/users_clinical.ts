@@ -9,6 +9,9 @@ export const DialysisStatus = z.enum([
 ]);
 export const ACR = z.enum(["A1", "A2", "A3"]); // Albumin-to-Creatinine Ratio category
 
+const CKD_STAGE_VALUES = ["1", "2", "3a", "3b", "4", "5"] as const;
+export const CKDStage = z.enum(CKD_STAGE_VALUES);
+
 const Dx = z.object({ code: z.string().optional(), label: z.string().min(1) });
 const Med = z.object({
   name: z.string().min(1),
@@ -36,16 +39,7 @@ export const CareTeamMember = z.object({
 
 export const UserClinical_Base = z.object({
   userId: z.string().min(1), // Foreign Key (FK) → users_pii.id
-  ckdStage: z
-    .union([
-      z.literal(1),
-      z.literal(2),
-      z.literal(3),
-      z.literal(4),
-      z.literal(5),
-    ])
-    .nullable()
-    .optional(), // CKD = Chronic Kidney Disease
+  ckdStage: CKDStage.nullable().optional(), // CKD = Chronic Kidney Disease
   egfrCurrent: z.number().positive().max(200).nullable().optional(), // eGFR = estimated Glomerular Filtration Rate (mL/min/1.73m²)
   acrCategory: ACR.nullable().optional(),
   dialysisStatus: DialysisStatus.default("none"),
@@ -72,6 +66,61 @@ export const UserClinical_Create = UserClinical_Base.omit({
   createdBy: true,
   updatedBy: true,
 });
+
+// --- Form ---
+const numberLike = z
+  .string()
+  .optional()
+  .refine(
+    (val) => !val || val.trim() === "" || !Number.isNaN(Number(val)),
+    "Enter a number"
+  );
+
+const TargetsForm = z.object({
+  caloriesKcal: numberLike,
+  proteinG: numberLike,
+  phosphorusMg: numberLike,
+  potassiumMg: numberLike,
+  sodiumMg: numberLike,
+  fluidMl: numberLike,
+});
+
+const LabeledString = z.object({
+  value: z.string().min(1),
+});
+
+export const ClinicalFormSchema = z.object({
+  ckdStage: z.enum(["", ...CKD_STAGE_VALUES] as const),
+  egfrCurrent: numberLike,
+  acrCategory: z.enum(["", ...ACR.options]),
+  dialysisStatus: DialysisStatus,
+  diagnoses: z
+    .array(
+      z.object({
+        label: z.string().min(1, "Diagnosis label required"),
+        code: z.string().optional(),
+      })
+    )
+    .default([]),
+  allergies: z.array(LabeledString).default([]),
+  dietaryPreferences: z.array(LabeledString).default([]),
+  contraindications: z.array(LabeledString).default([]),
+  targets: TargetsForm,
+  careTeam: z
+    .array(
+      z.object({
+        role: z.string().min(1, "Role is required"),
+        name: z.string().optional(),
+        org: z.string().optional(),
+        contact: z.string().optional(),
+      })
+    )
+    .default([]),
+  lastClinicalUpdateAt: z.string().nullable(),
+});
+
+export type TClinicalFormValues = z.infer<typeof ClinicalFormSchema>;
+
 export const UserClinical_Update = UserClinical_Base.partial();
 
 export type TUserClinical = z.infer<typeof UserClinical_Base>;

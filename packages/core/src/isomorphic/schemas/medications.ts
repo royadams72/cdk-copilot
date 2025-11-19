@@ -24,8 +24,8 @@ export const MedicationLedger_Base = z
     dose: z.string().min(1), // free text or structured
     frequency: z.string().min(1), // e.g., "once daily"
     instructions: z.string().min(1).optional(),
-    startAt: z.date(),
-    endAt: z.date().optional(),
+    startAt: z.date().nullable(),
+    endAt: z.date().optional().nullable(),
     status: MedicationStatus,
     source: MedicationSource.default("manual"),
     createdAt: z.date(),
@@ -34,7 +34,7 @@ export const MedicationLedger_Base = z
     updatedBy: PrincipalId,
   })
   // Ensure endAt is not before startAt
-  .refine((d) => !d.endAt || d.endAt >= d.startAt, {
+  .refine((d) => !d.endAt || d.endAt >= d.startAt!, {
     message: "endAt must be on/after startAt",
     path: ["endAt"],
   })
@@ -78,3 +78,27 @@ export const MedicationLedger_Update = z
     (p) => !(p.startAt && p.endAt) || p.endAt >= p.startAt,
     { message: "endAt must be on/after startAt", path: ["endAt"] }
   );
+
+export const MedicationFormEntry = MedicationLedger_Base.pick({
+  name: true,
+  form: true,
+  strength: true,
+  route: true,
+  dose: true,
+  frequency: true,
+  instructions: true,
+  startAt: true,
+  endAt: true,
+  status: true,
+  source: true,
+  dmplusdCode: true,
+  snomedCode: true,
+});
+
+export const MedicationsFormSchema = z.object({
+  medications: z
+    .array(MedicationFormEntry)
+    .min(1, "Add at least one medication record"),
+});
+
+export type TMedicationFormValues = z.infer<typeof MedicationsFormSchema>;
