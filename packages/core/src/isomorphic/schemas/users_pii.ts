@@ -79,3 +79,8 @@ export type TUserPII = z.infer<typeof UserPII_Base>;
 export type TUserPIICreate = z.infer<typeof UserPII_Create>;
 export type TUserPIIUpdate = z.infer<typeof UserPII_Update>;
 export type TUserPIIPublic = z.infer<typeof UserPII_Public>;
+
+export const UserPIIFields = UserPII_Base.keyof().enum;
+// Type-safe union of field names
+export type UserPIIField = keyof z.infer<typeof UserPII_Common>;
+// or: export type UserPIIField = keyof typeof UserPIIFields;
