@@ -13,6 +13,7 @@ import { TLabsFormValues, LabsSchema } from "@ckd/core";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { DateField, LabeledInput } from "./FormFields";
+import { useRouter } from "expo-router";
 
 const emptyLab: TLabsFormValues["labs"][number] = {
   code: "",
@@ -35,6 +36,7 @@ export default function LabsForm({
 }: {
   defaults?: Partial<TLabsFormValues>;
 }) {
+  const router = useRouter();
   const {
     control,
     handleSubmit,
@@ -90,20 +92,20 @@ export default function LabsForm({
         note: lab.note?.trim() || undefined,
       };
     });
-
-    try {
-      const res = await authFetch(`${API}/api/users/labs/create`, {
-        method: "POST",
-        body: JSON.stringify({ labs: payload }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`${res.status} ${JSON.stringify(err)}`);
-      }
-      Alert.alert("Labs saved");
-    } catch (err: any) {
-      Alert.alert("Error", err?.message ?? "Failed to save labs");
-    }
+    router.push("./onboarding/steps/clinical-form");
+    // try {
+    //   const res = await authFetch(`${API}/api/users/labs/create`, {
+    //     method: "POST",
+    //     body: JSON.stringify({ labs: payload }),
+    //   });
+    //   if (!res.ok) {
+    //     const err = await res.json().catch(() => ({}));
+    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
+    //   }
+    //   Alert.alert("Labs saved");
+    // } catch (err: any) {
+    //   Alert.alert("Error", err?.message ?? "Failed to save labs");
+    // }
   }
 
   return (

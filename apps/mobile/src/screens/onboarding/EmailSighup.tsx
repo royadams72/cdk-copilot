@@ -14,11 +14,7 @@ export default function EmailSignup() {
         body: JSON.stringify({ email }),
       });
 
-      const ct = res.headers.get("content-type") || "";
       const bodyText = await res.text(); // read as text once
-      const json = ct.includes("application/json")
-        ? JSON.parse(bodyText)
-        : null;
 
       if (!res.ok) {
         Alert.alert(

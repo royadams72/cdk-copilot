@@ -19,7 +19,11 @@ import { DEFAULT_SCOPES, SCOPES } from "@ckd/core";
 
 export async function POST(req: NextRequest) {
   try {
-    const user: SessionUser = await requireUser(req, DEFAULT_SCOPES);
+    const user: SessionUser = await requireUser(req, DEFAULT_SCOPES, {
+      allowBootstrap: true,
+    });
+    console.log("user exchange:", user);
+
     const db = await getDb();
     const { token } = await req.json().catch(() => ({}));
 

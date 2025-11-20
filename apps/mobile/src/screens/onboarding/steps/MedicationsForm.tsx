@@ -15,6 +15,7 @@ import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { DateField, LabeledInput } from "./FormFields";
+import { useRouter } from "expo-router";
 
 const emptyMedication: TMedicationFormValues["medications"][number] = {
   name: "",
@@ -37,6 +38,7 @@ export default function MedicationsForm({
 }: {
   defaults?: Partial<TMedicationFormValues>;
 }) {
+  const router = useRouter();
   const {
     control,
     handleSubmit,
@@ -74,19 +76,20 @@ export default function MedicationsForm({
       snomedCode: med.snomedCode?.trim() || undefined,
     }));
 
-    try {
-      const res = await authFetch(`${API}/api/users/medications/create`, {
-        method: "POST",
-        body: JSON.stringify({ medications: payload }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`${res.status} ${JSON.stringify(err)}`);
-      }
-      Alert.alert("Medications saved");
-    } catch (err: any) {
-      Alert.alert("Error", err?.message ?? "Failed to save medications");
-    }
+    router.push("./onboarding/steps/labs-form");
+    // try {
+    //   const res = await authFetch(`${API}/api/users/medications/create`, {
+    //     method: "POST",
+    //     body: JSON.stringify({ medications: payload }),
+    //   });
+    //   if (!res.ok) {
+    //     const err = await res.json().catch(() => ({}));
+    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
+    //   }
+    //   Alert.alert("Medications saved");
+    // } catch (err: any) {
+    //   Alert.alert("Error", err?.message ?? "Failed to save medications");
+    // }
   }
 
   return (

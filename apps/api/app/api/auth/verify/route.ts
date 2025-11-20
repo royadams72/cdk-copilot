@@ -14,17 +14,22 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 
-import { SCOPES, TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
+import {
+  DEFAULT_SCOPES,
+  SCOPES,
+  TUserPIICreate,
+  TUsersAccountCreate,
+} from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad } from "@/apps/api/lib/http/responses";
 
 export async function GET(req: NextRequest) {
-  const user = await requireUser(req, [SCOPES.AUTH_TOKENS_ISSUE], {
+  const user = await requireUser(req, DEFAULT_SCOPES, {
     allowBootstrap: true,
   });
 
   if (!user) return bad("Forbidden", "", 403);
-  console.log(user);
+  console.log("verify user:: ", user);
 
   const db = await getDb();
   const sp = req.nextUrl.searchParams;
@@ -44,6 +49,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
 
   const { principalId, patientId, email, role, scopes } = res.doc;
+  console.log();
+
   if (!email || !principalId)
     return NextResponse.json(
       { error: "missing information_v" },

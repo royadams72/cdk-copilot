@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 import { randomUUID } from "crypto";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
-import { SCOPES, Scope, hasScopes } from "@ckd/core";
+import { DEFAULT_SCOPES, SCOPES, Scope, hasScopes } from "@ckd/core";
 
 export type AuthProvider =
   | "password"
@@ -115,16 +115,17 @@ export async function requireUser(
   // and presents the shared secret header.
   if (
     opts.allowBootstrap &&
-    hasScopes(Array.isArray(neededScopes) ? neededScopes : [neededScopes], [
-      "auth_tokens.issue",
-    ])
+    hasScopes(
+      Array.isArray(neededScopes) ? neededScopes : [neededScopes],
+      DEFAULT_SCOPES
+    )
   ) {
     return {
       authId: "bootstrap",
       provider: "magic",
       principalId: "provisional",
       role: "patient",
-      scopes: ["auth_tokens.issue"],
+      scopes: DEFAULT_SCOPES,
     };
   }
   throw Object.assign(new Error("Unauthorized"), { status: 401 });
