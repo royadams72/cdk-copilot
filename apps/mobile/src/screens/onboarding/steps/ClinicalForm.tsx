@@ -23,6 +23,7 @@ import {
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { DateField, LabeledInput } from "./FormFields";
+import { useRouter } from "expo-router";
 
 const emptyDiagnosis = { label: "", code: "" };
 const emptyCareTeamMember = { role: "", name: "", org: "", contact: "" };
@@ -41,6 +42,7 @@ export default function ClinicalForm({
 }: {
   defaults?: Partial<TClinicalFormValues>;
 }) {
+  const router = useRouter();
   const {
     control,
     handleSubmit,
@@ -54,10 +56,11 @@ export default function ClinicalForm({
       egfrCurrent: defaults?.egfrCurrent ?? "",
       acrCategory: defaults?.acrCategory ?? "",
       dialysisStatus: defaults?.dialysisStatus ?? "none",
+      weightKg: defaults?.weightKg ?? "",
+      heightCm: defaults?.heightCm ?? "",
       diagnoses: defaults?.diagnoses ?? [],
       allergies: defaults?.allergies ?? [],
       dietaryPreferences: defaults?.dietaryPreferences ?? [],
-      contraindications: defaults?.contraindications ?? [],
       targets: defaults?.targets ?? { ...defaultTargets },
       careTeam: defaults?.careTeam ?? [],
       lastClinicalUpdateAt: defaults?.lastClinicalUpdateAt ?? null,
@@ -67,10 +70,6 @@ export default function ClinicalForm({
   const diagnosesArray = useFieldArray({ control, name: "diagnoses" });
   const allergiesArray = useFieldArray({ control, name: "allergies" });
   const dietArray = useFieldArray({ control, name: "dietaryPreferences" });
-  const contraindicationsArray = useFieldArray({
-    control,
-    name: "contraindications",
-  });
   const careTeamArray = useFieldArray({ control, name: "careTeam" });
 
   async function onSubmit(values: TClinicalFormValues) {
@@ -85,6 +84,8 @@ export default function ClinicalForm({
         ? (values.acrCategory as TUserClinicalUpdate["acrCategory"])
         : null,
       dialysisStatus: values.dialysisStatus,
+      weightKg: values.weightKg?.trim() ? Number(values.weightKg) : undefined,
+      heightCm: values.heightCm?.trim() ? Number(values.heightCm) : undefined,
       diagnoses: values.diagnoses
         .filter((dx) => dx.label.trim().length)
         .map((dx) => ({
@@ -95,9 +96,6 @@ export default function ClinicalForm({
         .map((item) => item.value.trim())
         .filter(Boolean),
       dietaryPreferences: values.dietaryPreferences
-        .map((item) => item.value.trim())
-        .filter(Boolean),
-      contraindications: values.contraindications
         .map((item) => item.value.trim())
         .filter(Boolean),
       targets: buildTargets(values.targets),
@@ -115,20 +113,20 @@ export default function ClinicalForm({
         return typeof v === "string" ? new Date(v) : v;
       })(),
     };
-
-    try {
-      const res = await authFetch(`${API}/api/users/clinical/create`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`${res.status} ${JSON.stringify(err)}`);
-      }
-      Alert.alert("Clinical profile saved");
-    } catch (err: any) {
-      Alert.alert("Error", err?.message ?? "Failed to save clinical data");
-    }
+    router.push("/(auth)/profile");
+    // try {
+    //   const res = await authFetch(`${API}/api/users/clinical/create`, {
+    //     method: "POST",
+    //     body: JSON.stringify(payload),
+    //   });
+    //   if (!res.ok) {
+    //     const err = await res.json().catch(() => ({}));
+    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
+    //   }
+    //   Alert.alert("Clinical profile saved");
+    // } catch (err: any) {
+    //   Alert.alert("Error", err?.message ?? "Failed to save clinical data");
+    // }
   }
 
   return (
@@ -206,11 +204,39 @@ export default function ClinicalForm({
           )}
         />
       </View>
+      <View style={{ gap: 12 }}>
+        <Text style={{ fontWeight: "700" }}>Body measurements</Text>
 
+        <Controller
+          control={control}
+          name="weightKg"
+          render={({ field: { value, onChange } }) => (
+            <LabeledInput
+              label="Weight (kg)"
+              value={value ?? ""}
+              onChangeText={onChange}
+              keyboardType="numeric"
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="heightCm"
+          render={({ field: { value, onChange } }) => (
+            <LabeledInput
+              label="Height (cm)"
+              value={value ?? ""}
+              onChangeText={onChange}
+              keyboardType="numeric"
+            />
+          )}
+        />
+      </View>
       <Section
-        title="Diagnoses"
-        emptyLabel="No diagnoses added"
-        addLabel="Add diagnosis"
+        title="Other conditions"
+        emptyLabel="No conditions added"
+        addLabel="Add condition"
         onAdd={() => diagnosesArray.append({ ...emptyDiagnosis })}
       >
         {diagnosesArray.fields.map((field, index) => {
@@ -248,7 +274,7 @@ export default function ClinicalForm({
               />
               <Button
                 color="#b91c1c"
-                title="Remove diagnosis"
+                title="Remove condition"
                 onPress={() => diagnosesArray.remove(index)}
               />
             </View>
@@ -280,137 +306,8 @@ export default function ClinicalForm({
         placeholder="Vegetarian"
       />
 
-      <StringArraySection
-        title="Contraindications"
-        itemLabel="Contraindication"
-        errors={errors.contraindications}
-        fields={contraindicationsArray.fields}
-        control={control}
-        fieldName="contraindications"
-        onAdd={() => contraindicationsArray.append({ value: "" })}
-        onRemove={contraindicationsArray.remove}
-        placeholder="NSAIDs"
-      />
-
-      <View style={{ gap: 12 }}>
-        <Text style={{ fontWeight: "700" }}>Nutritional targets</Text>
-        {(
-          [
-            ["caloriesKcal", "Calories (kcal)"],
-            ["proteinG", "Protein (g)"],
-            ["phosphorusMg", "Phosphorus (mg)"],
-            ["potassiumMg", "Potassium (mg)"],
-            ["sodiumMg", "Sodium (mg)"],
-            ["fluidMl", "Fluid (mL)"],
-          ] as const
-        ).map(([field, label]) => (
-          <Controller
-            key={field}
-            control={control}
-            name={`targets.${field}` as const}
-            render={({ field: { value, onChange } }) => (
-              <LabeledInput
-                label={label}
-                value={value ?? ""}
-                onChangeText={onChange}
-                keyboardType="numeric"
-                error={
-                  (errors.targets?.[field]?.message as string | undefined) ||
-                  undefined
-                }
-              />
-            )}
-          />
-        ))}
-      </View>
-
-      <Section
-        title="Care team"
-        emptyLabel="No care team members"
-        addLabel="Add care team member"
-        onAdd={() => careTeamArray.append({ ...emptyCareTeamMember })}
-      >
-        {careTeamArray.fields.map((field, index) => {
-          const ctErrors = errors.careTeam?.[index];
-          const base = `careTeam.${index}` as const;
-          return (
-            <View
-              key={field.id}
-              style={{ borderWidth: 1, borderRadius: 12, padding: 12, gap: 8 }}
-            >
-              <Controller
-                control={control}
-                name={`${base}.role`}
-                render={({ field: { value, onChange } }) => (
-                  <LabeledInput
-                    label="Role"
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder="Nephrologist"
-                    error={ctErrors?.role?.message as string | undefined}
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name={`${base}.name`}
-                render={({ field: { value, onChange } }) => (
-                  <LabeledInput
-                    label="Name"
-                    value={value ?? ""}
-                    onChangeText={onChange}
-                    placeholder="Dr. Smith"
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name={`${base}.org`}
-                render={({ field: { value, onChange } }) => (
-                  <LabeledInput
-                    label="Organisation"
-                    value={value ?? ""}
-                    onChangeText={onChange}
-                    placeholder="Renal Clinic"
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name={`${base}.contact`}
-                render={({ field: { value, onChange } }) => (
-                  <LabeledInput
-                    label="Contact info"
-                    value={value ?? ""}
-                    onChangeText={onChange}
-                    placeholder="email or phone"
-                  />
-                )}
-              />
-              <Button
-                color="#b91c1c"
-                title="Remove member"
-                onPress={() => careTeamArray.remove(index)}
-              />
-            </View>
-          );
-        })}
-      </Section>
-
-      <Controller
-        control={control}
-        name="lastClinicalUpdateAt"
-        render={({ field: { value, onChange } }) => (
-          <DateField
-            label="Last clinical update"
-            value={value}
-            onChange={onChange}
-          />
-        )}
-      />
-
       <Button
-        title={isSubmitting ? "Saving..." : "Save clinical profile"}
+        title={isSubmitting ? "Saving..." : "Save Profile"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit)}
       />
@@ -475,7 +372,7 @@ function StringArraySection({
   itemLabel: string;
   fields: { id: string; value?: string }[];
   control: Control<TClinicalFormValues>;
-  fieldName: "allergies" | "dietaryPreferences" | "contraindications";
+  fieldName: "allergies" | "dietaryPreferences";
   placeholder: string;
   onAdd: () => void;
   onRemove: (index: number) => void;

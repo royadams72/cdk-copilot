@@ -66,7 +66,7 @@ export async function requireUser(
         { credentialId, active: true },
         { projection: { provider: 1, principalId: 1 } }
       );
-    console.log("link::", link);
+    // console.log("link::", link);
 
     if (!link) throw Object.assign(new Error("Forbidden"), { status: 403 });
     const provider = link.provider as AuthProvider;
@@ -86,7 +86,7 @@ export async function requireUser(
         },
       }
     );
-    console.log("acct::", acct);
+    // console.log("acct::", acct);
     if (!acct) throw Object.assign(new Error("Forbidden"), { status: 403 });
 
     const roleScopes = ROLE_SCOPES[acct.role] ?? [];

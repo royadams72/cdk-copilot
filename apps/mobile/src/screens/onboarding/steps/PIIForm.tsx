@@ -51,7 +51,7 @@ export default function OnboardingPiiForm({
   });
 
   async function onSubmit(payload: TPiiInput) {
-    router.push("./onboarding/steps/medications-form");
+    router.push("/(auth)/onboarding/medications-form");
     // try {
     //   setSaving(true);
     //   // If your API expects a Date, convert ISO->Date server-side.

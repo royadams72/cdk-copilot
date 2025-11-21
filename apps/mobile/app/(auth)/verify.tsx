@@ -13,7 +13,7 @@ const API =
 export default function VerifyScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
   const router = useRouter();
-  console.log("verify.tsx token::", token);
+  // console.log("verify.tsx token::", token);
 
   useEffect(() => {
     (async () => {

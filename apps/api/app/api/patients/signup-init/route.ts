@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => null);
     const parsed = Body.safeParse(body);
-    console.log(body);
+    // console.log(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });

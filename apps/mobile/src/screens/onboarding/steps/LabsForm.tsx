@@ -92,7 +92,7 @@ export default function LabsForm({
         note: lab.note?.trim() || undefined,
       };
     });
-    router.push("./onboarding/steps/clinical-form");
+    router.push("/(auth)/onboarding/clinical-form");
     // try {
     //   const res = await authFetch(`${API}/api/users/labs/create`, {
     //     method: "POST",

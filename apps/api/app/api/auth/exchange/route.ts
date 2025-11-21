@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
     const user: SessionUser = await requireUser(req, DEFAULT_SCOPES, {
       allowBootstrap: true,
     });
-    console.log("user exchange:", user);
 
     const db = await getDb();
     const { token } = await req.json().catch(() => ({}));

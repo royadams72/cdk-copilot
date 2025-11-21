@@ -28,7 +28,6 @@ const emptyMedication: TMedicationFormValues["medications"][number] = {
   startAt: null,
   endAt: null,
   status: "active",
-  source: "manual",
   dmplusdCode: "",
   snomedCode: "",
 };
@@ -60,23 +59,23 @@ export default function MedicationsForm({
   });
 
   async function onSubmit(values: TMedicationFormValues) {
-    const payload = values.medications.map((med) => ({
-      name: med.name.trim(),
-      form: med.form?.trim() || undefined,
-      strength: med.strength?.trim() || undefined,
-      route: med.route?.trim() || undefined,
-      dose: med.dose.trim(),
-      frequency: med.frequency.trim(),
-      instructions: med.instructions?.trim() || undefined,
-      startAt: med.startAt ?? undefined,
-      endAt: med.endAt ?? undefined,
-      status: med.status,
-      source: med.source,
-      dmplusdCode: med.dmplusdCode?.trim() || undefined,
-      snomedCode: med.snomedCode?.trim() || undefined,
-    }));
+    // const payload = values.medications.map((med) => ({
+    //   name: med.name.trim(),
+    //   form: med.form?.trim() || undefined,
+    //   strength: med.strength?.trim() || undefined,
+    //   route: med.route?.trim() || undefined,
+    //   dose: med.dose.trim(),
+    //   frequency: med.frequency.trim(),
+    //   instructions: med.instructions?.trim() || undefined,
+    //   startAt: med.startAt ?? undefined,
+    //   endAt: med.endAt ?? undefined,
+    //   status: med.status,
+    //   dmplusdCode: med.dmplusdCode?.trim() || undefined,
+    //   snomedCode: med.snomedCode?.trim() || undefined,
+    // }));
+    console.log("what????");
 
-    router.push("./onboarding/steps/labs-form");
+    router.push("/(auth)/onboarding/labs-form");
     // try {
     //   const res = await authFetch(`${API}/api/users/medications/create`, {
     //     method: "POST",
@@ -122,14 +121,13 @@ export default function MedicationsForm({
 
             <Controller
               control={control}
-              name={`${base}.dose`}
+              name={`${base}.strength`}
               render={({ field: { value, onChange } }) => (
                 <LabeledInput
-                  label="Dose"
-                  value={value}
+                  label="Strength"
+                  value={value ?? ""}
                   onChangeText={onChange}
                   placeholder="800 mg"
-                  error={medErrors?.dose?.message as string | undefined}
                 />
               )}
             />
@@ -139,7 +137,7 @@ export default function MedicationsForm({
               name={`${base}.frequency`}
               render={({ field: { value, onChange } }) => (
                 <LabeledInput
-                  label="Frequency"
+                  label="Frequency/Per day"
                   value={value}
                   onChangeText={onChange}
                   placeholder="Three times daily"
@@ -163,13 +161,14 @@ export default function MedicationsForm({
 
             <Controller
               control={control}
-              name={`${base}.strength`}
+              name={`${base}.dose`}
               render={({ field: { value, onChange } }) => (
                 <LabeledInput
-                  label="Strength"
-                  value={value ?? ""}
+                  label="Dose"
+                  value={value}
                   onChangeText={onChange}
                   placeholder="800 mg"
+                  error={medErrors?.dose?.message as string | undefined}
                 />
               )}
             />
@@ -179,7 +178,7 @@ export default function MedicationsForm({
               name={`${base}.route`}
               render={({ field: { value, onChange } }) => (
                 <LabeledInput
-                  label="Route"
+                  label="How are you taking this?"
                   value={value ?? ""}
                   onChangeText={onChange}
                   placeholder="Oral, IV..."
@@ -232,9 +231,9 @@ export default function MedicationsForm({
               name={`${base}.status`}
               render={({ field: { value, onChange } }) => (
                 <View>
-                  <Text>Status</Text>
+                  <Text>Are you taking this now?</Text>
                   <Picker selectedValue={value} onValueChange={onChange}>
-                    <Picker.Item label="Active" value="active" />
+                    <Picker.Item label="Yes" value="active" />
                     <Picker.Item label="Paused" value="paused" />
                     <Picker.Item label="Stopped" value="stopped" />
                     <Picker.Item label="Completed" value="completed" />
@@ -242,22 +241,6 @@ export default function MedicationsForm({
                 </View>
               )}
             />
-
-            <Controller
-              control={control}
-              name={`${base}.source`}
-              render={({ field: { value, onChange } }) => (
-                <View>
-                  <Text>Source</Text>
-                  <Picker selectedValue={value} onValueChange={onChange}>
-                    <Picker.Item label="Manual" value="manual" />
-                    <Picker.Item label="Import" value="import" />
-                    <Picker.Item label="Integration" value="integration" />
-                  </Picker>
-                </View>
-              )}
-            />
-
             <Controller
               control={control}
               name={`${base}.startAt`}
@@ -304,8 +287,12 @@ export default function MedicationsForm({
 
       <Button
         title={isSubmitting ? "Saving..." : "Save medications"}
-        disabled={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
+        // disabled={isSubmitting}
+        // onPress={handleSubmit(onSubmit)}
+        onPress={() => {
+          console.log("button pressed directly");
+          router.push("/(auth)/onboarding/labs-form");
+        }}
       />
     </ScrollView>
   );

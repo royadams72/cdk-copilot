@@ -53,6 +53,9 @@ export const UserClinical_Base = z.object({
   targets: Targets.optional(),
   careTeam: z.array(CareTeamMember).default([]),
 
+  weightKg: z.number().positive().max(400).nullable().optional(),
+  heightCm: z.number().positive().max(260).nullable().optional(),
+
   lastClinicalUpdateAt: z.coerce.date().nullable().optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
@@ -94,6 +97,8 @@ export const ClinicalFormSchema = z.object({
   egfrCurrent: numberLike,
   acrCategory: z.enum(["", ...ACR.options]),
   dialysisStatus: DialysisStatus,
+  weightKg: numberLike,
+  heightCm: numberLike,
   diagnoses: z
     .array(
       z.object({

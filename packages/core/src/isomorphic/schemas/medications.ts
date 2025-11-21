@@ -90,7 +90,6 @@ export const MedicationFormEntry = MedicationLedger_Base.pick({
   startAt: true,
   endAt: true,
   status: true,
-  source: true,
   dmplusdCode: true,
   snomedCode: true,
 });
