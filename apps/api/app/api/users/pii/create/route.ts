@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
 
   try {
-    // 1) AuthZ (staff with USERS_PII_WRITE, or patient self-write if you support it)
     const user: SessionUser = await requireUser(req, STEP2);
 
     const body = await req.json();
@@ -34,37 +33,15 @@ export async function POST(req: NextRequest) {
       return bad("Validation failed", treeifyError(parsed.error));
     }
 
-    // 3) Optional guard: patients can only write their own PII (if you allow self-write)
-    // If you don't allow patients to write PII at all, just forbid when role === "patient".
-    // Example self-guard if payload includes patientId:
-    // if (user.role === "patient" && parsed.data.patientId !== user.patientId) {
-    //   return bad("Forbidden", { requestId }, 403);
-    // }
-    console.log("user::", user, "body::", body);
-
-    // 4) Audit actor
-    const actor = {
-      principalId: user.principalId, // stable person id (acc_* or pr_*)
-      authId: user.authId, // credentialId used (JWT sub)
-      role: user.role,
-      orgId: user.orgId,
-    } as const;
-
     const now = new Date();
 
-    // 5) Assemble doc (mutable → set created+updated fields)
-    // NOTE: if your TUserPII currently expects createdBy: string,
-    // update it to accept the actor envelope shown here.
     const doc = {
       ...body,
       ...(user.orgId ? { orgId: user.orgId } : {}),
       updatedAt: now,
     } as any;
 
-    // 6) Insert
     const database = await getDb();
-    type UserPIIDoc = TUserPII;
-
     const userPII_db = getCollection(database, COLLECTIONS.UsersPII);
 
     await userPII_db.updateOne(

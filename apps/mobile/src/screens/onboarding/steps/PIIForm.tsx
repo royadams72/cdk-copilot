@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { PiiForm, type TPiiInput } from "@ckd/core";
 import { authFetch } from "@/lib/authFetch";
+import { formatApiError } from "@/lib/formatApiError";
 import { API } from "@/constants/api";
 import { useRouter } from "expo-router";
 
@@ -62,8 +63,8 @@ export default function OnboardingPiiForm({
         body,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`${res.status} ${JSON.stringify(err)}`);
+        const errBody = await res.json().catch(() => null);
+        throw new Error(formatApiError(res.status, errBody));
       }
       router.push("/(auth)/onboarding/clinical-form");
     } catch (e: any) {

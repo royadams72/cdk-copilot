@@ -22,6 +22,7 @@ import {
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatApiError } from "@/lib/formatApiError";
 import { DateField, LabeledInput } from "./FormFields";
 import { useRouter } from "expo-router";
 
@@ -102,8 +103,8 @@ export default function ClinicalForm({
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`${res.status} ${JSON.stringify(err)}`);
+        const errBody = await res.json().catch(() => null);
+        throw new Error(formatApiError(res.status, errBody));
       }
       router.push("/(dashboard)/profile");
     } catch (err: any) {
