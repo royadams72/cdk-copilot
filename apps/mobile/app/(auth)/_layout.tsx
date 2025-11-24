@@ -16,7 +16,22 @@ export default function RootLayout() {
         name="check-email"
         options={{ title: "Check your email" }}
       />
-      <Stack.Screen name="profile" options={{ title: "Your profile" }} />
+      <Stack.Screen
+        name="onboarding/pii-form"
+        options={{ title: "Your information" }}
+      />
+      <Stack.Screen
+        name="onboarding/medications-form"
+        options={{ title: "Your Medications" }}
+      />
+      <Stack.Screen
+        name="onboarding/labs-form"
+        options={{ title: "Your Lab Results" }}
+      />
+      <Stack.Screen
+        name="onboarding/clinical-form"
+        options={{ title: "Your Clinical Information" }}
+      />
     </Stack>
   );
 }

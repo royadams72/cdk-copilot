@@ -11,7 +11,7 @@ export const LabStatus = z.enum([
   "preliminary",
   "cancelled",
 ]);
-export const LabAbnormalFlag = z.enum(["L", "LL", "H", "HH", "A", "N"]);
+export const LabAbnormalFlag = z.enum(["", "L", "LL", "H", "HH", "A", "N"]);
 
 export const RefRange = z
   .object({
@@ -33,11 +33,11 @@ export const LabResult_Base = z.object({
   value: z.union([z.number(), z.string().min(1)]),
   unit: z.string().min(1).optional(), // e.g. mL/min/1.73m²
   refRange: RefRange.optional(),
-  takenAt: z.date(),
-  reportedAt: z.date().optional(),
+  takenAt: z.date().nullable(),
+  reportedAt: z.date().optional().nullable(),
   source: LabSource.default("import"),
   status: LabStatus.default("final"),
-  abnormalFlag: LabAbnormalFlag.optional(),
+  abnormalFlag: LabAbnormalFlag.optional().default(""),
   note: z.string().min(1).optional(), // non-PII operational note
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -71,3 +71,25 @@ export const LabResult_Update = z.object({
   abnormalFlag: LabAbnormalFlag.optional(),
   note: z.string().min(1).optional(),
 });
+
+export const LabFormEntry = LabResult_Base.omit({
+  _id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  refRange: true,
+  orgId: true,
+  patientId: true,
+}).extend({
+  refRangeLow: z.string().optional(),
+  refRangeHigh: z.string().optional(),
+  refRangeText: z.string().optional(),
+});
+
+export const LabsSchema = z.object({
+  labs: z.array(LabFormEntry).min(1, "Add at least one lab result"),
+});
+
+export type TLabsFormValues = z.infer<typeof LabsSchema>;
+export type TLabResult = z.infer<typeof LabResult_Base>;

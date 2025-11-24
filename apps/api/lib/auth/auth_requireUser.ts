@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { randomUUID } from "crypto";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { COLLECTIONS, hasScopes, SCOPES, type Scope } from "@ckd/core/server";
+import { COLLECTIONS } from "@ckd/core/server";
+import { DEFAULT_SCOPES, SCOPES, Scope, hasScopes } from "@ckd/core";
+import type { Db } from "mongodb";
 
 export type AuthProvider =
   | "password"
@@ -33,33 +34,33 @@ const ROLE_SCOPES: Record<string, string[]> = {
 const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret";
 const SIGNUP_INIT_KEY = process.env.SIGNUP_INIT_KEY || ""; // set in env for prod
 
-function needs(scopeList: Scope | Scope[], s: string) {
-  return Array.isArray(scopeList)
-    ? scopeList.includes(s as Scope)
-    : scopeList === (s as Scope);
-}
 function getBearer(req: NextRequest) {
   const h = req.headers.get("authorization") || "";
   return h.startsWith("Bearer ") ? h.slice(7) : "";
 }
-function getProviderFromReq(req: NextRequest): AuthProvider {
-  const raw = (req.headers.get("x-auth-provider") || "password").toLowerCase();
-  const allowed: AuthProvider[] = [
-    "password",
-    "apple",
-    "google",
-    "nhs",
-    "azuread",
-    "magic",
-  ];
-  return (allowed as readonly string[]).includes(raw)
-    ? (raw as AuthProvider)
-    : "password";
-}
+
 async function verifyJWT(token: string) {
   const secret = new TextEncoder().encode(JWT_SECRET);
   const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
   return payload as Record<string, any>;
+}
+
+async function findPatientIdForPrincipal(db: Db, principalId: string) {
+  const pii = await db
+    .collection(COLLECTIONS.UsersPII)
+    .findOne({ principalId }, { projection: { patientId: 1 } });
+  if (pii?.patientId) {
+    return String(pii.patientId);
+  }
+
+  const patient = await db
+    .collection(COLLECTIONS.Patients)
+    .findOne({ principalId }, { projection: { _id: 1 } });
+  if (patient?._id) {
+    return String(patient._id);
+  }
+
+  return undefined;
 }
 
 export async function requireUser(
@@ -73,10 +74,10 @@ export async function requireUser(
   // ===== 1) JWT path (normal) =====
   if (token) {
     const claims = await verifyJWT(token);
+
     const credentialId = claims.sub as string;
     if (!credentialId)
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
-    console.log("claims::", claims);
 
     const link = await db
       .collection(COLLECTIONS.AuthLinks)
@@ -84,8 +85,6 @@ export async function requireUser(
         { credentialId, active: true },
         { projection: { provider: 1, principalId: 1 } }
       );
-    console.log("link::", link);
-
     if (!link) throw Object.assign(new Error("Forbidden"), { status: 403 });
     const provider = link.provider as AuthProvider;
 
@@ -104,14 +103,24 @@ export async function requireUser(
         },
       }
     );
-    console.log("acct::", acct);
+
     if (!acct) throw Object.assign(new Error("Forbidden"), { status: 403 });
 
     const roleScopes = ROLE_SCOPES[acct.role] ?? [];
     const grants = [...(acct.scopes ?? []), ...(acct.grants ?? [])];
     const scopes = Array.from(new Set([...roleScopes, ...grants]));
-    if ((neededScopes as string[]).length && !hasScopes(scopes, neededScopes)) {
+    if (neededScopes.length && !hasScopes(scopes, neededScopes)) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
+    }
+
+    let patientId: string | undefined;
+    if (acct.role === "patient") {
+      patientId = await findPatientIdForPrincipal(db, link.principalId);
+      if (!patientId) {
+        throw Object.assign(new Error("Patient context missing"), {
+          status: 403,
+        });
+      }
     }
 
     return {
@@ -122,8 +131,10 @@ export async function requireUser(
       orgId: acct.orgId,
       facilityIds: acct.facilityIds ?? [],
       careTeamIds: acct.careTeamIds ?? [],
-      patientId: acct.patientId ? String(acct.patientId) : undefined,
-      allowedPatientIds: acct.allowedPatientIds ?? [],
+      patientId,
+      allowedPatientIds: (acct.allowedPatientIds ?? []).map((id: any) =>
+        String(id)
+      ),
       scopes,
     };
   }
@@ -133,16 +144,17 @@ export async function requireUser(
   // and presents the shared secret header.
   if (
     opts.allowBootstrap &&
-    hasScopes(Array.isArray(neededScopes) ? neededScopes : [neededScopes], [
-      "auth_tokens.issue",
-    ])
+    hasScopes(
+      Array.isArray(neededScopes) ? neededScopes : [neededScopes],
+      DEFAULT_SCOPES
+    )
   ) {
     return {
       authId: "bootstrap",
       provider: "magic",
       principalId: "provisional",
       role: "patient",
-      scopes: ["auth_tokens.issue"],
+      scopes: DEFAULT_SCOPES,
     };
   }
   throw Object.assign(new Error("Unauthorized"), { status: 401 });

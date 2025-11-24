@@ -33,7 +33,7 @@ export const SCOPES = {
   AUTH_TOKENS_ISSUE: "auth_tokens.issue",
   // optional super-scope
   STAR: "*",
-};
+} as const;
 
 export const ROLES = {
   Patient: "patient",
@@ -77,6 +77,25 @@ export const ROLE_SCOPES: Record<Role, readonly Scope[]> = {
   admin: Object.values(SCOPES),
 };
 
+export const DEFAULT_SCOPES = [
+  SCOPES.PATIENTS_READ,
+  SCOPES.PATIENTS_FLAGS_WRITE,
+  SCOPES.AUTH_TOKENS_ISSUE,
+];
+
+export const STEP2 = [
+  ...DEFAULT_SCOPES,
+  SCOPES.USERS_PII_WRITE,
+  SCOPES.USERS_PII_READ,
+];
+
+export const STEP3 = [
+  ...DEFAULT_SCOPES,
+  SCOPES.USERS_PII_WRITE,
+  SCOPES.USERS_PII_READ,
+  SCOPES.USERS_CLINICAL_WRITE,
+  SCOPES.USERS_CLINICAL_READ,
+];
 // tiny checker
 export function hasScopes(
   has: readonly Scope[] | undefined,

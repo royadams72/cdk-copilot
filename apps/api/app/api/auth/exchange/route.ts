@@ -3,8 +3,8 @@ import { SignJWT } from "jose";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 
-import { COLLECTIONS, SCOPES } from "@ckd/core/server";
-import { COLLECTION_TYPE } from "../../patients/signup-init/route";
+import { COLLECTIONS } from "@ckd/core/server";
+import { COLLECTION_TYPE } from "@/apps/api/app/api/patients/signup-init/route";
 import {
   AuthTokenDoc,
   consumeAuth,
@@ -13,9 +13,16 @@ import {
 } from "@/apps/api/lib/auth/auth_token";
 import { ObjectId } from "mongodb";
 import { randomBytes } from "crypto";
+import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
+import { SessionUser, requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { DEFAULT_SCOPES, SCOPES } from "@ckd/core";
 
 export async function POST(req: NextRequest) {
   try {
+    const user: SessionUser = await requireUser(req, DEFAULT_SCOPES, {
+      allowBootstrap: true,
+    });
+
     const db = await getDb();
     const { token } = await req.json().catch(() => ({}));
 
@@ -37,6 +44,7 @@ export async function POST(req: NextRequest) {
         { ok: false, error: res.error },
         { status: 400 }
       );
+    // console.log("res::::", res);
 
     const patients = db.collection(COLLECTIONS.Patients);
     const patient = await patients.findOne<{ _id: ObjectId }>(
@@ -72,17 +80,13 @@ export async function POST(req: NextRequest) {
     };
     await auth_links.insertOne(user_auth_link);
 
-    const scopes = [...(res.doc.scopes ?? []), SCOPES.USERS_PII_WRITE].filter(
-      (s) => s !== SCOPES.AUTH_TOKENS_ISSUE
-    );
-    const user_rec = db.collection(COLLECTIONS.UsersAccounts);
+    const puser = { ...user, principalId: String(res.doc.principalId) };
 
-    await user_rec.findOneAndUpdate(
-      {
-        principalId: res.doc.principalId,
-      },
-      { $set: { scopes: scopes } }
-    );
+    const scopes = await updateScopes(puser, [
+      SCOPES.USERS_PII_READ,
+      SCOPES.USERS_PII_WRITE,
+    ]);
+    // console.log("scopes:", scopes);
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({

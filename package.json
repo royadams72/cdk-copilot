@@ -7,7 +7,11 @@
     "dev": "pnpm -r run dev",
     "build": "pnpm -r run build",
     "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
+    "mobile:dev": "pnpm --filter ./apps/mobile exec expo start --dev-client",
+    "core:build": "pnpm -w --filter @ckd/core run build",
+    "api:dev": "pnpm  --filter ./apps/api dev"
   },
   "keywords": [],
   "author": "",

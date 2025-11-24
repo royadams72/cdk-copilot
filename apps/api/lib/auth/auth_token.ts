@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { Collection, WithId, ObjectId } from "mongodb";
-import { Role } from "@ckd/core/server";
+import { Role } from "@ckd/core";
 
 const EXPECTED = 32; // HMAC-SHA256
 const PEPPER_B64 = process.env.AUTH_TOKEN_PEPPER || "";
