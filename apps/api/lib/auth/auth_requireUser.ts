@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { randomUUID } from "crypto";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
 import { DEFAULT_SCOPES, SCOPES, Scope, hasScopes } from "@ckd/core";
+import type { Db } from "mongodb";
 
 export type AuthProvider =
   | "password"
@@ -45,6 +45,24 @@ async function verifyJWT(token: string) {
   return payload as Record<string, any>;
 }
 
+async function findPatientIdForPrincipal(db: Db, principalId: string) {
+  const pii = await db
+    .collection(COLLECTIONS.UsersPII)
+    .findOne({ principalId }, { projection: { patientId: 1 } });
+  if (pii?.patientId) {
+    return String(pii.patientId);
+  }
+
+  const patient = await db
+    .collection(COLLECTIONS.Patients)
+    .findOne({ principalId }, { projection: { _id: 1 } });
+  if (patient?._id) {
+    return String(patient._id);
+  }
+
+  return undefined;
+}
+
 export async function requireUser(
   req: NextRequest,
   neededScopes: Scope | Scope[] = [],
@@ -56,6 +74,7 @@ export async function requireUser(
   // ===== 1) JWT path (normal) =====
   if (token) {
     const claims = await verifyJWT(token);
+
     const credentialId = claims.sub as string;
     if (!credentialId)
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
@@ -66,8 +85,6 @@ export async function requireUser(
         { credentialId, active: true },
         { projection: { provider: 1, principalId: 1 } }
       );
-    // console.log("link::", link);
-
     if (!link) throw Object.assign(new Error("Forbidden"), { status: 403 });
     const provider = link.provider as AuthProvider;
 
@@ -86,7 +103,7 @@ export async function requireUser(
         },
       }
     );
-    // console.log("acct::", acct);
+
     if (!acct) throw Object.assign(new Error("Forbidden"), { status: 403 });
 
     const roleScopes = ROLE_SCOPES[acct.role] ?? [];
@@ -94,6 +111,16 @@ export async function requireUser(
     const scopes = Array.from(new Set([...roleScopes, ...grants]));
     if (neededScopes.length && !hasScopes(scopes, neededScopes)) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
+    }
+
+    let patientId: string | undefined;
+    if (acct.role === "patient") {
+      patientId = await findPatientIdForPrincipal(db, link.principalId);
+      if (!patientId) {
+        throw Object.assign(new Error("Patient context missing"), {
+          status: 403,
+        });
+      }
     }
 
     return {
@@ -104,8 +131,10 @@ export async function requireUser(
       orgId: acct.orgId,
       facilityIds: acct.facilityIds ?? [],
       careTeamIds: acct.careTeamIds ?? [],
-      patientId: acct.patientId ? String(acct.patientId) : undefined,
-      allowedPatientIds: acct.allowedPatientIds ?? [],
+      patientId,
+      allowedPatientIds: (acct.allowedPatientIds ?? []).map((id: any) =>
+        String(id)
+      ),
       scopes,
     };
   }

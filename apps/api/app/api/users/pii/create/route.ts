@@ -8,7 +8,14 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { SCOPES, TUserPII } from "@ckd/core";
+import {
+  DEFAULT_SCOPES,
+  PiiForm,
+  SCOPES,
+  STEP2,
+  TUserPII,
+  UserPII_Create,
+} from "@ckd/core";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 
 export const runtime = "nodejs";
@@ -18,13 +25,14 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1) AuthZ (staff with USERS_PII_WRITE, or patient self-write if you support it)
-    const user: SessionUser = await requireUser(req, SCOPES.USERS_PII_WRITE);
+    const user: SessionUser = await requireUser(req, STEP2);
 
     const body = await req.json();
-    // const parsed = UserPII_Create.safeParse(body);
-    // if (!parsed.success) {
-    //   return bad("Validation failed", treeifyError(parsed.error));
-    // }
+
+    const parsed = PiiForm.safeParse(body);
+    if (!parsed.success) {
+      return bad("Validation failed", treeifyError(parsed.error));
+    }
 
     // 3) Optional guard: patients can only write their own PII (if you allow self-write)
     // If you don't allow patients to write PII at all, just forbid when role === "patient".
@@ -67,8 +75,8 @@ export async function POST(req: NextRequest) {
     );
 
     await updateScopes(user, [
-      SCOPES.USERS_PII_READ,
       SCOPES.USERS_CLINICAL_WRITE,
+      SCOPES.USERS_CLINICAL_READ,
     ]);
 
     return ok({ requestId }, 201);

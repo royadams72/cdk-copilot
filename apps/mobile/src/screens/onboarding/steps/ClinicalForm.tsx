@@ -28,15 +28,6 @@ import { useRouter } from "expo-router";
 const emptyDiagnosis = { label: "", code: "" };
 const emptyCareTeamMember = { role: "", name: "", org: "", contact: "" };
 
-const defaultTargets: TClinicalFormValues["targets"] = {
-  caloriesKcal: "",
-  proteinG: "",
-  phosphorusMg: "",
-  potassiumMg: "",
-  sodiumMg: "",
-  fluidMl: "",
-};
-
 export default function ClinicalForm({
   defaults,
 }: {
@@ -61,9 +52,6 @@ export default function ClinicalForm({
       diagnoses: defaults?.diagnoses ?? [],
       allergies: defaults?.allergies ?? [],
       dietaryPreferences: defaults?.dietaryPreferences ?? [],
-      targets: defaults?.targets ?? { ...defaultTargets },
-      careTeam: defaults?.careTeam ?? [],
-      lastClinicalUpdateAt: defaults?.lastClinicalUpdateAt ?? null,
     },
   });
 
@@ -98,7 +86,6 @@ export default function ClinicalForm({
       dietaryPreferences: values.dietaryPreferences
         .map((item) => item.value.trim())
         .filter(Boolean),
-      targets: buildTargets(values.targets),
       careTeam: values.careTeam
         .filter((member) => member.role.trim().length)
         .map((member) => ({
@@ -107,26 +94,21 @@ export default function ClinicalForm({
           ...(member.org?.trim() ? { org: member.org.trim() } : {}),
           ...(member.contact?.trim() ? { contact: member.contact.trim() } : {}),
         })),
-      lastClinicalUpdateAt: (() => {
-        const v = values.lastClinicalUpdateAt;
-        if (v == null || v === "") return undefined;
-        return typeof v === "string" ? new Date(v) : v;
-      })(),
     };
-    router.push("/(auth)/profile");
-    // try {
-    //   const res = await authFetch(`${API}/api/users/clinical/create`, {
-    //     method: "POST",
-    //     body: JSON.stringify(payload),
-    //   });
-    //   if (!res.ok) {
-    //     const err = await res.json().catch(() => ({}));
-    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
-    //   }
-    //   Alert.alert("Clinical profile saved");
-    // } catch (err: any) {
-    //   Alert.alert("Error", err?.message ?? "Failed to save clinical data");
-    // }
+
+    try {
+      const res = await authFetch(`${API}/api/users/clinical/create`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`${res.status} ${JSON.stringify(err)}`);
+      }
+      router.push("/(dashboard)/profile");
+    } catch (err: any) {
+      Alert.alert("Error", err?.message ?? "Failed to save clinical data");
+    }
   }
 
   return (
@@ -313,22 +295,6 @@ export default function ClinicalForm({
       />
     </ScrollView>
   );
-}
-
-function buildTargets(
-  targets: TClinicalFormValues["targets"]
-): TUserClinicalUpdate["targets"] | undefined {
-  const entries = Object.entries(targets).map(([key, value]) => [
-    key,
-    value?.trim() ? Number(value) : undefined,
-  ]);
-
-  const hasValue = entries.some(([, value]) => typeof value === "number");
-  if (!hasValue) return undefined;
-
-  return Object.fromEntries(
-    entries.filter(([, value]) => typeof value === "number")
-  ) as TUserClinicalUpdate["targets"];
 }
 
 function Section({

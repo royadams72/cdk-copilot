@@ -51,27 +51,26 @@ export default function OnboardingPiiForm({
   });
 
   async function onSubmit(payload: TPiiInput) {
-    router.push("/(auth)/onboarding/medications-form");
-    // try {
-    //   setSaving(true);
-    //   // If your API expects a Date, convert ISO->Date server-side.
-    //   // Ensure dateOfBirth is ISO string or null.
-    //   const body = JSON.stringify(payload);
-    //   const res = await authFetch(`${API}/api/users/pii/create`, {
-    //     method: "POST",
-    //     headers: { "content-type": "application/json" },
-    //     body,
-    //   });
-    //   if (!res.ok) {
-    //     const err = await res.json().catch(() => ({}));
-    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
-    //   }
-    //   Alert.alert("Saved");
-    // } catch (e: any) {
-    //   Alert.alert("Error", e?.message ?? "Failed");
-    // } finally {
-    //   setSaving(false);
-    // }
+    try {
+      setSaving(true);
+      // If your API expects a Date, convert ISO->Date server-side.
+      // Ensure dateOfBirth is ISO string or null.
+      const body = JSON.stringify(payload);
+      const res = await authFetch(`${API}/api/users/pii/create`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`${res.status} ${JSON.stringify(err)}`);
+      }
+      router.push("/(auth)/onboarding/clinical-form");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message ?? "Failed");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

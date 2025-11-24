@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PrincipalId } from "./common";
+import { ObjectIdString, PrincipalId } from "./common";
 
 export const DialysisStatus = z.enum([
   "none",
@@ -38,7 +38,8 @@ export const CareTeamMember = z.object({
 });
 
 export const UserClinical_Base = z.object({
-  userId: z.string().min(1), // Foreign Key (FK) → users_pii.id
+  orgId: z.string().min(1).optional(),
+  patientId: ObjectIdString, // Foreign Key (FK) → patients._id
   ckdStage: CKDStage.nullable().optional(), // CKD = Chronic Kidney Disease
   egfrCurrent: z.number().positive().max(200).nullable().optional(), // eGFR = estimated Glomerular Filtration Rate (mL/min/1.73m²)
   acrCategory: ACR.nullable().optional(),
@@ -109,8 +110,7 @@ export const ClinicalFormSchema = z.object({
     .default([]),
   allergies: z.array(LabeledString).default([]),
   dietaryPreferences: z.array(LabeledString).default([]),
-  contraindications: z.array(LabeledString).default([]),
-  targets: TargetsForm,
+  contraindications: z.array(LabeledString).default([]).optional(),
   careTeam: z
     .array(
       z.object({
@@ -121,7 +121,6 @@ export const ClinicalFormSchema = z.object({
       })
     )
     .default([]),
-  lastClinicalUpdateAt: z.string().nullable(),
 });
 
 export type TClinicalFormValues = z.infer<typeof ClinicalFormSchema>;

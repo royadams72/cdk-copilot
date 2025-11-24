@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         { ok: false, error: res.error },
         { status: 400 }
       );
+    // console.log("res::::", res);
 
     const patients = db.collection(COLLECTIONS.Patients);
     const patient = await patients.findOne<{ _id: ObjectId }>(
@@ -79,10 +80,13 @@ export async function POST(req: NextRequest) {
     };
     await auth_links.insertOne(user_auth_link);
 
-    const scopes = await updateScopes(user, [
+    const puser = { ...user, principalId: String(res.doc.principalId) };
+
+    const scopes = await updateScopes(puser, [
       SCOPES.USERS_PII_READ,
-      SCOPES.USERS_CLINICAL_WRITE,
+      SCOPES.USERS_PII_WRITE,
     ]);
+    // console.log("scopes:", scopes);
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({

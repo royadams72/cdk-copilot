@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (!user) return bad("Forbidden", "", 403);
-  console.log("verify user:: ", user);
+  // console.log("verify user:: ", user);
 
   const db = await getDb();
   const sp = req.nextUrl.searchParams;

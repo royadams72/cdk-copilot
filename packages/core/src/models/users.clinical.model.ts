@@ -40,12 +40,12 @@ const CareTeamSchema = new Schema(
 
 const UserClinicalSchema = new Schema(
   {
-    userId: {
+    orgId: { type: String, index: true },
+    patientId: {
       type: Types.ObjectId,
-      ref: "users_pii",
+      ref: "patients",
       required: true,
       index: true,
-      unique: true,
     },
     ckdStage: { type: String, enum: ["1", "2", "3a", "3b", "4", "5"] },
     egfrCurrent: Number,
@@ -69,5 +69,9 @@ const UserClinicalSchema = new Schema(
   },
   { timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" } }
 );
+
+UserClinicalSchema.index({ orgId: 1, patientId: 1 }, { unique: true });
+UserClinicalSchema.index({ orgId: 1, updatedAt: -1 });
+UserClinicalSchema.index({ patientId: 1 });
 
 export const UserClinicalModel = model("users_clinical", UserClinicalSchema);

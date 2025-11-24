@@ -9,18 +9,36 @@ export async function updateScopes(
   scopesToAdd: Scope | Scope[] = []
 ): Promise<string[]> {
   const database = await getDb();
-  const scopes = [...(user.scopes ?? []), ...scopesToAdd];
+
+  // Normalise to array
+  const scopesToAddArray = Array.isArray(scopesToAdd)
+    ? scopesToAdd
+    : [scopesToAdd];
+
+  // Combine existing + new scopes and de-duplicate
+  const scopes = Array.from(
+    new Set([...(user.scopes ?? []), ...scopesToAddArray])
+  );
+
+  // getCollection returns an object; unwrap the actual collection
   const user_rec = getCollection<TUsersAccount>(
     database,
     COLLECTIONS.UsersAccounts
   );
+  console.log(" user.principalId:::::", user.principalId);
+
   // TODO add checks
-  await user_rec.findOneAndUpdate(
+  const result = await user_rec.findOneAndUpdate(
     {
       principalId: user.principalId,
     },
-    { $set: { scopes: scopes } }
+    { $set: { scopes } },
+    { returnDocument: "after", upsert: false, includeResultMetadata: true }
   );
+  console.log("updateScopes result", {
+    matched: result?.lastErrorObject?.n,
+    updatedExisting: result?.lastErrorObject?.updatedExisting,
+  });
 
   return scopes;
 }
