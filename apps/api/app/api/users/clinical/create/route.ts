@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const user = await requireUser(req, STEP3);
-    console.log("user:", user);
+    // console.log("user:", user);
 
     if (!user.patientId) {
       return bad("Patient context missing", { requestId }, 403);

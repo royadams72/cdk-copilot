@@ -1,0 +1,38 @@
+[
+  {
+    "_id": { "$oid": "66f1b8e9c2ab4a0c9f3a1e21" },
+    "orgId": "org_demo",
+    "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+    "ckdStage": "3b",
+    "egfrCurrent": 38,
+    "acrCategory": "A2",
+    "dialysisStatus": "none",
+    "diagnoses": [
+      { "label": "Chronic kidney disease stage 3", "code": "N18.30" }
+    ],
+    "allergies": ["ACE inhibitors"],
+    "dietaryPreferences": ["plant-forward"],
+    "targets": {
+      "proteinG": 65,
+      "phosphorusMg": 900,
+      "potassiumMg": 2600,
+      "sodiumMg": 1800,
+      "fluidMl": 1800
+    },
+    "careTeam": [
+      {
+        "role": "Dietitian",
+        "name": "Alex Patel",
+        "org": "Renal Demo Clinic",
+        "contact": "dietitian@example.com"
+      }
+    ],
+    "weightKg": 72,
+    "heightCm": 165,
+    "lastClinicalUpdateAt": { "$date": "2024-11-15T10:20:00Z" },
+    "createdAt": { "$date": "2024-09-01T08:00:00Z" },
+    "updatedAt": { "$date": "2024-11-15T10:20:00Z" },
+    "createdBy": "pr_demo_jane",
+    "updatedBy": "pr_demo_jane"
+  }
+]

@@ -1,0 +1,124 @@
+[
+  {
+    "_id": { "$oid": "6730c4b5c53557c78d2d1001" },
+    "orgId": "org_demo",
+    "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+    "mealType": "lunch",
+    "items": [
+      {
+        "foodId": "fd_grilled_chicken",
+        "name": "Grilled chicken breast",
+        "quantity": 150,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 280,
+          "proteinG": 46,
+          "phosphorusMg": 320,
+          "potassiumMg": 350,
+          "sodiumMg": 110
+        }
+      },
+      {
+        "foodId": "fd_herb_rice",
+        "name": "Steamed rice",
+        "quantity": 200,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 260,
+          "proteinG": 5,
+          "phosphorusMg": 70,
+          "potassiumMg": 55,
+          "sodiumMg": 0
+        }
+      }
+    ],
+    "totals": {
+      "caloriesKcal": 540,
+      "proteinG": 51,
+      "phosphorusMg": 390,
+      "potassiumMg": 405,
+      "sodiumMg": 110
+    },
+    "at": { "$date": "2024-11-18T12:45:00Z" },
+    "source": "manual",
+    "createdAt": { "$date": "2024-11-18T12:50:00Z" },
+    "updatedAt": { "$date": "2024-11-18T12:50:00Z" }
+  },
+  {
+    "_id": { "$oid": "6730c4b5c53557c78d2d1002" },
+    "orgId": "org_demo",
+    "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+    "mealType": "breakfast",
+    "items": [
+      {
+        "foodId": "fd_oats",
+        "name": "Oats with blueberries",
+        "quantity": 80,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 320,
+          "proteinG": 11,
+          "phosphorusMg": 220,
+          "potassiumMg": 190,
+          "sodiumMg": 70
+        }
+      }
+    ],
+    "totals": {
+      "caloriesKcal": 320,
+      "proteinG": 11,
+      "phosphorusMg": 220,
+      "potassiumMg": 190,
+      "sodiumMg": 70
+    },
+    "at": { "$date": "2024-11-18T07:30:00Z" },
+    "source": "manual",
+    "createdAt": { "$date": "2024-11-18T07:35:00Z" },
+    "updatedAt": { "$date": "2024-11-18T07:35:00Z" }
+  },
+  {
+    "_id": { "$oid": "6730c4b5c53557c78d2d1003" },
+    "orgId": "org_demo",
+    "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+    "mealType": "dinner",
+    "items": [
+      {
+        "foodId": "fd_salmon",
+        "name": "Roasted salmon",
+        "quantity": 120,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 275,
+          "proteinG": 34,
+          "phosphorusMg": 340,
+          "potassiumMg": 450,
+          "sodiumMg": 80
+        }
+      },
+      {
+        "foodId": "fd_green_beans",
+        "name": "Green beans",
+        "quantity": 100,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 31,
+          "proteinG": 2,
+          "phosphorusMg": 38,
+          "potassiumMg": 208,
+          "sodiumMg": 6
+        }
+      }
+    ],
+    "totals": {
+      "caloriesKcal": 306,
+      "proteinG": 36,
+      "phosphorusMg": 378,
+      "potassiumMg": 658,
+      "sodiumMg": 86
+    },
+    "at": { "$date": "2024-11-17T18:45:00Z" },
+    "source": "manual",
+    "createdAt": { "$date": "2024-11-17T18:50:00Z" },
+    "updatedAt": { "$date": "2024-11-17T18:50:00Z" }
+  }
+]
