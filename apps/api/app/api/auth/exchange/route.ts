@@ -86,7 +86,6 @@ export async function POST(req: NextRequest) {
       SCOPES.USERS_PII_READ,
       SCOPES.USERS_PII_WRITE,
     ]);
-    // console.log("scopes:", scopes);
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({
