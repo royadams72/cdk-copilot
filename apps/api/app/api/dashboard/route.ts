@@ -27,6 +27,14 @@ type NutritionEntry = {
   items?: Array<{ nutrients?: Partial<Record<NutrientKey, number>> }>;
 };
 
+type ClinicalDoc = {
+  ckdStage?: string | null;
+  egfrCurrent?: number | string | null;
+  dialysisStatus?: string | null;
+  lastClinicalUpdateAt?: Date | null;
+  targets?: Partial<Record<NutrientKey | "fluidMl", number>>;
+};
+
 const RANGE_DAYS = 7;
 const DEFAULT_RATIO_THRESHOLD = 12; // mg phosphorus per gram of protein
 const TRACKED_LABS = [
@@ -69,6 +77,13 @@ const RADIAL_METRICS = [
     unit: "mg",
     precision: 0,
   },
+  {
+    id: "sodium",
+    label: "Sodium",
+    key: "sodiumMg",
+    unit: "mg",
+    precision: 0,
+  },
 ] as const;
 
 type NutrientKey =
@@ -90,7 +105,6 @@ export async function GET(req: NextRequest) {
   try {
     // Patients only have the default auth scopes, so rely on role + patient context.
     const caller = await requireUser(req);
-    console.log("caller::", caller);
 
     if (
       caller.role !== ROLES.Patient ||
@@ -100,10 +114,45 @@ export async function GET(req: NextRequest) {
       return bad("Patient context missing", undefined, 403);
     }
 
+    const db = await getDb();
+    const patientObjectId = new ObjectId(caller.patientId);
+    const rangeEnd = new Date();
+    const rangeStart = new Date(rangeEnd.getTime() - RANGE_DAYS * 24 * 60 * 60 * 1000);
+
+    const [clinicalDoc, labDocs, nutritionDocs] = await Promise.all([
+      db
+        .collection<ClinicalDoc>(COLLECTIONS.UsersClinical)
+        .findOne(
+          { patientId: patientObjectId },
+          {
+            projection: {
+              ckdStage: 1,
+              egfrCurrent: 1,
+              dialysisStatus: 1,
+              lastClinicalUpdateAt: 1,
+              targets: 1,
+            },
+          }
+        ),
+      fetchRecentLabs(db, patientObjectId),
+      fetchNutritionEntries(db, patientObjectId, rangeStart, rangeEnd),
+    ]);
+
+    const labs = summarizeLabs(labDocs);
+    const nutrition = summarizeNutrition(nutritionDocs, clinicalDoc, rangeStart, rangeEnd);
+
     return ok({
       patientId: caller.patientId,
-      message: "Dashboard endpoint is live.",
-      generatedAt: new Date().toISOString(),
+      summary: {
+        ckdStage: clinicalDoc?.ckdStage ?? null,
+        egfrCurrent: normaliseNumber(clinicalDoc?.egfrCurrent),
+        dialysisStatus: clinicalDoc?.dialysisStatus ?? null,
+        lastClinicalUpdateAt: clinicalDoc?.lastClinicalUpdateAt
+          ? clinicalDoc.lastClinicalUpdateAt.toISOString()
+          : null,
+      },
+      labs,
+      nutrition,
     });
   } catch (err: any) {
     const status = err?.status || 500;
@@ -129,6 +178,30 @@ async function fetchRecentLabs(db: Db, patientId: ObjectId) {
       }
     )
     .sort({ takenAt: -1, createdAt: -1 })
+    .limit(200)
+    .toArray();
+}
+
+async function fetchNutritionEntries(
+  db: Db,
+  patientId: ObjectId,
+  from: Date,
+  to: Date
+) {
+  return db
+    .collection<NutritionEntry>("nutrition_ledger")
+    .find(
+      { patientId, at: { $gte: from, $lte: to } },
+      {
+        projection: {
+          totals: 1,
+          items: 1,
+          at: 1,
+          createdAt: 1,
+        },
+      }
+    )
+    .sort({ at: -1, createdAt: -1 })
     .limit(200)
     .toArray();
 }
