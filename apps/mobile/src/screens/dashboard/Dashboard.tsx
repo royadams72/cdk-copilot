@@ -14,11 +14,10 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import Svg, { Circle, G, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, G } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
-import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
@@ -179,11 +178,9 @@ export default function Dashboard() {
             <InlineError message={error} onRetry={handleRetry} />
           )}
 
-          <View style={styles.radialsRow}>
-            {data?.nutrition.radials.map((radial) => (
-              <RadialCard key={radial.id} radial={radial} />
-            ))}
-          </View>
+          {data?.nutrition.radials?.length ? (
+            <StackedRadialsCard radials={data.nutrition.radials} />
+          ) : null}
 
           {data && <RatioCard ratio={data.nutrition.ratio} />}
 
@@ -212,54 +209,121 @@ function Card({
   );
 }
 
-function RadialCard({ radial }: { radial: DashboardRadial }) {
+const STACKED_COLORS = ["#a855f7", "#f97316", "#38bdf8", "#22d3ee", "#facc15"];
+
+function StackedRadialsCard({ radials }: { radials: DashboardRadial[] }) {
   const theme = useColorScheme() ?? "light";
-  const accent = theme === "light" ? "#4338CA" : "#A5B4FC";
-  const track = theme === "light" ? "#E5E7EB" : "rgba(255,255,255,0.2)";
-  const clamped =
-    radial.percent !== null && radial.percent !== undefined
-      ? clamp(radial.percent, 0, 1)
-      : 0;
-  const percentText =
-    radial.percent !== null && radial.percent !== undefined
-      ? `${Math.round(clamped * 100)}%`
-      : "N/A";
-  const precision = radial.unit === "g" ? 1 : 0;
-  const hasActual = radial.actual !== null && radial.actual !== undefined;
-  const actualValue = hasActual
-    ? formatDecimal(radial.actual!, precision)
-    : "—";
-  const targetText =
-    radial.target !== null && radial.target !== undefined
-      ? `Goal ${formatDecimal(radial.target, precision)} ${radial.unit}`
-      : "No goal set";
-  const isOverTarget = radial.percent !== null && radial.percent > 1;
+  const trackColor = theme === "light" ? "#E5E7EB" : "rgba(255,255,255,0.2)";
+  const textColor = theme === "light" ? "#111827" : "#F5F5F5";
+  const decorated = radials.map((radial, index) => ({
+    ...radial,
+    color: STACKED_COLORS[index % STACKED_COLORS.length],
+  }));
 
   return (
-    <Card style={styles.radialCard}>
-      <ThemedText type="defaultSemiBold">{radial.label}</ThemedText>
-      <View style={styles.radialChart}>
-        <RadialProgress
-          percent={radial.percent}
-          accentColor={accent}
-          trackColor={track}
-          label={percentText}
-          textColor={Colors[theme].text}
-        />
+    <Card style={styles.stackedRadialCard}>
+      <View style={styles.stackedHeader}>
+        <ThemedText type="defaultSemiBold">Diet</ThemedText>
+        <ThemedText style={styles.subtleText}>Weekly intake</ThemedText>
       </View>
-      <View style={styles.metricRow}>
-        <ThemedText style={styles.metricValue}>{actualValue}</ThemedText>
-        <ThemedText style={styles.metricUnit}>
-          {hasActual ? radial.unit : ""}
-        </ThemedText>
-      </View>
-      <ThemedText style={styles.helperText}>{targetText}</ThemedText>
-      {isOverTarget && (
-        <View style={styles.warningPill}>
-          <ThemedText style={styles.warningPillText}>Above target</ThemedText>
+      <View style={styles.stackedLayout}>
+        <View style={styles.legendColumn}>
+          {decorated.map((radial) => (
+            <View key={radial.id} style={styles.legendRow}>
+              <View
+                style={[styles.legendDot, { backgroundColor: radial.color }]}
+              />
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.legendLabel}>
+                  {radial.label}
+                </ThemedText>
+                <ThemedText style={styles.legendSubtext}>
+                  {legendValue(radial)}
+                </ThemedText>
+              </View>
+            </View>
+          ))}
         </View>
-      )}
+        <View style={styles.stackedChartWrap}>
+          <StackedRadialChart
+            radials={decorated}
+            trackColor={trackColor}
+            textColor={textColor}
+          />
+        </View>
+      </View>
     </Card>
+  );
+}
+
+function legendValue(radial: DashboardRadial) {
+  if (radial.percent !== null && radial.percent !== undefined) {
+    return `${Math.round(clamp(radial.percent, 0, 1) * 100)}%`;
+  }
+  if (radial.actual !== null && radial.actual !== undefined) {
+    const precision = radial.unit === "g" ? 1 : 0;
+    return `${formatDecimal(radial.actual, precision)} ${radial.unit}`;
+  }
+  return "No data";
+}
+
+const STACKED_SIZE = 220;
+const STACKED_STROKE = 12;
+const STACKED_GAP = 8;
+
+function StackedRadialChart({
+  radials,
+  trackColor,
+  textColor,
+}: {
+  radials: Array<DashboardRadial & { color: string }>;
+  trackColor: string;
+  textColor: string;
+}) {
+  const maxRadius = STACKED_SIZE / 2 - STACKED_STROKE / 2;
+
+  return (
+    <View style={styles.stackedChart}>
+      <Svg width={STACKED_SIZE} height={STACKED_SIZE}>
+        <G rotation="-90" originX={STACKED_SIZE / 2} originY={STACKED_SIZE / 2}>
+          {radials.map((radial, index) => {
+            const radius = maxRadius - index * (STACKED_STROKE + STACKED_GAP);
+            if (radius <= STACKED_STROKE / 2) return null;
+            const circumference = 2 * Math.PI * radius;
+            const percent =
+              radial.percent !== null && radial.percent !== undefined
+                ? clamp(radial.percent, 0, 1)
+                : 0;
+            return (
+              <React.Fragment key={radial.id}>
+                <Circle
+                  cx={STACKED_SIZE / 2}
+                  cy={STACKED_SIZE / 2}
+                  r={radius}
+                  stroke={trackColor}
+                  strokeWidth={STACKED_STROKE}
+                  fill="transparent"
+                />
+                <Circle
+                  cx={STACKED_SIZE / 2}
+                  cy={STACKED_SIZE / 2}
+                  r={radius}
+                  stroke={radial.color}
+                  strokeWidth={STACKED_STROKE}
+                  strokeLinecap="round"
+                  strokeDasharray={`${circumference} ${circumference}`}
+                  strokeDashoffset={circumference * (1 - percent)}
+                  fill="transparent"
+                />
+              </React.Fragment>
+            );
+          })}
+        </G>
+      </Svg>
+      <ThemedText style={[styles.centerLabel, { color: textColor }]}>
+        Intake
+      </ThemedText>
+    </View>
   );
 }
 
@@ -447,65 +511,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-const RADIAL_SIZE = 140;
-const RADIAL_STROKE = 14;
-const RADIAL_RADIUS = (RADIAL_SIZE - RADIAL_STROKE) / 2;
-const RADIAL_CIRCUMFERENCE = 2 * Math.PI * RADIAL_RADIUS;
-
-function RadialProgress({
-  percent,
-  accentColor,
-  trackColor,
-  label,
-  textColor,
-}: {
-  percent: number | null;
-  accentColor: string;
-  trackColor: string;
-  label: string;
-  textColor: string;
-}) {
-  const hasPercent = percent !== null && percent !== undefined;
-  const clamped = hasPercent ? clamp(percent!, 0, 1) : 0;
-  const dashOffset = RADIAL_CIRCUMFERENCE * (1 - clamped);
-
-  return (
-    <Svg width={RADIAL_SIZE} height={RADIAL_SIZE}>
-      <G rotation="-90" originX={RADIAL_SIZE / 2} originY={RADIAL_SIZE / 2}>
-        <Circle
-          cx={RADIAL_SIZE / 2}
-          cy={RADIAL_SIZE / 2}
-          r={RADIAL_RADIUS}
-          stroke={trackColor}
-          strokeWidth={RADIAL_STROKE}
-          fill="transparent"
-        />
-        <Circle
-          cx={RADIAL_SIZE / 2}
-          cy={RADIAL_SIZE / 2}
-          r={RADIAL_RADIUS}
-          stroke={accentColor}
-          strokeWidth={RADIAL_STROKE}
-          strokeLinecap="round"
-          strokeDasharray={`${RADIAL_CIRCUMFERENCE} ${RADIAL_CIRCUMFERENCE}`}
-          strokeDashoffset={hasPercent ? dashOffset : RADIAL_CIRCUMFERENCE + 4}
-          fill="transparent"
-        />
-      </G>
-      <SvgText
-        x={RADIAL_SIZE / 2}
-        y={RADIAL_SIZE / 2 + 6}
-        textAnchor="middle"
-        fill={textColor}
-        fontSize={18}
-        fontWeight="600"
-      >
-        {label}
-      </SvgText>
-    </Svg>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -527,48 +532,59 @@ const styles = StyleSheet.create({
   subtleText: {
     opacity: 0.7,
   },
-  radialsRow: {
+  stackedRadialCard: {
+    paddingBottom: 20,
+  },
+  stackedHeader: {
+    gap: 2,
+  },
+  stackedLayout: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
+    gap: 12,
+    alignItems: "center",
   },
-  radialCard: {
-    flexBasis: "48%",
-    minWidth: 160,
+  legendColumn: {
+    flex: 1,
+    gap: 8,
   },
-  radialChart: {
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  legendLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  legendSubtext: {
+    fontSize: 13,
+    opacity: 0.75,
+  },
+  stackedChartWrap: {
+    width: STACKED_SIZE,
+    height: STACKED_SIZE,
     alignItems: "center",
     justifyContent: "center",
   },
-  metricRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 4,
+  stackedChart: {
+    width: STACKED_SIZE,
+    height: STACKED_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  metricValue: {
-    fontSize: 26,
+  centerLabel: {
+    position: "absolute",
+    fontSize: 16,
     fontWeight: "600",
-  },
-  metricUnit: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginBottom: 2,
   },
   helperText: {
     fontSize: 13,
     opacity: 0.7,
-  },
-  warningPill: {
-    alignSelf: "flex-start",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(248,113,113,0.18)",
-  },
-  warningPillText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#7F1D1D",
   },
   ratioRow: {
     flexDirection: "row",
