@@ -13,7 +13,6 @@ const Bootstrap = () => {
   useEffect(() => {
     (async () => {
       const token = await loadSessionToken();
-      console.log("token::", token);
 
       if (!token) {
         router.replace("/(init-app)/welcome");
@@ -29,6 +28,7 @@ const Bootstrap = () => {
       }
     })();
   }, []);
+  // TODO: Use loader
   return null;
 };
 

@@ -5,26 +5,35 @@
 import type { Db, Collection, Document as MongoDocument } from "mongodb";
 
 export const COLLECTIONS = {
-  UsersPII: "users_pii", // personally identifiable information
-  UsersClinical: "users_clinical",
-  UsersAuth: "users_auth", // auth profiles / credentials (no secrets in code)
-  UsersAccounts: "users_accounts",
-  Patients: "patients",
-  Orgs: "orgs", // organisations
-  Encounters: "encounters", // clinical visits/interactions
-  Appointments: "appointments",
-  LabResults: "lab_results",
-  Notes: "notes",
-  Messages: "messages",
-  Consents: "consents",
-  AuditLogs: "audit_logs",
-  Sessions: "sessions",
-  ApiKeys: "api_keys",
-  FeatureFlags: "feature_flags",
-  Files: "files", // uploads/attachments
-  Migrations: "migrations", // applied migration records
-  AuthTokens: "auth_tokens",
+  AppErrorLogs: "app_error_logs",
+
+  AuthCodes: "auth_codes",
+  AuthCredentials: "auth_credentials",
   AuthLinks: "auth_links",
+  AuthTokens: "auth_tokens",
+
+  CarePlans: "care_plans",
+  CareTeams: "care_teams",
+
+  DrugsRef: "drugs_ref",
+
+  EmailVerifications: "email_verifications",
+
+  Facilities: "facilities",
+
+  FitPlans: "fit_plans",
+
+  LabsLedger: "labs_ledger",
+  MeasurementsLedger: "measurements_ledger",
+  Medications: "medications",
+  NutritionLedger: "nutrition_ledger",
+
+  Orgs: "orgs",
+  Patients: "patients",
+
+  UsersAccounts: "users_accounts",
+  UsersClinical: "users_clinical",
+  UsersPII: "users_pii",
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

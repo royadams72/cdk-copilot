@@ -116,30 +116,36 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
+    // TODO: Take todays readings, not dates
     const rangeEnd = new Date();
-    const rangeStart = new Date(rangeEnd.getTime() - RANGE_DAYS * 24 * 60 * 60 * 1000);
+    const rangeStart = new Date(
+      rangeEnd.getTime() - RANGE_DAYS * 24 * 60 * 60 * 1000
+    );
 
     const [clinicalDoc, labDocs, nutritionDocs] = await Promise.all([
-      db
-        .collection<ClinicalDoc>(COLLECTIONS.UsersClinical)
-        .findOne(
-          { patientId: patientObjectId },
-          {
-            projection: {
-              ckdStage: 1,
-              egfrCurrent: 1,
-              dialysisStatus: 1,
-              lastClinicalUpdateAt: 1,
-              targets: 1,
-            },
-          }
-        ),
+      db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
+        { patientId: patientObjectId },
+        {
+          projection: {
+            ckdStage: 1,
+            egfrCurrent: 1,
+            dialysisStatus: 1,
+            lastClinicalUpdateAt: 1,
+            targets: 1,
+          },
+        }
+      ),
       fetchRecentLabs(db, patientObjectId),
       fetchNutritionEntries(db, patientObjectId, rangeStart, rangeEnd),
     ]);
 
     const labs = summarizeLabs(labDocs);
-    const nutrition = summarizeNutrition(nutritionDocs, clinicalDoc, rangeStart, rangeEnd);
+    const nutrition = summarizeNutrition(
+      nutritionDocs,
+      clinicalDoc,
+      rangeStart,
+      rangeEnd
+    );
 
     return ok({
       patientId: caller.patientId,
@@ -162,7 +168,7 @@ export async function GET(req: NextRequest) {
 
 async function fetchRecentLabs(db: Db, patientId: ObjectId) {
   return db
-    .collection("labs_ledger")
+    .collection(COLLECTIONS.LabsLedger)
     .find(
       { patientId },
       {
@@ -189,7 +195,7 @@ async function fetchNutritionEntries(
   to: Date
 ) {
   return db
-    .collection<NutritionEntry>("nutrition_ledger")
+    .collection<NutritionEntry>(COLLECTIONS.NutritionLedger)
     .find(
       { patientId, at: { $gte: from, $lte: to } },
       {
