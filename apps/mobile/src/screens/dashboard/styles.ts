@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
 import { STACKED_SIZE } from "./constants";
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,

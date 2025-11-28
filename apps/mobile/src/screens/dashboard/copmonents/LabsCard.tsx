@@ -1,5 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
-import { View } from "react-native/Libraries/Components/View/View";
+import { View } from "react-native";
 import { Card } from "./Card";
 import { styles } from "../styles";
 import { LabSummary } from "../types";
