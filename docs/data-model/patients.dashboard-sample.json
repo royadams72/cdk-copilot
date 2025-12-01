@@ -1,0 +1,18 @@
+[
+  {
+    "_id": { "$oid": "6927373ad0152dc21dbee71a" },
+    "principalId": "pr_demo_jane",
+    "orgId": "org_demo",
+    "facilityId": "edgware_demo",
+    "careTeamId": "ct_demo_london",
+    "scopes": ["patients.read", "patients.flags.write"],
+    "summary": {
+      "risk": "amber",
+      "dietitianAssigned": true,
+      "lastContactAt": { "$date": "2024-11-15T10:30:00Z" }
+    },
+    "flags": ["diet-support"],
+    "createdAt": { "$date": "2024-09-01T08:00:00Z" },
+    "updatedAt": { "$date": "2024-11-15T10:30:00Z" }
+  }
+]

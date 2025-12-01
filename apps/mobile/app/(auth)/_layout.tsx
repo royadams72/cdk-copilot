@@ -10,8 +10,7 @@ const API =
 
 export default function RootLayout() {
   return (
-    <Stack initialRouteName="index">
-      <Stack.Screen name="index" options={{ title: "Create account" }} />
+    <Stack initialRouteName="onboarding/pii-form">
       <Stack.Screen
         name="check-email"
         options={{ title: "Check your email" }}

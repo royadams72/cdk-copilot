@@ -106,7 +106,7 @@ export default function ClinicalForm({
         const errBody = await res.json().catch(() => null);
         throw new Error(formatApiError(res.status, errBody));
       }
-      router.push("/(dashboard)/profile");
+      router.push("/(dashboard)/dashboard");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "Failed to save clinical data");
     }
