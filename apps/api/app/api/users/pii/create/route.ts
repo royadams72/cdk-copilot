@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const user: SessionUser = await requireUser(req, STEP2);
-
     const body = await req.json();
 
     const parsed = PiiForm.safeParse(body);
@@ -34,12 +33,14 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
-
-    const doc = {
-      ...body,
+    const formData = parsed.data;
+    const doc: Partial<TUserPII> = {
+      ...formData,
+      firstName: formData.firstName?.trim(),
+      lastName: formData.lastName?.trim(),
       ...(user.orgId ? { orgId: user.orgId } : {}),
       updatedAt: now,
-    } as any;
+    };
 
     const database = await getDb();
     const userPII_db = getCollection(database, COLLECTIONS.UsersPII);
