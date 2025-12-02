@@ -160,4 +160,15 @@ export const styles = StyleSheet.create({
   retryText: {
     fontWeight: "600",
   },
+  detailLink: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(99,102,241,0.15)",
+  },
+  detailLinkText: {
+    fontWeight: "600",
+    color: "#4C1D95",
+  },
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -8,10 +8,14 @@ import {
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
-import { formatApiError } from "@/lib/formatApiError";
-import { DashboardData, ApiResponse } from "./types";
+import { useRouter } from "expo-router";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  selectDashboardData,
+  selectDashboardError,
+  selectDashboardStatus,
+} from "@/store/selectors";
+import { fetchDashboard } from "@/store/slices/dashboardSlice";
 import { styles } from "./styles";
 import { Card } from "./copmonents/Card";
 import { LabsCard } from "./copmonents/LabsCard";
@@ -20,55 +24,34 @@ import { describeRange } from "./utils";
 import { RatioCard } from "./copmonents/RadioCard";
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await authFetch(`${API}/api/dashboard`, {
-        method: "GET",
-      });
-      // parse as unknown because the response could be a success shape (ApiResponse) or an error shape
-      const body: unknown = await res.json().catch(() => null);
-      // check for success shape before using it as ApiResponse
-      if (!res.ok || !(body as ApiResponse)?.ok) {
-        // formatApiError expects an ApiErrorBody; assert to any here so TypeScript accepts the possible error shape
-        throw new Error(formatApiError(res.status, (body as any) ?? null));
-      }
-      setData((body as ApiResponse).data);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to load your dashboard");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const data = useAppSelector(selectDashboardData);
+  const status = useAppSelector(selectDashboardStatus);
+  const error = useAppSelector(selectDashboardError);
+  const loading = status === "loading" && !data;
+  const refreshing = status === "loading" && !!data;
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    if (status === "idle" && !data) {
+      dispatch(fetchDashboard());
+    }
+  }, [data, dispatch, status]);
 
   const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchDashboard();
-  }, [fetchDashboard]);
+    dispatch(fetchDashboard());
+  }, [dispatch]);
 
   const handleRetry = useCallback(() => {
-    if (!data) {
-      setLoading(true);
-    }
-    fetchDashboard();
-  }, [data, fetchDashboard]);
+    dispatch(fetchDashboard());
+  }, [dispatch]);
 
   const rangeSummary = useMemo(() => {
     if (!data) return "";
     return describeRange(data.nutrition.range);
   }, [data]);
 
-  if (loading && !data) {
+  if (loading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
@@ -79,7 +62,7 @@ export default function Dashboard() {
     );
   }
 
-  const showBlockingError = !loading && !data && !!error;
+  const showBlockingError = status === "failed" && !data && !!error;
 
   return (
     <ScrollView
@@ -105,12 +88,22 @@ export default function Dashboard() {
             ) : null}
           </View>
 
-          {error && data && (
+          {status === "failed" && error && data && (
             <InlineError message={error} onRetry={handleRetry} />
           )}
 
           {data?.nutrition.radials?.length ? (
-            <StackedRadialsCard radials={data.nutrition.radials} />
+            <>
+              <StackedRadialsCard radials={data.nutrition.radials} />
+              <TouchableOpacity
+                style={styles.detailLink}
+                onPress={() => router.push("/(dashboard)/nutrition")}
+              >
+                <ThemedText style={styles.detailLinkText}>
+                  Open nutrition details
+                </ThemedText>
+              </TouchableOpacity>
+            </>
           ) : null}
 
           {data && <RatioCard ratio={data.nutrition.ratio} />}
