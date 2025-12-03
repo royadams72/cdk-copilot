@@ -98,21 +98,19 @@ export default function NutritionDetails() {
 
   const chartPoints = useMemo(() => {
     if (!chartData.length) return [];
-    const innerWidth =
-      CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
-    const innerHeight =
-      CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+    const innerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+    const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
     const denominator = chartData.length > 1 ? chartData.length - 1 : 1;
 
     return chartData.map((point, index) => {
       const xRatio = chartData.length === 1 ? 0.5 : index / denominator;
       const value = Math.max(point.y, 0);
-      const yRatio = chartDomainMax > 0 ? Math.min(value / chartDomainMax, 1) : 0;
+      const yRatio =
+        chartDomainMax > 0 ? Math.min(value / chartDomainMax, 1) : 0;
       return {
         ...point,
         chartX: CHART_PADDING.left + innerWidth * xRatio,
-        chartY:
-          CHART_PADDING.top + innerHeight * (1 - yRatio),
+        chartY: CHART_PADDING.top + innerHeight * (1 - yRatio),
       };
     });
   }, [chartData, chartDomainMax]);
@@ -225,7 +223,9 @@ export default function NutritionDetails() {
                   {[0.25, 0.5, 0.75].map((ratio) => {
                     const y =
                       CHART_PADDING.top +
-                      (CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom) *
+                      (CHART_HEIGHT -
+                        CHART_PADDING.top -
+                        CHART_PADDING.bottom) *
                         ratio;
                     return (
                       <Line
@@ -275,6 +275,7 @@ export default function NutritionDetails() {
                       fill="#fff"
                       stroke={metricConfig.color}
                       strokeWidth={2}
+                      onPress={() => console.log("Circle pressed")}
                     />
                   ))}
                   {chartPoints.map((point) => (

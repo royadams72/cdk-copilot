@@ -122,6 +122,15 @@ export const ClinicalFormSchema = z.object({
     )
     .default([]),
 });
+export const UserClinicalSummary = UserClinical_Base.pick({
+  ckdStage: true,
+  egfrCurrent: true,
+  dialysisStatus: true,
+  lastClinicalUpdateAt: true,
+  targets: true,
+});
+
+export type TUserClinicalSummary = z.infer<typeof UserClinicalSummary>;
 
 export type TClinicalFormValues = z.infer<typeof ClinicalFormSchema>;
 

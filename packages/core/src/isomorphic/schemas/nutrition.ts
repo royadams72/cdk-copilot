@@ -4,12 +4,6 @@ import { PrincipalId } from "./common";
 
 const MealType = z.enum(["breakfast", "lunch", "dinner", "snack", "drink"]);
 
-const Portion = z.object({
-  amount: z.number().positive(), // 1, 2, 150
-  unit: z.enum(["g", "ml", "serving", "piece"]), // normalized units
-  grams: z.number().positive().optional(), // resolved grams (if known)
-});
-
 const Nutrients = z.object({
   caloriesKcal: z.number().nonnegative().max(5000).optional(),
   proteinG: z.number().nonnegative().max(300).optional(),
@@ -22,10 +16,10 @@ const Nutrients = z.object({
 });
 
 const FoodItem = z.object({
+  name: z.string(),
   foodId: z.string().optional(), // your DB or external ID
-  description: z.string(), // "Grilled chicken breast"
   brand: z.string().optional(),
-  portion: Portion,
+  quantity: z.number().nonnegative().max(600),
   preparation: z.string().optional(), // "grilled", "boiled", etc.
   nutrients: Nutrients, // per this portion
   source: z.enum(["user", "barcode", "image_ai", "api"]).default("user"),
@@ -42,6 +36,7 @@ export const NutritionEntry = z.object({
   photos: z.array(z.url()).default([]),
   recipeId: z.string().optional(), // if linked to a saved recipe
   notes: z.string().optional(),
+  createdAt: z.coerce.date(), // when the meal was consumed
   createdBy: PrincipalId.optional(),
   updatedBy: PrincipalId.optional(),
   version: z.number().int().default(1),

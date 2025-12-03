@@ -8,13 +8,12 @@
 
 - `patientId` · ObjectId (ref: patients)
 - `eatenAt` · Date · when consumed
-- `recordedAt` · Date · when stored
 - `mealType` · `breakfast|lunch|dinner|snack|drink`
 - `items[]` · list of foods eaten
 
   - `description` · string
   - `brand?` · string
-  - `portion` · { amount, unit (`g|ml|serving|piece`), grams? }
+  - `quantity` · number
   - `nutrients` · { caloriesKcal?, proteinG?, carbsG?, fatG?, fiberG?, **phosphorusMg?**, **potassiumMg?**, **sodiumMg?** }
   - `source` · `user|barcode|image_ai|api`
 
@@ -23,8 +22,8 @@
 - `photos[]` · URLs
 - `recipeId?` · string
 - `notes?` · string
+- `createdAt` · Date · when stored
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
-- `version` · number
 
 ## Example document
 
@@ -32,7 +31,7 @@
 {
   "patientId": "u_123",
   "eatenAt": "2025-09-26T12:45:00Z",
-  "recordedAt": "2025-09-26T12:50:00Z",
+  "createdAt": "2025-09-26T12:50:00Z",
   "mealType": "lunch",
   "items": [
     {
