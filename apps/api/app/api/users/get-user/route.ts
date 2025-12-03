@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
       principalId: user.principalId,
       isActive: true,
     });
-    console.log(activeUser);
 
     if (!activeUser) {
       return bad("Not found", { requestId }, 404);

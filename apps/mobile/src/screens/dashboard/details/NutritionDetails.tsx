@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import type { ScrollView as ScrollViewType } from "react-native";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
@@ -23,16 +24,12 @@ import {
   selectDashboardStatus,
 } from "@/store/selectors";
 import { fetchDashboard } from "@/store/slices/dashboardSlice";
-import type {
-  FoodHighlight,
-  NutritionDailyPoint,
-  NutritionMetricKey,
-} from "../types";
+import type { FoodHighlight } from "../types";
 
 const CHART_HEIGHT = 240;
 const CHART_PADDING = { top: 20, bottom: 40, left: 40, right: 20 } as const;
-
-const CHART_WIDTH = Math.min(Dimensions.get("window").width - 64, 420);
+const CHART_VIEWPORT_WIDTH = Math.min(Dimensions.get("window").width - 64, 420);
+const POINT_GAP = 56;
 
 export default function NutritionDetails() {
   const router = useRouter();
@@ -46,15 +43,21 @@ export default function NutritionDetails() {
   );
   const refreshing = status === "loading" && !!data;
   const loading = status === "loading" && !data;
+  const chartScrollRef = useRef<ScrollViewType | null>(null);
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
+    null
+  );
   const metricConfig =
     NUTRITION_METRICS.find((metric) => metric.id === selectedMetricId) ??
     NUTRITION_METRICS[0];
 
-  const chartData = useMemo(() => {
+  const chartSeries = useMemo(() => {
     if (!data?.nutrition.dailySeries) return [];
-    return data.nutrition.dailySeries.map((point, index) =>
-      mapPointToChart(point, metricConfig.key, index)
-    );
+    return data.nutrition.dailySeries.map((point, index) => ({
+      ...point,
+      index,
+      value: Math.max(point.totals[metricConfig.key] ?? 0, 0),
+    }));
   }, [data, metricConfig.key]);
 
   const chartTarget = useMemo(() => {
@@ -65,13 +68,8 @@ export default function NutritionDetails() {
     return radial?.target ?? null;
   }, [data, metricConfig.id]);
 
-  const highlights = useMemo(() => {
-    if (!data?.nutrition.foodHighlights?.items) return [];
-    return data.nutrition.foodHighlights.items[metricConfig.key] ?? [];
-  }, [data, metricConfig.key]);
-
   const chartDomainMax = useMemo(() => {
-    const values = chartData.map((point) => point.y);
+    const values = chartSeries.map((point) => point.value);
     const targetValue =
       typeof chartTarget === "number" && Number.isFinite(chartTarget)
         ? chartTarget
@@ -84,7 +82,7 @@ export default function NutritionDetails() {
       return 1;
     }
     return maxValue * 1.15;
-  }, [chartData, chartTarget]);
+  }, [chartSeries, chartTarget]);
 
   const targetLineOffset = useMemo(() => {
     if (chartTarget === null || chartDomainMax <= 0) {
@@ -96,15 +94,31 @@ export default function NutritionDetails() {
     return CHART_PADDING.top + drawableHeight * (1 - ratio);
   }, [chartTarget, chartDomainMax]);
 
-  const chartPoints = useMemo(() => {
-    if (!chartData.length) return [];
-    const innerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
-    const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
-    const denominator = chartData.length > 1 ? chartData.length - 1 : 1;
+  const chartContentWidth = useMemo(() => {
+    if (!chartSeries.length) {
+      return CHART_VIEWPORT_WIDTH;
+    }
+    const effectiveWidth =
+      chartSeries.length > 1
+        ? (chartSeries.length - 1) * POINT_GAP
+        : CHART_VIEWPORT_WIDTH / 2;
+    const innerWidth = Math.max(
+      CHART_VIEWPORT_WIDTH - (CHART_PADDING.left + CHART_PADDING.right),
+      effectiveWidth
+    );
+    return innerWidth + CHART_PADDING.left + CHART_PADDING.right;
+  }, [chartSeries.length]);
 
-    return chartData.map((point, index) => {
-      const xRatio = chartData.length === 1 ? 0.5 : index / denominator;
-      const value = Math.max(point.y, 0);
+  const chartPoints = useMemo(() => {
+    if (!chartSeries.length) return [];
+    const innerWidth =
+      chartContentWidth - CHART_PADDING.left - CHART_PADDING.right;
+    const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+    const denominator = chartSeries.length > 1 ? chartSeries.length - 1 : 1;
+
+    return chartSeries.map((point, index) => {
+      const xRatio = chartSeries.length === 1 ? 0.5 : index / denominator;
+      const value = Math.max(point.value, 0);
       const yRatio =
         chartDomainMax > 0 ? Math.min(value / chartDomainMax, 1) : 0;
       return {
@@ -113,11 +127,38 @@ export default function NutritionDetails() {
         chartY: CHART_PADDING.top + innerHeight * (1 - yRatio),
       };
     });
-  }, [chartData, chartDomainMax]);
+  }, [chartSeries, chartDomainMax, chartContentWidth]);
+
+  useEffect(() => {
+    if (!chartSeries.length) return;
+    setSelectedPointIndex(chartSeries.length - 1);
+  }, [chartSeries.length]);
+
+  useEffect(() => {
+    if (!chartScrollRef.current) return;
+    chartScrollRef.current.scrollTo({
+      x: Math.max(chartContentWidth - CHART_VIEWPORT_WIDTH, 0),
+      animated: false,
+    });
+  }, [chartContentWidth, chartSeries.length]);
+
+  const selectedPoint =
+    selectedPointIndex !== null ? chartSeries[selectedPointIndex] : null;
+
+  const highlights = useMemo(() => {
+    if (!data?.nutrition.foodHighlights?.items) return [];
+    if (
+      selectedPoint &&
+      data.nutrition.foodHighlights.date === selectedPoint.date
+    ) {
+      return data.nutrition.foodHighlights.items[metricConfig.key] ?? [];
+    }
+    return [];
+  }, [data, metricConfig.key, selectedPoint]);
 
   const highlightTitle = buildHighlightTitle(
     metricConfig.label,
-    data?.nutrition.foodHighlights?.date ?? null
+    selectedPoint?.date ?? data?.nutrition.foodHighlights?.date ?? null
   );
 
   const handleRefresh = useCallback(() => {
@@ -197,102 +238,117 @@ export default function NutritionDetails() {
               </ThemedText>
             </View>
             <View style={styles.chartWrap}>
-              <View
-                style={[
-                  styles.chartInner,
-                  { width: CHART_WIDTH, height: CHART_HEIGHT },
-                ]}
+              <ScrollView
+                horizontal
+                ref={chartScrollRef}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ width: chartContentWidth }}
               >
-                <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
-                  <Line
-                    x1={CHART_PADDING.left}
-                    y1={CHART_HEIGHT - CHART_PADDING.bottom}
-                    x2={CHART_WIDTH - CHART_PADDING.right}
-                    y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                    stroke={theme === "light" ? "#CBD5F5" : "#475569"}
-                    strokeWidth={1}
-                  />
-                  <Line
-                    x1={CHART_PADDING.left}
-                    y1={CHART_PADDING.top}
-                    x2={CHART_PADDING.left}
-                    y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                    stroke={theme === "light" ? "#CBD5F5" : "#475569"}
-                    strokeWidth={1}
-                  />
-                  {[0.25, 0.5, 0.75].map((ratio) => {
-                    const y =
-                      CHART_PADDING.top +
-                      (CHART_HEIGHT -
-                        CHART_PADDING.top -
-                        CHART_PADDING.bottom) *
-                        ratio;
-                    return (
-                      <Line
-                        key={`grid-${ratio}`}
-                        x1={CHART_PADDING.left}
-                        x2={CHART_WIDTH - CHART_PADDING.right}
-                        y1={y}
-                        y2={y}
-                        stroke={
-                          theme === "light"
-                            ? "rgba(148,163,184,0.35)"
-                            : "rgba(148,163,184,0.2)"
-                        }
-                        strokeWidth={1}
-                      />
-                    );
-                  })}
-                  {targetLineOffset !== null ? (
+                <View
+                  style={[
+                    styles.chartInner,
+                    { width: chartContentWidth, height: CHART_HEIGHT },
+                  ]}
+                >
+                  <Svg width={chartContentWidth} height={CHART_HEIGHT}>
                     <Line
                       x1={CHART_PADDING.left}
-                      x2={CHART_WIDTH - CHART_PADDING.right}
-                      y1={targetLineOffset}
-                      y2={targetLineOffset}
-                      stroke="rgba(99,102,241,0.85)"
-                      strokeWidth={2}
-                      strokeDasharray="6,4"
+                      y1={CHART_HEIGHT - CHART_PADDING.bottom}
+                      x2={chartContentWidth - CHART_PADDING.right}
+                      y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                      stroke={theme === "light" ? "#CBD5F5" : "#475569"}
+                      strokeWidth={1}
                     />
-                  ) : null}
-                  {chartPoints.length > 1 ? (
-                    <Polyline
-                      points={chartPoints
-                        .map((point) => `${point.chartX},${point.chartY}`)
-                        .join(" ")}
-                      fill="none"
-                      stroke={metricConfig.color}
-                      strokeWidth={3}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
+                    <Line
+                      x1={CHART_PADDING.left}
+                      y1={CHART_PADDING.top}
+                      x2={CHART_PADDING.left}
+                      y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                      stroke={theme === "light" ? "#CBD5F5" : "#475569"}
+                      strokeWidth={1}
                     />
-                  ) : null}
-                  {chartPoints.map((point) => (
-                    <Circle
-                      key={`dot-${point.x}`}
-                      cx={point.chartX}
-                      cy={point.chartY}
-                      r={4}
-                      fill="#fff"
-                      stroke={metricConfig.color}
-                      strokeWidth={2}
-                      onPress={() => console.log("Circle pressed")}
-                    />
-                  ))}
-                  {chartPoints.map((point) => (
-                    <SvgText
-                      key={`label-${point.x}`}
-                      x={point.chartX}
-                      y={CHART_HEIGHT - CHART_PADDING.bottom + 16}
-                      fontSize={12}
-                      fill={theme === "light" ? "#1F2937" : "#E2E8F0"}
-                      alignmentBaseline="hanging"
-                      textAnchor="middle"
-                    >
-                      {point.label}
-                    </SvgText>
-                  ))}
-                </Svg>
-              </View>
+                    {[0.25, 0.5, 0.75].map((ratio) => {
+                      const y =
+                        CHART_PADDING.top +
+                        (CHART_HEIGHT -
+                          CHART_PADDING.top -
+                          CHART_PADDING.bottom) *
+                          ratio;
+                      return (
+                        <Line
+                          key={`grid-${ratio}`}
+                          x1={CHART_PADDING.left}
+                          x2={chartContentWidth - CHART_PADDING.right}
+                          y1={y}
+                          y2={y}
+                          stroke={
+                            theme === "light"
+                              ? "rgba(148,163,184,0.35)"
+                              : "rgba(148,163,184,0.2)"
+                          }
+                          strokeWidth={1}
+                        />
+                      );
+                    })}
+                    {targetLineOffset !== null ? (
+                      <Line
+                        x1={CHART_PADDING.left}
+                        x2={chartContentWidth - CHART_PADDING.right}
+                        y1={targetLineOffset}
+                        y2={targetLineOffset}
+                        stroke="rgba(99,102,241,0.85)"
+                        strokeWidth={2}
+                        strokeDasharray="6,4"
+                      />
+                    ) : null}
+                    {chartPoints.length > 1 ? (
+                      <Polyline
+                        points={chartPoints
+                          .map((point) => `${point.chartX},${point.chartY}`)
+                          .join(" ")}
+                        fill="none"
+                        stroke={metricConfig.color}
+                        strokeWidth={3}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    ) : null}
+                    {chartPoints.map((point) => (
+                      <Circle
+                        key={`dot-${point.chartX}`}
+                        cx={point.chartX}
+                        cy={point.chartY}
+                        r={4}
+                        fill={
+                          point.index === selectedPointIndex
+                            ? metricConfig.color
+                            : "#fff"
+                        }
+                        stroke={
+                          point.index === selectedPointIndex
+                            ? "#fff"
+                            : metricConfig.color
+                        }
+                        strokeWidth={2}
+                        onPress={() => setSelectedPointIndex(point.index)}
+                      />
+                    ))}
+                    {chartPoints.map((point) => (
+                      <SvgText
+                        key={`label-${point.chartX}`}
+                        x={point.chartX}
+                        y={CHART_HEIGHT - CHART_PADDING.bottom + 16}
+                        fontSize={12}
+                        fill={theme === "light" ? "#1F2937" : "#E2E8F0"}
+                        alignmentBaseline="hanging"
+                        textAnchor="middle"
+                      >
+                        {point.label}
+                      </SvgText>
+                    ))}
+                  </Svg>
+                </View>
+              </ScrollView>
             </View>
             {chartTarget !== null ? (
               <View style={styles.targetBadge}>
@@ -301,7 +357,38 @@ export default function NutritionDetails() {
                 </ThemedText>
               </View>
             ) : null}
+            {selectedPoint && (
+              <ThemedText style={styles.helperText}>
+                Showing {formatFullDate(selectedPoint.date)}
+              </ThemedText>
+            )}
           </Card>
+
+          {selectedPoint ? (
+            <Card>
+              <View style={styles.cardHeader}>
+                <ThemedText type="defaultSemiBold">Daily totals</ThemedText>
+                <ThemedText style={styles.helperText}>
+                  {formatFullDate(selectedPoint.date)}
+                </ThemedText>
+              </View>
+              <View style={styles.summaryGrid}>
+                {NUTRITION_METRICS.map((metric) => (
+                  <View key={metric.id} style={styles.summaryRow}>
+                    <ThemedText style={styles.summaryLabel}>
+                      {metric.label}
+                    </ThemedText>
+                    <ThemedText style={styles.summaryValue}>
+                      {formatChartValue(
+                        selectedPoint.totals?.[metric.key] ?? 0,
+                        metric.unit
+                      )}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          ) : null}
 
           <View style={styles.metricRow}>
             {NUTRITION_METRICS.map((metric) => {
@@ -348,7 +435,8 @@ export default function NutritionDetails() {
               </View>
             ) : (
               <ThemedText style={styles.helperText}>
-                No meals logged for this day yet.
+                Food highlights are available for the most recent day you logged
+                meals.
               </ThemedText>
             )}
           </Card>
@@ -368,25 +456,23 @@ export default function NutritionDetails() {
   );
 }
 
-function mapPointToChart(
-  point: NutritionDailyPoint,
-  key: NutritionMetricKey,
-  index: number
-) {
-  const value = point.totals[key] ?? 0;
-  return {
-    x: index,
-    label: point.label,
-    y: value > 0 ? Number(value.toFixed(1)) : 0,
-  };
-}
-
 function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
     return `0 ${unit}`;
   }
   const decimals = unit === "g" ? 1 : 0;
   return `${formatDecimal(value ?? 0, decimals)} ${unit}`;
+}
+
+function formatFullDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function buildHighlightTitle(label: string, isoDate: string | null) {

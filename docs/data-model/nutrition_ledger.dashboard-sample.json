@@ -1,6 +1,6 @@
 [
   {
-    "_id": { "$oid": "6730c4b5c53557c78d2d1001" },
+    "_id": { "$oid": "6730c4b5c53557c78d2d1009" },
     "orgId": "org_demo",
     "patientId": { "$oid": "6927373ad0152dc21dbee71a" },
     "mealType": "lunch",
@@ -39,19 +39,19 @@
       "potassiumMg": 405,
       "sodiumMg": 110
     },
-    "at": { "$date": "2024-11-18T12:45:00Z" },
+    "eatenAt": { "$date": "2025-11-28T12:45:00Z" },
     "source": "manual",
-    "createdAt": { "$date": "2024-11-18T12:50:00Z" },
-    "updatedAt": { "$date": "2024-11-18T12:50:00Z" }
+    "createdAt": { "$date": "2025-11-28T12:50:00Z" },
+    "updatedAt": { "$date": "2025-11-28T12:50:00Z" }
   },
   {
-    "_id": { "$oid": "6730c4b5c53557c78d2d1002" },
+    "_id": { "$oid": "6730c4b5c53557c78d2d1010" },
     "orgId": "org_demo",
     "patientId": { "$oid": "6927373ad0152dc21dbee71a" },
     "mealType": "breakfast",
     "items": [
       {
-        "foodId": "fd_oats",
+        "foodId": "fd_oats 2",
         "name": "Oats with blueberries",
         "quantity": 80,
         "unit": "g",
@@ -71,20 +71,20 @@
       "potassiumMg": 190,
       "sodiumMg": 70
     },
-    "at": { "$date": "2024-11-18T07:30:00Z" },
+    "eatenAt": { "$date": "2025-11-28T07:30:00Z" },
     "source": "manual",
-    "createdAt": { "$date": "2024-11-18T07:35:00Z" },
-    "updatedAt": { "$date": "2024-11-18T07:35:00Z" }
+    "createdAt": { "$date": "2025-11-28T07:35:00Z" },
+    "updatedAt": { "$date": "2025-11-28T07:35:00Z" }
   },
   {
-    "_id": { "$oid": "6730c4b5c53557c78d2d1003" },
+    "_id": { "$oid": "6730c4b5c53557c78d2d1011" },
     "orgId": "org_demo",
     "patientId": { "$oid": "6927373ad0152dc21dbee71a" },
     "mealType": "dinner",
     "items": [
       {
         "foodId": "fd_salmon",
-        "name": "Roasted salmon",
+        "name": "Roasted salmon 2",
         "quantity": 120,
         "unit": "g",
         "nutrients": {
@@ -97,7 +97,7 @@
       },
       {
         "foodId": "fd_green_beans",
-        "name": "Green beans",
+        "name": "Green beans 2",
         "quantity": 100,
         "unit": "g",
         "nutrients": {
@@ -116,9 +116,86 @@
       "potassiumMg": 658,
       "sodiumMg": 86
     },
-    "at": { "$date": "2024-11-17T18:45:00Z" },
+    "eatenAt": { "$date": "2025-11-28T18:45:00Z" },
     "source": "manual",
-    "createdAt": { "$date": "2024-11-17T18:50:00Z" },
-    "updatedAt": { "$date": "2024-11-17T18:50:00Z" }
+    "createdAt": { "$date": "2025-11-28T18:50:00Z" },
+    "updatedAt": { "$date": "2025-11-28T18:50:00Z" }
+  },
+  {
+    "_id": { "$oid": "6730c4b5c53557c78d2d1012" },
+    "orgId": "org_demo",
+    "patientId": { "$oid": "6927373ad0152dc21dbee71a" },
+    "mealType": "lunch",
+    "items": [
+      {
+        "foodId": "fd_egg_white",
+        "name": "Egg White 3",
+        "quantity": 200,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 100,
+          "proteinG": 46,
+          "phosphorusMg": 320,
+          "potassiumMg": 350,
+          "sodiumMg": 110
+        }
+      },
+      {
+        "foodId": "fd_herb_rice",
+        "name": "Steamed rice 3",
+        "quantity": 200,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 260,
+          "proteinG": 5,
+          "phosphorusMg": 70,
+          "potassiumMg": 55,
+          "sodiumMg": 0
+        }
+      }
+    ],
+    "totals": {
+      "caloriesKcal": 360,
+      "proteinG": 51,
+      "phosphorusMg": 390,
+      "potassiumMg": 405,
+      "sodiumMg": 110
+    },
+    "eatenAt": { "$date": "2025-11-13T12:45:00Z" },
+    "source": "manual",
+    "createdAt": { "$date": "2025-11-13T12:50:00Z" },
+    "updatedAt": { "$date": "2025-11-13T12:50:00Z" }
+  },
+  {
+    "_id": { "$oid": "6730c4b5c53557c78d2d1013" },
+    "orgId": "org_demo",
+    "patientId": { "$oid": "6927373ad0152dc21dbee71a" },
+    "mealType": "breakfast",
+    "items": [
+      {
+        "foodId": "fd_cornflakes 3",
+        "name": "Cornflakes",
+        "quantity": 80,
+        "unit": "g",
+        "nutrients": {
+          "caloriesKcal": 320,
+          "proteinG": 11,
+          "phosphorusMg": 220,
+          "potassiumMg": 190,
+          "sodiumMg": 70
+        }
+      }
+    ],
+    "totals": {
+      "caloriesKcal": 320,
+      "proteinG": 11,
+      "phosphorusMg": 220,
+      "potassiumMg": 190,
+      "sodiumMg": 70
+    },
+    "eatenAt": { "$date": "2025-11-13T07:30:00Z" },
+    "source": "manual",
+    "createdAt": { "$date": "2025-11-13T07:35:00Z" },
+    "updatedAt": { "$date": "2025-11-13T07:35:00Z" }
   }
 ]

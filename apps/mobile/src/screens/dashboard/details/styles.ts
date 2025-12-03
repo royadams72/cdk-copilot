@@ -99,6 +99,23 @@ export const styles = StyleSheet.create({
     gap: 16,
     marginTop: 8,
   },
+  summaryGrid: {
+    gap: 12,
+    marginTop: 4,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  summaryLabel: {
+    fontSize: 14,
+    opacity: 0.75,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
   foodRow: {
     flexDirection: "row",
     gap: 12,
