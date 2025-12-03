@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { treeifyError } from "zod";
-import type { Document as MongoDocument } from "mongodb";
 
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 
@@ -8,14 +7,7 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import {
-  DEFAULT_SCOPES,
-  PiiForm,
-  SCOPES,
-  STEP2,
-  TUserPII,
-  UserPII_Create,
-} from "@ckd/core";
+import { PiiForm, SCOPES, STEP2, TUserPII } from "@ckd/core";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 
 export const runtime = "nodejs";
