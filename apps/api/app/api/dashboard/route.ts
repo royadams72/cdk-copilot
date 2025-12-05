@@ -108,23 +108,10 @@ export async function GET(req: NextRequest) {
       fetchRecentLabs(db, patientObjectId),
       fetchNutritionEntries(db, patientObjectId),
     ]);
-    // TODO: Take todays readings, not dates
-    const rangeEnd = new Date();
 
-    // const rangeStart = new Date(
-    //   rangeEnd.getTime() -
-    //     nutritionDocs[0].eatenAt.getTime() * 24 * 60 * 60 * 1000
-    // );
+    const rangeEnd = new Date();
     const firstEl = nutritionDocs.reverse()[0];
 
-    console.log(
-      "rangeDays:::",
-      Math.round(
-        (Date.parse(rangeEnd.toDateString()) -
-          Date.parse(firstEl.eatenAt.toDateString())) /
-          (1000 * 3600 * 24)
-      )
-    );
     const rangeDays = Math.round(
       (Date.parse(rangeEnd.toDateString()) -
         Date.parse(firstEl.eatenAt.toDateString())) /
@@ -133,16 +120,6 @@ export async function GET(req: NextRequest) {
     const rangeStart = new Date(
       rangeEnd.getTime() - rangeDays * 24 * 60 * 60 * 1000
     );
-    // endDate.diff(startDate, 'days')
-    // console.log("rangeStart:", typeof rangeStart);
-
-    console.log(
-      "rangeEnd.getTime()",
-      typeof nutritionDocs[0].eatenAt.getTime(),
-      typeof rangeEnd.getTime()
-    );
-
-    // console.log(typeof nutritionDocs[0].eatenAt.getTime());
 
     const labs = summarizeLabs(labDocs);
     const nutrition = summarizeNutrition(

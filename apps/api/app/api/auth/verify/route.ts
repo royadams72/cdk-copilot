@@ -49,7 +49,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
 
   const { principalId, patientId, email, role, scopes } = res.doc;
-  console.log();
 
   if (!email || !principalId)
     return NextResponse.json(

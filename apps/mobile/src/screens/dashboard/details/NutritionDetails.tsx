@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
-import { Card } from "../copmonents/Card";
+import { Card } from "../components/Card";
 import { NUTRITION_METRICS } from "../constants";
 import { formatDateShort, formatDecimal } from "../utils";
 import { styles } from "./styles";
@@ -146,10 +146,10 @@ export default function NutritionDetails() {
     selectedPointIndex !== null ? chartSeries[selectedPointIndex] : null;
 
   const highlights = useMemo(() => {
-    if (!data?.nutrition.foodHighlights?.items) return [];
+    if (!data?.nutrition.foodHighlights.items[metricConfig.key]) return [];
     if (
       selectedPoint &&
-      data.nutrition.foodHighlights.date === selectedPoint.date
+      data?.nutrition.foodHighlights.date === selectedPoint.date
     ) {
       return data.nutrition.foodHighlights.items[metricConfig.key] ?? [];
     }
@@ -424,14 +424,16 @@ export default function NutritionDetails() {
             </View>
             {highlights.length ? (
               <View style={styles.foodList}>
-                {highlights.map((item, index) => (
-                  <FoodRow
-                    key={`${item.name}-${index}`}
-                    item={item}
-                    metricUnit={metricConfig.unit}
-                    color={metricConfig.color}
-                  />
-                ))}
+                {highlights.map((item, index) => {
+                  return (
+                    <FoodRow
+                      key={`${item.name}-${index}`}
+                      item={item}
+                      metricUnit={metricConfig.unit}
+                      color={metricConfig.color}
+                    />
+                  );
+                })}
               </View>
             ) : (
               <ThemedText style={styles.helperText}>

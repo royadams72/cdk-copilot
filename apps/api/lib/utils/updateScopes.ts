@@ -25,7 +25,6 @@ export async function updateScopes(
     database,
     COLLECTIONS.UsersAccounts
   );
-  console.log(" user.principalId:::::", user.principalId);
 
   // TODO add checks
   const result = await user_rec.findOneAndUpdate(
@@ -35,10 +34,6 @@ export async function updateScopes(
     { $set: { scopes } },
     { returnDocument: "after", upsert: false, includeResultMetadata: true }
   );
-  console.log("updateScopes result", {
-    matched: result?.lastErrorObject?.n,
-    updatedExisting: result?.lastErrorObject?.updatedExisting,
-  });
 
   return scopes;
 }

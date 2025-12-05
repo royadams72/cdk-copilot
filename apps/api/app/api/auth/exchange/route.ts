@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({
       sub: credentialId,
-      patientId: res.doc.patientId ?? null,
+      principalId: res.doc.principalId ?? null,
       orgId: res.doc.orgId,
       scopes,
     })
@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ jwt });
   } catch (e) {
-    console.log(e);
     console.error(e);
     return NextResponse.json(
       { error: "Error in exchange", e },

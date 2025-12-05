@@ -19,3 +19,6 @@ export const CredentialId = makePrefixedHexId("cred"); // cred_<24hex>
 export const PseudonymId = makePrefixedHexId("ps"); // ps_<24hex>
 
 export const EmailLower = z.email().transform((e) => e.toLowerCase());
+
+export const CKD_STAGE_VALUES = ["1", "2", "3a", "3b", "4", "5"] as const;
+export const CKDStage = z.enum(CKD_STAGE_VALUES);

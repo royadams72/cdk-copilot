@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { ObjectIdString, PrincipalId } from "./common";
+import {
+  CKD_STAGE_VALUES,
+  CKDStage,
+  ObjectIdString,
+  PrincipalId,
+} from "./common";
 
 export const DialysisStatus = z.enum([
   "none",
@@ -8,9 +13,6 @@ export const DialysisStatus = z.enum([
   "post-transplant",
 ]);
 export const ACR = z.enum(["A1", "A2", "A3"]); // Albumin-to-Creatinine Ratio category
-
-const CKD_STAGE_VALUES = ["1", "2", "3a", "3b", "4", "5"] as const;
-export const CKDStage = z.enum(CKD_STAGE_VALUES);
 
 const Dx = z.object({ code: z.string().optional(), label: z.string().min(1) });
 const Med = z.object({
@@ -40,6 +42,7 @@ export const CareTeamMember = z.object({
 export const UserClinical_Base = z.object({
   orgId: z.string().min(1).optional(),
   patientId: ObjectIdString, // Foreign Key (FK) → patients._id
+  principalId: PrincipalId.optional(),
   ckdStage: CKDStage.nullable().optional(), // CKD = Chronic Kidney Disease
   egfrCurrent: z.number().positive().max(200).nullable().optional(), // eGFR = estimated Glomerular Filtration Rate (mL/min/1.73m²)
   acrCategory: ACR.nullable().optional(),
