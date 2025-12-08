@@ -145,20 +145,30 @@ export default function NutritionDetails() {
   const selectedPoint =
     selectedPointIndex !== null ? chartSeries[selectedPointIndex] : null;
 
-  const highlights = useMemo(() => {
-    if (!data?.nutrition.foodHighlights.items[metricConfig.key]) return [];
-    if (
-      selectedPoint &&
-      data?.nutrition.foodHighlights.date === selectedPoint.date
-    ) {
-      return data.nutrition.foodHighlights.items[metricConfig.key] ?? [];
-    }
-    return [];
-  }, [data, metricConfig.key, selectedPoint]);
+  const highlightDate =
+    selectedPoint?.date ?? data?.nutrition.foodHighlights.latestDate ?? null;
 
-  const highlightTitle = buildHighlightTitle(
+  const { highlights, hasHighlightBucket } = useMemo(() => {
+    if (!highlightDate) {
+      return { highlights: [] as FoodHighlight[], hasHighlightBucket: false };
+    }
+    const dayBucket =
+      data?.nutrition.foodHighlights.itemsByDate?.[highlightDate];
+    if (!dayBucket) {
+      return { highlights: [] as FoodHighlight[], hasHighlightBucket: false };
+    }
+    return {
+      highlights: dayBucket[metricConfig.key] ?? [],
+      hasHighlightBucket: true,
+    };
+  }, [data, highlightDate, metricConfig.key]);
+
+  const highlightTitle = buildHighlightTitle(metricConfig.label, highlightDate);
+
+  const highlightFallbackMessage = buildHighlightFallbackMessage(
     metricConfig.label,
-    selectedPoint?.date ?? data?.nutrition.foodHighlights?.date ?? null
+    highlightDate,
+    hasHighlightBucket
   );
 
   const handleRefresh = useCallback(() => {
@@ -437,8 +447,7 @@ export default function NutritionDetails() {
               </View>
             ) : (
               <ThemedText style={styles.helperText}>
-                Food highlights are available for the most recent day you logged
-                meals.
+                {highlightFallbackMessage}
               </ThemedText>
             )}
           </Card>
@@ -491,6 +500,22 @@ function buildHighlightTitle(label: string, isoDate: string | null) {
   return `Foods for ${formatDateShort(
     isoDate
   )} with highest ${label.toLowerCase()}`;
+}
+
+function buildHighlightFallbackMessage(
+  label: string,
+  isoDate: string | null,
+  hasDataForDay: boolean
+) {
+  if (!isoDate) {
+    return "Log your meals to unlock food highlights.";
+  }
+  if (!hasDataForDay) {
+    return `No meals logged on ${formatFullDate(isoDate)}.`;
+  }
+  return `No ${label.toLowerCase()} highlights logged on ${formatFullDate(
+    isoDate
+  )}.`;
 }
 
 function isToday(date: Date) {

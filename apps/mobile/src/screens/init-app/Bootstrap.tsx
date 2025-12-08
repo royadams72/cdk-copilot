@@ -31,10 +31,7 @@ const Bootstrap = () => {
         console.log("data::::::", data);
 
         if (data.ok) {
-          const refreshRes = await authFetch(`${API}/api/users/refresh-token`, {
-            method: "GET",
-          });
-          // router.replace("/(dashboard)/dashboard");
+          router.replace("/(dashboard)/dashboard");
         } else if (data.message === '"exp" claim timestamp check failed') {
           const refreshRes = await authFetch(`${API}/api/users/refresh-token`, {
             method: "GET",

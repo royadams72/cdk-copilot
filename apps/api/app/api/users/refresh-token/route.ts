@@ -33,7 +33,6 @@ export async function GET(req: NextRequest) {
         algorithms: ["HS256"],
       });
       claims = verified.payload;
-      console.log("claims1:::", claims);
     } catch (err: any) {
       if (err?.code === "ERR_JWT_EXPIRED" && err?.payload) {
         claims = err.payload as JWTPayload;
@@ -43,7 +42,6 @@ export async function GET(req: NextRequest) {
         return bad("Unauthorized", { requestId }, 401);
       }
     }
-    console.log("claims3:::", claims);
 
     const credentialId = claims?.sub;
     if (!credentialId || typeof credentialId !== "string") {

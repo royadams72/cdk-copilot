@@ -34,8 +34,8 @@ export type FoodHighlight = {
 };
 
 export type FoodHighlightResult = {
-  date: string | null;
-  items: Record<ChartMetricKey, FoodHighlight[]>;
+  latestDate: string | null;
+  itemsByDate: Record<string, Record<ChartMetricKey, FoodHighlight[]>>;
 };
 
 export type NutrientKey =

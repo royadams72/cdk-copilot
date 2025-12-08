@@ -234,30 +234,32 @@ function buildDailySeries(
 function buildFoodHighlights(
   entries: NutritionEntryDoc[]
 ): FoodHighlightResult {
-  const latestEntryDate = entries.reduce<Date | null>((acc, entry) => {
-    const entryDate = resolveEntryDate(entry);
-    if (!entryDate) return acc;
-    if (!acc || entryDate > acc) {
-      return entryDate;
-    }
-    return acc;
-  }, null);
+  let latestEntryDate: Date | null = null;
+  const bucketsByDay = new Map<
+    string,
+    Record<ChartMetricKey, FoodHighlight[]>
+  >();
 
-  const buckets = initFoodHighlightBuckets();
-  if (!latestEntryDate) {
-    return { date: null, items: buckets };
-  }
-
-  const targetDayKey = dayKey(latestEntryDate);
   for (const entry of entries) {
     const entryDate = resolveEntryDate(entry);
-    if (!entryDate || dayKey(entryDate) !== targetDayKey) continue;
+    if (!entryDate) continue;
+
+    if (!latestEntryDate || entryDate > latestEntryDate) {
+      latestEntryDate = entryDate;
+    }
+
+    const bucketKey = dayKey(entryDate);
+    if (!bucketsByDay.has(bucketKey)) {
+      bucketsByDay.set(bucketKey, initFoodHighlightBuckets());
+    }
+
     const eatenAtIso = entry.eatenAt
       ? entry.eatenAt.toISOString()
       : entry.createdAt
       ? entry.createdAt.toISOString()
       : null;
 
+    const buckets = bucketsByDay.get(bucketKey)!;
     for (const item of entry.items ?? []) {
       const name = item.name?.trim() || "Logged meal";
       for (const metric of RADIAL_METRICS) {
@@ -274,16 +276,16 @@ function buildFoodHighlights(
     }
   }
 
-  const sorted = Object.fromEntries(
-    Object.entries(buckets).map(([key, foods]) => [
+  const sortedByDay = Object.fromEntries(
+    Array.from(bucketsByDay.entries()).map(([key, foods]) => [
       key,
-      foods.sort((a, b) => b.amount - a.amount).slice(0, FOOD_HIGHLIGHT_LIMIT),
+      sortFoodHighlightBucket(foods),
     ])
-  ) as Record<ChartMetricKey, FoodHighlight[]>;
+  ) as Record<string, Record<ChartMetricKey, FoodHighlight[]>>;
 
   return {
-    date: targetDayKey,
-    items: sorted,
+    latestDate: latestEntryDate ? dayKey(latestEntryDate) : null,
+    itemsByDate: sortedByDay,
   };
 }
 
@@ -293,6 +295,17 @@ function initFoodHighlightBuckets() {
     buckets[metric.key] = [];
   }
   return buckets;
+}
+
+function sortFoodHighlightBucket(
+  bucket: Record<ChartMetricKey, FoodHighlight[]>
+) {
+  return Object.fromEntries(
+    Object.entries(bucket).map(([key, foods]) => [
+      key,
+      foods.sort((a, b) => b.amount - a.amount).slice(0, FOOD_HIGHLIGHT_LIMIT),
+    ])
+  ) as Record<ChartMetricKey, FoodHighlight[]>;
 }
 
 function resolveEntryDate(entry: NutritionEntryDoc) {
