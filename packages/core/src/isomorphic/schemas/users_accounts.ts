@@ -15,6 +15,7 @@ export const UsersAccount_Base = z.object({
   facilityIds: z.array(z.string()).optional(),
   careTeamIds: z.array(z.string()).optional(),
   allowedPatientIds: z.array(objectIdHex).optional(),
+  grants: z.array(z.string()).optional(),
   isActive: z.boolean().default(true),
   createdAt: dateAsISOString.optional(),
   updatedAt: dateAsISOString,

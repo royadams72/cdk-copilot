@@ -50,8 +50,8 @@ export type FoodHighlight = {
 };
 
 export type FoodHighlights = {
-  date: string | null;
-  items: Record<NutritionMetricKey, FoodHighlight[]>;
+  latestDate: string | null;
+  itemsByDate: Record<string, Record<NutritionMetricKey, FoodHighlight[]>>;
 };
 
 export type LabSummary = {

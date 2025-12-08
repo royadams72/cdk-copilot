@@ -8,6 +8,7 @@ import { TUsersAccount } from "@/packages/core/dist/isomorphic";
 
 export async function GET(req: NextRequest) {
   const requestId = makeRandomId();
+
   try {
     const user: SessionUser = await requireUser(req);
     if (!user.patientId) {
@@ -22,7 +23,6 @@ export async function GET(req: NextRequest) {
       principalId: user.principalId,
       isActive: true,
     });
-    console.log(activeUser);
 
     if (!activeUser) {
       return bad("Not found", { requestId }, 404);

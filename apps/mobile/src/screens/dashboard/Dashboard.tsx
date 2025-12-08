@@ -17,11 +17,11 @@ import {
 } from "@/store/selectors";
 import { fetchDashboard } from "@/store/slices/dashboardSlice";
 import { styles } from "./styles";
-import { Card } from "./copmonents/Card";
-import { LabsCard } from "./copmonents/LabsCard";
-import { StackedRadialsCard } from "./copmonents/SatckedRadials";
+import { Card } from "./components/Card";
+import { LabsCard } from "./components/LabsCard";
+import { StackedRadialsCard } from "./components/SatckedRadials";
 import { describeRange } from "./utils";
-import { RatioCard } from "./copmonents/RadioCard";
+import { RatioCard } from "./components/RadioCard";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -115,12 +115,12 @@ export default function Dashboard() {
   );
 }
 
-function ErrorState({
+export function ErrorState({
   message,
   onRetry,
 }: {
   message: string;
-  onRetry: () => void;
+  onRetry?: () => void;
 }) {
   return (
     <Card>

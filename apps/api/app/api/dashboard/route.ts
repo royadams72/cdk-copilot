@@ -16,7 +16,6 @@ import {
 } from "@/apps/api/lib/utils/dashboard";
 export const runtime = "nodejs";
 
-export const RANGE_DAYS = 7;
 export const DEFAULT_RATIO_THRESHOLD = 12; // mg phosphorus per gram of protein
 export const TRACKED_LABS = [
   {
@@ -92,11 +91,6 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
-    // TODO: Take todays readings, not dates
-    const rangeEnd = new Date();
-    const rangeStart = new Date(
-      rangeEnd.getTime() - RANGE_DAYS * 24 * 60 * 60 * 1000
-    );
 
     const [clinicalDoc, labDocs, nutritionDocs] = await Promise.all([
       db.collection<TUserClinicalSummary>(COLLECTIONS.UsersClinical).findOne(
@@ -112,16 +106,30 @@ export async function GET(req: NextRequest) {
         }
       ),
       fetchRecentLabs(db, patientObjectId),
-      fetchNutritionEntries(db, patientObjectId, rangeStart, rangeEnd),
+      fetchNutritionEntries(db, patientObjectId),
     ]);
+
+    const rangeEnd = new Date();
+    const firstEl = nutritionDocs.reverse()[0];
+
+    const rangeDays = Math.round(
+      (Date.parse(rangeEnd.toDateString()) -
+        Date.parse(firstEl.eatenAt.toDateString())) /
+        (1000 * 3600 * 24)
+    );
+    const rangeStart = new Date(
+      rangeEnd.getTime() - rangeDays * 24 * 60 * 60 * 1000
+    );
 
     const labs = summarizeLabs(labDocs);
     const nutrition = summarizeNutrition(
       nutritionDocs,
       clinicalDoc,
       rangeStart,
-      rangeEnd
+      rangeEnd,
+      rangeDays
     );
+    console.log("nutrition::", nutrition.dailySeries);
 
     return ok({
       patientId: caller.patientId,

@@ -1,8 +1,6 @@
 // lib/schemas/patients.ts
 import { z } from "zod";
-import { dateAsISOString, objectIdHex } from "./common";
-
-export const CKDStage = z.enum(["1", "2", "3a", "3b", "4", "5", "5D", "Tx"]);
+import { dateAsISOString, objectIdHex, PrincipalId, CKDStage } from "./common";
 
 export const PatientSummary = z
   .object({
@@ -12,9 +10,10 @@ export const PatientSummary = z
   })
   .loose(); // allow future summary keys
 
-export const PatientDoc = z.object({
-  patientId: objectIdHex,
+export const Patient_Base = z.object({
+  _id: objectIdHex,
   orgId: z.string().min(1).optional(),
+  principalId: PrincipalId.optional(),
   facilityId: z.string().min(1).optional(),
   careTeamId: z.string().min(1).optional(),
   summary: PatientSummary.default({}),
@@ -26,12 +25,12 @@ export const PatientDoc = z.object({
 
 // For your GET projection:
 export const PatientListProjection = z.object({
-  patientId: objectIdHex, // or objectIdHex if you serialize first
+  _id: objectIdHex, // or objectIdHex if you serialize first
   summary: PatientSummary,
   stage: CKDStage.optional(),
   flags: z.array(z.string()).optional(),
   updatedAt: dateAsISOString,
 });
 
-export type TPatientDoc = z.infer<typeof PatientDoc>;
+export type TPatient_Base = z.infer<typeof Patient_Base>;
 export type PatientListProjection = z.infer<typeof PatientListProjection>;

@@ -4,7 +4,6 @@ import {
   TRACKED_LABS,
   ZERO_TOTALS,
   RADIAL_METRICS,
-  RANGE_DAYS,
   DAY_MS,
   FOOD_HIGHLIGHT_LIMIT,
   DEFAULT_RATIO_THRESHOLD,
@@ -41,16 +40,11 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
     .limit(200)
     .toArray();
 }
-export async function fetchNutritionEntries(
-  db: Db,
-  patientId: ObjectId,
-  from: Date,
-  to: Date
-) {
+export async function fetchNutritionEntries(db: Db, patientId: ObjectId) {
   return db
     .collection<NutritionEntryDoc>(COLLECTIONS.NutritionLedger)
     .find(
-      { patientId, eatenAt: { $gte: from, $lte: to } },
+      { patientId },
       {
         projection: {
           totals: 1,
@@ -60,6 +54,7 @@ export async function fetchNutritionEntries(
         },
       }
     )
+
     .sort({ eatenAt: -1, createdAt: -1 })
     .limit(200)
     .toArray();
@@ -117,7 +112,8 @@ export function summarizeNutrition(
   entries: NutritionEntryDoc[],
   clinicalDoc: any,
   from: Date,
-  to: Date
+  to: Date,
+  rangeDays: number
 ) {
   const totals = entries.reduce(
     (acc, entry) => {
@@ -149,14 +145,14 @@ export function summarizeNutrition(
   });
 
   const ratio = buildRatio(totals, clinicalDoc?.targets);
-  const dailySeries = buildDailySeries(entries, to);
+  const dailySeries = buildDailySeries(entries, to, rangeDays);
   const foodHighlights = buildFoodHighlights(entries);
 
   return {
     range: {
       from: from.toISOString(),
       to: to.toISOString(),
-      days: RANGE_DAYS,
+      days: rangeDays,
       entries: entries.length,
       lastEntryAt: entries[0]?.eatenAt
         ? entries[0].eatenAt!.toISOString()
@@ -202,13 +198,14 @@ function mergeNutrients(
 
 function buildDailySeries(
   entries: NutritionEntryDoc[],
-  rangeEnd: Date
+  rangeEnd: Date,
+  rangeDays: number
 ): NutritionDailyPoint[] {
   const endDay = startOfDay(rangeEnd);
-  const startDay = new Date(endDay.getTime() - (RANGE_DAYS - 1) * DAY_MS);
+  const startDay = new Date(endDay.getTime() - (rangeDays - 1) * DAY_MS);
   const buckets = new Map<string, Record<NutrientKey, number>>();
 
-  for (let i = 0; i < RANGE_DAYS; i++) {
+  for (let i = 0; i < rangeDays; i++) {
     const day = new Date(startDay.getTime() + i * DAY_MS);
     buckets.set(dayKey(day), { ...ZERO_TOTALS });
   }
@@ -237,30 +234,32 @@ function buildDailySeries(
 function buildFoodHighlights(
   entries: NutritionEntryDoc[]
 ): FoodHighlightResult {
-  const latestEntryDate = entries.reduce<Date | null>((acc, entry) => {
-    const entryDate = resolveEntryDate(entry);
-    if (!entryDate) return acc;
-    if (!acc || entryDate > acc) {
-      return entryDate;
-    }
-    return acc;
-  }, null);
+  let latestEntryDate: Date | null = null;
+  const bucketsByDay = new Map<
+    string,
+    Record<ChartMetricKey, FoodHighlight[]>
+  >();
 
-  const buckets = initFoodHighlightBuckets();
-  if (!latestEntryDate) {
-    return { date: null, items: buckets };
-  }
-
-  const targetDayKey = dayKey(latestEntryDate);
   for (const entry of entries) {
     const entryDate = resolveEntryDate(entry);
-    if (!entryDate || dayKey(entryDate) !== targetDayKey) continue;
+    if (!entryDate) continue;
+
+    if (!latestEntryDate || entryDate > latestEntryDate) {
+      latestEntryDate = entryDate;
+    }
+
+    const bucketKey = dayKey(entryDate);
+    if (!bucketsByDay.has(bucketKey)) {
+      bucketsByDay.set(bucketKey, initFoodHighlightBuckets());
+    }
+
     const eatenAtIso = entry.eatenAt
       ? entry.eatenAt.toISOString()
       : entry.createdAt
       ? entry.createdAt.toISOString()
       : null;
 
+    const buckets = bucketsByDay.get(bucketKey)!;
     for (const item of entry.items ?? []) {
       const name = item.name?.trim() || "Logged meal";
       for (const metric of RADIAL_METRICS) {
@@ -277,16 +276,16 @@ function buildFoodHighlights(
     }
   }
 
-  const sorted = Object.fromEntries(
-    Object.entries(buckets).map(([key, foods]) => [
+  const sortedByDay = Object.fromEntries(
+    Array.from(bucketsByDay.entries()).map(([key, foods]) => [
       key,
-      foods.sort((a, b) => b.amount - a.amount).slice(0, FOOD_HIGHLIGHT_LIMIT),
+      sortFoodHighlightBucket(foods),
     ])
-  ) as Record<ChartMetricKey, FoodHighlight[]>;
+  ) as Record<string, Record<ChartMetricKey, FoodHighlight[]>>;
 
   return {
-    date: targetDayKey,
-    items: sorted,
+    latestDate: latestEntryDate ? dayKey(latestEntryDate) : null,
+    itemsByDate: sortedByDay,
   };
 }
 
@@ -296,6 +295,17 @@ function initFoodHighlightBuckets() {
     buckets[metric.key] = [];
   }
   return buckets;
+}
+
+function sortFoodHighlightBucket(
+  bucket: Record<ChartMetricKey, FoodHighlight[]>
+) {
+  return Object.fromEntries(
+    Object.entries(bucket).map(([key, foods]) => [
+      key,
+      foods.sort((a, b) => b.amount - a.amount).slice(0, FOOD_HIGHLIGHT_LIMIT),
+    ])
+  ) as Record<ChartMetricKey, FoodHighlight[]>;
 }
 
 function resolveEntryDate(entry: NutritionEntryDoc) {

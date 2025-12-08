@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectIdHex } from "./common";
+import { objectIdHex, PrincipalId } from "./common";
 
 /**
  * Providers you support today.
@@ -26,12 +26,13 @@ export const EmailString = z.email().transform((s) => s.trim().toLowerCase());
 export const AuthLinkBase = z.object({
   provider: AuthLinkProvider,
   credentialId: z.uuid(), // goes into JWT `sub`
-  principalId: z.uuid(), // stable person id (acc_… / pat_…)
+  principalId: PrincipalId, // stable person id (acc_… / pat_…)
   email: EmailString.optional(),
   providerSubject: z.string().min(1).optional(),
   active: z.boolean().default(true),
   createdAt: z.coerce.date(),
   deactivatedAt: z.coerce.date().optional(),
+  lastRefreshAt: z.coerce.date().optional(),
 });
 
 /**
@@ -62,7 +63,7 @@ export const AuthLinkDb = AuthLinkBase.extend({
 });
 
 export type TAuthLinkProvider = z.infer<typeof AuthLinkProvider>;
-export type TAuthLinkBase = z.infer<typeof AuthLinkBase>;
+export type TAuthLink = z.infer<typeof AuthLinkBase>;
 export type TAuthLinkCreate = z.infer<typeof AuthLinkCreate>;
 export type TAuthLinkUpdate = z.infer<typeof AuthLinkUpdate>;
 export type TAuthLinkDb = z.infer<typeof AuthLinkDb>;
