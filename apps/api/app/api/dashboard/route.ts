@@ -16,7 +16,7 @@ import {
 } from "@/apps/api/lib/utils/dashboard";
 export const runtime = "nodejs";
 
-export const DEFAULT_RATIO_THRESHOLD = 12; // mg phosphorus per gram of protein
+export const DEFAULT_RATIO_THRESHOLD = 12;
 export const TRACKED_LABS = [
   {
     id: "egfr",
