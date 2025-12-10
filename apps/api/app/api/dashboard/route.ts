@@ -129,7 +129,6 @@ export async function GET(req: NextRequest) {
       rangeEnd,
       rangeDays
     );
-    console.log("nutrition::", nutrition.dailySeries);
 
     return ok({
       patientId: caller.patientId,

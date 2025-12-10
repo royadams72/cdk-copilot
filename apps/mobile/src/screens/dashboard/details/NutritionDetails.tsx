@@ -205,7 +205,10 @@ export default function NutritionDetails() {
           >
             <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.logButton}>
+          <TouchableOpacity
+            style={styles.logButton}
+            onPress={() => router.push("/(dashboard)/log-meal")}
+          >
             <ThemedText style={styles.logButtonText}>Log meal</ThemedText>
           </TouchableOpacity>
         </View>

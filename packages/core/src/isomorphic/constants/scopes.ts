@@ -5,6 +5,9 @@ export const SCOPES = {
   USERS_CLINICAL_READ: "users:clinical:read",
   USERS_CLINICAL_WRITE: "users:clinical:write",
 
+  BASE_FOODS_READ: "base_foods:read",
+  BASE_FOODS_WRITE: "base_foods:write",
+
   FITPLANS_READ: "fitplans:read",
   FITPLANS_WRITE: "fitplans:write",
 
@@ -52,6 +55,9 @@ export const ROLE_SCOPES: Record<Role, readonly Scope[]> = {
     SCOPES.USERS_CLINICAL_READ,
     SCOPES.FITPLANS_READ,
     SCOPES.MEASUREMENTS_READ,
+    SCOPES.MEASUREMENTS_WRITE,
+    SCOPES.MEDS_READ,
+    SCOPES.MEDS_WRITE,
   ],
   clinician: [
     SCOPES.USERS_PII_READ,
