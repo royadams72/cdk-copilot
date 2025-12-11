@@ -7,6 +7,7 @@
     "dev": "pnpm -r run dev",
     "build": "pnpm -r run build",
     "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
+    "ingest:cofid": "tsx scripts/ingest-cofid.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
     "mobile:dev": "pnpm --filter ./apps/mobile exec expo start --dev-client",
@@ -23,11 +24,13 @@
     "apps/*"
   ],
   "devDependencies": {
+    "@next/env": "^16.0.8",
     "@types/node": "^24.5.0",
     "dotenv": "^17.2.3",
     "tsx": "^4.20.5",
     "turbo": "^2.5.6",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "xlsx": "^0.18.5"
   },
   "dependencies": {
     "mongodb": "^6.20.0"
