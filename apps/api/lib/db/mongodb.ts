@@ -1,6 +1,5 @@
 // lib/mongo.ts
 import { MongoClient } from "mongodb";
-
 type Purpose = "app" | "analytics" | "migrations";
 const URIs: Record<Purpose, string> = {
   app: process.env.MONGODB_URI_APP!,

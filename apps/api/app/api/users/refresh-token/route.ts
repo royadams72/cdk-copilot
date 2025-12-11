@@ -36,7 +36,6 @@ export async function GET(req: NextRequest) {
     } catch (err: any) {
       if (err?.code === "ERR_JWT_EXPIRED" && err?.payload) {
         claims = err.payload as JWTPayload;
-        console.log("claims2:::", claims);
       } else {
         console.error("jwtVerify failed during refresh", err);
         return bad("Unauthorized", { requestId }, 401);

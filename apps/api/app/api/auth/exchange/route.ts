@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
         { ok: false, error: res.error },
         { status: 400 }
       );
-    // console.log("res::::", res);
 
     const patients = db.collection(COLLECTIONS.Patients);
     const patient = await patients.findOne<{ _id: ObjectId }>(

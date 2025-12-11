@@ -5,6 +5,7 @@ export default function DashboardLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="nutrition" />
+      <Stack.Screen name="log-meal" />
     </Stack>
   );
 }

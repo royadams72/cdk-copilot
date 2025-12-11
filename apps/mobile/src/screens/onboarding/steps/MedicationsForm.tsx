@@ -73,7 +73,6 @@ export default function MedicationsForm({
     //   dmplusdCode: med.dmplusdCode?.trim() || undefined,
     //   snomedCode: med.snomedCode?.trim() || undefined,
     // }));
-    console.log("what????");
 
     router.push("/(auth)/onboarding/labs-form");
     // try {

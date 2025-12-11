@@ -16,7 +16,7 @@ import {
 } from "@/apps/api/lib/utils/dashboard";
 export const runtime = "nodejs";
 
-export const DEFAULT_RATIO_THRESHOLD = 12; // mg phosphorus per gram of protein
+export const DEFAULT_RATIO_THRESHOLD = 12;
 export const TRACKED_LABS = [
   {
     id: "egfr",
@@ -129,7 +129,6 @@ export async function GET(req: NextRequest) {
       rangeEnd,
       rangeDays
     );
-    console.log("nutrition::", nutrition.dailySeries);
 
     return ok({
       patientId: caller.patientId,
