@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       return bad("data not found", { requestId }, 404);
     }
 
-    console.log(data);
+    console.log(data.parsed[0].food, data.parsed[0]);
     return NextResponse.json({ data, requestId });
   } catch (error: any) {
     const status = error?.status || 500;
