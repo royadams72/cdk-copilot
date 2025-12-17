@@ -1,5 +1,6 @@
 export * from "./schemas/auth_links";
 export * from "./schemas/base_foods";
+export * from "./schemas/edamam";
 export * from "./schemas/labs";
 export * from "./schemas/medications";
 export * from "./schemas/nutrition";

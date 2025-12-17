@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad } from "@/apps/api/lib/http/responses";
-import { ROLES } from "@ckd/core";
+import { ROLES, TBaseFoodSchema, TEdamamFoodMeasure } from "@ckd/core";
+import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import { NextRequest, NextResponse } from "next/server";
 import {
   Item,
@@ -10,6 +11,8 @@ import {
   normaliseInput,
   rewriteForEdamam,
 } from "./normaliseInput";
+import { getDb } from "@/apps/api/lib/db/mongodb";
+import { applyPhraseRules } from "./applyPhraseRules";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
 const foodURI = process.env.EDAMAM_API_FOOD_URI || "";
@@ -17,6 +20,8 @@ const foodAppID = process.env.EDAMAM_API_ID || "";
 
 export async function GET(req: NextRequest) {
   const requestId = makeRandomId();
+  const db = await getDb();
+  const collection = getCollection<TBaseFoodSchema>(db, COLLECTIONS.BaseFoods);
   if (!foodAppID || !foodAppKey || !foodURI) {
     return bad("App vars not found", { requestId }, 403);
   }
@@ -35,29 +40,58 @@ export async function GET(req: NextRequest) {
     if (!normalised || !normalised.items?.length) {
       return bad("Normalisation failed", { requestId }, 400);
     }
+
     const itemsForEdamam = rewriteForEdamam(normalised.items);
 
     const results = await Promise.all(
       itemsForEdamam.map(async (item: Item) => {
+        const edamamText = item.normalised;
+        console.log("edamamText::", edamamText);
+
         const params = new URLSearchParams({
           app_id: foodAppID,
           app_key: foodAppKey,
-          ingr: item.normalised, // let URLSearchParams handle encoding
+          ingr: edamamText, // let URLSearchParams handle encoding
           "nutrition-type": "logging",
           category: "generic-foods",
         });
+        // console.log(params);
 
         const res = await fetch(`${foodURI}?${params.toString()}`);
         if (!res.ok) {
           throw new Error(`Edamam error (${res.status})`);
         }
         const data = await res.json();
-        const match = await pickBestEdamamFood(data, item);
+        const match: TEdamamFoodMeasure = await pickBestEdamamFood(
+          data,
+          edamamText
+        );
+
+        const token = match.food.label.trim().toLowerCase();
+        // e.g. "potatoes, boiled, no salt"
+
+        // split into tokens
+        const tokens = token
+          .replace(/[,.;:()]/g, " ")
+          .split(/\s+/)
+          .filter(Boolean);
+
+        // e.g. ["potatoes","boiled","no","salt"]
+
+        const foods = await collection
+          .find({
+            keywords: { $all: tokens }, // all tokens must be in keywords[]
+          })
+          .limit(20)
+          .toArray();
+
         console.log("match::", match);
+        // console.log("tokens::", tokens);
+        // console.log("foods::", foods);
 
         return {
           item, // original normalised item
-          data, // Edamam parser response for this item
+          match, // Edamam parser response for this item
         };
       })
     );
@@ -69,8 +103,8 @@ export async function GET(req: NextRequest) {
   }
 }
 
-async function pickBestEdamamFood(data: any, item: { normalised: string }) {
-  const text = item.normalised.toLowerCase();
+export async function pickBestEdamamFood(data: any, item: string) {
+  item = item.toLowerCase();
   const hints = (data?.hints ?? []) as any[];
 
   if (!hints.length) return null;
@@ -79,18 +113,10 @@ async function pickBestEdamamFood(data: any, item: { normalised: string }) {
   const genericFoods = hints.filter((h) => h.food.categoryLabel === "food");
   const pool = genericFoods.length ? genericFoods : hints;
 
-  // If user said "brown" / "wholemeal" / "whole wheat", try to honour that
-  if (/brown|wholemeal|whole[- ]wheat/.test(text)) {
-    const brownish = pool.find((h) =>
-      /brown|wholemeal|whole[- ]wheat/i.test(h.food.label)
-    );
-    if (brownish) return brownish;
-  }
-
-  // If user said "white", try to honour that
-  if (/white/.test(text)) {
-    const white = pool.find((h) => /white/i.test(h.food.label));
-    if (white) return white;
+  const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
+  if (phraseMatch) return phraseMatch as any;
+  if (item === "roasted pumpkin") {
+    console.log("hints", hints);
   }
 
   // Otherwise, fall back to first generic food

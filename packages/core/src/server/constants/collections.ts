@@ -12,6 +12,7 @@ export const COLLECTIONS = {
   AuthLinks: "auth_links",
   AuthTokens: "auth_tokens",
 
+  BaseFoods: "base_foods",
   CarePlans: "care_plans",
   CareTeams: "care_teams",
 
