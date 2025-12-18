@@ -41,7 +41,7 @@ export async function normaliseInput(
     }
 
     const json = JSON.parse(plan);
-    console.log("json data", json);
+    // console.log("jason", json);
 
     if (!json?.data) {
       bad("No data returned", "no data", 404);
@@ -52,14 +52,13 @@ export async function normaliseInput(
     return bad(`Create plan failure, ${error}`, 400);
   }
 }
-// - Work at the level of individual ingredients or simple combined items e.g. "ham sandwich" should become something like "sliced ham" and "2 slices of white bread", "chicken curry with rice" should become something like "chicken curry" , "white rice" .
 
 const aiPrompt = `You are a nutrition parsing assistant.
 
 Your job is to take a free-text description of everything a person ate or drank, and normalise it into a list of ingredient items suitable for a nutrition database API.
 
 Rules:
-- Work at the level of individual ingredients or simple combined items (e.g. "ham sandwich" becomes "ham slices" as an item in items array and "white bread" as an item in items array, "chicken curry with rice" becomes "chicken curry" as an item in items array and "white rice" as an item in items array).
+- Work at the level of individual ingredients or simple combined items (e.g. "ham sandwich" becomes "ham slices" as an item in items array and "white bread slices" as an item in items array, "chicken curry with rice" becomes "chicken curry" as an item in items array and "white rice" as an item in items array).
 - Infer sensible quantities and units if missing (e.g. "a bowl of cereal" → 1 bowl cereal).
 - Use everyday measures when possible: slice, cup, tablespoon, teaspoon, piece, can, bottle, gram, milliliter, ounce.
 - Keep each ingredient's "normalized" text short but specific enough for a food database search.
@@ -86,7 +85,9 @@ export function rewriteForEdamam(items: Item[]): Item[] {
 
   for (const item of items) {
     const text = item.normalised.toLowerCase().trim();
-
+    const normalised = normaliseForEdamam(item.normalised);
+    // const text = normaliseForEdamam(t);
+    //     console.log("text rewrite", text);
     // 🔹 jerk chicken -> roast chicken thigh with skin
     if (text === "jerk chicken") {
       out.push({
@@ -136,8 +137,34 @@ export function rewriteForEdamam(items: Item[]): Item[] {
     }
 
     // default: keep as is
-    out.push(item);
+    out.push({ ...item, normalised });
+  }
+  // console.log("out2::::::", out);
+  return out;
+}
+
+function normaliseForEdamam(text: string): string {
+  const lower = text.toLowerCase();
+
+  const mentionsSeeds = /\b(seed|seeds|pepita|pepitas)\b/i.test(lower);
+
+  // Add more ingredients here as you discover issues
+  const fleshFirstList = ["pumpkin", "butternut squash"];
+
+  if (!mentionsSeeds) {
+    for (const item of fleshFirstList) {
+      const re = new RegExp(`\\b${item}\\b`, "i");
+      if (re.test(lower) && /\broasted\b/i.test(lower)) {
+        // strip roasted / baked / toasted etc. for Edamam
+        return lower
+          .replace(/\broasted\b/gi, "")
+          .replace(/\btoasted\b/gi, "")
+          .replace(/\bbaked\b/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+    }
   }
 
-  return out;
+  return text;
 }
