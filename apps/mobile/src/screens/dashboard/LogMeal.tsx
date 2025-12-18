@@ -24,7 +24,11 @@ export default function LogMeal() {
     const data = await res.json();
     console.log(data.items);
 
-    setSearchResults(data.items);
+    setSearchResults(
+      data.items.map((arr: any) =>
+        arr.matches.map((match: any) => match.food.label)
+      )
+    );
   }
   return (
     <>
@@ -41,10 +45,8 @@ export default function LogMeal() {
       </View>
       {searchResults && (
         <View>
-          {searchResults.map((m: any, index) => (
-            <Text key={index}>
-              {m.matches.map((match: any) => match.food.label)}
-            </Text>
+          {searchResults.map((label: any, index) => (
+            <Text key={index}>{label}</Text>
           ))}
         </View>
       )}
