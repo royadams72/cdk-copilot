@@ -6,15 +6,6 @@ export function applyPhraseRules(
 ): EdamamHint | null {
   // const lowerText = text.toLowerCase();
 
-  // // If the user did NOT mention seeds, prefer hints that also don't mention seeds.
-  // const userMentionedSeeds = /\bseed(s)?\b/i.test(lowerText);
-  // const nonSeedPool = userMentionedSeeds
-  //   ? pool
-  //   : pool.filter((h) => !/\bseed(s)?\b/i.test(h.food.label));
-
-  // // If filtering removed everything, fall back to original pool.
-  // const workingPool = nonSeedPool.length ? nonSeedPool : pool;
-
   const rules: { pattern: RegExp; labelPattern: RegExp }[] = [
     // wholemeal / wholegrain / brown bread etc.
     {

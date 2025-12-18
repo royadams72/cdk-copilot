@@ -41,7 +41,7 @@ export async function normaliseInput(
     }
 
     const json = JSON.parse(plan);
-    console.log("jason", json);
+    // console.log("jason", json);
 
     if (!json?.data) {
       bad("No data returned", "no data", 404);
@@ -52,7 +52,6 @@ export async function normaliseInput(
     return bad(`Create plan failure, ${error}`, 400);
   }
 }
-// - Work at the level of individual ingredients or simple combined items e.g. "ham sandwich" should become something like "sliced ham" and "2 slices of white bread", "chicken curry with rice" should become something like "chicken curry" , "white rice" .
 
 const aiPrompt = `You are a nutrition parsing assistant.
 
@@ -140,7 +139,7 @@ export function rewriteForEdamam(items: Item[]): Item[] {
     // default: keep as is
     out.push({ ...item, normalised });
   }
-  console.log("out2::::::", out);
+  // console.log("out2::::::", out);
   return out;
 }
 

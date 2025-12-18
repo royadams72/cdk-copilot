@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     const results = await Promise.all(
       itemsForEdamam.map(async (item: Item) => {
         const edamamText = item.normalised;
-        console.log("edamamText::", edamamText);
+        // console.log("edamamText::", edamamText);
 
         const params = new URLSearchParams({
           app_id: foodAppID,
@@ -62,36 +62,40 @@ export async function GET(req: NextRequest) {
           throw new Error(`Edamam error (${res.status})`);
         }
         const data = await res.json();
-        const match: TEdamamFoodMeasure = await pickBestEdamamFood(
+        const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
           data,
           edamamText
         );
+        // const token = match.food.label.trim().toLowerCase();
+        // // e.g. "potatoes, boiled, no salt"
 
-        const token = match.food.label.trim().toLowerCase();
-        // e.g. "potatoes, boiled, no salt"
+        // // split into tokens
+        // const tokens = token
+        //   .replace(/[,.;:()]/g, " ")
+        //   .split(/\s+/)
+        //   .filter(Boolean);
 
-        // split into tokens
-        const tokens = token
-          .replace(/[,.;:()]/g, " ")
-          .split(/\s+/)
-          .filter(Boolean);
+        // // e.g. ["potatoes","boiled","no","salt"]
 
-        // e.g. ["potatoes","boiled","no","salt"]
+        // const cofidFoods = await collection
+        //   .find({
+        //     keywords: { $all: tokens }, // all tokens must be in keywords[]
+        //   })
+        //   .limit(20)
+        //   .toArray();
 
-        const foods = await collection
-          .find({
-            keywords: { $all: tokens }, // all tokens must be in keywords[]
-          })
-          .limit(20)
-          .toArray();
-
-        console.log("match::", match);
+        console.log("matches::", matches);
         // console.log("tokens::", tokens);
-        // console.log("foods::", foods);
+        // if (edamamText === "roast chicken thigh with skin") {
+        // for (const food of cofidFoods) {
+        //   console.log(edamamText, food.nutrientsPer100g.energyKcal);
+        //   // }
+        // }
+        // console.log("cofidFoods::", cofidFoods);
 
         return {
           item, // original normalised item
-          match, // Edamam parser response for this item
+          matches, // Edamam parser response for this item
         };
       })
     );
@@ -103,7 +107,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function pickBestEdamamFood(data: any, item: string) {
+export async function pickBestEdamamFood(
+  data: any,
+  item: string
+): Promise<TEdamamFoodMeasure[] | null> {
   item = item.toLowerCase();
   const hints = (data?.hints ?? []) as any[];
 
@@ -113,12 +120,12 @@ export async function pickBestEdamamFood(data: any, item: string) {
   const genericFoods = hints.filter((h) => h.food.categoryLabel === "food");
   const pool = genericFoods.length ? genericFoods : hints;
 
-  const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
-  if (phraseMatch) return phraseMatch as any;
-  if (item === "roasted pumpkin") {
-    console.log("hints", hints);
-  }
+  // const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
+  // if (phraseMatch) return phraseMatch as any;
+  // console.log("phraseMatch::", phraseMatch);
+
+  // console.log(pool);
 
   // Otherwise, fall back to first generic food
-  return pool[0];
+  return pool;
 }
