@@ -20,9 +20,7 @@ dotenvExpand.expand(rootEnvLocal);
 const nextConfig = {
   transpilePackages: ["@ckd/core"],
 
-  experimental: {
-    serverComponentsExternalPackages: ["mongodb", "bson"],
-  },
+  serverExternalPackages: ["mongodb", "bson"],
 
   webpack: (config, { isServer }) => {
     if (isServer) {

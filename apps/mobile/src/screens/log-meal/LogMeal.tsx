@@ -1,34 +1,22 @@
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
 import { useState } from "react";
 import { Button, TextInput, View, Text } from "react-native";
 
-import { formatApiError } from "@/lib/formatApiError";
-import { TEdamamFoodMeasure } from "@ckd/core";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchMealData,
+  ItemSummary,
+  selectFirstLabelInfo,
+} from "@/store/slices/logMealSlice";
 
 export default function LogMeal() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<[]>([]);
-
+  const dispatch = useAppDispatch();
+  const items = useAppSelector(selectFirstLabelInfo);
   async function submit() {
-    const res = await authFetch(
-      `${API}/api/edamam?query=${encodeURIComponent(searchTerm)}`,
-      { method: "GET" }
-    );
+    console.log("fired");
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-
-      throw new Error(formatApiError(res.status, body as any));
-    }
-    const data = await res.json();
-    console.log(data.items);
-
-    setSearchResults(
-      data.items.map((arr: any) =>
-        arr.matches.map((match: any) => match.food.label)
-      )
-    );
+    dispatch(fetchMealData({ searchTerm }));
+    console.log("labels::", items);
   }
   return (
     <>
@@ -43,10 +31,13 @@ export default function LogMeal() {
         />
         <Button title="Continue" onPress={submit} />
       </View>
-      {searchResults && (
+      {items.length > 0 && (
         <View>
-          {searchResults.map((label: any, index) => (
-            <Text key={index}>{label}</Text>
+          {items.map((item: ItemSummary, index: number) => (
+            <Text key={index}>
+              {item.label} - {item.quantity}
+              {item.unit}
+            </Text>
           ))}
         </View>
       )}

@@ -13,18 +13,18 @@ import { useRouter } from "expo-router";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
-import { Card } from "../components/Card";
-import { NUTRITION_METRICS } from "../constants";
-import { formatDateShort, formatDecimal } from "../utils";
+import { Card } from "../dashboard/components/Card";
+import { NUTRITION_METRICS } from "../dashboard/constants";
+import { formatDateShort, formatDecimal } from "../dashboard/utils";
 import { styles } from "./styles";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  fetchDashboard,
   selectDashboardData,
   selectDashboardError,
   selectDashboardStatus,
-} from "@/store/selectors";
-import { fetchDashboard } from "@/store/slices/dashboardSlice";
-import type { FoodHighlight } from "../types";
+} from "@/store/slices/dashboardSlice";
+import type { FoodHighlight } from "../dashboard/types";
 
 const CHART_HEIGHT = 240;
 const CHART_PADDING = { top: 20, bottom: 40, left: 40, right: 20 } as const;
@@ -207,7 +207,7 @@ export default function NutritionDetails() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.logButton}
-            onPress={() => router.push("/(dashboard)/log-meal")}
+            onPress={() => router.push("/(log-meal)/log-meal")}
           >
             <ThemedText style={styles.logButtonText}>Log meal</ThemedText>
           </TouchableOpacity>

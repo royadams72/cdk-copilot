@@ -1,16 +1,18 @@
 export const runtime = "nodejs";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRandomId } from "@/apps/api/lib/http/request";
-import { bad } from "@/apps/api/lib/http/responses";
-import { ROLES, TBaseFoodSchema, TEdamamFoodMeasure } from "@ckd/core";
+import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  ROLES,
+  TBaseFoodSchema,
+  TEdamamFoodMeasure,
+  TLogMealItem,
+  TLogMealNormalised,
+  TLogMealResponseItem,
+} from "@ckd/core";
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  Item,
-  Normalised,
-  normaliseInput,
-  rewriteForEdamam,
-} from "./normaliseInput";
+import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { applyPhraseRules } from "./applyPhraseRules";
 
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const term = searchParams.get("query") ?? "";
 
-    const normalised = (await normaliseInput(term)) as Normalised;
+    const normalised = (await normaliseInput(term)) as TLogMealNormalised;
     if (!normalised || !normalised.items?.length) {
       return bad("Normalisation failed", { requestId }, 400);
     }
@@ -44,7 +46,7 @@ export async function GET(req: NextRequest) {
     const itemsForEdamam = rewriteForEdamam(normalised.items);
 
     const results = await Promise.all(
-      itemsForEdamam.map(async (item: Item) => {
+      itemsForEdamam.map(async (item: TLogMealItem) => {
         const edamamText = item.normalised;
         // console.log("edamamText::", edamamText);
 
@@ -84,23 +86,25 @@ export async function GET(req: NextRequest) {
         //   .limit(20)
         //   .toArray();
 
-        console.log("matches::", matches);
         // console.log("tokens::", tokens);
         // if (edamamText === "roast chicken thigh with skin") {
         // for (const food of cofidFoods) {
         //   console.log(edamamText, food.nutrientsPer100g.energyKcal);
         //   // }
         // }
-        // console.log("cofidFoods::", cofidFoods);
+        // console.log("matches::", matches);
 
         return {
           item, // original normalised item
           matches, // Edamam parser response for this item
-        };
+        } satisfies TLogMealResponseItem;
       })
     );
-
-    return NextResponse.json({ items: results, requestId });
+    // console.log("results::", results?.[0].matches?.[0] ?? []);
+    // console.log("results::", results?.[0].item);
+    console.log("results::", results);
+    return ok({ items: results, requestId });
+    // return NextResponse.json({ items: results, requestId });
   } catch (error: any) {
     const status = error?.status || 500;
     return bad(error.message || "Server error", { requestId }, status);

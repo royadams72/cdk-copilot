@@ -11,11 +11,12 @@ import { ThemedText } from "@/components/themed-text";
 import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  fetchDashboard,
   selectDashboardData,
   selectDashboardError,
   selectDashboardStatus,
-} from "@/store/selectors";
-import { fetchDashboard } from "@/store/slices/dashboardSlice";
+} from "@/store/slices/dashboardSlice";
+
 import { styles } from "./styles";
 import { Card } from "./components/Card";
 import { LabsCard } from "./components/LabsCard";
@@ -97,7 +98,7 @@ export default function Dashboard() {
               <StackedRadialsCard radials={data.nutrition.radials} />
               <TouchableOpacity
                 style={styles.detailLink}
-                onPress={() => router.push("/(dashboard)/nutrition")}
+                onPress={() => router.push("/(nutrition)/nutrition-details")}
               >
                 <ThemedText style={styles.detailLinkText}>
                   Open nutrition details

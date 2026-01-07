@@ -4,6 +4,7 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import type { ApiResponse, DashboardData } from "@/screens/dashboard/types";
+import { RootState } from "..";
 
 export type DashboardState = {
   data: DashboardData | null;
@@ -63,3 +64,8 @@ const dashboardSlice = createSlice({
 });
 
 export default dashboardSlice.reducer;
+
+export const selectDashboardData = (state: RootState) => state.dashboard.data;
+export const selectDashboardStatus = (state: RootState) =>
+  state.dashboard.status;
+export const selectDashboardError = (state: RootState) => state.dashboard.error;
