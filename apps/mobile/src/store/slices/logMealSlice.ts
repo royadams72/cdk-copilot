@@ -2,6 +2,7 @@ import {
   createAsyncThunk,
   createSelector,
   createSlice,
+  PayloadAction,
 } from "@reduxjs/toolkit";
 
 import { API } from "@/constants/api";
@@ -11,6 +12,7 @@ import { TLogMealEdamamResponse, TLogMealResponseItem } from "@ckd/core";
 import { RootState } from "..";
 
 export type ItemSummary = {
+  id: string;
   label: string;
   quantity: number;
   unit: string;
@@ -18,6 +20,7 @@ export type ItemSummary = {
 
 export type logMealState = {
   data: TLogMealEdamamResponse | null;
+  activeItem: number | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   lastLoadedAt: string | null;
@@ -25,6 +28,7 @@ export type logMealState = {
 
 const initialState: logMealState = {
   data: null,
+  activeItem: null,
   status: "idle",
   error: null,
   lastLoadedAt: null,
@@ -57,7 +61,11 @@ export const fetchMealData = createAsyncThunk<
 const logMealSlice = createSlice({
   name: "logMeal",
   initialState,
-  reducers: {},
+  reducers: (create) => ({
+    setActiveItem: create.reducer((state, action: PayloadAction<number>) => {
+      state.activeItem = action.payload;
+    }),
+  }),
   extraReducers: (builder) => {
     builder
       .addCase(fetchMealData.pending, (state) => {
@@ -81,6 +89,7 @@ const logMealSlice = createSlice({
 });
 
 export default logMealSlice.reducer;
+export const { setActiveItem } = logMealSlice.actions;
 
 export const selectMatchesData = createSelector(
   (state: RootState) => state.logMeal.data,
@@ -92,12 +101,15 @@ export const selectMatchesData = createSelector(
 
 type MatchLike = { food?: { label?: string } };
 
-export const selectMatchLabels = createSelector(selectMatchesData, (matches) =>
-  (matches as MatchLike[])
-    .map((m) => m?.food?.label)
-    .filter(
-      (label): label is string => typeof label === "string" && label.length > 0
-    )
+export const selectAllMatchLabels = createSelector(
+  selectMatchesData,
+  (matches) =>
+    (matches as MatchLike[])
+      .map((m) => m?.food?.label)
+      .filter(
+        (label): label is string =>
+          typeof label === "string" && label.length > 0
+      )
 );
 
 export const selectFirstLabelInfo = createSelector(
@@ -109,6 +121,7 @@ export const selectFirstLabelInfo = createSelector(
             const label = entry.matches?.[0]?.food?.label;
             if (!label) return null;
             return {
+              id: entry.tempId,
               label,
               quantity: entry.item.quantity,
               unit: entry.item.unit ?? "",

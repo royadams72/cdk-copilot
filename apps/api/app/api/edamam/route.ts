@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
 
     const results = await Promise.all(
       itemsForEdamam.map(async (item: TLogMealItem) => {
+        const tempId = makeRandomId();
         const edamamText = item.normalised;
         // console.log("edamamText::", edamamText);
 
@@ -95,6 +96,7 @@ export async function GET(req: NextRequest) {
         // console.log("matches::", matches);
 
         return {
+          tempId,
           item, // original normalised item
           matches, // Edamam parser response for this item
         } satisfies TLogMealResponseItem;

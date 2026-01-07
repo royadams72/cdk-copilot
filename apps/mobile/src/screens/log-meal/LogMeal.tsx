@@ -6,6 +6,7 @@ import {
   fetchMealData,
   ItemSummary,
   selectFirstLabelInfo,
+  setActiveItem,
 } from "@/store/slices/logMealSlice";
 
 export default function LogMeal() {
@@ -33,8 +34,8 @@ export default function LogMeal() {
       </View>
       {items.length > 0 && (
         <View>
-          {items.map((item: ItemSummary, index: number) => (
-            <Text key={index}>
+          {items.map((item: ItemSummary) => (
+            <Text key={item.id}>
               {item.label} - {item.quantity}
               {item.unit}
             </Text>
