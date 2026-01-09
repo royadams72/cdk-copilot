@@ -8,7 +8,11 @@ import {
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
-import { TLogMealEdamamResponse, TLogMealResponseItem } from "@ckd/core";
+import {
+  TEdamamFoodMeasure,
+  TLogMealEdamamResponse,
+  TLogMealResponseItem,
+} from "@ckd/core";
 import { RootState } from "..";
 
 export type ItemSummary = {
@@ -20,7 +24,9 @@ export type ItemSummary = {
 
 export type logMealState = {
   data: TLogMealEdamamResponse | null;
-  activeItem: number | null;
+  groupIds: string[] | null;
+  activeItemId: string | null;
+  activeItems: TEdamamFoodMeasure[] | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   lastLoadedAt: string | null;
@@ -28,7 +34,9 @@ export type logMealState = {
 
 const initialState: logMealState = {
   data: null,
-  activeItem: null,
+  groupIds: null,
+  activeItemId: null,
+  activeItems: null,
   status: "idle",
   error: null,
   lastLoadedAt: null,
@@ -41,13 +49,35 @@ export const fetchMealData = createAsyncThunk<
 >("logMeal/fetchMealData", async ({ searchTerm }, { rejectWithValue }) => {
   try {
     const res = await authFetch(
+      `${API}/api/edamam/food-search?query=${encodeURIComponent(searchTerm)}`,
+      { method: "GET" }
+    );
+    const body: unknown = await res.json().catch(() => null);
+    const ok = !!(body as any)?.ok;
+    const data = (body as any)?.data;
+
+    if (!res.ok || !ok) {
+      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    }
+    return data as TLogMealEdamamResponse;
+  } catch (err: any) {
+    return rejectWithValue(err?.message ?? "Failed to load your meal data");
+  }
+});
+
+export const fetchNutritionData = createAsyncThunk<
+  TLogMealEdamamResponse,
+  { searchTerm: string },
+  { rejectValue: string }
+>("logMeal/fetchNutritionData", async ({ searchTerm }, { rejectWithValue }) => {
+  try {
+    const res = await authFetch(
       `${API}/api/edamam?query=${encodeURIComponent(searchTerm)}`,
       { method: "GET" }
     );
     const body: unknown = await res.json().catch(() => null);
     const ok = !!(body as any)?.ok;
     const data = (body as any)?.data;
-    console.log(data);
 
     if (!res.ok || !ok) {
       throw new Error(formatApiError(res.status, (body as any) ?? null));
@@ -62,8 +92,14 @@ const logMealSlice = createSlice({
   name: "logMeal",
   initialState,
   reducers: (create) => ({
-    setActiveItem: create.reducer((state, action: PayloadAction<number>) => {
-      state.activeItem = action.payload;
+    setActiveItem: create.reducer((state, action: PayloadAction<string>) => {
+      const id = action.payload;
+      const active = state.data?.items.find((item) =>
+        item.matches?.find((matched) => matched.food.foodId === id)
+      );
+      console.log(active);
+
+      state.activeItemId = id;
     }),
   }),
   extraReducers: (builder) => {
@@ -91,6 +127,12 @@ const logMealSlice = createSlice({
 export default logMealSlice.reducer;
 export const { setActiveItem } = logMealSlice.actions;
 
+const stateData = (state: RootState) => state.logMeal.data;
+
+export const selectActiveItems = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.activeItems
+);
 export const selectMatchesData = createSelector(
   (state: RootState) => state.logMeal.data,
   (data) =>
@@ -101,21 +143,21 @@ export const selectMatchesData = createSelector(
 
 type MatchLike = { food?: { label?: string } };
 
-export const selectAllMatchLabels = createSelector(
-  selectMatchesData,
-  (matches) =>
-    (matches as MatchLike[])
-      .map((m) => m?.food?.label)
-      .filter(
-        (label): label is string =>
-          typeof label === "string" && label.length > 0
-      )
+export const selectAllMatched = createSelector(selectMatchesData, (matches) =>
+  (matches as MatchLike[])
+    .map((m) => m?.food?.label)
+    .filter(
+      (label): label is string => typeof label === "string" && label.length > 0
+    )
 );
 
 export const selectFirstLabelInfo = createSelector(
-  (state: RootState) => state.logMeal.data,
-  (data) =>
-    Array.isArray(data?.items)
+  stateData,
+  selectActiveItems,
+  (data) => {
+    console.log("state", selectActiveItems);
+
+    return Array.isArray(data?.items)
       ? data.items
           .map((entry: TLogMealResponseItem) => {
             const label = entry.matches?.[0]?.food?.label;
@@ -128,11 +170,6 @@ export const selectFirstLabelInfo = createSelector(
             } satisfies ItemSummary;
           })
           .filter((item): item is ItemSummary => item !== null)
-      : []
+      : [];
+  }
 );
-// export const selectFirstLabelInfo = createSelector(
-//   selectMatchesData,
-//   (matches) => (matches as MatchLike[]).map((m) => m?.food?.label)
-// );
-// export const selectMatchLabels = (state: RootState): string[] =>
-//   state.logMeal.data?.matches?.map((match: any) => match.food.label) ?? [];

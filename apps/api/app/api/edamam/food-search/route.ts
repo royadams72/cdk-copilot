@@ -102,9 +102,21 @@ export async function GET(req: NextRequest) {
         } satisfies TLogMealResponseItem;
       })
     );
-    // console.log("results::", results?.[0].matches?.[0] ?? []);
+    // console.log("results::", results?.[0]);
     // console.log("results::", results?.[0].item);
-    console.log("results::", results);
+
+    // console.dir(
+    //   results[0].matches?.[0].measures.map((obj) => obj?.qualified),
+    //   { depth: null }
+    // );
+    // console.dir(results[0].matches?.[0], { depth: null });
+    // console.dir(
+    //   results[0].matches?.[0].measures.map((obj) =>
+    //     obj.qualified?.map((q) => q.qualifiers)
+    //   ),
+    //   { depth: null }
+    // );
+
     return ok({ items: results, requestId });
     // return NextResponse.json({ items: results, requestId });
   } catch (error: any) {

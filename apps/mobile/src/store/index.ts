@@ -7,6 +7,7 @@ export const store = configureStore({
     dashboard: dashboardReducer,
     logMeal: logMealReducer,
   },
+  devTools: __DEV__,
 });
 
 export type RootState = ReturnType<typeof store.getState>;

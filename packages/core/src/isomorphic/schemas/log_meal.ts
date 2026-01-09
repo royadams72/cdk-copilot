@@ -28,4 +28,6 @@ export const LogMealEdamamResponseSchema = z.object({
 export type TLogMealItem = z.infer<typeof LogMealItemSchema>;
 export type TLogMealNormalised = z.infer<typeof LogMealNormalisedSchema>;
 export type TLogMealResponseItem = z.infer<typeof LogMealResponseItemSchema>;
-export type TLogMealEdamamResponse = z.infer<typeof LogMealEdamamResponseSchema>;
+export type TLogMealEdamamResponse = z.infer<
+  typeof LogMealEdamamResponseSchema
+>;
