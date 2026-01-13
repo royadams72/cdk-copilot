@@ -29,12 +29,20 @@ export default function LogMeal() {
   const items = useAppSelector(selectFirstLabelInfo);
   const itemsArr = useAppSelector(selectActiveItems);
   async function submit() {
+    console.log("submitted");
+
     dispatch(fetchMealData({ searchTerm }));
   }
 
-  function gotoItemDetails(id: string) {
+  function gotoItemDetails({
+    groupId,
+    foodId,
+  }: {
+    groupId: string;
+    foodId: string;
+  }) {
     console.log("itemsArr", itemsArr);
-    dispatch(setActiveItem(id));
+    dispatch(setActiveItem({ foodId, groupId }));
     router.push("/(log-meal)/food-details");
   }
   return (
@@ -50,13 +58,15 @@ export default function LogMeal() {
         />
         <Button title="Continue" onPress={submit} />
       </View>
-      {items.length > 0 && (
+      {items && (
         <ScrollView>
           {items.map((item: ItemSummary) => (
             <Pressable
-              key={item.id}
+              key={item.groupId}
               style={logMealStyles.logButton}
-              onPress={() => gotoItemDetails(item.id)}
+              onPress={() =>
+                gotoItemDetails({ groupId: item.groupId, foodId: item.foodId })
+              }
             >
               <Text style={logMealStyles.logButtonText}>
                 {item.label} - {item.quantity} {item.unit}

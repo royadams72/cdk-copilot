@@ -3,6 +3,7 @@ import {
   createSelector,
   createSlice,
   PayloadAction,
+  current,
 } from "@reduxjs/toolkit";
 
 import { API } from "@/constants/api";
@@ -16,17 +17,18 @@ import {
 import { RootState } from "..";
 
 export type ItemSummary = {
-  id: string;
+  groupId: string;
+  foodId: string;
   label: string;
   quantity: number;
   unit: string;
 };
+export type ActiveItems = { item: TEdamamFoodMeasure; groupId: string };
 
 export type logMealState = {
   data: TLogMealEdamamResponse | null;
-  groupIds: string[] | null;
-  activeItemId: string | null;
-  activeItems: TEdamamFoodMeasure[] | null;
+  activeItems: ActiveItems[] | null;
+  activeItem: { foodId: string; groupId: string } | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   lastLoadedAt: string | null;
@@ -34,9 +36,8 @@ export type logMealState = {
 
 const initialState: logMealState = {
   data: null,
-  groupIds: null,
-  activeItemId: null,
   activeItems: null,
+  activeItem: null,
   status: "idle",
   error: null,
   lastLoadedAt: null,
@@ -92,15 +93,44 @@ const logMealSlice = createSlice({
   name: "logMeal",
   initialState,
   reducers: (create) => ({
-    setActiveItem: create.reducer((state, action: PayloadAction<string>) => {
-      const id = action.payload;
-      const active = state.data?.items.find((item) =>
-        item.matches?.find((matched) => matched.food.foodId === id)
-      );
-      console.log(active);
+    setActiveItems: create.reducer(
+      (state, action: PayloadAction<{ foodId: string; groupId: string }>) => {
+        const { foodId, groupId } = action.payload;
 
-      state.activeItemId = id;
-    }),
+        const normalizedFoodId = String(foodId ?? "").trim();
+        const normalizedgroupId = String(foodId ?? "").trim();
+        // Quick sanity checks
+        const items = state.data?.items ?? [];
+        console.log(current(items));
+
+        // Find the entry that contains a match for this foodId (tolerant to slightly different shapes)
+        const matchedItem = items
+          .find((obj) => obj.tempId === normalizedgroupId)
+          ?.matches?.find(
+            (m: any) =>
+              String(m?.food?.foodId ?? m?.foodId ?? "").trim() ===
+              normalizedFoodId
+          );
+        console.log("group::", current(matchedItem));
+
+        if (!matchedItem) return;
+
+        const activeItemsArr = state.activeItems ?? [];
+        const idx = activeItemsArr.findIndex(
+          (x) => x.groupId === normalizedgroupId
+        );
+        if (idx >= 0) {
+          activeItemsArr[idx] = { item: matchedItem, groupId };
+          state.activeItems = activeItemsArr;
+        }
+      }
+    ),
+    setActiveItem: create.reducer(
+      (state, action: PayloadAction<{ foodId: string; groupId: string }>) => {
+        const { foodId, groupId } = action.payload;
+        state.activeItem = action.payload;
+      }
+    ),
   }),
   extraReducers: (builder) => {
     builder
@@ -125,30 +155,58 @@ const logMealSlice = createSlice({
 });
 
 export default logMealSlice.reducer;
-export const { setActiveItem } = logMealSlice.actions;
+export const { setActiveItems, setActiveItem } = logMealSlice.actions;
 
 const stateData = (state: RootState) => state.logMeal.data;
+const state = (state: RootState) => state.logMeal;
 
 export const selectActiveItems = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.activeItems
 );
-export const selectMatchesData = createSelector(
-  (state: RootState) => state.logMeal.data,
-  (data) =>
-    Array.isArray(data?.items)
-      ? data.items.flatMap((entry: TLogMealResponseItem) => entry.matches ?? [])
-      : []
+
+export const selectActiveItem = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.activeItem
 );
 
-type MatchLike = { food?: { label?: string } };
+export const selectActiveItemDetails = createSelector(
+  [state, selectActiveItem],
+  (state) => {
+    if (!state.activeItem) return;
+    const { foodId, groupId } = state.activeItem;
+    const entry = state.data?.items?.find((obj) => obj?.tempId === groupId);
+    const matches = entry?.matches ?? [];
+    const foodItem = matches.find((obj) => obj.food.foodId === foodId);
+    if (!entry || !foodItem) return;
 
-export const selectAllMatched = createSelector(selectMatchesData, (matches) =>
-  (matches as MatchLike[])
-    .map((m) => m?.food?.label)
-    .filter(
-      (label): label is string => typeof label === "string" && label.length > 0
-    )
+    return {
+      groupId,
+      foodId,
+      label: foodItem.food.label,
+      quantity: entry.item.quantity,
+      unit: entry.item.unit ?? "",
+    } satisfies ItemSummary;
+  }
+);
+
+export const selectActiveGroup = createSelector(
+  [state, selectActiveItem],
+  (state) => {
+    if (!state.activeItem) return [];
+    const { foodId, groupId } = state.activeItem;
+    console.log("full::", state.data?.items);
+
+    const entry = state.data?.items?.find((obj) => obj?.tempId === groupId);
+    const group = (entry?.matches ?? []).filter(
+      (obj) => obj.food.foodId !== foodId
+    );
+    return group.map((item) => ({
+      groupId,
+      foodId: item.food.foodId,
+      label: item.food.label,
+    }));
+  }
 );
 
 export const selectFirstLabelInfo = createSelector(
@@ -160,11 +218,14 @@ export const selectFirstLabelInfo = createSelector(
     return Array.isArray(data?.items)
       ? data.items
           .map((entry: TLogMealResponseItem) => {
-            const label = entry.matches?.[0]?.food?.label;
-            if (!label) return null;
+            // const label = entry.matches?.[0]?.food?.label;
+            const foodItem = entry.matches?.[0]?.food;
+            if (!foodItem) return null;
+
             return {
-              id: entry.tempId,
-              label,
+              groupId: entry.tempId,
+              foodId: foodItem?.foodId,
+              label: foodItem?.label,
               quantity: entry.item.quantity,
               unit: entry.item.unit ?? "",
             } satisfies ItemSummary;
