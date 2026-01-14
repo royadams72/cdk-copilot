@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Button,
   TextInput,
@@ -15,8 +15,9 @@ import {
   fetchMealData,
   ItemSummary,
   selectActiveItems,
-  selectFirstLabelInfo,
+  selectItemsSummary,
   setActiveItem,
+  // setActiveItem,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
@@ -26,14 +27,16 @@ export default function LogMeal() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const dispatch = useAppDispatch();
-  const items = useAppSelector(selectFirstLabelInfo);
+  const items = useAppSelector(selectItemsSummary);
   const itemsArr = useAppSelector(selectActiveItems);
   async function submit() {
     console.log("submitted");
 
     dispatch(fetchMealData({ searchTerm }));
   }
-
+  useEffect(() => {
+    console.log(items);
+  }, [items]);
   function gotoItemDetails({
     groupId,
     foodId,
@@ -60,16 +63,16 @@ export default function LogMeal() {
       </View>
       {items && (
         <ScrollView>
-          {items.map((item: ItemSummary) => (
+          {items.map((item: ItemSummary, index) => (
             <Pressable
-              key={item.groupId}
+              key={index}
               style={logMealStyles.logButton}
               onPress={() =>
                 gotoItemDetails({ groupId: item.groupId, foodId: item.foodId })
               }
             >
               <Text style={logMealStyles.logButtonText}>
-                {item.label} - {item.quantity} {item.unit}
+                {item.name} - {item.quantity} {item.unit}
               </Text>
             </Pressable>
           ))}

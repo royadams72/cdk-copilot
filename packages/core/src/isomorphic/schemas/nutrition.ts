@@ -18,6 +18,7 @@ const Nutrients = z.object({
 const FoodItem = z.object({
   name: z.string(),
   foodId: z.string().optional(), // your DB or external ID
+  groupId: z.string().optional(),
   brand: z.string().optional(),
   quantity: z.number().nonnegative().max(600),
   preparation: z.string().optional(), // "grilled", "boiled", etc.
@@ -43,3 +44,5 @@ export const NutritionEntry = z.object({
 });
 
 export type TNutritionEntry = z.infer<typeof NutritionEntry>;
+export type TFoodItem = z.infer<typeof FoodItem>;
+export type TNutrients = z.infer<typeof Nutrients>;

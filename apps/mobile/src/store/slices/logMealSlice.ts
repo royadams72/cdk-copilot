@@ -13,31 +13,37 @@ import {
   TEdamamFoodMeasure,
   TLogMealEdamamResponse,
   TLogMealResponseItem,
+  TFoodItem,
+  TLogMealItem,
 } from "@ckd/core";
 import { RootState } from "..";
 
 export type ItemSummary = {
   groupId: string;
   foodId: string;
-  label: string;
+  name: string;
   quantity: number;
   unit: string;
 };
-export type ActiveItems = { item: TEdamamFoodMeasure; groupId: string };
 
+export type FoodItemsObj = {
+  groupId: string;
+  original: TLogMealItem;
+  foodItems: TFoodItem[];
+};
 export type logMealState = {
-  data: TLogMealEdamamResponse | null;
-  activeItems: ActiveItems[] | null;
-  activeItem: { foodId: string; groupId: string } | null;
+  activeItems: TFoodItem[] | null;
+  activeItem: TFoodItem | null;
+  foodItems: FoodItemsObj[] | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   lastLoadedAt: string | null;
 };
 
 const initialState: logMealState = {
-  data: null,
   activeItems: null,
   activeItem: null,
+  foodItems: null,
   status: "idle",
   error: null,
   lastLoadedAt: null,
@@ -93,42 +99,13 @@ const logMealSlice = createSlice({
   name: "logMeal",
   initialState,
   reducers: (create) => ({
-    setActiveItems: create.reducer(
-      (state, action: PayloadAction<{ foodId: string; groupId: string }>) => {
-        const { foodId, groupId } = action.payload;
-
-        const normalizedFoodId = String(foodId ?? "").trim();
-        const normalizedgroupId = String(foodId ?? "").trim();
-        // Quick sanity checks
-        const items = state.data?.items ?? [];
-        console.log(current(items));
-
-        // Find the entry that contains a match for this foodId (tolerant to slightly different shapes)
-        const matchedItem = items
-          .find((obj) => obj.tempId === normalizedgroupId)
-          ?.matches?.find(
-            (m: any) =>
-              String(m?.food?.foodId ?? m?.foodId ?? "").trim() ===
-              normalizedFoodId
-          );
-        console.log("group::", current(matchedItem));
-
-        if (!matchedItem) return;
-
-        const activeItemsArr = state.activeItems ?? [];
-        const idx = activeItemsArr.findIndex(
-          (x) => x.groupId === normalizedgroupId
-        );
-        if (idx >= 0) {
-          activeItemsArr[idx] = { item: matchedItem, groupId };
-          state.activeItems = activeItemsArr;
-        }
-      }
-    ),
     setActiveItem: create.reducer(
       (state, action: PayloadAction<{ foodId: string; groupId: string }>) => {
         const { foodId, groupId } = action.payload;
-        state.activeItem = action.payload;
+        const item = state?.foodItems
+          ?.find((item) => item?.groupId === groupId)
+          ?.foodItems?.find((item) => item.foodId === foodId);
+        item ? (state.activeItem = item) : null;
       }
     ),
   }),
@@ -139,8 +116,12 @@ const logMealSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchMealData.fulfilled, (state, action) => {
+        if (!action.payload) return;
         state.status = "succeeded";
-        state.data = action.payload;
+        state.foodItems = mapFoodItems(action.payload);
+        // set activeItems on initialising payload
+        state.activeItems = setInitialActiveItems(state.foodItems);
+        console.log("active", state.activeItems);
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       })
@@ -155,9 +136,8 @@ const logMealSlice = createSlice({
 });
 
 export default logMealSlice.reducer;
-export const { setActiveItems, setActiveItem } = logMealSlice.actions;
+export const { setActiveItem } = logMealSlice.actions;
 
-const stateData = (state: RootState) => state.logMeal.data;
 const state = (state: RootState) => state.logMeal;
 
 export const selectActiveItems = createSelector(
@@ -169,68 +149,107 @@ export const selectActiveItem = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.activeItem
 );
-
-export const selectActiveItemDetails = createSelector(
-  [state, selectActiveItem],
-  (state) => {
-    if (!state.activeItem) return;
-    const { foodId, groupId } = state.activeItem;
-    const entry = state.data?.items?.find((obj) => obj?.tempId === groupId);
-    const matches = entry?.matches ?? [];
-    const foodItem = matches.find((obj) => obj.food.foodId === foodId);
-    if (!entry || !foodItem) return;
-
-    return {
-      groupId,
-      foodId,
-      label: foodItem.food.label,
-      quantity: entry.item.quantity,
-      unit: entry.item.unit ?? "",
-    } satisfies ItemSummary;
-  }
+export const selectFoodItems = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.foodItems
 );
 
-export const selectActiveGroup = createSelector(
-  [state, selectActiveItem],
-  (state) => {
-    if (!state.activeItem) return [];
-    const { foodId, groupId } = state.activeItem;
-    console.log("full::", state.data?.items);
+// export const selectActiveItemDetails = createSelector(
+//   [state, selectActiveItem],
+//   (state) => {
+//     if (!state.activeItem) return;
+//     const { foodId, groupId } = state.activeItem;
+//     const entry = state.data?.items?.find((obj) => obj?.tempId === groupId);
+//     const matches = entry?.matches ?? [];
+//     const foodItem = matches.find((obj) => obj.food.foodId === foodId);
+//     if (!entry || !foodItem) return;
 
-    const entry = state.data?.items?.find((obj) => obj?.tempId === groupId);
-    const group = (entry?.matches ?? []).filter(
-      (obj) => obj.food.foodId !== foodId
-    );
-    return group.map((item) => ({
-      groupId,
-      foodId: item.food.foodId,
-      label: item.food.label,
-    }));
-  }
-);
+//     return {
+//       groupId,
+//       foodId,
+//       label: foodItem.food.label,
+//       quantity: entry.item.quantity,
+//       unit: entry.item.unit ?? "",
+//     } satisfies ItemSummary;
+//   }
+// );
 
-export const selectFirstLabelInfo = createSelector(
-  stateData,
-  selectActiveItems,
-  (data) => {
-    console.log("state", selectActiveItems);
+export const selectItemsSummary = createSelector(
+  selectFoodItems,
+  (foodItemsArr: FoodItemsObj[] | null) => {
+    console.log("state");
 
-    return Array.isArray(data?.items)
-      ? data.items
-          .map((entry: TLogMealResponseItem) => {
+    return Array.isArray(foodItemsArr)
+      ? foodItemsArr
+          .map((entry: FoodItemsObj) => {
             // const label = entry.matches?.[0]?.food?.label;
-            const foodItem = entry.matches?.[0]?.food;
-            if (!foodItem) return null;
-
+            if (!entry) return null;
+            const item = entry.foodItems[0];
+            const { name, foodId, groupId, quantity } = item;
+            if (!foodId || !groupId) return null;
             return {
-              groupId: entry.tempId,
-              foodId: foodItem?.foodId,
-              label: foodItem?.label,
-              quantity: entry.item.quantity,
-              unit: entry.item.unit ?? "",
+              groupId,
+              foodId,
+              name,
+              quantity,
+              unit: entry.original.unit ?? "",
             } satisfies ItemSummary;
           })
           .filter((item): item is ItemSummary => item !== null)
       : [];
   }
 );
+
+export const selectAcitveGroupSummaries = createSelector(
+  selectActiveItem,
+  selectFoodItems,
+
+  (activeItem: TFoodItem | null, foodItemsArr: FoodItemsObj[] | null) => {
+    if (!activeItem) return null;
+    const { foodId, groupId } = activeItem;
+    const entry = foodItemsArr?.find((e) => e.groupId === groupId);
+    return entry?.foodItems
+      .filter((f) => f.foodId !== foodId)
+      .map((food) => {
+        const { name, foodId, groupId, quantity } = food;
+        if (!foodId || !groupId) return null;
+        return {
+          groupId,
+          foodId,
+          name,
+          quantity,
+          unit: entry.original.unit ?? "",
+        } satisfies ItemSummary;
+      })
+      .filter((item): item is ItemSummary => item !== null);
+  }
+);
+// Utils
+function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
+  if (!data) return null;
+  return (
+    data?.items?.map((item) => ({
+      groupId: item.tempId,
+      original: item.item,
+      foodItems:
+        item.matches?.map<TFoodItem>((m) => ({
+          foodId: m.food.foodId,
+          name: m.food.label,
+          quantity: item.item.quantity,
+          groupId: item.tempId,
+          source: "user",
+          nutrients: {
+            caloriesKcal: m.food.nutrients.ENERC_KCAL,
+            fatG: m.food.nutrients.FAT,
+          },
+        })) ?? [],
+    })) ?? null
+  );
+}
+
+function setInitialActiveItems(items: FoodItemsObj[] | null) {
+  if (!items?.length) return [];
+  return items
+    .map((item) => item.foodItems[0])
+    .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+}
