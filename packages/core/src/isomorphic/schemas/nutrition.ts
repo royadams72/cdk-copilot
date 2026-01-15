@@ -1,6 +1,7 @@
 // zod-schemas/nutrition.ts
 import { z } from "zod";
 import { PrincipalId } from "./common";
+import { EdamamMeasureSchema } from "./edamam";
 
 const MealType = z.enum(["breakfast", "lunch", "dinner", "snack", "drink"]);
 
@@ -24,6 +25,7 @@ const FoodItem = z.object({
   preparation: z.string().optional(), // "grilled", "boiled", etc.
   nutrients: Nutrients, // per this portion
   source: z.enum(["user", "barcode", "image_ai", "api"]).default("user"),
+  measures: z.array(EdamamMeasureSchema),
 });
 
 export const NutritionEntry = z.object({

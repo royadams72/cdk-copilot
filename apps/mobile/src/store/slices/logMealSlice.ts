@@ -15,6 +15,7 @@ import {
   TLogMealResponseItem,
   TFoodItem,
   TLogMealItem,
+  TEdamamMeasure,
 } from "@ckd/core";
 import { RootState } from "..";
 
@@ -28,7 +29,7 @@ export type ItemSummary = {
 
 export type FoodItemsObj = {
   groupId: string;
-  original: TLogMealItem;
+  groupInfo: TLogMealItem;
   foodItems: TFoodItem[];
 };
 export type logMealState = {
@@ -74,26 +75,33 @@ export const fetchMealData = createAsyncThunk<
 
 export const fetchNutritionData = createAsyncThunk<
   TLogMealEdamamResponse,
-  { searchTerm: string },
+  { foodItem: TFoodItem; groupInfo: TLogMealItem },
   { rejectValue: string }
->("logMeal/fetchNutritionData", async ({ searchTerm }, { rejectWithValue }) => {
-  try {
-    const res = await authFetch(
-      `${API}/api/edamam?query=${encodeURIComponent(searchTerm)}`,
-      { method: "GET" }
-    );
-    const body: unknown = await res.json().catch(() => null);
-    const ok = !!(body as any)?.ok;
-    const data = (body as any)?.data;
+>(
+  "logMeal/fetchNutritionData",
+  async ({ foodItem, groupInfo }, { rejectWithValue }) => {
+    const reqBody = setNutrientsBody({ foodItem, groupInfo });
+    console.log("body", reqBody);
 
-    if (!res.ok || !ok) {
-      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    try {
+      const res = await authFetch(`${API}/api/edamam/nutrients`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(reqBody),
+      });
+      const body: unknown = await res.json().catch(() => null);
+      const ok = !!(body as any)?.ok;
+      const data = (body as any)?.data;
+
+      if (!res.ok || !ok) {
+        throw new Error(formatApiError(res.status, (body as any) ?? null));
+      }
+      return data as TLogMealEdamamResponse;
+    } catch (err: any) {
+      return rejectWithValue(err?.message ?? "Failed to load your meal data");
     }
-    return data as TLogMealEdamamResponse;
-  } catch (err: any) {
-    return rejectWithValue(err?.message ?? "Failed to load your meal data");
   }
-});
+);
 
 const logMealSlice = createSlice({
   name: "logMeal",
@@ -121,11 +129,29 @@ const logMealSlice = createSlice({
         state.foodItems = mapFoodItems(action.payload);
         // set activeItems on initialising payload
         state.activeItems = setInitialActiveItems(state.foodItems);
-        console.log("active", state.activeItems);
+        console.log("active", action.payload.items[0]);
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       })
       .addCase(fetchMealData.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "We couldn't refresh your dashboard.";
+      })
+      .addCase(fetchNutritionData.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(fetchNutritionData.fulfilled, (state, action) => {
+        if (!action.payload) return;
+        state.status = "succeeded";
+        console.log("fetchNutritionData", action.payload);
+        state.error = null;
+        state.lastLoadedAt = new Date().toISOString();
+      })
+      .addCase(fetchNutritionData.rejected, (state, action) => {
         state.status = "failed";
         state.error =
           action.payload ??
@@ -140,9 +166,17 @@ export const { setActiveItem } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
 
+export const selectGroupInfoById = (groupId: string) => {
+  return createSelector(
+    selectFoodItems,
+    (foodItems) =>
+      foodItems?.find((group) => group.groupId === groupId)?.groupInfo ?? null
+  );
+};
+
 export const selectActiveItems = createSelector(
   (state: RootState) => state.logMeal,
-  (logMeal) => logMeal.activeItems
+  (logMeal) => logMeal.foodItems
 );
 
 export const selectActiveItem = createSelector(
@@ -153,26 +187,6 @@ export const selectFoodItems = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.foodItems
 );
-
-// export const selectActiveItemDetails = createSelector(
-//   [state, selectActiveItem],
-//   (state) => {
-//     if (!state.activeItem) return;
-//     const { foodId, groupId } = state.activeItem;
-//     const entry = state.data?.items?.find((obj) => obj?.tempId === groupId);
-//     const matches = entry?.matches ?? [];
-//     const foodItem = matches.find((obj) => obj.food.foodId === foodId);
-//     if (!entry || !foodItem) return;
-
-//     return {
-//       groupId,
-//       foodId,
-//       label: foodItem.food.label,
-//       quantity: entry.item.quantity,
-//       unit: entry.item.unit ?? "",
-//     } satisfies ItemSummary;
-//   }
-// );
 
 export const selectItemsSummary = createSelector(
   selectFoodItems,
@@ -192,7 +206,7 @@ export const selectItemsSummary = createSelector(
               foodId,
               name,
               quantity,
-              unit: entry.original.unit ?? "",
+              unit: entry.groupInfo.unit ?? "",
             } satisfies ItemSummary;
           })
           .filter((item): item is ItemSummary => item !== null)
@@ -218,19 +232,63 @@ export const selectAcitveGroupSummaries = createSelector(
           foodId,
           name,
           quantity,
-          unit: entry.original.unit ?? "",
+          unit: entry.groupInfo.unit ?? "",
         } satisfies ItemSummary;
       })
       .filter((item): item is ItemSummary => item !== null);
   }
 );
 // Utils
+function setNutrientsBody({
+  foodItem,
+  groupInfo,
+}: {
+  foodItem: TFoodItem;
+  groupInfo: TLogMealItem;
+}) {
+  // const {} = state.get
+  const quantity = groupInfo.quantity;
+  const foodId = foodItem.foodId;
+  const unit = groupInfo?.unit ?? "1";
+  const { measureURI, qualifiers } = getMeasureUri(foodItem.measures, unit);
+
+  return [
+    {
+      quantity,
+      measureURI,
+      qualifiers,
+      foodId,
+    },
+  ];
+}
+
+function getMeasureUri(
+  measures: TEdamamMeasure[],
+  unit: string
+): { measureURI: string; qualifiers?: [] } {
+  let obj: any;
+  measures.find((measure) => {
+    const isMatch =
+      measure.label.toLocaleLowerCase() === unit.toLocaleLowerCase();
+    const isHasQualified =
+      typeof measure.qualified === "object" &&
+      measure.qualified !== null &&
+      Object.keys(measure.qualified).length > 0;
+
+    if (isMatch) {
+      obj = isHasQualified
+        ? { measureURI: measure.uri, qualifiers: measure.qualified }
+        : { measureURI: measure.uri };
+    }
+  });
+  return obj;
+}
 function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   if (!data) return null;
   return (
     data?.items?.map((item) => ({
       groupId: item.tempId,
-      original: item.item,
+      groupInfo: item.item,
       foodItems:
         item.matches?.map<TFoodItem>((m) => ({
           foodId: m.food.foodId,
@@ -241,7 +299,13 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
           nutrients: {
             caloriesKcal: m.food.nutrients.ENERC_KCAL,
             fatG: m.food.nutrients.FAT,
+            carbsG: undefined,
+            fiberG: undefined,
+            phosphorusMg: undefined,
+            potassiumMg: undefined,
+            sodiumMg: undefined,
           },
+          measures: m.measures,
         })) ?? [],
     })) ?? null
   );
