@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       throw new Error(`Edamam error (${res.status})`);
     }
     const data = await res.json();
-    console.log("data:", data);
+    // console.log("data:", data);
 
     return ok(data);
   } catch (error) {

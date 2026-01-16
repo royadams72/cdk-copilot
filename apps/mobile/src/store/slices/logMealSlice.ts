@@ -16,6 +16,7 @@ import {
   TFoodItem,
   TLogMealItem,
   TEdamamMeasure,
+  TEdamamNutritionResponse,
 } from "@ckd/core";
 import { RootState } from "..";
 
@@ -74,14 +75,13 @@ export const fetchMealData = createAsyncThunk<
 });
 
 export const fetchNutritionData = createAsyncThunk<
-  TLogMealEdamamResponse,
+  TEdamamNutritionResponse,
   { foodItem: TFoodItem; groupInfo: TLogMealItem },
   { rejectValue: string }
 >(
   "logMeal/fetchNutritionData",
   async ({ foodItem, groupInfo }, { rejectWithValue }) => {
     const reqBody = setNutrientsBody({ foodItem, groupInfo });
-    console.log("body", reqBody);
 
     try {
       const res = await authFetch(`${API}/api/edamam/nutrients`, {
@@ -96,7 +96,7 @@ export const fetchNutritionData = createAsyncThunk<
       if (!res.ok || !ok) {
         throw new Error(formatApiError(res.status, (body as any) ?? null));
       }
-      return data as TLogMealEdamamResponse;
+      return data as TEdamamNutritionResponse;
     } catch (err: any) {
       return rejectWithValue(err?.message ?? "Failed to load your meal data");
     }
@@ -129,7 +129,6 @@ const logMealSlice = createSlice({
         state.foodItems = mapFoodItems(action.payload);
         // set activeItems on initialising payload
         state.activeItems = setInitialActiveItems(state.foodItems);
-        console.log("active", action.payload.items[0]);
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       })
@@ -140,6 +139,7 @@ const logMealSlice = createSlice({
           action.error.message ??
           "We couldn't refresh your dashboard.";
       })
+      // Fetch nutrition data
       .addCase(fetchNutritionData.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -147,7 +147,10 @@ const logMealSlice = createSlice({
       .addCase(fetchNutritionData.fulfilled, (state, action) => {
         if (!action.payload) return;
         state.status = "succeeded";
-        console.log("fetchNutritionData", action.payload);
+        if (state.activeItem) {
+          state.activeItem = extractNutrition(state.activeItem, action.payload);
+        }
+        console.log("activeItem.nutrients::", state.activeItem);
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       })
@@ -191,8 +194,6 @@ export const selectFoodItems = createSelector(
 export const selectItemsSummary = createSelector(
   selectFoodItems,
   (foodItemsArr: FoodItemsObj[] | null) => {
-    console.log("state");
-
     return Array.isArray(foodItemsArr)
       ? foodItemsArr
           .map((entry: FoodItemsObj) => {
@@ -316,4 +317,31 @@ function setInitialActiveItems(items: FoodItemsObj[] | null) {
   return items
     .map((item) => item.foodItems[0])
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+}
+function extractNutrition(
+  activeItem: TFoodItem | null,
+  data: TEdamamNutritionResponse
+) {
+  if (!activeItem) return null;
+  // Edamam returns nutrients keyed by nutrient codes (e.g. ENERC_KCAL, FAT, CHOCDF, NA, K, P)
+  // Use the codes rather than comparing against labels.
+  const n = data.totalNutrients;
+
+  return {
+    ...activeItem,
+    nutrients: {
+      ...activeItem.nutrients,
+
+      // macros
+      caloriesKcal: n.ENERC_KCAL?.quantity ?? activeItem.nutrients.caloriesKcal,
+      fatG: n.FAT?.quantity ?? activeItem.nutrients.fatG,
+      carbsG: n.CHOCDF?.quantity ?? activeItem.nutrients.carbsG,
+      fiberG: n.FIBTG?.quantity ?? activeItem.nutrients.fiberG,
+
+      // electrolytes / minerals
+      sodiumMg: n.NA?.quantity ?? activeItem.nutrients.sodiumMg,
+      potassiumMg: n.K?.quantity ?? activeItem.nutrients.potassiumMg,
+      phosphorusMg: n.P?.quantity ?? activeItem.nutrients.phosphorusMg,
+    },
+  };
 }

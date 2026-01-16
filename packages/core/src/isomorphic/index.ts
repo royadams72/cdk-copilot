@@ -9,6 +9,7 @@ export * from "./schemas/patients";
 export * from "./schemas/users_pii";
 export * from "./schemas/users_accounts";
 export * from "./schemas/users_clinical";
+export * from "./schemas/edamam_responses";
 export * from "./constants/onboardingSteps";
 export * from "./constants/scopes";
 export * from "../shared/common";
