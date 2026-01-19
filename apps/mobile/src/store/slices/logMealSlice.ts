@@ -59,7 +59,7 @@ export const fetchMealData = createAsyncThunk<
   try {
     const res = await authFetch(
       `${API}/api/edamam/food-search?query=${encodeURIComponent(searchTerm)}`,
-      { method: "GET" }
+      { method: "GET" },
     );
     const body: unknown = await res.json().catch(() => null);
     const ok = !!(body as any)?.ok;
@@ -100,7 +100,7 @@ export const fetchNutritionData = createAsyncThunk<
     } catch (err: any) {
       return rejectWithValue(err?.message ?? "Failed to load your meal data");
     }
-  }
+  },
 );
 
 const logMealSlice = createSlice({
@@ -110,11 +110,43 @@ const logMealSlice = createSlice({
     setActiveItem: create.reducer(
       (state, action: PayloadAction<{ foodId: string; groupId: string }>) => {
         const { foodId, groupId } = action.payload;
-        const item = state?.foodItems
-          ?.find((item) => item?.groupId === groupId)
-          ?.foodItems?.find((item) => item.foodId === foodId);
+        const item = findGroupById(groupId, state)?.foodItems?.find(
+          (item) => item.foodId === foodId,
+        );
         item ? (state.activeItem = item) : null;
-      }
+      },
+    ),
+    setQuantity: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          quantity: number;
+          groupId: string;
+          foodId: string;
+        }>,
+      ) => {
+        const { quantity, groupId, foodId } = action.payload;
+        const group = findGroupById(groupId, state);
+        if (!group) return;
+
+        const item = group.foodItems.find((f) => f.foodId === foodId);
+        if (!item) return;
+        if (item.quantity !== quantity) {
+          const oldQty = item.quantity;
+          const ratio = quantity / oldQty;
+
+          item.nutrients = Object.fromEntries(
+            Object.entries(item.nutrients).map(([k, v]) => [
+              k,
+              v == null ? v : v * ratio,
+            ]),
+          ) as typeof item.nutrients;
+
+          item.quantity = quantity;
+          state.activeItem = item;
+          group.groupInfo.quantity = quantity;
+        }
+      },
     ),
   }),
   extraReducers: (builder) => {
@@ -165,7 +197,7 @@ const logMealSlice = createSlice({
 });
 
 export default logMealSlice.reducer;
-export const { setActiveItem } = logMealSlice.actions;
+export const { setQuantity, setActiveItem } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
 
@@ -173,22 +205,22 @@ export const selectGroupInfoById = (groupId: string) => {
   return createSelector(
     selectFoodItems,
     (foodItems) =>
-      foodItems?.find((group) => group.groupId === groupId)?.groupInfo ?? null
+      foodItems?.find((group) => group.groupId === groupId)?.groupInfo ?? null,
   );
 };
 
 export const selectActiveItems = createSelector(
   (state: RootState) => state.logMeal,
-  (logMeal) => logMeal.foodItems
+  (logMeal) => logMeal.foodItems,
 );
 
 export const selectActiveItem = createSelector(
   (state: RootState) => state.logMeal,
-  (logMeal) => logMeal.activeItem
+  (logMeal) => logMeal.activeItem,
 );
 export const selectFoodItems = createSelector(
   (state: RootState) => state.logMeal,
-  (logMeal) => logMeal.foodItems
+  (logMeal) => logMeal.foodItems,
 );
 
 export const selectItemsSummary = createSelector(
@@ -212,7 +244,7 @@ export const selectItemsSummary = createSelector(
           })
           .filter((item): item is ItemSummary => item !== null)
       : [];
-  }
+  },
 );
 
 export const selectAcitveGroupSummaries = createSelector(
@@ -237,9 +269,15 @@ export const selectAcitveGroupSummaries = createSelector(
         } satisfies ItemSummary;
       })
       .filter((item): item is ItemSummary => item !== null);
-  }
+  },
 );
 // Utils
+
+function findGroupById(groupId: string, state: any): FoodItemsObj {
+  return state?.foodItems?.find(
+    (item: FoodItemsObj) => item?.groupId === groupId,
+  );
+}
 function setNutrientsBody({
   foodItem,
   groupInfo,
@@ -265,7 +303,7 @@ function setNutrientsBody({
 
 function getMeasureUri(
   measures: TEdamamMeasure[],
-  unit: string
+  unit: string,
 ): { measureURI: string; qualifiers?: [] } {
   let obj: any;
   measures.find((measure) => {
@@ -320,7 +358,7 @@ function setInitialActiveItems(items: FoodItemsObj[] | null) {
 }
 function extractNutrition(
   activeItem: TFoodItem | null,
-  data: TEdamamNutritionResponse
+  data: TEdamamNutritionResponse,
 ) {
   if (!activeItem) return null;
   // Edamam returns nutrients keyed by nutrient codes (e.g. ENERC_KCAL, FAT, CHOCDF, NA, K, P)

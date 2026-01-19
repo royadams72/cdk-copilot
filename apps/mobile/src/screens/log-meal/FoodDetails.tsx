@@ -1,16 +1,19 @@
+import React, { useEffect } from "react";
+import { View, Text, Pressable, ScrollView, TextInput } from "react-native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchNutritionData,
   selectAcitveGroupSummaries,
   selectActiveItem,
   selectGroupInfoById,
+  setActiveItem,
+  setQuantity,
 } from "@/store/slices/logMealSlice";
-import { Button } from "@react-navigation/elements";
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+
+import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
-import { isAnyFieldEmpty } from "@/lib/emptyFields";
+import { typeStyles } from "../styles";
 type Props = {};
 
 export default function FoodDetails({}: Props) {
@@ -33,16 +36,92 @@ export default function FoodDetails({}: Props) {
       // console.log("groupInfo::", groupInfo);
     }
   }, [selectedFood, groupInfo, dispatch]);
+
+  useEffect(() => {}, []);
+  const handleSetQuantity = ({
+    quantity,
+    groupId,
+    foodId,
+  }: {
+    quantity: string;
+    groupId: string;
+    foodId: string;
+  }) => {
+    const nextQuantity = Number.parseFloat(quantity);
+    if (Number.isNaN(nextQuantity)) return;
+    dispatch(
+      setQuantity({
+        quantity: nextQuantity,
+        groupId,
+        foodId,
+      }),
+    );
+  };
+
+  const formatNutrientLabel = (key: string) =>
+    key
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/^./, (char) => char.toUpperCase());
+
   return (
     <View style={styles.container}>
-      <View>
-        <Text>{selectedFood && selectedFood.name}</Text>
-      </View>
+      {selectedFood && (
+        <View>
+          <Text style={typeStyles.title}>{selectedFood.name}</Text>
+          <TextInput
+            placeholder="Enter amount"
+            keyboardType="numeric"
+            value={
+              groupInfo?.quantity != null ? String(groupInfo.quantity) : ""
+            }
+            onChangeText={(text) => {
+              const quantity = text.replace(/[^0-9.]/g, "");
+              if (selectedFood?.groupId && quantity && selectedFood.foodId) {
+                const nextQuantity = Number.parseFloat(quantity);
+                if (Number.isNaN(nextQuantity)) return;
+                handleSetQuantity({
+                  quantity,
+                  groupId: selectedFood.groupId,
+                  foodId: selectedFood.foodId,
+                });
+              }
+            }}
+            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          />
+
+          <View>
+            {Object.entries(selectedFood.nutrients ?? {})
+              .filter(([, value]) => value !== null && value !== undefined)
+              .map(([key, value]) => (
+                <View key={key}>
+                  <Text style={typeStyles.header}>
+                    {formatNutrientLabel(key)}
+                  </Text>
+                  <Text style={typeStyles.copy}>
+                    {parseFloat(String(value)).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+          </View>
+        </View>
+      )}
       <ScrollView>
         {foods &&
           foods.map((food) => (
             <Pressable style={logMealStyles.logButton} key={food.foodId}>
-              <Text style={logMealStyles.logButtonText}>{food.name}</Text>
+              <Text
+                onPress={() =>
+                  dispatch(
+                    setActiveItem({
+                      foodId: food.foodId,
+                      groupId: food.groupId,
+                    }),
+                  )
+                }
+                style={logMealStyles.logButtonText}
+              >
+                {food.name}
+              </Text>
             </Pressable>
           ))}
       </ScrollView>
