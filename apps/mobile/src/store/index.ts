@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
-
+import { persistReducer } from "redux-persist";
+import { secureStorage } from "../lib/secureStorage";
 import dashboardReducer from "./slices/dashboardSlice";
 import logMealReducer from "./slices/logMealSlice";
 export const store = configureStore({
