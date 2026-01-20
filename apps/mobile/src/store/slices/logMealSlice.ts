@@ -2,8 +2,8 @@ import {
   createAsyncThunk,
   createSelector,
   createSlice,
-  PayloadAction,
   current,
+  PayloadAction,
 } from "@reduxjs/toolkit";
 
 import { API } from "@/constants/api";
@@ -17,6 +17,8 @@ import {
   TLogMealItem,
   TEdamamMeasure,
   TEdamamNutritionResponse,
+  TNutrients,
+  TMealType,
 } from "@ckd/core";
 import { RootState } from "..";
 
@@ -28,27 +30,49 @@ export type ItemSummary = {
   unit: string;
 };
 
+export type Meal = Partial<Omit<TFoodItem, "measures" | "groupId">>;
+
+export const mealTypes: { label: string; value: TMealType }[] = [
+  { label: "Breakfast", value: "breakfast" },
+  { label: "Lunch", value: "lunch" },
+  { label: "Dinner", value: "dinner" },
+  { label: "Snack", value: "snack" },
+  { label: "Drink", value: "drink" },
+];
 export type FoodItemsObj = {
   groupId: string;
   groupInfo: TLogMealItem;
   foodItems: TFoodItem[];
 };
+
 export type logMealState = {
   activeItems: TFoodItem[] | null;
   activeItem: TFoodItem | null;
+  activeMealType: TMealType | null;
   foodItems: FoodItemsObj[] | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   lastLoadedAt: string | null;
+  meal: Record<TMealType, Meal[]>;
 };
+
+const createEmptyMeals = (): Record<TMealType, Meal[]> => ({
+  breakfast: [],
+  lunch: [],
+  dinner: [],
+  snack: [],
+  drink: [],
+});
 
 const initialState: logMealState = {
   activeItems: null,
   activeItem: null,
+  activeMealType: null,
   foodItems: null,
   status: "idle",
   error: null,
   lastLoadedAt: null,
+  meal: createEmptyMeals(),
 };
 
 export const fetchMealData = createAsyncThunk<
@@ -58,7 +82,7 @@ export const fetchMealData = createAsyncThunk<
 >("logMeal/fetchMealData", async ({ searchTerm }, { rejectWithValue }) => {
   try {
     const res = await authFetch(
-      `${API}/api/edamam/food-search?query=${encodeURIComponent(searchTerm)}`,
+      `${API}/api/food/search?query=${encodeURIComponent(searchTerm)}`,
       { method: "GET" },
     );
     const body: unknown = await res.json().catch(() => null);
@@ -84,7 +108,7 @@ export const fetchNutritionData = createAsyncThunk<
     const reqBody = setNutrientsBody({ foodItem, groupInfo });
 
     try {
-      const res = await authFetch(`${API}/api/edamam/nutrients`, {
+      const res = await authFetch(`${API}/api/food/nutrients`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(reqBody),
@@ -148,6 +172,25 @@ const logMealSlice = createSlice({
         }
       },
     ),
+    setMealType: create.reducer(
+      (state, action: PayloadAction<{ mealType: TMealType }>) => {
+        const { mealType } = action.payload;
+        console.log("slice mealType", mealType);
+        if (state.activeMealType !== mealType) {
+          state.activeMealType = mealType;
+        }
+        console.log("state.activeMealType::", state.activeMealType);
+      },
+    ),
+    setMeal: create.reducer((state, action: PayloadAction<{ food: Meal }>) => {
+      console.log("state.activeMealType", state.activeMealType);
+
+      if (!state.activeMealType) return;
+      state.meal[state.activeMealType].push({
+        ...action.payload.food,
+      });
+      console.log("state.meal::", current(state.meal));
+    }),
   }),
   extraReducers: (builder) => {
     builder
@@ -159,7 +202,6 @@ const logMealSlice = createSlice({
         if (!action.payload) return;
         state.status = "succeeded";
         state.foodItems = mapFoodItems(action.payload);
-        // set activeItems on initialising payload
         state.activeItems = setInitialActiveItems(state.foodItems);
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
@@ -182,7 +224,6 @@ const logMealSlice = createSlice({
         if (state.activeItem) {
           state.activeItem = extractNutrition(state.activeItem, action.payload);
         }
-        console.log("activeItem.nutrients::", state.activeItem);
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       })
@@ -197,7 +238,8 @@ const logMealSlice = createSlice({
 });
 
 export default logMealSlice.reducer;
-export const { setQuantity, setActiveItem } = logMealSlice.actions;
+export const { setQuantity, setActiveItem, setMealType, setMeal } =
+  logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
 
@@ -345,6 +387,7 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
             sodiumMg: undefined,
           },
           measures: m.measures,
+          unit: item.item.unit ?? "",
         })) ?? [],
     })) ?? null
   );

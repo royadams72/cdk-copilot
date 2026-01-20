@@ -26,13 +26,13 @@ const FoodItem = z.object({
   nutrients: Nutrients, // per this portion
   source: z.enum(["user", "barcode", "image_ai", "api"]).default("user"),
   measures: z.array(EdamamMeasureSchema),
+  unit: z.string().optional(),
 });
 
 export const NutritionEntry = z.object({
   patientId: PrincipalId,
   eatenAt: z.coerce.date(), // when the meal was consumed
   recordedAt: z.coerce.date().default(() => new Date()),
-  mealType: MealType,
   items: z.array(FoodItem).min(1),
   totals: Nutrients, // sum of items (precomputed)
   tags: z.array(z.string()).default([]), // e.g., ["high-protein"]
@@ -48,3 +48,4 @@ export const NutritionEntry = z.object({
 export type TNutritionEntry = z.infer<typeof NutritionEntry>;
 export type TFoodItem = z.infer<typeof FoodItem>;
 export type TNutrients = z.infer<typeof Nutrients>;
+export type TMealType = z.infer<typeof MealType>;

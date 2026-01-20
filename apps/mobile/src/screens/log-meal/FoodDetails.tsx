@@ -1,5 +1,13 @@
-import React, { useEffect } from "react";
-import { View, Text, Pressable, ScrollView, TextInput } from "react-native";
+import { useEffect } from "react";
+import { useRouter } from "expo-router";
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+} from "react-native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchNutritionData,
@@ -7,6 +15,7 @@ import {
   selectActiveItem,
   selectGroupInfoById,
   setActiveItem,
+  setMeal,
   setQuantity,
 } from "@/store/slices/logMealSlice";
 
@@ -14,9 +23,11 @@ import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
-type Props = {};
+import { ThemedText } from "@/components/themed-text";
+// type Props = {};
 
-export default function FoodDetails({}: Props) {
+export default function FoodDetails() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const selectedFood = useAppSelector(selectActiveItem);
   const foods = useAppSelector(selectAcitveGroupSummaries);
@@ -103,6 +114,19 @@ export default function FoodDetails({}: Props) {
                 </View>
               ))}
           </View>
+          <TouchableOpacity
+            style={[styles.modalButton, styles.modalButtonPrimary]}
+            onPress={() => {
+              const { measures, groupId, ...restOfFood } = selectedFood;
+
+              dispatch(setMeal({ food: restOfFood }));
+              router.push("/(log-meal)/log-meal");
+            }}
+          >
+            <ThemedText style={styles.modalButtonTextPrimary}>
+              Add food
+            </ThemedText>
+          </TouchableOpacity>
         </View>
       )}
       <ScrollView>

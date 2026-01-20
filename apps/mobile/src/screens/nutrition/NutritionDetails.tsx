@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Modal,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -11,6 +12,7 @@ import type { ScrollView as ScrollViewType } from "react-native";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
+import type { TMealType } from "@ckd/core";
 
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
@@ -24,6 +26,8 @@ import {
   selectDashboardError,
   selectDashboardStatus,
 } from "@/store/slices/dashboardSlice";
+
+import { mealTypes, setMealType } from "@/store/slices/logMealSlice";
 import type { FoodHighlight } from "../dashboard/types";
 
 const CHART_HEIGHT = 240;
@@ -38,15 +42,18 @@ export default function NutritionDetails() {
   const data = useAppSelector(selectDashboardData);
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
+  console.log("mealTypes:", mealTypes);
+
   const [selectedMetricId, setSelectedMetricId] = useState(
-    NUTRITION_METRICS[0]?.id ?? "protein"
+    NUTRITION_METRICS[0]?.id ?? "protein",
   );
   const refreshing = status === "loading" && !!data;
   const loading = status === "loading" && !data;
   const chartScrollRef = useRef<ScrollViewType | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
-    null
+    null,
   );
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const metricConfig =
     NUTRITION_METRICS.find((metric) => metric.id === selectedMetricId) ??
     NUTRITION_METRICS[0];
@@ -63,7 +70,7 @@ export default function NutritionDetails() {
   const chartTarget = useMemo(() => {
     if (!data?.nutrition.radials) return null;
     const radial = data.nutrition.radials.find(
-      (item) => item.id === metricConfig.id
+      (item) => item.id === metricConfig.id,
     );
     return radial?.target ?? null;
   }, [data, metricConfig.id]);
@@ -104,7 +111,7 @@ export default function NutritionDetails() {
         : CHART_VIEWPORT_WIDTH / 2;
     const innerWidth = Math.max(
       CHART_VIEWPORT_WIDTH - (CHART_PADDING.left + CHART_PADDING.right),
-      effectiveWidth
+      effectiveWidth,
     );
     return innerWidth + CHART_PADDING.left + CHART_PADDING.right;
   }, [chartSeries.length]);
@@ -168,7 +175,7 @@ export default function NutritionDetails() {
   const highlightFallbackMessage = buildHighlightFallbackMessage(
     metricConfig.label,
     highlightDate,
-    hasHighlightBucket
+    hasHighlightBucket,
   );
 
   const handleRefresh = useCallback(() => {
@@ -189,284 +196,333 @@ export default function NutritionDetails() {
   const canRender = Boolean(data?.nutrition.dailySeries?.length);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      <View style={styles.header}>
-        <View style={styles.navRow}>
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={styles.navButton}
-          >
-            <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.logButton}
-            onPress={() => router.push("/(log-meal)/log-meal")}
-          >
-            <ThemedText style={styles.logButtonText}>Log meal</ThemedText>
-          </TouchableOpacity>
-        </View>
-        <ThemedText type="title">Nutrition</ThemedText>
-        <ThemedText style={styles.helperText}>
-          Track how your meals contribute to renal targets.
-        </ThemedText>
-      </View>
-
-      {error && status === "failed" && (
-        <Card>
-          <ThemedText type="defaultSemiBold">
-            We couldn't refresh your nutrition data
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        <View style={styles.header}>
+          <View style={styles.navRow}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => router.back()}
+              style={styles.navButton}
+            >
+              <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.logButton}
+              onPress={() => setIsLogModalOpen(true)}
+            >
+              <ThemedText style={styles.logButtonText}>Log meal</ThemedText>
+            </TouchableOpacity>
+          </View>
+          <ThemedText type="title">Nutrition</ThemedText>
+          <ThemedText style={styles.helperText}>
+            Track how your meals contribute to renal targets.
           </ThemedText>
-          <ThemedText style={styles.helperText}>{error}</ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
-            <ThemedText style={styles.retryText}>Retry</ThemedText>
-          </TouchableOpacity>
-        </Card>
-      )}
+        </View>
 
-      {canRender ? (
-        <>
+        {error && status === "failed" && (
           <Card>
-            <View style={styles.cardHeader}>
-              <ThemedText type="defaultSemiBold">Weekly intake</ThemedText>
-              <ThemedText style={styles.helperText}>
-                Last {data?.nutrition.range.days ?? 7} days
-              </ThemedText>
-            </View>
-            <View style={styles.chartLegend}>
-              <ThemedText style={styles.legendMetric}>
-                {metricConfig.label}
-              </ThemedText>
-              <ThemedText style={styles.legendValue}>
-                {formatChartValue(
-                  data?.nutrition.totals?.[metricConfig.key],
-                  metricConfig.unit
-                )}
-              </ThemedText>
-            </View>
-            <View style={styles.chartWrap}>
-              <ScrollView
-                horizontal
-                ref={chartScrollRef}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ width: chartContentWidth }}
-              >
-                <View
-                  style={[
-                    styles.chartInner,
-                    { width: chartContentWidth, height: CHART_HEIGHT },
-                  ]}
-                >
-                  <Svg width={chartContentWidth} height={CHART_HEIGHT}>
-                    <Line
-                      x1={CHART_PADDING.left}
-                      y1={CHART_HEIGHT - CHART_PADDING.bottom}
-                      x2={chartContentWidth - CHART_PADDING.right}
-                      y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                      stroke={theme === "light" ? "#CBD5F5" : "#475569"}
-                      strokeWidth={1}
-                    />
-                    <Line
-                      x1={CHART_PADDING.left}
-                      y1={CHART_PADDING.top}
-                      x2={CHART_PADDING.left}
-                      y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                      stroke={theme === "light" ? "#CBD5F5" : "#475569"}
-                      strokeWidth={1}
-                    />
-                    {[0.25, 0.5, 0.75].map((ratio) => {
-                      const y =
-                        CHART_PADDING.top +
-                        (CHART_HEIGHT -
-                          CHART_PADDING.top -
-                          CHART_PADDING.bottom) *
-                          ratio;
-                      return (
-                        <Line
-                          key={`grid-${ratio}`}
-                          x1={CHART_PADDING.left}
-                          x2={chartContentWidth - CHART_PADDING.right}
-                          y1={y}
-                          y2={y}
-                          stroke={
-                            theme === "light"
-                              ? "rgba(148,163,184,0.35)"
-                              : "rgba(148,163,184,0.2)"
-                          }
-                          strokeWidth={1}
-                        />
-                      );
-                    })}
-                    {targetLineOffset !== null ? (
-                      <Line
-                        x1={CHART_PADDING.left}
-                        x2={chartContentWidth - CHART_PADDING.right}
-                        y1={targetLineOffset}
-                        y2={targetLineOffset}
-                        stroke="rgba(99,102,241,0.85)"
-                        strokeWidth={2}
-                        strokeDasharray="6,4"
-                      />
-                    ) : null}
-                    {chartPoints.length > 1 ? (
-                      <Polyline
-                        points={chartPoints
-                          .map((point) => `${point.chartX},${point.chartY}`)
-                          .join(" ")}
-                        fill="none"
-                        stroke={metricConfig.color}
-                        strokeWidth={3}
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                      />
-                    ) : null}
-                    {chartPoints.map((point) => (
-                      <Circle
-                        key={`dot-${point.chartX}`}
-                        cx={point.chartX}
-                        cy={point.chartY}
-                        r={4}
-                        fill={
-                          point.index === selectedPointIndex
-                            ? metricConfig.color
-                            : "#fff"
-                        }
-                        stroke={
-                          point.index === selectedPointIndex
-                            ? "#fff"
-                            : metricConfig.color
-                        }
-                        strokeWidth={2}
-                        onPress={() => setSelectedPointIndex(point.index)}
-                      />
-                    ))}
-                    {chartPoints.map((point) => (
-                      <SvgText
-                        key={`label-${point.chartX}`}
-                        x={point.chartX}
-                        y={CHART_HEIGHT - CHART_PADDING.bottom + 16}
-                        fontSize={12}
-                        fill={theme === "light" ? "#1F2937" : "#E2E8F0"}
-                        alignmentBaseline="hanging"
-                        textAnchor="middle"
-                      >
-                        {point.label}
-                      </SvgText>
-                    ))}
-                  </Svg>
-                </View>
-              </ScrollView>
-            </View>
-            {chartTarget !== null ? (
-              <View style={styles.targetBadge}>
-                <ThemedText style={styles.targetBadgeText}>
-                  Target {formatChartValue(chartTarget, metricConfig.unit)}
-                </ThemedText>
-              </View>
-            ) : null}
-            {selectedPoint && (
-              <ThemedText style={styles.helperText}>
-                Showing {formatFullDate(selectedPoint.date)}
-              </ThemedText>
-            )}
+            <ThemedText type="defaultSemiBold">
+              We couldn't refresh your nutrition data
+            </ThemedText>
+            <ThemedText style={styles.helperText}>{error}</ThemedText>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={handleRefresh}
+            >
+              <ThemedText style={styles.retryText}>Retry</ThemedText>
+            </TouchableOpacity>
           </Card>
+        )}
 
-          {selectedPoint ? (
+        {canRender ? (
+          <>
             <Card>
               <View style={styles.cardHeader}>
-                <ThemedText type="defaultSemiBold">Daily totals</ThemedText>
+                <ThemedText type="defaultSemiBold">Weekly intake</ThemedText>
                 <ThemedText style={styles.helperText}>
-                  {formatFullDate(selectedPoint.date)}
+                  Last {data?.nutrition.range.days ?? 7} days
                 </ThemedText>
               </View>
-              <View style={styles.summaryGrid}>
-                {NUTRITION_METRICS.map((metric) => (
-                  <View key={metric.id} style={styles.summaryRow}>
-                    <ThemedText style={styles.summaryLabel}>
-                      {metric.label}
-                    </ThemedText>
-                    <ThemedText style={styles.summaryValue}>
-                      {formatChartValue(
-                        selectedPoint.totals?.[metric.key] ?? 0,
-                        metric.unit
-                      )}
-                    </ThemedText>
-                  </View>
-                ))}
+              <View style={styles.chartLegend}>
+                <ThemedText style={styles.legendMetric}>
+                  {metricConfig.label}
+                </ThemedText>
+                <ThemedText style={styles.legendValue}>
+                  {formatChartValue(
+                    data?.nutrition.totals?.[metricConfig.key],
+                    metricConfig.unit,
+                  )}
+                </ThemedText>
               </View>
-            </Card>
-          ) : null}
-
-          <View style={styles.metricRow}>
-            {NUTRITION_METRICS.map((metric) => {
-              const isActive = metric.id === metricConfig.id;
-              return (
-                <TouchableOpacity
-                  key={metric.id}
-                  onPress={() => setSelectedMetricId(metric.id)}
-                  style={[
-                    styles.metricButton,
-                    isActive && { backgroundColor: metric.color },
-                  ]}
+              <View style={styles.chartWrap}>
+                <ScrollView
+                  horizontal
+                  ref={chartScrollRef}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ width: chartContentWidth }}
                 >
-                  <ThemedText
+                  <View
                     style={[
-                      styles.metricButtonText,
-                      isActive && styles.metricButtonTextActive,
+                      styles.chartInner,
+                      { width: chartContentWidth, height: CHART_HEIGHT },
                     ]}
                   >
-                    {metric.label}
+                    <Svg width={chartContentWidth} height={CHART_HEIGHT}>
+                      <Line
+                        x1={CHART_PADDING.left}
+                        y1={CHART_HEIGHT - CHART_PADDING.bottom}
+                        x2={chartContentWidth - CHART_PADDING.right}
+                        y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                        stroke={theme === "light" ? "#CBD5F5" : "#475569"}
+                        strokeWidth={1}
+                      />
+                      <Line
+                        x1={CHART_PADDING.left}
+                        y1={CHART_PADDING.top}
+                        x2={CHART_PADDING.left}
+                        y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                        stroke={theme === "light" ? "#CBD5F5" : "#475569"}
+                        strokeWidth={1}
+                      />
+                      {[0.25, 0.5, 0.75].map((ratio) => {
+                        const y =
+                          CHART_PADDING.top +
+                          (CHART_HEIGHT -
+                            CHART_PADDING.top -
+                            CHART_PADDING.bottom) *
+                            ratio;
+                        return (
+                          <Line
+                            key={`grid-${ratio}`}
+                            x1={CHART_PADDING.left}
+                            x2={chartContentWidth - CHART_PADDING.right}
+                            y1={y}
+                            y2={y}
+                            stroke={
+                              theme === "light"
+                                ? "rgba(148,163,184,0.35)"
+                                : "rgba(148,163,184,0.2)"
+                            }
+                            strokeWidth={1}
+                          />
+                        );
+                      })}
+                      {targetLineOffset !== null ? (
+                        <Line
+                          x1={CHART_PADDING.left}
+                          x2={chartContentWidth - CHART_PADDING.right}
+                          y1={targetLineOffset}
+                          y2={targetLineOffset}
+                          stroke="rgba(99,102,241,0.85)"
+                          strokeWidth={2}
+                          strokeDasharray="6,4"
+                        />
+                      ) : null}
+                      {chartPoints.length > 1 ? (
+                        <Polyline
+                          points={chartPoints
+                            .map((point) => `${point.chartX},${point.chartY}`)
+                            .join(" ")}
+                          fill="none"
+                          stroke={metricConfig.color}
+                          strokeWidth={3}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                        />
+                      ) : null}
+                      {chartPoints.map((point) => (
+                        <Circle
+                          key={`dot-${point.chartX}`}
+                          cx={point.chartX}
+                          cy={point.chartY}
+                          r={4}
+                          fill={
+                            point.index === selectedPointIndex
+                              ? metricConfig.color
+                              : "#fff"
+                          }
+                          stroke={
+                            point.index === selectedPointIndex
+                              ? "#fff"
+                              : metricConfig.color
+                          }
+                          strokeWidth={2}
+                          onPress={() => setSelectedPointIndex(point.index)}
+                        />
+                      ))}
+                      {chartPoints.map((point) => (
+                        <SvgText
+                          key={`label-${point.chartX}`}
+                          x={point.chartX}
+                          y={CHART_HEIGHT - CHART_PADDING.bottom + 16}
+                          fontSize={12}
+                          fill={theme === "light" ? "#1F2937" : "#E2E8F0"}
+                          alignmentBaseline="hanging"
+                          textAnchor="middle"
+                        >
+                          {point.label}
+                        </SvgText>
+                      ))}
+                    </Svg>
+                  </View>
+                </ScrollView>
+              </View>
+              {chartTarget !== null ? (
+                <View style={styles.targetBadge}>
+                  <ThemedText style={styles.targetBadgeText}>
+                    Target {formatChartValue(chartTarget, metricConfig.unit)}
+                  </ThemedText>
+                </View>
+              ) : null}
+              {selectedPoint && (
+                <ThemedText style={styles.helperText}>
+                  Showing {formatFullDate(selectedPoint.date)}
+                </ThemedText>
+              )}
+            </Card>
+
+            {selectedPoint ? (
+              <Card>
+                <View style={styles.cardHeader}>
+                  <ThemedText type="defaultSemiBold">Daily totals</ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    {formatFullDate(selectedPoint.date)}
+                  </ThemedText>
+                </View>
+                <View style={styles.summaryGrid}>
+                  {NUTRITION_METRICS.map((metric) => (
+                    <View key={metric.id} style={styles.summaryRow}>
+                      <ThemedText style={styles.summaryLabel}>
+                        {metric.label}
+                      </ThemedText>
+                      <ThemedText style={styles.summaryValue}>
+                        {formatChartValue(
+                          selectedPoint.totals?.[metric.key] ?? 0,
+                          metric.unit,
+                        )}
+                      </ThemedText>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            ) : null}
+
+            <View style={styles.metricRow}>
+              {NUTRITION_METRICS.map((metric) => {
+                const isActive = metric.id === metricConfig.id;
+                return (
+                  <TouchableOpacity
+                    key={metric.id}
+                    onPress={() => setSelectedMetricId(metric.id)}
+                    style={[
+                      styles.metricButton,
+                      isActive && { backgroundColor: metric.color },
+                    ]}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.metricButtonText,
+                        isActive && styles.metricButtonTextActive,
+                      ]}
+                    >
+                      {metric.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Card>
+              <View style={styles.cardHeader}>
+                <ThemedText type="defaultSemiBold">{highlightTitle}</ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Highest {metricConfig.label.toLowerCase()} sources
+                </ThemedText>
+              </View>
+              {highlights.length ? (
+                <View style={styles.foodList}>
+                  {highlights.map((item, index) => {
+                    return (
+                      <FoodRow
+                        key={`${item.name}-${index}`}
+                        item={item}
+                        metricUnit={metricConfig.unit}
+                        color={metricConfig.color}
+                      />
+                    );
+                  })}
+                </View>
+              ) : (
+                <ThemedText style={styles.helperText}>
+                  {highlightFallbackMessage}
+                </ThemedText>
+              )}
+            </Card>
+          </>
+        ) : (
+          <Card>
+            <ThemedText type="defaultSemiBold">
+              No meals logged this week
+            </ThemedText>
+            <ThemedText style={styles.helperText}>
+              Start tracking your meals to unlock protein, phosphorus,
+              potassium, and sodium insights.
+            </ThemedText>
+          </Card>
+        )}
+      </ScrollView>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isLogModalOpen}
+        onRequestClose={() => setIsLogModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View
+            style={[styles.modalCard, theme === "dark" && styles.modalCardDark]}
+          >
+            <ThemedText type="defaultSemiBold">Log your meal?</ThemedText>
+            <ThemedText style={styles.helperText}>
+              Add foods to your diary to keep your nutrition targets on track.
+            </ThemedText>
+            <View style={styles.modalActions}>
+              {mealTypes.map((mealType) => (
+                <TouchableOpacity
+                  key={mealType.value}
+                  style={[styles.modalButton, styles.modalButtonPrimary]}
+                  onPress={() => {
+                    console.log("mealType.value::", mealType.value);
+
+                    dispatch(setMealType({ mealType: mealType.value }));
+                    setIsLogModalOpen(false);
+                    router.push("/(log-meal)/log-meal");
+                  }}
+                >
+                  <ThemedText style={styles.modalButtonTextPrimary}>
+                    {mealType.label}
                   </ThemedText>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Card>
-            <View style={styles.cardHeader}>
-              <ThemedText type="defaultSemiBold">{highlightTitle}</ThemedText>
-              <ThemedText style={styles.helperText}>
-                Highest {metricConfig.label.toLowerCase()} sources
-              </ThemedText>
+              ))}
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonGhost]}
+                onPress={() => setIsLogModalOpen(false)}
+              >
+                <ThemedText style={styles.modalButtonTextGhost}>
+                  Not now
+                </ThemedText>
+              </TouchableOpacity>
             </View>
-            {highlights.length ? (
-              <View style={styles.foodList}>
-                {highlights.map((item, index) => {
-                  return (
-                    <FoodRow
-                      key={`${item.name}-${index}`}
-                      item={item}
-                      metricUnit={metricConfig.unit}
-                      color={metricConfig.color}
-                    />
-                  );
-                })}
-              </View>
-            ) : (
-              <ThemedText style={styles.helperText}>
-                {highlightFallbackMessage}
-              </ThemedText>
-            )}
-          </Card>
-        </>
-      ) : (
-        <Card>
-          <ThemedText type="defaultSemiBold">
-            No meals logged this week
-          </ThemedText>
-          <ThemedText style={styles.helperText}>
-            Start tracking your meals to unlock protein, phosphorus, potassium,
-            and sodium insights.
-          </ThemedText>
-        </Card>
-      )}
-    </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -501,14 +557,14 @@ function buildHighlightTitle(label: string, isoDate: string | null) {
     return `Foods for today with highest ${label.toLowerCase()}`;
   }
   return `Foods for ${formatDateShort(
-    isoDate
+    isoDate,
   )} with highest ${label.toLowerCase()}`;
 }
 
 function buildHighlightFallbackMessage(
   label: string,
   isoDate: string | null,
-  hasDataForDay: boolean
+  hasDataForDay: boolean,
 ) {
   if (!isoDate) {
     return "Log your meals to unlock food highlights.";
@@ -517,7 +573,7 @@ function buildHighlightFallbackMessage(
     return `No meals logged on ${formatFullDate(isoDate)}.`;
   }
   return `No ${label.toLowerCase()} highlights logged on ${formatFullDate(
-    isoDate
+    isoDate,
   )}.`;
 }
 

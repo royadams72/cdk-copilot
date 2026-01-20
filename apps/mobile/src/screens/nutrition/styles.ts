@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 15,
@@ -148,5 +151,43 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
     padding: 32,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.6)",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    gap: 10,
+  },
+  modalCardDark: {
+    backgroundColor: "#0f172a",
+  },
+  modalActions: {
+    gap: 10,
+    marginTop: 8,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  modalButtonPrimary: {
+    backgroundColor: "#8B5CF6",
+  },
+  modalButtonGhost: {
+    backgroundColor: "rgba(148,163,184,0.25)",
+  },
+  modalButtonTextPrimary: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  modalButtonTextGhost: {
+    fontWeight: "600",
+    color: "#111827",
   },
 });

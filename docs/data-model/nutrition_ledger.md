@@ -10,12 +10,12 @@
 - `eatenAt` · Date · when consumed
 - `mealType` · `breakfast|lunch|dinner|snack|drink`
 - `items[]` · list of foods eaten
-
-  - `description` · string
+  - `name` · string
   - `brand?` · string
   - `quantity` · number
   - `nutrients` · { caloriesKcal?, proteinG?, carbsG?, fatG?, fiberG?, **phosphorusMg?**, **potassiumMg?**, **sodiumMg?** }
   - `source` · `user|barcode|image_ai|api`
+  - `preparation?` . `Roasted|Casserole|Boiled`
 
 - `totals` · same nutrient fields as `items.nutrients`, summed for the entry
 - `tags[]` · strings (for example, `"renal-safe"`)
@@ -35,7 +35,7 @@
   "mealType": "lunch",
   "items": [
     {
-      "description": "Chicken breast, grilled",
+      "name": "Chicken breast, grilled",
       "portion": { "amount": 150, "unit": "g", "grams": 150 },
       "nutrients": {
         "caloriesKcal": 247,
@@ -47,7 +47,7 @@
       "source": "user"
     },
     {
-      "description": "White rice, cooked",
+      "name": "White rice, cooked",
       "portion": { "amount": 200, "unit": "g", "grams": 200 },
       "nutrients": {
         "caloriesKcal": 260,

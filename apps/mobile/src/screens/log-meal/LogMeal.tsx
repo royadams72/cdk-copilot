@@ -14,10 +14,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchMealData,
   ItemSummary,
-  selectActiveItems,
   selectItemsSummary,
   setActiveItem,
-  // setActiveItem,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
@@ -28,15 +26,12 @@ export default function LogMeal() {
   const [searchTerm, setSearchTerm] = useState("");
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectItemsSummary);
-  const itemsArr = useAppSelector(selectActiveItems);
   async function submit() {
     console.log("submitted");
 
     dispatch(fetchMealData({ searchTerm }));
   }
-  useEffect(() => {
-    console.log(items);
-  }, [items]);
+  useEffect(() => {}, [items]);
   function gotoItemDetails({
     groupId,
     foodId,
@@ -44,7 +39,6 @@ export default function LogMeal() {
     groupId: string;
     foodId: string;
   }) {
-    console.log("itemsArr", itemsArr);
     dispatch(setActiveItem({ foodId, groupId }));
     router.push("/(log-meal)/food-details");
   }

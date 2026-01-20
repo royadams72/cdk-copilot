@@ -28,7 +28,6 @@ const Bootstrap = () => {
 
         const res = await authFetch(`${API}/api/users/get-user`);
         const data = await res.json();
-        console.log("data::::::", data);
 
         if (data.ok) {
           router.replace("/(dashboard)/dashboard");
@@ -42,18 +41,18 @@ const Bootstrap = () => {
           if (refreshBody?.ok && refreshBody.data?.jwt) {
             await SecureStore.setItemAsync(
               "ckd_jwt",
-              refreshBody.data.jwt as string
+              refreshBody.data.jwt as string,
             );
             router.replace("/(dashboard)/dashboard");
           } else {
             setError(
-              refreshBody?.message ?? "Session expired, please sign in again."
+              refreshBody?.message ?? "Session expired, please sign in again.",
             );
             router.replace("/(init-app)/welcome");
           }
         }
       } catch (error: any) {
-        console.log("don't understand", error);
+        console.log("Bootstrap", error);
 
         setError("not loaded");
       }
