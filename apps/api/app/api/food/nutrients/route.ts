@@ -37,8 +37,10 @@ export async function POST(req: NextRequest) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ingredients }),
     });
+    console.log("qualifiers:::", ingredients[0]?.qualifiers?.[0]);
+
     if (!res.ok) {
-      throw new Error(`Edamam error (${res.status})`);
+      return bad(`${res.status} Failed to fetch nutrients`, { requestId }, 500);
     }
     const data = await res.json();
     // console.log("data:", data);
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
     return bad(
       error instanceof Error ? error.message : "Failed to fetch nutrients",
       { requestId },
-      502
+      502,
     );
   }
 

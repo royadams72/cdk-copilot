@@ -42,7 +42,6 @@ export default function NutritionDetails() {
   const data = useAppSelector(selectDashboardData);
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
-  console.log("mealTypes:", mealTypes);
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
@@ -498,8 +497,6 @@ export default function NutritionDetails() {
                   key={mealType.value}
                   style={[styles.modalButton, styles.modalButtonPrimary]}
                   onPress={() => {
-                    console.log("mealType.value::", mealType.value);
-
                     dispatch(setMealType({ mealType: mealType.value }));
                     setIsLogModalOpen(false);
                     router.push("/(log-meal)/log-meal");

@@ -106,6 +106,7 @@ export const fetchNutritionData = createAsyncThunk<
   "logMeal/fetchNutritionData",
   async ({ foodItem, groupInfo }, { rejectWithValue }) => {
     const reqBody = setNutrientsBody({ foodItem, groupInfo });
+    // console.log("reqBody::", reqBody);
 
     try {
       const res = await authFetch(`${API}/api/food/nutrients`, {
@@ -116,8 +117,8 @@ export const fetchNutritionData = createAsyncThunk<
       const body: unknown = await res.json().catch(() => null);
       const ok = !!(body as any)?.ok;
       const data = (body as any)?.data;
-
       if (!res.ok || !ok) {
+        console.log("insiode:", data, ok, res.status, body);
         throw new Error(formatApiError(res.status, (body as any) ?? null));
       }
       return data as TEdamamNutritionResponse;
@@ -175,21 +176,17 @@ const logMealSlice = createSlice({
     setMealType: create.reducer(
       (state, action: PayloadAction<{ mealType: TMealType }>) => {
         const { mealType } = action.payload;
-        console.log("slice mealType", mealType);
         if (state.activeMealType !== mealType) {
           state.activeMealType = mealType;
         }
-        console.log("state.activeMealType::", state.activeMealType);
       },
     ),
     setMeal: create.reducer((state, action: PayloadAction<{ food: Meal }>) => {
-      console.log("state.activeMealType", state.activeMealType);
-
       if (!state.activeMealType) return;
       state.meal[state.activeMealType].push({
         ...action.payload.food,
       });
-      console.log("state.meal::", current(state.meal));
+      // console.log("state.meal::", current(state.meal));
     }),
   }),
   extraReducers: (builder) => {
@@ -330,8 +327,15 @@ function setNutrientsBody({
   // const {} = state.get
   const quantity = groupInfo.quantity;
   const foodId = foodItem.foodId;
-  const unit = groupInfo?.unit ?? "1";
-  const { measureURI, qualifiers } = getMeasureUri(foodItem.measures, unit);
+  const unit = groupInfo?.unit?.trim() ?? "";
+  console.log("unit::::::::", unit);
+
+  const { measureURI, qualifiers } = getMeasureUri(
+    foodItem.measures,
+    unit,
+    foodItem.name,
+  );
+  console.log("qualifiers:", qualifiers);
 
   return [
     {
@@ -346,23 +350,57 @@ function setNutrientsBody({
 function getMeasureUri(
   measures: TEdamamMeasure[],
   unit: string,
-): { measureURI: string; qualifiers?: [] } {
-  let obj: any;
-  measures.find((measure) => {
-    const isMatch =
-      measure.label.toLocaleLowerCase() === unit.toLocaleLowerCase();
-    const isHasQualified =
-      typeof measure.qualified === "object" &&
-      measure.qualified !== null &&
-      Object.keys(measure.qualified).length > 0;
+  foodName?: string,
+): { measureURI: string; qualifiers?: string[] } {
+  if (!measures?.length) return { measureURI: "" };
 
-    if (isMatch) {
-      obj = isHasQualified
-        ? { measureURI: measure.uri, qualifiers: measure.qualified }
-        : { measureURI: measure.uri };
+  const normalizedUnit = unit.trim().toLowerCase();
+  const normalizedFood = foodName?.trim().toLowerCase() ?? "";
+
+  const resolveMeasure = (
+    measure: TEdamamMeasure,
+  ): { measureURI: string; qualifiers?: string[] } => {
+    if (Array.isArray(measure.qualified) && measure.qualified.length > 0) {
+      const qualifierUris = Array.from(
+        new Set(
+          measure.qualified.flatMap((q) => q.qualifiers.map((b) => b.uri)),
+        ),
+      );
+      return { measureURI: measure.uri, qualifiers: qualifierUris };
     }
-  });
-  return obj;
+    return { measureURI: measure.uri };
+  };
+
+  if (normalizedUnit) {
+    const match = measures.find(
+      (measure) => measure.label.toLowerCase() === normalizedUnit,
+    );
+    if (match) return resolveMeasure(match);
+  }
+
+  if (normalizedFood) {
+    const match = measures.find((measure) =>
+      normalizedFood.includes(measure.label.toLowerCase()),
+    );
+    if (match) return resolveMeasure(match);
+  }
+
+  const fallbackOrder = [
+    "whole",
+    "serving",
+    "gram",
+    "ounce",
+    "pound",
+    "kilogram",
+  ];
+  for (const label of fallbackOrder) {
+    const match = measures.find(
+      (measure) => measure.label.toLowerCase() === label,
+    );
+    if (match) return resolveMeasure(match);
+  }
+
+  return resolveMeasure(measures[0]);
 }
 function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   if (!data) return null;

@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
         const data = await res.json();
         const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
           data,
-          edamamText
+          edamamText,
         );
         // const token = match.food.label.trim().toLowerCase();
         // // e.g. "potatoes, boiled, no salt"
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
           item, // original normalised item
           matches, // Edamam parser response for this item
         } satisfies TLogMealResponseItem;
-      })
+      }),
     );
     // console.log("results::", results?.[0]);
     // console.log("results::", results?.[0].item);
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
 
 export async function pickBestEdamamFood(
   data: any,
-  item: string
+  item: string,
 ): Promise<TEdamamFoodMeasure[] | null> {
   item = item.toLowerCase();
   const hints = (data?.hints ?? []) as any[];

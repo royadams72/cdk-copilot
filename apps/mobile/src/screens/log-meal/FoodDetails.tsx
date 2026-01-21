@@ -40,11 +40,9 @@ export default function FoodDetails() {
 
   useEffect(() => {
     //  Check active item, if some nutrition data missing dispatch an action to get it
-
     if (selectedFood && isAnyFieldEmpty(selectedFood?.nutrients) && groupInfo) {
-      // console.log("selectedFood::", selectedFood);
       dispatch(fetchNutritionData({ foodItem: selectedFood, groupInfo }));
-      // console.log("groupInfo::", groupInfo);
+      // console.log("selectedFood::", selectedFood);
     }
   }, [selectedFood, groupInfo, dispatch]);
 
