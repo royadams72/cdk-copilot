@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   View,
@@ -31,7 +31,7 @@ export default function FoodDetails() {
   const dispatch = useAppDispatch();
   const selectedFood = useAppSelector(selectActiveItem);
   const foods = useAppSelector(selectAcitveGroupSummaries);
-
+  const [showNutrients, setShowNutrients] = useState(false);
   const groupInfo = useAppSelector((state) => {
     const groupId = selectedFood?.groupId;
     if (!groupId) return null;
@@ -41,7 +41,8 @@ export default function FoodDetails() {
   useEffect(() => {
     //  Check active item, if some nutrition data missing dispatch an action to get it
     if (selectedFood && isAnyFieldEmpty(selectedFood?.nutrients) && groupInfo) {
-      dispatch(fetchNutritionData({ foodItem: selectedFood, groupInfo }));
+      dispatch(fetchNutritionData({ foodItems: [selectedFood] }));
+      setShowNutrients(true);
       // console.log("selectedFood::", selectedFood);
     }
   }, [selectedFood, groupInfo, dispatch]);
@@ -99,18 +100,19 @@ export default function FoodDetails() {
           />
 
           <View>
-            {Object.entries(selectedFood.nutrients ?? {})
-              .filter(([, value]) => value !== null && value !== undefined)
-              .map(([key, value]) => (
-                <View key={key}>
-                  <Text style={typeStyles.header}>
-                    {formatNutrientLabel(key)}
-                  </Text>
-                  <Text style={typeStyles.copy}>
-                    {parseFloat(String(value)).toFixed(2)}
-                  </Text>
-                </View>
-              ))}
+            {showNutrients &&
+              Object.entries(selectedFood.nutrients ?? {})
+                .filter(([, value]) => value !== null && value !== undefined)
+                .map(([key, value]) => (
+                  <View key={key}>
+                    <Text style={typeStyles.header}>
+                      {formatNutrientLabel(key)}
+                    </Text>
+                    <Text style={typeStyles.copy}>
+                      {parseFloat(String(value)).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
           </View>
           <TouchableOpacity
             style={[styles.modalButton, styles.modalButtonPrimary]}

@@ -13,9 +13,12 @@ import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchMealData,
+  fetchNutritionData,
   ItemSummary,
+  selectFoodItems,
   selectItemsSummary,
   setActiveItem,
+  selectActiveItems,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
@@ -24,14 +27,26 @@ import { styles } from "../nutrition/styles";
 export default function LogMeal() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
+    useState(false);
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectItemsSummary);
+  const activeItems = useAppSelector(selectActiveItems);
   async function submit() {
     console.log("submitted");
-
+    setShouldLoadInitialNutrition(true);
     dispatch(fetchMealData({ searchTerm }));
   }
-  useEffect(() => {}, [items]);
+  useEffect(() => {
+    // if (!shouldLoadInitialNutrition) return;
+    if (!activeItems) return;
+    dispatch(
+      fetchNutritionData({
+        foodItems: activeItems,
+      }),
+    );
+    setShouldLoadInitialNutrition(false);
+  }, [dispatch, activeItems, shouldLoadInitialNutrition]);
   function gotoItemDetails({
     groupId,
     foodId,
