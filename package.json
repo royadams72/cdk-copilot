@@ -10,6 +10,7 @@
     "ingest:cofid": "tsx scripts/ingest-cofid.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
+    "db:export:nutrition": "mongoexport --uri=\"mongodb+srv://svc_app_prod:pA6xsenOna4JJeVK@ckd-copilot.ns0ssmd.mongodb.net/?retryWrites=true&w=majority&appName=ckd-copilot\" --db=ckd-copilot --collection=nutrition_ledger --out=nutrition_ledger.json",
     "mobile:dev": "pnpm --filter ./apps/mobile exec expo start --dev-client",
     "mobile:rebuild:android": "pnpm --filter ./apps/mobile exec expo run:android",
     "core:build": "pnpm -w --filter @ckd/core run build",
