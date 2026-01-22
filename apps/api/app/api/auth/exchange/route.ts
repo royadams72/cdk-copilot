@@ -7,8 +7,10 @@ import { COLLECTIONS } from "@ckd/core/server";
 import { COLLECTION_TYPE } from "@/apps/api/app/api/patients/signup-init/route";
 import {
   AuthTokenDoc,
+  b64url,
   consumeAuth,
   parseToken,
+  setToken,
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 import { ObjectId } from "mongodb";
@@ -98,7 +100,33 @@ export async function POST(req: NextRequest) {
       .setExpirationTime("7d")
       .sign(secret);
 
-    return NextResponse.json({ jwt });
+    const sessionId = `sess_${randomBytes(12).toString("hex")}`;
+    const refreshTtlMs = 1000 * 60 * 60 * 24 * 30;
+    const refreshExpiresAt = new Date(Date.now() + refreshTtlMs);
+    const refreshToken = setToken();
+    const refreshDoc: AuthTokenDoc = {
+      _id: new ObjectId(),
+      type: COLLECTION_TYPE.Refresh,
+      id: b64url(refreshToken.id),
+      secretHash: refreshToken.secretHash.toString("base64"),
+      patientId: res.doc.patientId as ObjectId,
+      principalId: String(res.doc.principalId),
+      credentialId,
+      sessionId,
+      orgId: res.doc.orgId ?? null,
+      email: res.doc.email,
+      scopes,
+      role: res.doc.role,
+      createdAt: new Date(),
+      expiresAt: refreshExpiresAt,
+      usedAt: null,
+      revokedAt: null,
+      rotatedAt: null,
+      replacedById: null,
+    };
+    await auth_tokens.insertOne(refreshDoc);
+
+    return NextResponse.json({ jwt, refreshToken: refreshToken.token });
   } catch (e) {
     console.error(e);
     return NextResponse.json(

@@ -1,8 +1,7 @@
 // EmailSignup.tsx
-import { API } from "@/constants/api";
 import { useState } from "react";
-import { View, TextInput, Button, Alert } from "react-native";
-
+import { View, TextInput, Button, Alert, Text } from "react-native";
+import { API } from "@/constants/api";
 export default function EmailSignup() {
   const [email, setEmail] = useState("");
 
@@ -14,12 +13,15 @@ export default function EmailSignup() {
         body: JSON.stringify({ email }),
       });
 
-      const bodyText = await res.text(); // read as text once
-
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        Alert.alert("Check your email", "Tap the link to continue in the app.");
+        return;
+      }
       if (!res.ok) {
         Alert.alert(
           "Signup failed",
-          `Status ${res.status}\n${bodyText.slice(0, 500)}`
+          `Status ${res.status}\n${String(data?.error ?? data?.message ?? "Unknown error").slice(0, 500)}`,
         );
         return;
       }
@@ -31,6 +33,9 @@ export default function EmailSignup() {
 
   return (
     <View style={{ padding: 16 }}>
+      <View>
+        <Text>Enter your emal address</Text>
+      </View>
       <TextInput
         placeholder="you@example.com"
         autoCapitalize="none"

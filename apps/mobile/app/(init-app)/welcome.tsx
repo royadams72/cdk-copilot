@@ -1,1 +1,1 @@
-export { default } from "../../src/screens/init-app/Welcome";
+export { default } from "@/screens/onboarding/EmailSighup";

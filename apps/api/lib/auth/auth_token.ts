@@ -62,7 +62,11 @@ export function setToken() {
 
 // auth_tokens.validate.ts
 
-export type ColType = "oauth_code" | "email_verify" | "password_reset";
+export type ColType =
+  | "oauth_code"
+  | "email_verify"
+  | "password_reset"
+  | "refresh";
 
 export type AuthTokenDoc = {
   _id: ObjectId;
@@ -71,6 +75,8 @@ export type AuthTokenDoc = {
   secretHash: string; // base64 of 32-byte HMAC
   patientId: ObjectId;
   principalId?: string;
+  credentialId?: string;
+  sessionId?: string;
   orgId?: string | null;
   email?: string;
   redirectUri?: string | null;
@@ -79,6 +85,9 @@ export type AuthTokenDoc = {
   createdAt: Date;
   expiresAt: Date;
   usedAt?: Date | null;
+  revokedAt?: Date | null;
+  rotatedAt?: Date | null;
+  replacedById?: ObjectId | string | null;
 };
 
 type Parsed = { id: string; secret: Buffer };

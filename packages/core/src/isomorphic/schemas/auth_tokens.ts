@@ -6,6 +6,7 @@ export const AuthTokenType = z.enum([
   "email_verify",
   "password_reset",
   "exchange", // optional, if you use this state
+  "refresh", // long-lived rotating refresh token
 ]);
 export type AuthTokenType = z.infer<typeof AuthTokenType>;
 
@@ -26,6 +27,13 @@ export const AuthTokenZ = z.object({
   id: z.string().regex(b64urlRegex).min(22).max(43),
   /** HMAC(pepper, secret) as Base64 (fixed 32 bytes -> 44 chars incl. padding). */
   secretHash: z.string().regex(b64Regex).min(43).max(88),
+
+  /** Refresh-token specific (rotation & revocation) */
+  sessionId: z.string().min(1).optional(), // stable per-login session
+  parentId: z.string().min(22).max(43).optional(), // previous refresh token public id
+  replacedById: z.string().min(22).max(43).optional(),
+  rotatedAt: z.date().nullable().optional(),
+  revokedAt: z.date().nullable().optional(),
 
   /** Subject binding */
   patientId: z.any(), // ObjectId
