@@ -22,11 +22,13 @@ const Bootstrap = () => {
 
         if (!token) {
           router.replace("/(init-app)/welcome");
+          console.log("token:", token);
 
           return;
         }
 
         const res = await authFetch(`${API}/api/users/get-user`);
+        console.log("res::", res);
         const data = await res.json();
 
         if (data.ok) {
