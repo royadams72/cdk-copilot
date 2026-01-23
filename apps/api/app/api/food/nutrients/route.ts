@@ -1,7 +1,7 @@
 import { SessionUser, requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
-import { ROLES } from "@/packages/core/dist/isomorphic";
+import { ROLES, TEdamamNutritionResponse } from "@ckd/core";
 import { NextRequest, NextResponse } from "next/server";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       return bad("Patient context missing", { requestId }, 403);
     }
 
-    const ingredients = Array.isArray(b) ? b : b?.ingredients;
-    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+    const reqIngredients = Array.isArray(b) ? b : b?.reqIngredients;
+    if (!Array.isArray(reqIngredients) || reqIngredients.length === 0) {
       return bad("Invalid ingredients payload", { requestId }, 400);
     }
 
@@ -31,21 +31,33 @@ export async function POST(req: NextRequest) {
       app_id: foodAppID,
       app_key: foodAppKey,
     });
+    const results = await Promise.all(
+      reqIngredients.map(async (ingredient: TEdamamNutritionResponse) => {
+        const ingredients = [ingredient];
+        const res = await fetch(`${nutrientsUri}?${params.toString()}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ingredients }),
+        });
+        console.log("res:", res);
+        console.log("ingredients:::", JSON.stringify([ingredient]));
 
-    const res = await fetch(`${nutrientsUri}?${params.toString()}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ingredients }),
-    });
-    console.log("qualifiers:::", ingredients[0]?.qualifiers?.[0]);
+        if (!res.ok) {
+          return bad(
+            `${res.status} Failed to fetch nutrients`,
+            { requestId },
+            500,
+          );
+        }
+        const data = await res.json();
+        console.log("data:", data);
 
-    if (!res.ok) {
-      return bad(`${res.status} Failed to fetch nutrients`, { requestId }, 500);
-    }
-    const data = await res.json();
-    // console.log("data:", data);
-
-    return ok(data);
+        return data;
+      }),
+    );
+    console.log("results::", results);
+    // const nutrients = await results.json()
+    return ok(results);
   } catch (error) {
     console.log(error);
     return bad(

@@ -104,7 +104,9 @@ export const fetchNutritionData = createAsyncThunk<
   { rejectValue: string }
 >("logMeal/fetchNutritionData", async ({ foodItems }, { rejectWithValue }) => {
   const reqBody = setNutrientsBody({ foodItems });
-  // console.log("reqBody::", reqBody);
+  console.log("foodItems", foodItems);
+
+  console.log("reqBody::", reqBody);
 
   try {
     const res = await authFetch(`${API}/api/food/nutrients`, {

@@ -38,8 +38,10 @@ export default function LogMeal() {
     dispatch(fetchMealData({ searchTerm }));
   }
   useEffect(() => {
-    // if (!shouldLoadInitialNutrition) return;
+    if (!shouldLoadInitialNutrition) return;
     if (!activeItems) return;
+    console.log("activeItems::", activeItems);
+
     dispatch(
       fetchNutritionData({
         foodItems: activeItems,
