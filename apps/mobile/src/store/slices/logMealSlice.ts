@@ -99,14 +99,11 @@ export const fetchMealData = createAsyncThunk<
 });
 
 export const fetchNutritionData = createAsyncThunk<
-  TEdamamNutritionResponse,
+  TEdamamNutritionResponse[],
   { foodItems: TFoodItem[] },
   { rejectValue: string }
 >("logMeal/fetchNutritionData", async ({ foodItems }, { rejectWithValue }) => {
   const reqBody = setNutrientsBody({ foodItems });
-  console.log("foodItems", foodItems);
-
-  console.log("reqBody::", reqBody);
 
   try {
     const res = await authFetch(`${API}/api/food/nutrients`, {
@@ -120,7 +117,7 @@ export const fetchNutritionData = createAsyncThunk<
     if (!res.ok || !ok) {
       throw new Error(formatApiError(res.status, (body as any) ?? null));
     }
-    return data as TEdamamNutritionResponse;
+    return data as TEdamamNutritionResponse[];
   } catch (err: any) {
     return rejectWithValue(err?.message ?? "Failed to load your meal data");
   }
@@ -184,9 +181,6 @@ const logMealSlice = createSlice({
       state.meal[state.activeMealType].push({
         ...action.payload.food,
       });
-      console.log(state.meal);
-
-      // console.log("state.meal::", current(state.meal));
     }),
   }),
   extraReducers: (builder) => {
@@ -221,7 +215,7 @@ const logMealSlice = createSlice({
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
 
-        console.log(current(state));
+        // console.log(current(state));
       })
       .addCase(fetchMealData.rejected, (state, action) => {
         state.status = "failed";
@@ -238,12 +232,32 @@ const logMealSlice = createSlice({
       .addCase(fetchNutritionData.fulfilled, (state, action) => {
         if (!action.payload) return;
         state.status = "succeeded";
-        console.log("action.payload::", action.payload);
 
         // const nutritionResponse: TEdamamNutritionResponse[] = action.payload;
-        // if (state.activeItem) {
-        //   state.activeItem = extractNutrition(state.activeItem, action.payload);
+        // if (state.activeItems?.length) {
+        // state.activeItems = extractNutrition(state.activeItems, action.payload);
+        // console.log("state.activeItem::", state.activeItems);
         // }
+
+        const updated = extractNutrition(state.activeItems, action.payload);
+        if (updated) state.activeItems = updated;
+
+        // IMPORTANT: logging state objects here is often misleading because
+        // devtools/console can show the object *after* Immer finishes applying
+        // updates. If you need a snapshot log, stringify a small derived value.
+        console.log(
+          "activeItems nutrients snapshot",
+          JSON.stringify(
+            state.activeItems?.map((i) => ({
+              foodId: i.foodId,
+              caloriesKcal: i.nutrients?.caloriesKcal,
+              sodiumMg: i.nutrients?.sodiumMg,
+            })) ?? [],
+            null,
+            2,
+          ),
+        );
+
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       })
@@ -450,29 +464,69 @@ function setInitialActiveItems(items: FoodItemsObj[] | null) {
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
 }
 function extractNutrition(
-  activeItem: TFoodItem | null,
-  data: TEdamamNutritionResponse,
+  activeItems: TFoodItem[] | null,
+  data: TEdamamNutritionResponse[],
 ) {
-  if (!activeItem) return null;
-  // Edamam returns nutrients keyed by nutrient codes (e.g. ENERC_KCAL, FAT, CHOCDF, NA, K, P)
-  // Use the codes rather than comparing against labels.
-  const n = data.totalNutrients;
+  if (!activeItems?.length) return null;
+  if (!Array.isArray(data) || data.length === 0) return activeItems;
 
-  return {
-    ...activeItem,
-    nutrients: {
-      ...activeItem.nutrients,
+  const nutrientsByFoodId = new Map<
+    string,
+    TEdamamNutritionResponse["totalNutrients"]
+  >();
 
-      // macros
-      caloriesKcal: n.ENERC_KCAL?.quantity ?? activeItem.nutrients.caloriesKcal,
-      fatG: n.FAT?.quantity ?? activeItem.nutrients.fatG,
-      carbsG: n.CHOCDF?.quantity ?? activeItem.nutrients.carbsG,
-      fiberG: n.FIBTG?.quantity ?? activeItem.nutrients.fiberG,
+  for (const response of data) {
+    for (const ingredient of response.ingredients ?? []) {
+      for (const parsed of ingredient.parsed ?? []) {
+        if (!nutrientsByFoodId.has(parsed.foodId)) {
+          nutrientsByFoodId.set(parsed.foodId, response.totalNutrients);
+        }
+      }
+    }
+  }
 
-      // electrolytes / minerals
-      sodiumMg: n.NA?.quantity ?? activeItem.nutrients.sodiumMg,
-      potassiumMg: n.K?.quantity ?? activeItem.nutrients.potassiumMg,
-      phosphorusMg: n.P?.quantity ?? activeItem.nutrients.phosphorusMg,
-    },
-  };
+  return activeItems.map((activeItem) => {
+    const n = activeItem.foodId
+      ? nutrientsByFoodId.get(activeItem.foodId)
+      : undefined;
+    if (!n) return activeItem;
+    console.log({
+      ...activeItem,
+      nutrients: {
+        ...activeItem.nutrients,
+
+        // macros
+        caloriesKcal:
+          n.ENERC_KCAL?.quantity ?? activeItem.nutrients.caloriesKcal,
+        proteinG: n.PROCNT?.quantity ?? activeItem.nutrients.proteinG,
+        fatG: n.FAT?.quantity ?? activeItem.nutrients.fatG,
+        carbsG: n.CHOCDF?.quantity ?? activeItem.nutrients.carbsG,
+        fiberG: n.FIBTG?.quantity ?? activeItem.nutrients.fiberG,
+
+        // electrolytes / minerals
+        sodiumMg: n.NA?.quantity ?? activeItem.nutrients.sodiumMg,
+        potassiumMg: n.K?.quantity ?? activeItem.nutrients.potassiumMg,
+        phosphorusMg: n.P?.quantity ?? activeItem.nutrients.phosphorusMg,
+      },
+    });
+    return {
+      ...activeItem,
+      nutrients: {
+        ...activeItem.nutrients,
+
+        // macros
+        caloriesKcal:
+          n.ENERC_KCAL?.quantity ?? activeItem.nutrients.caloriesKcal,
+        proteinG: n.PROCNT?.quantity ?? activeItem.nutrients.proteinG,
+        fatG: n.FAT?.quantity ?? activeItem.nutrients.fatG,
+        carbsG: n.CHOCDF?.quantity ?? activeItem.nutrients.carbsG,
+        fiberG: n.FIBTG?.quantity ?? activeItem.nutrients.fiberG,
+
+        // electrolytes / minerals
+        sodiumMg: n.NA?.quantity ?? activeItem.nutrients.sodiumMg,
+        potassiumMg: n.K?.quantity ?? activeItem.nutrients.potassiumMg,
+        phosphorusMg: n.P?.quantity ?? activeItem.nutrients.phosphorusMg,
+      },
+    };
+  });
 }

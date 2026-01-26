@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ ingredients }),
         });
-        console.log("res:", res);
-        console.log("ingredients:::", JSON.stringify([ingredient]));
+        // console.log("res:", res);
+        // console.log("ingredients:::", JSON.stringify([ingredient]));
 
         if (!res.ok) {
           return bad(
@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
           );
         }
         const data = await res.json();
-        console.log("data:", data);
+        // console.log("data:", data);
 
         return data;
       }),
     );
-    console.log("results::", results);
+    // console.log("results::", results);
     // const nutrients = await results.json()
     return ok(results);
   } catch (error) {

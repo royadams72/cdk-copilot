@@ -22,6 +22,7 @@ export const store = configureStore({
   devTools: __DEV__,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
+      immutableCheck: false,
       serializableCheck: false, // required for redux-persist
     }),
 });
