@@ -62,6 +62,7 @@
     "babel-preset-expo": "^54.0.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "redux-devtools-expo-dev-plugin": "^2.0.0",
     "typescript": "~5.9.2"
   },
   "private": true

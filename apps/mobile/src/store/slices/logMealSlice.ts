@@ -100,7 +100,7 @@ export const fetchMealData = createAsyncThunk<
 
 export const fetchNutritionData = createAsyncThunk<
   TEdamamNutritionResponse[],
-  { foodItems: TFoodItem[] },
+  { foodItems: TFoodItem[] | TFoodItem },
   { rejectValue: string }
 >("logMeal/fetchNutritionData", async ({ foodItems }, { rejectWithValue }) => {
   const reqBody = setNutrientsBody({ foodItems });
@@ -232,19 +232,53 @@ const logMealSlice = createSlice({
       .addCase(fetchNutritionData.fulfilled, (state, action) => {
         if (!action.payload) return;
         state.status = "succeeded";
+        console.log("action.payload", action.payload);
 
-        // const nutritionResponse: TEdamamNutritionResponse[] = action.payload;
-        // if (state.activeItems?.length) {
-        // state.activeItems = extractNutrition(state.activeItems, action.payload);
-        // console.log("state.activeItem::", state.activeItems);
-        // }
+        const requested = action.meta.arg.foodItems;
+        const requestedItems = Array.isArray(requested)
+          ? requested
+          : [requested];
+        const requestedIds = new Set(
+          requestedItems.map((item) => item.foodId).filter(Boolean),
+        );
+        const isBatch = Array.isArray(requested);
 
-        const updated = extractNutrition(state.activeItems, action.payload);
-        if (updated) state.activeItems = updated;
+        if (isBatch) {
+          const updatedActiveItems = extractNutrition(
+            state.activeItems,
+            action.payload,
+          );
+          if (Array.isArray(updatedActiveItems)) {
+            state.activeItems = updatedActiveItems;
+          }
+        }
 
-        // IMPORTANT: logging state objects here is often misleading because
-        // devtools/console can show the object *after* Immer finishes applying
-        // updates. If you need a snapshot log, stringify a small derived value.
+        if (state.activeItem && requestedIds.has(state.activeItem.foodId ?? "")) {
+          const updatedActiveItem = extractNutrition(
+            state.activeItem,
+            action.payload,
+          );
+          if (updatedActiveItem && !Array.isArray(updatedActiveItem)) {
+            state.activeItem = updatedActiveItem;
+          }
+        }
+
+        if (state.foodItems?.length) {
+          state.foodItems = state.foodItems.map((group) => {
+            const hasMatch = group.foodItems.some((item) =>
+              requestedIds.has(item.foodId ?? ""),
+            );
+            if (!hasMatch) return group;
+            const updatedGroupItems = extractNutrition(
+              group.foodItems,
+              action.payload,
+            );
+            return Array.isArray(updatedGroupItems)
+              ? { ...group, foodItems: updatedGroupItems }
+              : group;
+          });
+        }
+
         console.log(
           "activeItems nutrients snapshot",
           JSON.stringify(
@@ -354,9 +388,14 @@ function findGroupById(groupId: string, state: any): FoodItemsObj {
     (item: FoodItemsObj) => item?.groupId === groupId,
   );
 }
-function setNutrientsBody({ foodItems }: { foodItems: TFoodItem[] | null }) {
+function setNutrientsBody({
+  foodItems,
+}: {
+  foodItems: TFoodItem[] | TFoodItem | null;
+}) {
   if (!foodItems) return;
-  return foodItems.map((foodItem) => {
+  const items = Array.isArray(foodItems) ? foodItems : [foodItems];
+  return items.map((foodItem) => {
     const unit = foodItem?.unit?.trim() ?? "";
     const { measureURI, qualifiers } = getMeasureUri(
       foodItem.measures,
@@ -464,11 +503,11 @@ function setInitialActiveItems(items: FoodItemsObj[] | null) {
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
 }
 function extractNutrition(
-  activeItems: TFoodItem[] | null,
+  activeItems: TFoodItem[] | TFoodItem | null,
   data: TEdamamNutritionResponse[],
-) {
-  if (!activeItems?.length) return null;
-  if (!Array.isArray(data) || data.length === 0) return activeItems;
+): TFoodItem[] | TFoodItem | null {
+  if (Array.isArray(activeItems) && !activeItems?.length) return null;
+  if (Array.isArray(data) && data.length === 0) return null;
 
   const nutrientsByFoodId = new Map<
     string,
@@ -485,48 +524,30 @@ function extractNutrition(
     }
   }
 
-  return activeItems.map((activeItem) => {
-    const n = activeItem.foodId
-      ? nutrientsByFoodId.get(activeItem.foodId)
-      : undefined;
-    if (!n) return activeItem;
-    console.log({
-      ...activeItem,
-      nutrients: {
-        ...activeItem.nutrients,
-
-        // macros
-        caloriesKcal:
-          n.ENERC_KCAL?.quantity ?? activeItem.nutrients.caloriesKcal,
-        proteinG: n.PROCNT?.quantity ?? activeItem.nutrients.proteinG,
-        fatG: n.FAT?.quantity ?? activeItem.nutrients.fatG,
-        carbsG: n.CHOCDF?.quantity ?? activeItem.nutrients.carbsG,
-        fiberG: n.FIBTG?.quantity ?? activeItem.nutrients.fiberG,
-
-        // electrolytes / minerals
-        sodiumMg: n.NA?.quantity ?? activeItem.nutrients.sodiumMg,
-        potassiumMg: n.K?.quantity ?? activeItem.nutrients.potassiumMg,
-        phosphorusMg: n.P?.quantity ?? activeItem.nutrients.phosphorusMg,
-      },
-    });
+  const returnNutrition = (item: TFoodItem) => {
+    const n = item.foodId ? nutrientsByFoodId.get(item.foodId) : undefined;
+    if (!n) return item;
     return {
-      ...activeItem,
+      ...item,
       nutrients: {
-        ...activeItem.nutrients,
-
-        // macros
-        caloriesKcal:
-          n.ENERC_KCAL?.quantity ?? activeItem.nutrients.caloriesKcal,
-        proteinG: n.PROCNT?.quantity ?? activeItem.nutrients.proteinG,
-        fatG: n.FAT?.quantity ?? activeItem.nutrients.fatG,
-        carbsG: n.CHOCDF?.quantity ?? activeItem.nutrients.carbsG,
-        fiberG: n.FIBTG?.quantity ?? activeItem.nutrients.fiberG,
-
-        // electrolytes / minerals
-        sodiumMg: n.NA?.quantity ?? activeItem.nutrients.sodiumMg,
-        potassiumMg: n.K?.quantity ?? activeItem.nutrients.potassiumMg,
-        phosphorusMg: n.P?.quantity ?? activeItem.nutrients.phosphorusMg,
+        ...item.nutrients,
+        caloriesKcal: n.ENERC_KCAL?.quantity ?? item.nutrients.caloriesKcal,
+        proteinG: n.PROCNT?.quantity ?? item.nutrients.proteinG,
+        fatG: n.FAT?.quantity ?? item.nutrients.fatG,
+        carbsG: n.CHOCDF?.quantity ?? item.nutrients.carbsG,
+        fiberG: n.FIBTG?.quantity ?? item.nutrients.fiberG,
+        sodiumMg: n.NA?.quantity ?? item.nutrients.sodiumMg,
+        potassiumMg: n.K?.quantity ?? item.nutrients.potassiumMg,
+        phosphorusMg: n.P?.quantity ?? item.nutrients.phosphorusMg,
       },
     };
-  });
+  };
+
+  const nutritionUpdated = Array.isArray(activeItems)
+    ? activeItems.map(returnNutrition)
+    : activeItems
+      ? returnNutrition(activeItems)
+      : null;
+
+  return nutritionUpdated;
 }

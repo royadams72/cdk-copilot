@@ -23,6 +23,7 @@ import {
 
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
+import { isAnyFieldEmpty } from "@/lib/emptyFields";
 
 export default function LogMeal() {
   const router = useRouter();
@@ -37,18 +38,29 @@ export default function LogMeal() {
     setShouldLoadInitialNutrition(true);
     dispatch(fetchMealData({ searchTerm }));
   }
+
   useEffect(() => {
     if (!shouldLoadInitialNutrition) return;
     if (!activeItems) return;
     console.log("activeItems::", activeItems);
-
-    dispatch(
-      fetchNutritionData({
-        foodItems: activeItems,
-      }),
+    const isAnyNurientsEmpty = activeItems.find((item) =>
+      isAnyFieldEmpty(item.nutrients),
     );
+    console.log(isAnyNurientsEmpty);
+    console.log("activeItems", activeItems);
+
+    if (isAnyNurientsEmpty) {
+      dispatch(
+        fetchNutritionData({
+          foodItems: activeItems,
+        }),
+      );
+    }
+    // isAnyFieldEmpty(selectedFood?.nutrients
+
     setShouldLoadInitialNutrition(false);
   }, [dispatch, activeItems, shouldLoadInitialNutrition]);
+
   function gotoItemDetails({
     groupId,
     foodId,

@@ -3,7 +3,7 @@ import { persistReducer, persistStore } from "redux-persist";
 import { secureStorage } from "../lib/secureStorage";
 import dashboardReducer from "./slices/dashboardSlice";
 import logMealReducer from "./slices/logMealSlice";
-
+import devToolsEnhancer from "redux-devtools-expo-dev-plugin";
 export const rootReducer = combineReducers({
   dashboard: dashboardReducer,
   logMeal: logMealReducer,
@@ -25,6 +25,8 @@ export const store = configureStore({
       immutableCheck: false,
       serializableCheck: false, // required for redux-persist
     }),
+  enhancers: (getDefaultEnhancers) =>
+    getDefaultEnhancers().concat(devToolsEnhancer()),
 });
 
 export const persistor = persistStore(store);
