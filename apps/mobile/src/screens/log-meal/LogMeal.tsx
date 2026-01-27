@@ -18,6 +18,7 @@ import {
   selectFoodItems,
   selectItemsSummary,
   selectMealItemsFromFoodItems,
+  removeMealItem,
   setActiveItem,
   selectMeal,
   selectActiveMealType,
@@ -103,22 +104,30 @@ export default function LogMeal() {
       </View>
       {items && (
         <ScrollView>
-          {items.map((item: ItemSummary, index) => (
-            <Pressable
-              key={index}
-              style={logMealStyles.logButton}
-              onPress={() =>
-                gotoItemDetails({
-                  groupId: item.groupId,
-                  foodId: item.foodId,
-                  uid: item.uid,
-                })
-              }
-            >
-              <Text style={logMealStyles.logButtonText}>
-                {item.name} - {item.quantity} {item.unit}
-              </Text>
-            </Pressable>
+          {items.map((item: ItemSummary) => (
+            <View key={item.uid} style={logMealStyles.logButton}>
+              <Pressable
+                onPress={() =>
+                  gotoItemDetails({
+                    groupId: item.groupId,
+                    foodId: item.foodId,
+                    uid: item.uid,
+                  })
+                }
+              >
+                <Text style={logMealStyles.logButtonText}>
+                  {item.name} - {item.quantity} {item.unit}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={{ backgroundColor: "red" }}
+                onPress={() =>
+                  dispatch(removeMealItem({ groupId: item.groupId }))
+                }
+              >
+                <Text style={logMealStyles.logButtonText}>Remove</Text>
+              </Pressable>
+            </View>
           ))}
         </ScrollView>
       )}

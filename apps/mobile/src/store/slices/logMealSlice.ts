@@ -192,6 +192,27 @@ const logMealSlice = createSlice({
         });
       },
     ),
+    removeMealItem: create.reducer(
+      (state, action: PayloadAction<{ groupId: string }>) => {
+        const { groupId } = action.payload;
+
+        if (state.foodItems?.length) {
+          state.foodItems = state.foodItems.filter(
+            (group) => group.groupId === groupId,
+          );
+        }
+
+        if (state.activeMealType) {
+          state.meal[state.activeMealType] = state.meal[
+            state.activeMealType
+          ].filter((item) => item.groupId === groupId);
+        }
+
+        if (state.activeItem?.groupId === groupId) {
+          state.activeItem = null;
+        }
+      },
+    ),
   }),
   extraReducers: (builder) => {
     builder
@@ -309,8 +330,13 @@ const logMealSlice = createSlice({
 });
 
 export default logMealSlice.reducer;
-export const { setQuantity, setActiveItem, setMealType, setMeal } =
-  logMealSlice.actions;
+export const {
+  setQuantity,
+  setActiveItem,
+  setMealType,
+  setMeal,
+  removeMealItem,
+} = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
 const mealState = (state: RootState) => state.logMeal.meal;
