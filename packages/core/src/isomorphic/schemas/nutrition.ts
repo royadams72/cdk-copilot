@@ -18,6 +18,7 @@ const Nutrients = z.object({
 
 const FoodItem = z.object({
   name: z.string(),
+  uid: z.string(),
   foodId: z.string().optional(), // your DB or external ID
   groupId: z.string().optional(),
   brand: z.string().optional(),

@@ -17,8 +17,10 @@ import {
   ItemSummary,
   selectFoodItems,
   selectItemsSummary,
+  selectMealItemsFromFoodItems,
   setActiveItem,
-  selectActiveItems,
+  selectMeal,
+  selectActiveMealType,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
@@ -32,43 +34,58 @@ export default function LogMeal() {
     useState(false);
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectItemsSummary);
-  const activeItems = useAppSelector(selectActiveItems);
+  const meatlType = useAppSelector(selectActiveMealType);
+
+  const meal = useAppSelector((state) => {
+    if (!meatlType) return null;
+    return selectMeal(meatlType)(state);
+  });
+  const mealItemsFromFoodItems = useAppSelector(selectMealItemsFromFoodItems);
+  // const meal = useAppSelector(selectMeal);
+
   async function submit() {
     console.log("submitted");
     setShouldLoadInitialNutrition(true);
-    dispatch(fetchMealData({ searchTerm }));
+    dispatch(fetchMealData({ searchTerm })).then((res) => {
+      console.log(meal);
+    });
   }
 
   useEffect(() => {
     if (!shouldLoadInitialNutrition) return;
-    if (!activeItems) return;
-    console.log("activeItems::", activeItems);
-    const isAnyNurientsEmpty = activeItems.find((item) =>
+    const itemsToCheck =
+      meal && meal.length > 0 ? meal : mealItemsFromFoodItems;
+    if (!itemsToCheck.length) return;
+    console.log("meal::", meal);
+    const isAnyNurientsEmpty = itemsToCheck.some((item) =>
       isAnyFieldEmpty(item.nutrients),
     );
-    console.log(isAnyNurientsEmpty);
-    console.log("activeItems", activeItems);
+    console.log("isAnyNurientsEmpty:::", isAnyNurientsEmpty);
+    console.log("meal", meal);
 
     if (isAnyNurientsEmpty) {
       dispatch(
         fetchNutritionData({
-          foodItems: activeItems,
+          foodItems: itemsToCheck,
         }),
       );
     }
+    setShouldLoadInitialNutrition(false);
     // isAnyFieldEmpty(selectedFood?.nutrients
 
-    setShouldLoadInitialNutrition(false);
-  }, [dispatch, activeItems, shouldLoadInitialNutrition]);
+    // setShouldLoadInitialNutrition(false);
+  }, [dispatch, meal, mealItemsFromFoodItems, shouldLoadInitialNutrition]);
 
   function gotoItemDetails({
     groupId,
     foodId,
+    uid,
   }: {
     groupId: string;
     foodId: string;
+    uid: string;
   }) {
-    dispatch(setActiveItem({ foodId, groupId }));
+    dispatch(setActiveItem({ foodId, groupId, uid }));
     router.push("/(log-meal)/food-details");
   }
   return (
@@ -91,7 +108,11 @@ export default function LogMeal() {
               key={index}
               style={logMealStyles.logButton}
               onPress={() =>
-                gotoItemDetails({ groupId: item.groupId, foodId: item.foodId })
+                gotoItemDetails({
+                  groupId: item.groupId,
+                  foodId: item.foodId,
+                  uid: item.uid,
+                })
               }
             >
               <Text style={logMealStyles.logButtonText}>

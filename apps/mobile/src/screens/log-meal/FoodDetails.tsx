@@ -53,10 +53,12 @@ export default function FoodDetails() {
     quantity,
     groupId,
     foodId,
+    uid,
   }: {
     quantity: string;
     groupId: string;
     foodId: string;
+    uid: string;
   }) => {
     const nextQuantity = Number.parseFloat(quantity);
     if (Number.isNaN(nextQuantity)) return;
@@ -65,6 +67,7 @@ export default function FoodDetails() {
         quantity: nextQuantity,
         groupId,
         foodId,
+        uid,
       }),
     );
   };
@@ -94,6 +97,7 @@ export default function FoodDetails() {
                   quantity,
                   groupId: selectedFood.groupId,
                   foodId: selectedFood.foodId,
+                  uid: selectedFood.uid,
                 });
               }
             }}
@@ -117,9 +121,7 @@ export default function FoodDetails() {
           <TouchableOpacity
             style={[styles.modalButton, styles.modalButtonPrimary]}
             onPress={() => {
-              const { measures, groupId, ...restOfFood } = selectedFood;
-
-              dispatch(setMeal({ food: restOfFood }));
+              dispatch(setMeal({ food: selectedFood }));
               router.push("/(log-meal)/log-meal");
             }}
           >
@@ -132,13 +134,14 @@ export default function FoodDetails() {
       <ScrollView>
         {foods &&
           foods.map((food) => (
-            <Pressable style={logMealStyles.logButton} key={food.foodId}>
+            <Pressable style={logMealStyles.logButton} key={food.uid}>
               <Text
                 onPress={() =>
                   dispatch(
                     setActiveItem({
                       foodId: food.foodId,
                       groupId: food.groupId,
+                      uid: food.uid,
                     }),
                   )
                 }

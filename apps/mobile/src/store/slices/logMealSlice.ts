@@ -25,6 +25,7 @@ import { RootState } from "..";
 export type ItemSummary = {
   groupId: string;
   foodId: string;
+  uid: string;
   name: string;
   quantity: number;
   unit: string;
@@ -53,10 +54,10 @@ export type logMealState = {
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   lastLoadedAt: string | null;
-  meal: Record<TMealType, Meal[]>;
+  meal: Record<TMealType, TFoodItem[]>;
 };
 
-const createEmptyMeals = (): Record<TMealType, Meal[]> => ({
+const createEmptyMeals = (): Record<TMealType, TFoodItem[]> => ({
   breakfast: [],
   lunch: [],
   dinner: [],
@@ -128,10 +129,13 @@ const logMealSlice = createSlice({
   initialState,
   reducers: (create) => ({
     setActiveItem: create.reducer(
-      (state, action: PayloadAction<{ foodId: string; groupId: string }>) => {
-        const { foodId, groupId } = action.payload;
+      (
+        state,
+        action: PayloadAction<{ foodId: string; groupId: string; uid: string }>,
+      ) => {
+        const { uid, foodId, groupId } = action.payload;
         const item = findGroupById(groupId, state)?.foodItems?.find(
-          (item) => item.foodId === foodId,
+          (item) => item.foodId === foodId && item.uid === uid,
         );
         item ? (state.activeItem = item) : null;
       },
@@ -143,13 +147,16 @@ const logMealSlice = createSlice({
           quantity: number;
           groupId: string;
           foodId: string;
+          uid: string;
         }>,
       ) => {
-        const { quantity, groupId, foodId } = action.payload;
+        const { uid, quantity, groupId, foodId } = action.payload;
         const group = findGroupById(groupId, state);
         if (!group) return;
 
-        const item = group.foodItems.find((f) => f.foodId === foodId);
+        const item = group.foodItems.find(
+          (f) => f.foodId === foodId && f.uid === uid,
+        );
         if (!item) return;
         if (item.quantity !== quantity) {
           const oldQty = item.quantity;
@@ -173,15 +180,18 @@ const logMealSlice = createSlice({
         const { mealType } = action.payload;
         if (state.activeMealType !== mealType) {
           state.activeMealType = mealType;
+          state.foodItems = [];
         }
       },
     ),
-    setMeal: create.reducer((state, action: PayloadAction<{ food: Meal }>) => {
-      if (!state.activeMealType) return;
-      state.meal[state.activeMealType].push({
-        ...action.payload.food,
-      });
-    }),
+    setMeal: create.reducer(
+      (state, action: PayloadAction<{ food: TFoodItem }>) => {
+        if (!state.activeMealType) return;
+        state.meal[state.activeMealType].push({
+          ...action.payload.food,
+        });
+      },
+    ),
   }),
   extraReducers: (builder) => {
     builder
@@ -193,22 +203,10 @@ const logMealSlice = createSlice({
         if (!action.payload) return;
         state.status = "succeeded";
         state.foodItems = mapFoodItems(action.payload);
-        state.activeItems = setInitialActiveItems(state.foodItems);
-
         if (state.activeMealType) {
-          const mealItems = state.activeItems.map((m) => ({
-            foodId: m.foodId,
-            brand: m.brand,
-            name: m.name,
-            nutrients: m.nutrients,
-            preparation: m.preparation,
-            quantity: m.quantity,
-            source: m.source,
-            unit: m.unit,
-          }));
           state.meal[state.activeMealType] = [
             ...state.meal[state.activeMealType],
-            ...mealItems,
+            ...setMealItems(state.foodItems),
           ];
         }
 
@@ -238,37 +236,19 @@ const logMealSlice = createSlice({
         const requestedItems = Array.isArray(requested)
           ? requested
           : [requested];
-        const requestedIds = new Set(
+        const requestedFoodIds = new Set(
           requestedItems.map((item) => item.foodId).filter(Boolean),
         );
-        const isBatch = Array.isArray(requested);
-
-        if (isBatch) {
-          const updatedActiveItems = extractNutrition(
-            state.activeItems,
-            action.payload,
-          );
-          if (Array.isArray(updatedActiveItems)) {
-            state.activeItems = updatedActiveItems;
-          }
-        }
-
-        if (state.activeItem && requestedIds.has(state.activeItem.foodId ?? "")) {
-          const updatedActiveItem = extractNutrition(
-            state.activeItem,
-            action.payload,
-          );
-          if (updatedActiveItem && !Array.isArray(updatedActiveItem)) {
-            state.activeItem = updatedActiveItem;
-          }
-        }
+        const shouldFilterGroups = requestedFoodIds.size > 0;
 
         if (state.foodItems?.length) {
           state.foodItems = state.foodItems.map((group) => {
-            const hasMatch = group.foodItems.some((item) =>
-              requestedIds.has(item.foodId ?? ""),
-            );
-            if (!hasMatch) return group;
+            if (shouldFilterGroups) {
+              const hasMatch = group.foodItems.some((item) =>
+                requestedFoodIds.has(item.foodId ?? ""),
+              );
+              if (!hasMatch) return group;
+            }
             const updatedGroupItems = extractNutrition(
               group.foodItems,
               action.payload,
@@ -277,6 +257,29 @@ const logMealSlice = createSlice({
               ? { ...group, foodItems: updatedGroupItems }
               : group;
           });
+
+          const itemsByUid = new Map<string, TFoodItem>();
+          for (const group of state.foodItems) {
+            for (const item of group.foodItems) {
+              if (item.uid) itemsByUid.set(item.uid, item);
+            }
+          }
+
+          const resolveUpdated = (item: TFoodItem | null) => {
+            if (!item) return null;
+            const byUid = item.uid ? itemsByUid.get(item.uid) : undefined;
+            return byUid ?? item;
+          };
+
+          if (state.activeItem) {
+            state.activeItem = resolveUpdated(state.activeItem);
+          }
+
+          if (state.activeMealType) {
+            state.meal[state.activeMealType] = state.meal[
+              state.activeMealType
+            ].map((item) => resolveUpdated(item) ?? item);
+          }
         }
 
         console.log(
@@ -310,6 +313,7 @@ export const { setQuantity, setActiveItem, setMealType, setMeal } =
   logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
+const mealState = (state: RootState) => state.logMeal.meal;
 
 export const selectGroupInfoById = (groupId: string) => {
   return createSelector(
@@ -319,9 +323,13 @@ export const selectGroupInfoById = (groupId: string) => {
   );
 };
 
-export const selectActiveItems = createSelector(
+export const selectMeal = (mealType: TMealType) => {
+  return createSelector(mealState, (meal) => meal[mealType]);
+};
+
+export const selectActiveMealType = createSelector(
   (state: RootState) => state.logMeal,
-  (logMeal) => logMeal.activeItems,
+  (logMeal) => logMeal.activeMealType,
 );
 
 export const selectActiveItem = createSelector(
@@ -333,6 +341,17 @@ export const selectFoodItems = createSelector(
   (logMeal) => logMeal.foodItems,
 );
 
+export const selectMealItemsFromFoodItems = createSelector(
+  selectFoodItems,
+  (foodItemsArr: FoodItemsObj[] | null) => {
+    return Array.isArray(foodItemsArr)
+      ? foodItemsArr
+          .map((entry) => entry.foodItems[0])
+          .filter((foodItem): foodItem is TFoodItem => !!foodItem)
+      : [];
+  },
+);
+
 export const selectItemsSummary = createSelector(
   selectFoodItems,
   (foodItemsArr: FoodItemsObj[] | null) => {
@@ -342,10 +361,11 @@ export const selectItemsSummary = createSelector(
             // const label = entry.matches?.[0]?.food?.label;
             if (!entry) return null;
             const item = entry.foodItems[0];
-            const { name, foodId, groupId, quantity } = item;
+            const { uid, name, foodId, groupId, quantity } = item;
             if (!foodId || !groupId) return null;
             return {
               groupId,
+              uid,
               foodId,
               name,
               quantity,
@@ -368,11 +388,12 @@ export const selectAcitveGroupSummaries = createSelector(
     return entry?.foodItems
       .filter((f) => f.foodId !== foodId)
       .map((food) => {
-        const { name, foodId, groupId, quantity } = food;
+        const { uid, name, foodId, groupId, quantity } = food;
         if (!foodId || !groupId) return null;
         return {
           groupId,
           foodId,
+          uid,
           name,
           quantity,
           unit: entry.groupInfo.unit ?? "",
@@ -388,6 +409,7 @@ function findGroupById(groupId: string, state: any): FoodItemsObj {
     (item: FoodItemsObj) => item?.groupId === groupId,
   );
 }
+
 function setNutrientsBody({
   foodItems,
 }: {
@@ -470,38 +492,56 @@ function getMeasureUri(
 function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   if (!data) return null;
   return (
-    data?.items?.map((item) => ({
-      groupId: item.tempId,
-      groupInfo: item.item,
-      foodItems:
-        item.matches?.map<TFoodItem>((m) => ({
-          foodId: m.food.foodId,
-          name: m.food.label,
-          quantity: item.item.quantity,
-          groupId: item.tempId,
-          source: "user",
-          nutrients: {
-            caloriesKcal: m.food.nutrients.ENERC_KCAL,
-            fatG: m.food.nutrients.FAT,
-            carbsG: undefined,
-            fiberG: undefined,
-            phosphorusMg: undefined,
-            potassiumMg: undefined,
-            sodiumMg: undefined,
-          },
-          measures: m.measures,
-          unit: item.item.unit ?? "",
-        })) ?? [],
-    })) ?? null
+    data?.items?.map((item) => {
+      const unitNorm = (item.item.unit ?? "").trim().toLowerCase();
+      const seen = new Map<string, number>();
+
+      return {
+        groupId: item.tempId,
+        groupInfo: item.item,
+        foodItems:
+          item.matches?.map<TFoodItem>((m) => {
+            const foodId = m.food.foodId;
+            const name = m.food.label;
+            const keyBase = `${item.tempId}|${foodId}|${unitNorm}|${name
+              .trim()
+              .toLowerCase()}`;
+            const next = (seen.get(keyBase) ?? 0) + 1;
+            seen.set(keyBase, next);
+            const uid = `${keyBase}|${next}`;
+
+            return {
+              uid,
+              foodId,
+              name,
+              quantity: item.item.quantity,
+              groupId: item.tempId,
+              source: "user",
+              nutrients: {
+                caloriesKcal: m.food.nutrients.ENERC_KCAL,
+                fatG: m.food.nutrients.FAT,
+                carbsG: undefined,
+                fiberG: undefined,
+                phosphorusMg: undefined,
+                potassiumMg: undefined,
+                sodiumMg: undefined,
+              },
+              measures: m.measures,
+              unit: item.item.unit ?? "",
+            };
+          }) ?? [],
+      };
+    }) ?? null
   );
 }
 
-function setInitialActiveItems(items: FoodItemsObj[] | null) {
+function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
   if (!items?.length) return [];
   return items
     .map((item) => item.foodItems[0])
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
 }
+
 function extractNutrition(
   activeItems: TFoodItem[] | TFoodItem | null,
   data: TEdamamNutritionResponse[],
