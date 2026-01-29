@@ -82,7 +82,7 @@ export type DashboardData = {
   };
 };
 
-export type ApiResponse = {
+export type ApiResponse<T> = {
   ok: boolean;
-  data: DashboardData;
+  data: T;
 };

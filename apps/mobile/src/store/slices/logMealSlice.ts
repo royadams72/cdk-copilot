@@ -8,19 +8,18 @@ import {
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { RootState } from "..";
 import { formatApiError } from "@/lib/formatApiError";
+// TODO: put these types into package
+import type { ApiResponse } from "@/screens/dashboard/types";
 import type {
-  TEdamamFoodMeasure,
   TLogMealEdamamResponse,
-  TLogMealResponseItem,
   TFoodItem,
   TLogMealItem,
   TEdamamMeasure,
   TEdamamNutritionResponse,
-  TNutrients,
   TMealType,
 } from "@ckd/core";
-import { RootState } from "..";
 
 export type ItemSummary = {
   groupId: string;
@@ -55,6 +54,7 @@ export type logMealState = {
   error: string | null;
   lastLoadedAt: string | null;
   meal: Record<TMealType, TFoodItem[]>;
+  isDirty: boolean;
 };
 
 const createEmptyMeals = (): Record<TMealType, TFoodItem[]> => ({
@@ -74,6 +74,7 @@ const initialState: logMealState = {
   error: null,
   lastLoadedAt: null,
   meal: createEmptyMeals(),
+  isDirty: false,
 };
 
 export const fetchMealData = createAsyncThunk<
@@ -121,6 +122,38 @@ export const fetchNutritionData = createAsyncThunk<
     return data as TEdamamNutritionResponse[];
   } catch (err: any) {
     return rejectWithValue(err?.message ?? "Failed to load your meal data");
+  }
+});
+
+export const saveMealData = createAsyncThunk<
+  ApiResponse<any> | null | string | undefined,
+  void,
+  { state: RootState; rejectValue: string }
+>("logMeal/saveMealData", async (_, { getState, rejectWithValue }) => {
+  const state = getState() as RootState;
+  const activeMealType = state.logMeal.activeMealType;
+  if (!activeMealType) {
+    return rejectWithValue("No active meal type");
+  }
+  const meal = state.logMeal.meal[activeMealType] ?? [];
+  const payload = { [activeMealType]: meal } as Record<TMealType, TFoodItem[]>;
+
+  try {
+    const res = await authFetch(`${API}/api/food/save`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    type Response = ApiResponse<any>;
+    const body: unknown = await res.json().catch(() => null);
+    const ok = !!(body as Response)?.ok;
+    const data = (body as Response)?.data;
+    if (!res.ok || !ok) {
+      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    }
+    return data as Response;
+  } catch (err: any) {
+    return rejectWithValue(err?.message ?? "Failed to save your meal data");
   }
 });
 
@@ -172,6 +205,7 @@ const logMealSlice = createSlice({
           item.quantity = quantity;
           state.activeItem = item;
           group.groupInfo.quantity = quantity;
+          state.isDirty = true;
         }
       },
     ),
@@ -181,6 +215,7 @@ const logMealSlice = createSlice({
         if (state.activeMealType !== mealType) {
           state.activeMealType = mealType;
           state.foodItems = [];
+          state.isDirty = false;
         }
       },
     ),
@@ -190,6 +225,7 @@ const logMealSlice = createSlice({
         state.meal[state.activeMealType].push({
           ...action.payload.food,
         });
+        state.isDirty = true;
       },
     ),
     removeMealItem: create.reducer(
@@ -198,21 +234,26 @@ const logMealSlice = createSlice({
 
         if (state.foodItems?.length) {
           state.foodItems = state.foodItems.filter(
-            (group) => group.groupId === groupId,
+            (group) => group.groupId !== groupId,
           );
         }
 
         if (state.activeMealType) {
           state.meal[state.activeMealType] = state.meal[
             state.activeMealType
-          ].filter((item) => item.groupId === groupId);
+          ].filter((item) => item.groupId !== groupId);
         }
 
         if (state.activeItem?.groupId === groupId) {
           state.activeItem = null;
         }
+
+        state.isDirty = true;
       },
     ),
+    clearMealState: create.reducer((state) => {
+      resetLogMeal(state);
+    }),
   }),
   extraReducers: (builder) => {
     builder
@@ -230,6 +271,7 @@ const logMealSlice = createSlice({
             ...setMealItems(state.foodItems),
           ];
         }
+        state.isDirty = true;
 
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
@@ -325,6 +367,20 @@ const logMealSlice = createSlice({
           action.payload ??
           action.error.message ??
           "We couldn't refresh your dashboard.";
+      })
+      .addCase(saveMealData.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(saveMealData.fulfilled, (state, action) => {
+        resetLogMeal(state);
+      })
+      .addCase(saveMealData.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "We couldn't save your meal data.";
       });
   },
 });
@@ -336,6 +392,7 @@ export const {
   setMealType,
   setMeal,
   removeMealItem,
+  clearMealState,
 } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
@@ -362,9 +419,15 @@ export const selectActiveItem = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.activeItem,
 );
+
 export const selectFoodItems = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.foodItems,
+);
+
+export const selectIsDirty = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.isDirty,
 );
 
 export const selectMealItemsFromFoodItems = createSelector(
@@ -566,6 +629,10 @@ function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
   return items
     .map((item) => item.foodItems[0])
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+}
+
+function resetLogMeal(state: RootState["logMeal"]) {
+  initialState;
 }
 
 function extractNutrition(

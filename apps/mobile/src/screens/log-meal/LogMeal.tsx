@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Button,
   TextInput,
@@ -6,9 +6,13 @@ import {
   Text,
   ScrollView,
   Pressable,
+  Alert,
+  BackHandler,
+  TouchableOpacity,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -19,23 +23,29 @@ import {
   selectItemsSummary,
   selectMealItemsFromFoodItems,
   removeMealItem,
+  clearMealState,
   setActiveItem,
   selectMeal,
   selectActiveMealType,
+  selectIsDirty,
+  saveMealData,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
 import { isAnyFieldEmpty } from "@/lib/emptyFields";
+import { ThemedText } from "@/components/themed-text";
 
 export default function LogMeal() {
   const router = useRouter();
+  const navigation = useNavigation();
   const [searchTerm, setSearchTerm] = useState("");
   const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
     useState(false);
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectItemsSummary);
   const meatlType = useAppSelector(selectActiveMealType);
+  const isDirty = useAppSelector(selectIsDirty);
 
   const meal = useAppSelector((state) => {
     if (!meatlType) return null;
@@ -51,6 +61,46 @@ export default function LogMeal() {
       console.log(meal);
     });
   }
+
+  const confirmExit = useCallback(() => {
+    Alert.alert("Leave this screen?", "Your meal will not be saved.", [
+      { text: "Stay", style: "cancel" },
+      {
+        text: "Leave",
+        style: "destructive",
+        onPress: () => {
+          dispatch(clearMealState());
+          router.back();
+        },
+      },
+    ]);
+  }, [dispatch, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onHardwareBack = () => {
+        if (!isDirty) return false;
+        confirmExit();
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onHardwareBack,
+      );
+
+      const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+        if (!isDirty) return;
+        e.preventDefault();
+        confirmExit();
+      });
+
+      return () => {
+        backHandler.remove();
+        unsubscribe();
+      };
+    }, [confirmExit, isDirty, navigation]),
+  );
 
   useEffect(() => {
     if (!shouldLoadInitialNutrition) return;
@@ -90,7 +140,22 @@ export default function LogMeal() {
     router.push("/(log-meal)/food-details");
   }
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <View style={styles.navRow}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={styles.navButton}
+          >
+            <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
+          </TouchableOpacity>
+        </View>
+        <ThemedText type="title">Nutrition</ThemedText>
+        <ThemedText style={styles.helperText}>
+          Track how your meals contribute to renal targets.
+        </ThemedText>
+      </View>
       <View>
         <TextInput
           placeholder="Search"
@@ -104,6 +169,13 @@ export default function LogMeal() {
       </View>
       {items && (
         <ScrollView>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => dispatch(saveMealData())}
+            style={styles.navButton}
+          >
+            <ThemedText style={styles.navButtonText}>Save Meal</ThemedText>
+          </TouchableOpacity>
           {items.map((item: ItemSummary) => (
             <View key={item.uid} style={logMealStyles.logButton}>
               <Pressable

@@ -28,10 +28,11 @@ export const fetchDashboard = createAsyncThunk<
   try {
     const res = await authFetch(`${API}/api/dashboard`, { method: "GET" });
     const body: unknown = await res.json().catch(() => null);
-    if (!res.ok || !(body as ApiResponse)?.ok) {
+    type Response = ApiResponse<DashboardData>;
+    if (!res.ok || !(body as Response)?.ok) {
       throw new Error(formatApiError(res.status, (body as any) ?? null));
     }
-    return (body as ApiResponse).data;
+    return (body as Response).data;
   } catch (err: any) {
     return rejectWithValue(err?.message ?? "Failed to load your dashboard");
   }

@@ -9,19 +9,19 @@ const nutrientsUri = process.env.EDAMAM_API_NUTRIENTS_URI || "";
 const foodAppID = process.env.EDAMAM_API_ID || "";
 
 export async function POST(req: NextRequest) {
-  const b = await req.json();
   const requestId = makeRandomId();
+  const user: SessionUser = await requireUser(req);
+
+  if (user.role !== ROLES.Patient) {
+    return bad("Patient context missing", { requestId }, 403);
+  }
+  const b = await req.json();
 
   if (!foodAppID || !foodAppKey || !nutrientsUri) {
     return bad("App vars not found", { requestId }, 403);
   }
+
   try {
-    const user: SessionUser = await requireUser(req);
-
-    if (user.role !== ROLES.Patient) {
-      return bad("Patient context missing", { requestId }, 403);
-    }
-
     const reqIngredients = Array.isArray(b) ? b : b?.reqIngredients;
     if (!Array.isArray(reqIngredients) || reqIngredients.length === 0) {
       return bad("Invalid ingredients payload", { requestId }, 400);
