@@ -41,7 +41,8 @@
         "proteinG": 46,
         "phosphorusMg": 320,
         "potassiumMg": 350,
-        "sodiumMg": 110
+        "sodiumMg": 110,
+        "phosphorus_protein_ratio": 6.9
       }
     },
     {
@@ -54,7 +55,8 @@
         "proteinG": 5,
         "phosphorusMg": 70,
         "potassiumMg": 55,
-        "sodiumMg": 0
+        "sodiumMg": 0,
+        "phosphorus_protein_ratio": 14
       }
     }
   ],
@@ -63,7 +65,8 @@
     "proteinG": 51,
     "phosphorusMg": 390,
     "potassiumMg": 405,
-    "sodiumMg": 110
+    "sodiumMg": 110,
+    "phosphorus_protein_ratio": 20.6
   },
   "source": "manual",
   "createdAt": { "$date": "2026-01-20T12:50:00Z" },

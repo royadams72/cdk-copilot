@@ -11,7 +11,7 @@ import {
   TNutrientKey,
   TNutritionEntry,
 } from "@ckd/core";
-import { getCollection, COLLECTIONS } from "@ckd/core/server";
+import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 import { NextRequest } from "next/server";
 
@@ -50,16 +50,16 @@ export async function POST(req: NextRequest) {
     console.log("caller.patientId:", caller.patientId);
 
     const doc: TNutritionEntry = {
-      patientId: caller.patientId,
-      mealType,
-      totals: { ...getTotals(mealArray) },
-      items: mealArray,
-      eatenAt: now,
       createdAt: now,
-      updatedAt: now,
+      eatenAt: now,
+      items: mealArray,
+      mealType,
+      patientId: caller.patientId,
+      photos: [],
       status: "active",
       tags: [],
-      photos: [],
+      totals: { ...getTotals(mealArray) },
+      updatedAt: now,
     };
 
     const parsed = NutritionEntry.safeParse(doc);
@@ -89,6 +89,7 @@ const nutrientKeys: TNutrientKey[] = [
   "phosphorusMg",
   "potassiumMg",
   "sodiumMg",
+  "phosphorus_protein_ratio",
 ];
 
 const getTotals = (entries: TFoodItemEntry[]) =>
@@ -101,9 +102,10 @@ const getTotals = (entries: TFoodItemEntry[]) =>
     },
     {
       caloriesKcal: 0,
-      proteinG: 0,
+      phosphorus_protein_ratio: 0,
       phosphorusMg: 0,
       potassiumMg: 0,
+      proteinG: 0,
       sodiumMg: 0,
     },
   );

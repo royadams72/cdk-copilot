@@ -10,15 +10,17 @@ export const NutrientKey = z.enum([
   "phosphorusMg",
   "potassiumMg",
   "sodiumMg",
+  "phosphorus_protein_ratio",
 ]);
 const Nutrients = z.object({
   caloriesKcal: z.number().nonnegative().max(5000).optional(),
-  proteinG: z.number().nonnegative().max(300).optional(),
   carbsG: z.number().nonnegative().max(600).optional(),
   fatG: z.number().nonnegative().max(300).optional(),
   fiberG: z.number().nonnegative().max(200).optional(),
+  phosphorus_protein_ratio: z.number().nonnegative().max(300).optional(),
   phosphorusMg: z.number().nonnegative().max(5000).optional(),
   potassiumMg: z.number().nonnegative().max(10000).optional(),
+  proteinG: z.number().nonnegative().max(300).optional(),
   sodiumMg: z.number().nonnegative().max(20000).optional(),
 });
 
@@ -37,8 +39,8 @@ const FoodItem = z.object({
 });
 
 export const FoodItemEntry = FoodItem.omit({
-  measures: true,
   groupId: true,
+  measures: true,
 });
 
 export const NutritionEntry = z.object({

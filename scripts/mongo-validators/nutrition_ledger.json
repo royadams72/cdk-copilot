@@ -1,5 +1,11 @@
 {
   "collMod": "nutrition_ledger",
+  "indexes": [
+    { "key": { "eatenAt": -1, "patientId": 1 } },
+    { "key": { "createdAt": -1, "patientId": 1 } }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
@@ -57,11 +63,5 @@
       },
       "additionalProperties": true
     }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
-  "indexes": [
-    { "key": { "patientId": 1, "eatenAt": -1 } },
-    { "key": { "patientId": 1, "createdAt": -1 } }
-  ]
+  }
 }
