@@ -633,7 +633,10 @@ function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
 }
 
 function resetLogMeal(state: RootState["logMeal"]) {
-  initialState;
+  state.activeItem = null;
+  state.foodItems = null;
+  state.meal = createEmptyMeals();
+  state.activeMealType = null;
 }
 
 function extractNutrition(

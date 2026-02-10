@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Button,
   TextInput,
@@ -46,6 +46,7 @@ export default function LogMeal() {
   const items = useAppSelector(selectItemsSummary);
   const meatlType = useAppSelector(selectActiveMealType);
   const isDirty = useAppSelector(selectIsDirty);
+  const isLeavingRef = useRef(false);
 
   const meal = useAppSelector((state) => {
     if (!meatlType) return null;
@@ -62,14 +63,20 @@ export default function LogMeal() {
     });
   }
 
-  const confirmExit = useCallback(() => {
+  const confirmExit = useCallback((onLeave?: () => void) => {
+    if (isLeavingRef.current) return;
     Alert.alert("Leave this screen?", "Your meal will not be saved.", [
       { text: "Stay", style: "cancel" },
       {
         text: "Leave",
         style: "destructive",
         onPress: () => {
+          isLeavingRef.current = true;
           dispatch(clearMealState());
+          if (onLeave) {
+            onLeave();
+            return;
+          }
           router.back();
         },
       },
@@ -79,8 +86,9 @@ export default function LogMeal() {
   useFocusEffect(
     useCallback(() => {
       const onHardwareBack = () => {
+        if (isLeavingRef.current) return false;
         if (!isDirty) return false;
-        confirmExit();
+        confirmExit(() => navigation.goBack());
         return true;
       };
 
@@ -90,9 +98,10 @@ export default function LogMeal() {
       );
 
       const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+        if (isLeavingRef.current) return;
         if (!isDirty) return;
         e.preventDefault();
-        confirmExit();
+        confirmExit(() => navigation.dispatch(e.data.action));
       });
 
       return () => {
