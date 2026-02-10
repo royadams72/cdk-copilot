@@ -1,18 +1,15 @@
 {
   "collMod": "nutrition_ledger",
+  "indexes": [
+    { "key": { "eatenAt": -1, "patientId": 1 } },
+    { "key": { "createdAt": -1, "patientId": 1 } }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": [
-        "orgId",
-        "patientId",
-        "items",
-        "mealType",
-        "eatenAt",
-        "source",
-        "createdAt",
-        "updatedAt"
-      ],
+      "required": ["patientId", "items", "mealType", "eatenAt", "updatedAt"],
       "properties": {
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
@@ -20,32 +17,51 @@
           "bsonType": "array",
           "items": {
             "bsonType": "object",
-            "required": ["foodId", "quantity"],
+            "required": [
+              "foodId",
+              "quantity",
+              "unit",
+              "nutrients",
+              "name",
+              "uid"
+            ],
             "properties": {
               "foodId": { "bsonType": "string" },
+              "uid": { "bsonType": "string" },
               "name": { "bsonType": "string" },
               "quantity": { "bsonType": ["double", "int"] },
               "unit": { "bsonType": "string" },
-              "nutrients": { "bsonType": "object" }
+              "nutrients": { "bsonType": "object" },
+              "brand": { "bsonType": "string" },
+              "preparation": { "bsonType": "string" },
+              "source": { "enum": ["user", "barcode", "image_ai", "api"] }
             },
             "additionalProperties": true
           }
         },
         "mealType": {
-          "enum": ["breakfast", "lunch", "dinner", "snack", "other"]
+          "enum": ["breakfast", "lunch", "dinner", "snack", "drink"]
         },
+        "totals": { "bsonType": "object" },
+        "photos": { "bsonType": "array", "items": { "bsonType": "string" } },
+
+        "recipeId": { "bsonType": "string" },
+        "tags": { "bsonType": "array", "items": { "bsonType": "string" } },
+        "notes": { "bsonType": "string" },
         "eatenAt": { "bsonType": "date" },
-        "source": { "enum": ["manual", "scan", "photo", "import"] },
+        "status": {
+          "enum": ["active", "deleted"]
+        },
+
+        "deletedAt": { "bsonType": "date" },
+        "deletedBy": {
+          "enum": ["patient", "clinician", "dietitian", "admin"]
+        },
+
         "createdAt": { "bsonType": "date" },
         "updatedAt": { "bsonType": "date" }
       },
       "additionalProperties": true
     }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
-  "indexes": [
-    { "key": { "userId": 1, "mealAt": -1 } },
-    { "key": { "userId": 1, "createdAt": -1 } }
-  ]
+  }
 }

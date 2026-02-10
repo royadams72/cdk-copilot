@@ -9,13 +9,21 @@ import { z } from "zod";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
 import { COLLECTIONS } from "@ckd/core/server";
-import { ROLES, DEFAULT_SCOPES } from "@ckd/core";
+import {
+  ROLES,
+  DEFAULT_SCOPES,
+  EmailLower,
+  TUsersAccount,
+  TUserPII,
+} from "@ckd/core";
+import { bad, ok } from "@/apps/api/lib/http/responses";
 
 export type colType = "oauth_code" | "email_verify" | "password_reset";
 export enum COLLECTION_TYPE {
   OauthCode = "oauth_code",
   EmailVerify = "email_verify",
   PasswordReset = "password_reset",
+  Refresh = "refresh",
 }
 const Body = z.object({ email: z.email() });
 
@@ -49,7 +57,7 @@ export async function POST(req: NextRequest) {
           ok: false,
           error: "missing_params: env",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const { email } = parsed.data;
@@ -57,7 +65,17 @@ export async function POST(req: NextRequest) {
     // Create patient record
     const patients = db.collection(COLLECTIONS.Patients);
     const auth_tokens = db.collection(COLLECTIONS.AuthTokens);
+    const users_pii = db.collection(COLLECTIONS.UsersPII);
+    // Check that patients does not exist
 
+    // const isUserActive = await users_pii.findOne<TUserPII>(
+    //   { email },
+    //   { projection: { _id: 1 } },
+    // );
+
+    // if (isUserActive) {
+    //   return bad("User already exists", 500);
+    // }
     // Generate identifiers
     const patientId = new ObjectId();
     const principalId = `pr_${randomBytes(12).toString("hex")}`;
@@ -118,7 +136,7 @@ export async function POST(req: NextRequest) {
     } else {
       console.log(
         "[DEV] Email disabled. Verification link:",
-        verifyUrl.toString()
+        verifyUrl.toString(),
       );
     }
 
@@ -126,11 +144,11 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error(
       "There was an error",
-      JSON.stringify(e?.errInfo ?? e, null, 2)
+      JSON.stringify(e?.errInfo ?? e, null, 2),
     );
     return NextResponse.json(
       { error: "validation_failed", info: e?.errInfo },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

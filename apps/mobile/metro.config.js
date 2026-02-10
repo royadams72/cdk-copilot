@@ -9,6 +9,7 @@ const config = getDefaultConfig(projectRoot);
 // watch shared packages (without nuking Expo defaults)
 config.watchFolders = [
   ...(config.watchFolders || []),
+  workspaceRoot,
   path.join(workspaceRoot, "packages"),
 ];
 
@@ -18,7 +19,14 @@ config.resolver.nodeModulesPaths = [
   path.join(workspaceRoot, "node_modules"),
 ];
 config.resolver.unstable_enableSymlinks = true;
-
+config.resolver.extraNodeModules = new Proxy(
+  {},
+  {
+    get: (_, name) => path.join(workspaceRoot, "node_modules", name),
+  },
+);
+// Often helps with modern package "exports"
+config.resolver.unstable_enablePackageExports = true;
 // handy aliases
 config.resolver.alias = {
   "@": path.resolve(projectRoot),

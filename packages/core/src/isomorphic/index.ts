@@ -1,6 +1,7 @@
 export * from "./schemas/auth_links";
 export * from "./schemas/base_foods";
 export * from "./schemas/edamam";
+export * from "./schemas/log_meal";
 export * from "./schemas/labs";
 export * from "./schemas/medications";
 export * from "./schemas/nutrition";
@@ -8,6 +9,7 @@ export * from "./schemas/patients";
 export * from "./schemas/users_pii";
 export * from "./schemas/users_accounts";
 export * from "./schemas/users_clinical";
+export * from "./schemas/edamam_responses";
 export * from "./constants/onboardingSteps";
 export * from "./constants/scopes";
 export * from "../shared/common";

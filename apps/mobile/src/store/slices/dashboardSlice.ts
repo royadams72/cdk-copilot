@@ -4,6 +4,7 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import type { ApiResponse, DashboardData } from "@/screens/dashboard/types";
+import { RootState } from "..";
 
 export type DashboardState = {
   data: DashboardData | null;
@@ -27,10 +28,11 @@ export const fetchDashboard = createAsyncThunk<
   try {
     const res = await authFetch(`${API}/api/dashboard`, { method: "GET" });
     const body: unknown = await res.json().catch(() => null);
-    if (!res.ok || !(body as ApiResponse)?.ok) {
+    type Response = ApiResponse<DashboardData>;
+    if (!res.ok || !(body as Response)?.ok) {
       throw new Error(formatApiError(res.status, (body as any) ?? null));
     }
-    return (body as ApiResponse).data;
+    return (body as Response).data;
   } catch (err: any) {
     return rejectWithValue(err?.message ?? "Failed to load your dashboard");
   }
@@ -63,3 +65,8 @@ const dashboardSlice = createSlice({
 });
 
 export default dashboardSlice.reducer;
+
+export const selectDashboardData = (state: RootState) => state.dashboard.data;
+export const selectDashboardStatus = (state: RootState) =>
+  state.dashboard.status;
+export const selectDashboardError = (state: RootState) => state.dashboard.error;

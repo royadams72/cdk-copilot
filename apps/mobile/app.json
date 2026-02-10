@@ -6,7 +6,7 @@
     "extra": { "router": { "appDir": "app" } },
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
-    "scheme": "ckdapp",
+    "scheme": ["ckdapp", "mobile"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

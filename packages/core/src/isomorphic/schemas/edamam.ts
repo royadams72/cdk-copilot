@@ -18,7 +18,7 @@ const EdamamFoodSchema = z.object({
   category: z.string(),
   categoryLabel: z.string(),
   foodContentsLabel: z.string().optional(),
-  image: z.string().url().optional(),
+  image: z.url().optional(),
   nutrients: EdamamNutrientsSchema,
 });
 

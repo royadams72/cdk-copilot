@@ -1,0 +1,143 @@
+{
+  "collMod": "auth_tokens",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "type",
+        "id",
+        "secretHash",
+        "patientId",
+        "createdAt",
+        "expiresAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+
+        "type": {
+          "enum": [
+            "oauth_code",
+            "email_verify",
+            "password_reset",
+            "exchange",
+            "refresh"
+          ]
+        },
+
+        "id": {
+          "bsonType": "string",
+          "minLength": 22,
+          "maxLength": 43
+        },
+
+        "secretHash": {
+          "bsonType": "string",
+          "minLength": 43,
+          "maxLength": 88
+        },
+
+        "patientId": { "bsonType": "objectId" },
+
+        "principalId": {
+          "bsonType": "string",
+          "minLength": 1
+        },
+
+        "orgId": {
+          "bsonType": ["string", "null"],
+          "minLength": 1
+        },
+
+        "email": {
+          "bsonType": "string",
+          "pattern": "^.+@.+\\..+$"
+        },
+
+        "clientId": {
+          "bsonType": ["string", "null"],
+          "minLength": 1
+        },
+
+        "redirectUri": {
+          "bsonType": ["string", "null"],
+          "pattern": "^[a-z][a-z0-9+.-]*://"
+        },
+
+        "grantedScopes": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+
+        "sessionId": {
+          "bsonType": "string",
+          "minLength": 1
+        },
+
+        "credentialId": {
+          "bsonType": "string",
+          "minLength": 1
+        },
+
+        "parentId": {
+          "bsonType": ["string", "objectId", "null"],
+          "minLength": 22,
+          "maxLength": 43
+        },
+
+        "replacedById": {
+          "bsonType": ["string", "objectId", "null"],
+          "minLength": 22,
+          "maxLength": 43
+        },
+
+        "rotatedAt": { "bsonType": ["date", "null"] },
+        "revokedAt": { "bsonType": ["date", "null"] },
+
+        "usedAt": { "bsonType": ["date", "null"] },
+
+        "createdAt": { "bsonType": "date" },
+        "expiresAt": { "bsonType": "date" },
+
+        "role": { "bsonType": "string" },
+        "scopes": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        }
+      }
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "id": 1 },
+      "name": "byPublicId",
+      "unique": true
+    },
+    {
+      "key": { "expiresAt": 1 },
+      "name": "ttlExpiresAt",
+      "expireAfterSeconds": 0
+    },
+    {
+      "key": { "type": 1, "principalId": 1 },
+      "name": "byTypeAndPrincipal"
+    },
+    {
+      "key": { "type": 1, "sessionId": 1 },
+      "name": "bySession",
+      "partialFilterExpression": {
+        "type": "refresh",
+        "sessionId": { "$exists": true }
+      }
+    },
+    {
+      "key": { "revokedAt": 1 },
+      "name": "byRevoked",
+      "partialFilterExpression": {
+        "revokedAt": { "$exists": true }
+      }
+    }
+  ]
+}

@@ -1,12 +1,34 @@
-import { configureStore } from "@reduxjs/toolkit";
-
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { persistReducer, persistStore } from "redux-persist";
+import { secureStorage } from "../lib/secureStorage";
 import dashboardReducer from "./slices/dashboardSlice";
-
-export const store = configureStore({
-  reducer: {
-    dashboard: dashboardReducer,
-  },
+import logMealReducer from "./slices/logMealSlice";
+import devToolsEnhancer from "redux-devtools-expo-dev-plugin";
+export const rootReducer = combineReducers({
+  dashboard: dashboardReducer,
+  logMeal: logMealReducer,
 });
 
+const persistConfig = {
+  key: "root",
+  storage: secureStorage,
+  whitelist: ["auth"], // keep this small
+};
+
+export const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+export const store = configureStore({
+  reducer: persistedReducer,
+  devTools: __DEV__,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      immutableCheck: false,
+      serializableCheck: false, // required for redux-persist
+    }),
+  enhancers: (getDefaultEnhancers) =>
+    getDefaultEnhancers().concat(devToolsEnhancer()),
+});
+
+export const persistor = persistStore(store);
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

@@ -25,6 +25,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="ckdapp"/>
+        <data android:scheme="mobile"/>
         <data android:scheme="exp+mobile"/>
       </intent-filter>
       <intent-filter android:autoVerify="true" data-generated="true">

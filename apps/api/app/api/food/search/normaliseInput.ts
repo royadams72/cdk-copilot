@@ -2,21 +2,11 @@ import OpenAI from "openai";
 
 import { bad } from "@/apps/api/lib/http/responses";
 import { NextResponse } from "next/server";
+import { TLogMealItem, TLogMealNormalised } from "@ckd/core";
 
-export type Item = {
-  original: string;
-  normalised: string;
-  quantity: number;
-  unit: string | null;
-  food: string;
-};
-export type Normalised = {
-  mealText: string; // original user input
-  items: Item[];
-};
 export async function normaliseInput(
   input: string
-): Promise<Normalised | NextResponse> {
+): Promise<TLogMealNormalised | NextResponse> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const normalise = `Normalise this meal description into the JSON format described above. "${input}"`;
   try {
@@ -40,10 +30,10 @@ export async function normaliseInput(
       throw new Error("No Fitplan created");
     }
 
-    const json = JSON.parse(plan);
+    const json = JSON.parse(plan) as TLogMealNormalised;
     // console.log("jason", json);
 
-    if (!json?.data) {
+    if (!json) {
       bad("No data returned", "no data", 404);
     }
 
@@ -80,8 +70,8 @@ Output JSON schema:
   ]
 }`;
 
-export function rewriteForEdamam(items: Item[]): Item[] {
-  const out: Item[] = [];
+export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
+  const out: TLogMealItem[] = [];
 
   for (const item of items) {
     const text = item.normalised.toLowerCase().trim();

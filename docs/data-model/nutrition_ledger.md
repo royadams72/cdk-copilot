@@ -6,66 +6,72 @@
 
 ## Shape (summary)
 
+- `_id` · ObjectId
+- `orgId` · string
 - `patientId` · ObjectId (ref: patients)
-- `eatenAt` · Date · when consumed
 - `mealType` · `breakfast|lunch|dinner|snack|drink`
 - `items[]` · list of foods eaten
-
-  - `description` · string
-  - `brand?` · string
+  - `foodId` · string
+  - `name` · string
   - `quantity` · number
-  - `nutrients` · { caloriesKcal?, proteinG?, carbsG?, fatG?, fiberG?, **phosphorusMg?**, **potassiumMg?**, **sodiumMg?** }
-  - `source` · `user|barcode|image_ai|api`
-
+  - `unit` · string
+  - `source` · string (e.g., `"manual"`)
+  - `nutrients` · { caloriesKcal, proteinG, phosphorusMg, potassiumMg, sodiumMg }
 - `totals` · same nutrient fields as `items.nutrients`, summed for the entry
-- `tags[]` · strings (for example, `"renal-safe"`)
-- `photos[]` · URLs
-- `recipeId?` · string
-- `notes?` · string
 - `createdAt` · Date · when stored
-- `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
+- `updatedAt` · Date · when stored
+- `eatenAt` · Date · when consumed
 
 ## Example document
 
 ```json
 {
-  "patientId": "u_123",
-  "eatenAt": "2025-09-26T12:45:00Z",
-  "createdAt": "2025-09-26T12:50:00Z",
+  "_id": { "$oid": "6730c4b5c53557c78d2d1001" },
+  "orgId": "org_demo",
+  "patientId": { "$oid": "697249ff7dabc8ebca7aa3ad" },
   "mealType": "lunch",
   "items": [
     {
-      "description": "Chicken breast, grilled",
-      "portion": { "amount": 150, "unit": "g", "grams": 150 },
+      "foodId": "fd_grilled_chicken",
+      "name": "Grilled chicken breast",
+      "quantity": 150,
+      "unit": "g",
       "nutrients": {
-        "caloriesKcal": 247,
+        "caloriesKcal": 280,
         "proteinG": 46,
-        "phosphorusMg": 330,
-        "potassiumMg": 450,
-        "sodiumMg": 100
-      },
-      "source": "user"
+        "phosphorusMg": 320,
+        "potassiumMg": 350,
+        "sodiumMg": 110,
+        "phosphorus_protein_ratio": 6.9
+      }
     },
     {
-      "description": "White rice, cooked",
-      "portion": { "amount": 200, "unit": "g", "grams": 200 },
+      "foodId": "fd_herb_rice",
+      "name": "Steamed rice",
+      "quantity": 200,
+      "unit": "g",
       "nutrients": {
         "caloriesKcal": 260,
         "proteinG": 5,
         "phosphorusMg": 70,
         "potassiumMg": 55,
-        "sodiumMg": 0
+        "sodiumMg": 0,
+        "phosphorus_protein_ratio": 14
       }
     }
   ],
   "totals": {
-    "caloriesKcal": 507,
+    "caloriesKcal": 540,
     "proteinG": 51,
-    "phosphorusMg": 400,
-    "potassiumMg": 505,
-    "sodiumMg": 100
+    "phosphorusMg": 390,
+    "potassiumMg": 405,
+    "sodiumMg": 110,
+    "phosphorus_protein_ratio": 20.6
   },
-  "tags": ["renal-safe", "post-workout"]
+  "source": "manual",
+  "createdAt": { "$date": "2026-01-20T12:50:00Z" },
+  "updatedAt": { "$date": "2026-01-20T12:50:00Z" },
+  "eatenAt": { "$date": "2026-01-20T12:45:00Z" }
 }
 ```
 

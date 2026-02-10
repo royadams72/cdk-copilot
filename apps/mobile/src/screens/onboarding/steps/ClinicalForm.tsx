@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   ACR,
-  CKDStage,
+  CKD_STAGE_VALUES,
   ClinicalFormSchema,
   DialysisStatus,
   TClinicalFormValues,
@@ -125,7 +125,7 @@ export default function ClinicalForm({
               <Text>CKD stage</Text>
               <Picker selectedValue={value} onValueChange={onChange}>
                 <Picker.Item label="Select" value="" />
-                {CKDStage.options.map((option) => (
+                {CKD_STAGE_VALUES.map((option) => (
                   <Picker.Item
                     key={option}
                     label={`Stage ${option.toUpperCase()}`}
