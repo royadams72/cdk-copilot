@@ -49,6 +49,7 @@ export type logMealState = {
   activeItem: TFoodItem | null;
   activeItems: TFoodItem[] | null;
   activeMealType: TMealType | null;
+  eatenAt: string | null;
   error: string | null;
   foodItems: FoodItemsObj[] | null;
   isDirty: boolean;
@@ -69,6 +70,7 @@ const initialState: logMealState = {
   activeItem: null,
   activeItems: null,
   activeMealType: null,
+  eatenAt: new Date().toISOString(),
   error: null,
   foodItems: null,
   isDirty: false,
@@ -136,7 +138,10 @@ export const saveMealData = createAsyncThunk<
     return rejectWithValue("No active meal type");
   }
   const meal = state.logMeal.meal[activeMealType] ?? [];
-  const payload = { [activeMealType]: meal } as Record<TMealType, TFoodItem[]>;
+  const payload = {
+    [activeMealType]: meal,
+    eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
+  } as Record<TMealType, TFoodItem[]> & { eatenAt: string };
 
   try {
     const res = await authFetch(`${API}/api/food/save`, {
@@ -346,6 +351,12 @@ const logMealSlice = createSlice({
         }
       },
     ),
+    setEatenAt: create.reducer(
+      (state, action: PayloadAction<{ eatenAt: string }>) => {
+        state.eatenAt = action.payload.eatenAt;
+        state.isDirty = true;
+      },
+    ),
     setQuantity: create.reducer(
       (
         state,
@@ -393,6 +404,7 @@ export const {
   setMeal,
   removeMealItem,
   clearMealState,
+  setEatenAt,
 } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
@@ -428,6 +440,11 @@ export const selectFoodItems = createSelector(
 export const selectIsDirty = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.isDirty,
+);
+
+export const selectEatenAt = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.eatenAt,
 );
 
 export const selectMealItemsFromFoodItems = createSelector(
@@ -637,6 +654,7 @@ function resetLogMeal(state: RootState["logMeal"]) {
   state.foodItems = null;
   state.meal = createEmptyMeals();
   state.activeMealType = null;
+  state.eatenAt = new Date().toISOString();
 }
 
 function extractNutrition(

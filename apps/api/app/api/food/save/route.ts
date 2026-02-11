@@ -36,22 +36,23 @@ export async function POST(req: NextRequest) {
       db,
       COLLECTIONS.NutritionLedger,
     );
-    const meal: Record<TMealType, TFoodItem[]> = await req.json();
-
+    const body: Record<string, any> = await req.json();
+    const { eatenAt: eatenAtRaw, ...meal } = body ?? {};
     const type = Object.keys(meal);
     if (type.length > 1) {
       bad("Malformed 100", 500);
     }
     const mealType = type[0] as TMealType;
-    const mealArray: TFoodItemEntry[] = meal[mealType].map(
-      ({ groupId, measures, ...rest }) => rest,
-    );
+    const mealArray: TFoodItemEntry[] = (
+      meal as Record<TMealType, TFoodItem[]>
+    )[mealType].map(({ groupId, measures, ...rest }) => rest);
     const now = new Date();
+    const eatenAt = eatenAtRaw ? new Date(eatenAtRaw) : now;
     console.log("caller.patientId:", caller.patientId);
 
     const doc: TNutritionEntry = {
       createdAt: now,
-      eatenAt: now,
+      eatenAt: Number.isNaN(eatenAt.getTime()) ? now : eatenAt,
       items: mealArray,
       mealType,
       patientId: caller.patientId,

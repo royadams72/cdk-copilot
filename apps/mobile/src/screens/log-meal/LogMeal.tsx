@@ -28,13 +28,16 @@ import {
   selectMeal,
   selectActiveMealType,
   selectIsDirty,
+  selectEatenAt,
   saveMealData,
+  setEatenAt,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
 import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
+import { DateTimeModal } from "@/components/date-time-modal";
 
 export default function LogMeal() {
   const router = useRouter();
@@ -46,7 +49,17 @@ export default function LogMeal() {
   const items = useAppSelector(selectItemsSummary);
   const meatlType = useAppSelector(selectActiveMealType);
   const isDirty = useAppSelector(selectIsDirty);
+  const eatenAtIso = useAppSelector(selectEatenAt);
   const isLeavingRef = useRef(false);
+  const [dateTime, setDateTime] = useState(
+    () => new Date(eatenAtIso ?? Date.now()),
+  );
+  const [showDateTimeModal, setShowDateTimeModal] = useState(false);
+  useEffect(() => {
+    if (!eatenAtIso) return;
+    const next = new Date(eatenAtIso);
+    if (!Number.isNaN(next.getTime())) setDateTime(next);
+  }, [eatenAtIso]);
 
   const meal = useAppSelector((state) => {
     if (!meatlType) return null;
@@ -148,6 +161,27 @@ export default function LogMeal() {
     dispatch(setActiveItem({ foodId, groupId, uid }));
     router.push("/(log-meal)/food-details");
   }
+
+  const isToday = (value: Date) => {
+    const now = new Date();
+    return (
+      value.getFullYear() === now.getFullYear() &&
+      value.getMonth() === now.getMonth() &&
+      value.getDate() === now.getDate()
+    );
+  };
+
+  const formattedDate = dateTime.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const formattedTime = dateTime.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const dateLabel = isToday(dateTime) ? "Today" : "Selected";
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
@@ -164,6 +198,20 @@ export default function LogMeal() {
         <ThemedText style={styles.helperText}>
           Track how your meals contribute to renal targets.
         </ThemedText>
+        <View style={logMealStyles.dateRow}>
+          <ThemedText style={logMealStyles.dateText}>
+            {dateLabel}: {formattedDate} {formattedTime}
+          </ThemedText>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => setShowDateTimeModal(true)}
+            style={logMealStyles.dateButton}
+          >
+            <ThemedText style={logMealStyles.dateButtonText}>
+              Change
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
       </View>
       <View>
         <TextInput
@@ -212,6 +260,17 @@ export default function LogMeal() {
           ))}
         </ScrollView>
       )}
+      <DateTimeModal
+        visible={showDateTimeModal}
+        value={dateTime}
+        onCancel={() => setShowDateTimeModal(false)}
+        onConfirm={(next) => {
+          setDateTime(next);
+          dispatch(setEatenAt({ eatenAt: next.toISOString() }));
+          setShowDateTimeModal(false);
+        }}
+        title="Meal date and time"
+      />
     </View>
   );
 }
