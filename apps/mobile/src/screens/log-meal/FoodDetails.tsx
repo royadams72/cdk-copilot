@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
-  View,
-  Text,
   Pressable,
   ScrollView,
+  Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -38,13 +38,9 @@ export default function FoodDetails() {
   });
 
   useEffect(() => {
-    console.log(selectedFood?.nutrients);
     //  Check active item, if some nutrition data missing dispatch an action to get it
     if (selectedFood && isAnyFieldEmpty(selectedFood?.nutrients) && groupInfo) {
-      console.log(selectedFood.nutrients);
-
       dispatch(fetchNutritionData({ foodItems: selectedFood }));
-      // console.log("selectedFood::", selectedFood);
     }
   }, [selectedFood, groupInfo, dispatch]);
 
@@ -55,18 +51,18 @@ export default function FoodDetails() {
     foodId,
     uid,
   }: {
-    quantity: string;
-    groupId: string;
     foodId: string;
+    groupId: string;
+    quantity: string;
     uid: string;
   }) => {
     const nextQuantity = Number.parseFloat(quantity);
     if (Number.isNaN(nextQuantity)) return;
     dispatch(
       setQuantity({
-        quantity: nextQuantity,
-        groupId,
         foodId,
+        groupId,
+        quantity: nextQuantity,
         uid,
       }),
     );
@@ -94,14 +90,14 @@ export default function FoodDetails() {
                 const nextQuantity = Number.parseFloat(quantity);
                 if (Number.isNaN(nextQuantity)) return;
                 handleSetQuantity({
-                  quantity,
-                  groupId: selectedFood.groupId,
                   foodId: selectedFood.foodId,
+                  groupId: selectedFood.groupId,
+                  quantity,
                   uid: selectedFood.uid,
                 });
               }
             }}
-            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+            style={{ borderRadius: 8, borderWidth: 1, padding: 12 }}
           />
 
           <View>

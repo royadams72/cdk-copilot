@@ -17,6 +17,7 @@ import {
   FoodHighlightResult,
   ChartMetricKey,
   FoodHighlight,
+  NutritionMealEntry,
 } from "../types/dashboard";
 
 export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
@@ -47,10 +48,12 @@ export async function fetchNutritionEntries(db: Db, patientId: ObjectId) {
       { patientId },
       {
         projection: {
+          _id: 1,
           totals: 1,
           items: 1,
           eatenAt: 1,
           createdAt: 1,
+          mealType: 1,
         },
       }
     )
@@ -147,6 +150,7 @@ export function summarizeNutrition(
   const ratio = buildRatio(totals, clinicalDoc?.targets);
   const dailySeries = buildDailySeries(entries, to, rangeDays);
   const foodHighlights = buildFoodHighlights(entries);
+  const mealsByDate = buildMealsByDate(entries);
 
   return {
     range: {
@@ -165,6 +169,7 @@ export function summarizeNutrition(
     ratio,
     dailySeries,
     foodHighlights,
+    mealsByDate,
   };
 }
 
@@ -287,6 +292,43 @@ function buildFoodHighlights(
     latestDate: latestEntryDate ? dayKey(latestEntryDate) : null,
     itemsByDate: sortedByDay,
   };
+}
+
+function buildMealsByDate(
+  entries: NutritionEntryDoc[]
+): Record<string, NutritionMealEntry[]> {
+  const buckets = new Map<string, NutritionMealEntry[]>();
+
+  for (const entry of entries) {
+    const entryDate = resolveEntryDate(entry);
+    if (!entryDate) continue;
+    const bucketKey = dayKey(entryDate);
+    if (!buckets.has(bucketKey)) {
+      buckets.set(bucketKey, []);
+    }
+    const eatenAtIso = entry.eatenAt
+      ? entry.eatenAt.toISOString()
+      : entry.createdAt
+      ? entry.createdAt.toISOString()
+      : null;
+    buckets.get(bucketKey)!.push({
+      id: entry._id.toString(),
+      mealType: entry.mealType ?? "snack",
+      eatenAt: eatenAtIso,
+      items: entry.items ?? [],
+    });
+  }
+
+  return Object.fromEntries(
+    Array.from(buckets.entries()).map(([key, items]) => [
+      key,
+      items.sort((a, b) => {
+        const aTime = a.eatenAt ? Date.parse(a.eatenAt) : 0;
+        const bTime = b.eatenAt ? Date.parse(b.eatenAt) : 0;
+        return bTime - aTime;
+      }),
+    ])
+  );
 }
 
 function initFoodHighlightBuckets() {

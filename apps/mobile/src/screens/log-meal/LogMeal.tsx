@@ -24,6 +24,7 @@ import {
   saveMealData,
   selectActiveMealType,
   selectEatenAt,
+  selectEditingEntryId,
   selectFoodItems,
   selectIsDirty,
   selectItemsSummary,
@@ -31,6 +32,7 @@ import {
   selectMealItemsFromFoodItems,
   setActiveItem,
   setEatenAt,
+  updateMealData,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
@@ -50,6 +52,7 @@ export default function LogMeal() {
   const meatlType = useAppSelector(selectActiveMealType);
   const isDirty = useAppSelector(selectIsDirty);
   const eatenAtIso = useAppSelector(selectEatenAt);
+  const editingEntryId = useAppSelector(selectEditingEntryId);
   const isLeavingRef = useRef(false);
   const [dateTime, setDateTime] = useState(
     () => new Date(eatenAtIso ?? Date.now()),
@@ -71,9 +74,7 @@ export default function LogMeal() {
   async function submit() {
     console.log("submitted");
     setShouldLoadInitialNutrition(true);
-    dispatch(fetchMealData({ searchTerm })).then((res) => {
-      console.log(meal);
-    });
+    dispatch(fetchMealData({ searchTerm })).then((res) => {});
   }
 
   const confirmExit = useCallback(
@@ -132,12 +133,9 @@ export default function LogMeal() {
     const itemsToCheck =
       meal && meal.length > 0 ? meal : mealItemsFromFoodItems;
     if (!itemsToCheck.length) return;
-    console.log("meal::", meal);
     const isAnyNurientsEmpty = itemsToCheck.some((item) =>
       isAnyFieldEmpty(item.nutrients),
     );
-    console.log("isAnyNurientsEmpty:::", isAnyNurientsEmpty);
-    console.log("meal", meal);
 
     if (isAnyNurientsEmpty) {
       dispatch(
@@ -229,10 +227,16 @@ export default function LogMeal() {
         <ScrollView>
           <TouchableOpacity
             accessibilityRole="button"
-            onPress={() => dispatch(saveMealData())}
+            onPress={() =>
+              editingEntryId
+                ? dispatch(updateMealData())
+                : dispatch(saveMealData())
+            }
             style={styles.navButton}
           >
-            <ThemedText style={styles.navButtonText}>Save Meal</ThemedText>
+            <ThemedText style={styles.navButtonText}>
+              {editingEntryId ? "Update Meal" : "Save Meal"}
+            </ThemedText>
           </TouchableOpacity>
           {items.map((item: ItemSummary) => (
             <View key={item.uid} style={logMealStyles.logButton}>

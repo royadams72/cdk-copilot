@@ -16,6 +16,7 @@ import type {
   TEdamamMeasure,
   TEdamamNutritionResponse,
   TFoodItem,
+  TFoodItemEntry,
   TLogMealEdamamResponse,
   TLogMealItem,
   TMealType,
@@ -50,6 +51,7 @@ export type logMealState = {
   activeItems: TFoodItem[] | null;
   activeMealType: TMealType | null;
   eatenAt: string | null;
+  editingEntryId: string | null;
   error: string | null;
   foodItems: FoodItemsObj[] | null;
   isDirty: boolean;
@@ -71,6 +73,7 @@ const initialState: logMealState = {
   activeItems: null,
   activeMealType: null,
   eatenAt: new Date().toISOString(),
+  editingEntryId: null,
   error: null,
   foodItems: null,
   isDirty: false,
@@ -141,7 +144,9 @@ export const saveMealData = createAsyncThunk<
   const payload = {
     [activeMealType]: meal,
     eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
-  } as Record<TMealType, TFoodItem[]> & { eatenAt: string };
+  } as Record<TMealType, TFoodItem[]> & {
+    eatenAt: string;
+  };
 
   try {
     const res = await authFetch(`${API}/api/food/save`, {
@@ -159,6 +164,49 @@ export const saveMealData = createAsyncThunk<
     return data as Response;
   } catch (err: any) {
     return rejectWithValue(err?.message ?? "Failed to save your meal data");
+  }
+});
+
+export const updateMealData = createAsyncThunk<
+  ApiResponse<any> | null | string | undefined,
+  void,
+  { rejectValue: string; state: RootState }
+>("logMeal/updateMealData", async (_, { getState, rejectWithValue }) => {
+  const state = getState() as RootState;
+  const activeMealType = state.logMeal.activeMealType;
+  const entryId = state.logMeal.editingEntryId;
+  if (!activeMealType) {
+    return rejectWithValue("No active meal type");
+  }
+  if (!entryId) {
+    return rejectWithValue("No meal to update");
+  }
+  const meal = state.logMeal.meal[activeMealType] ?? [];
+  const payload = {
+    [activeMealType]: meal,
+    eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
+    entryId,
+  } as Record<TMealType, TFoodItem[]> & {
+    eatenAt: string;
+    entryId: string;
+  };
+
+  try {
+    const res = await authFetch(`${API}/api/food/update`, {
+      body: JSON.stringify(payload),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    type Response = ApiResponse<any>;
+    const body: unknown = await res.json().catch(() => null);
+    const ok = !!(body as Response)?.ok;
+    const data = (body as Response)?.data;
+    if (!res.ok || !ok) {
+      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    }
+    return data as Response;
+  } catch (err: any) {
+    return rejectWithValue(err?.message ?? "Failed to update your meal data");
   }
 });
 
@@ -290,6 +338,21 @@ const logMealSlice = createSlice({
           action.error.message ??
           "We couldn't save your meal data.";
       });
+    builder
+      .addCase(updateMealData.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(updateMealData.fulfilled, (state) => {
+        resetLogMeal(state);
+      })
+      .addCase(updateMealData.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "We couldn't update your meal data.";
+      });
   },
   initialState,
   name: "logMeal",
@@ -348,6 +411,8 @@ const logMealSlice = createSlice({
           state.activeMealType = mealType;
           state.foodItems = [];
           state.isDirty = false;
+          state.editingEntryId = null;
+          state.eatenAt = new Date().toISOString();
         }
       },
     ),
@@ -355,6 +420,52 @@ const logMealSlice = createSlice({
       (state, action: PayloadAction<{ eatenAt: string }>) => {
         state.eatenAt = action.payload.eatenAt;
         state.isDirty = true;
+      },
+    ),
+    hydrateMealFromEntry: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          entryId: string;
+          mealType: TMealType;
+          eatenAt: string | null;
+          items: TFoodItemEntry[];
+        }>,
+      ) => {
+        const { entryId, mealType, eatenAt, items } = action.payload;
+        const nextFoodItems: FoodItemsObj[] = items.map((item, index) => {
+          const groupId = `${entryId}:${item.uid ?? index}`;
+          const foodItem: TFoodItem = {
+            ...item,
+            groupId,
+            measures: [],
+          };
+          return {
+            groupId,
+            groupInfo: {
+              original: item.name,
+              normalised: item.name.toLowerCase(),
+              quantity: item.quantity,
+              unit: item.unit ?? "",
+              food: item.name,
+            },
+            foodItems: [foodItem],
+          };
+        });
+
+        state.activeMealType = mealType;
+        state.eatenAt = eatenAt ?? new Date().toISOString();
+        state.editingEntryId = entryId;
+        state.foodItems = nextFoodItems;
+        state.meal = createEmptyMeals();
+        state.meal[mealType] = nextFoodItems
+          .map((entry) => entry.foodItems[0])
+          .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+        state.activeItem = null;
+        state.activeItems = null;
+        state.isDirty = false;
+        state.error = null;
+        state.status = "idle";
       },
     ),
     setQuantity: create.reducer(
@@ -405,6 +516,7 @@ export const {
   removeMealItem,
   clearMealState,
   setEatenAt,
+  hydrateMealFromEntry,
 } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
@@ -445,6 +557,11 @@ export const selectIsDirty = createSelector(
 export const selectEatenAt = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.eatenAt,
+);
+
+export const selectEditingEntryId = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.editingEntryId,
 );
 
 export const selectMealItemsFromFoodItems = createSelector(
@@ -655,6 +772,7 @@ function resetLogMeal(state: RootState["logMeal"]) {
   state.meal = createEmptyMeals();
   state.activeMealType = null;
   state.eatenAt = new Date().toISOString();
+  state.editingEntryId = null;
 }
 
 function extractNutrition(

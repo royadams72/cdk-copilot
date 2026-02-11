@@ -54,6 +54,21 @@ export type FoodHighlights = {
   itemsByDate: Record<string, Record<NutritionMetricKey, FoodHighlight[]>>;
 };
 
+export type NutritionMealEntry = {
+  id: string;
+  mealType: string;
+  eatenAt: string | null;
+  items: {
+    uid: string;
+    foodId: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    nutrients: Record<string, number | undefined>;
+    source?: string;
+  }[];
+};
+
 export type LabSummary = {
   id: string;
   label: string;
@@ -79,6 +94,7 @@ export type DashboardData = {
     ratio: DashboardRatio;
     dailySeries: NutritionDailyPoint[];
     foodHighlights: FoodHighlights;
+    mealsByDate: Record<string, NutritionMealEntry[]>;
   };
 };
 

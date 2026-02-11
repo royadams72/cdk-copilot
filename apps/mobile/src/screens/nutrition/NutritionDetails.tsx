@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -27,11 +27,15 @@ import {
   selectDashboardStatus,
 } from "@/store/slices/dashboardSlice";
 
-import { mealTypes, setMealType } from "@/store/slices/logMealSlice";
+import {
+  hydrateMealFromEntry,
+  mealTypes,
+  setMealType,
+} from "@/store/slices/logMealSlice";
 import type { FoodHighlight } from "../dashboard/types";
 
 const CHART_HEIGHT = 240;
-const CHART_PADDING = { top: 20, bottom: 40, left: 40, right: 20 } as const;
+const CHART_PADDING = { bottom: 40, left: 40, right: 20, top: 20 } as const;
 const CHART_VIEWPORT_WIDTH = Math.min(Dimensions.get("window").width - 64, 420);
 const POINT_GAP = 56;
 
@@ -53,6 +57,7 @@ export default function NutritionDetails() {
     null,
   );
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const metricConfig =
     NUTRITION_METRICS.find((metric) => metric.id === selectedMetricId) ??
     NUTRITION_METRICS[0];
@@ -143,8 +148,8 @@ export default function NutritionDetails() {
   useEffect(() => {
     if (!chartScrollRef.current) return;
     chartScrollRef.current.scrollTo({
-      x: Math.max(chartContentWidth - CHART_VIEWPORT_WIDTH, 0),
       animated: false,
+      x: Math.max(chartContentWidth - CHART_VIEWPORT_WIDTH, 0),
     });
   }, [chartContentWidth, chartSeries.length]);
 
@@ -156,16 +161,16 @@ export default function NutritionDetails() {
 
   const { highlights, hasHighlightBucket } = useMemo(() => {
     if (!highlightDate) {
-      return { highlights: [] as FoodHighlight[], hasHighlightBucket: false };
+      return { hasHighlightBucket: false, highlights: [] as FoodHighlight[] };
     }
     const dayBucket =
       data?.nutrition.foodHighlights.itemsByDate?.[highlightDate];
     if (!dayBucket) {
-      return { highlights: [] as FoodHighlight[], hasHighlightBucket: false };
+      return { hasHighlightBucket: false, highlights: [] as FoodHighlight[] };
     }
     return {
-      highlights: dayBucket[metricConfig.key] ?? [],
       hasHighlightBucket: true,
+      highlights: dayBucket[metricConfig.key] ?? [],
     };
   }, [data, highlightDate, metricConfig.key]);
 
@@ -176,6 +181,10 @@ export default function NutritionDetails() {
     highlightDate,
     hasHighlightBucket,
   );
+  const mealsForDay = useMemo(() => {
+    if (!highlightDate) return [];
+    return data?.nutrition.mealsByDate?.[highlightDate] ?? [];
+  }, [data, highlightDate]);
 
   const handleRefresh = useCallback(() => {
     dispatch(fetchDashboard());
@@ -270,7 +279,7 @@ export default function NutritionDetails() {
                   <View
                     style={[
                       styles.chartInner,
-                      { width: chartContentWidth, height: CHART_HEIGHT },
+                      { height: CHART_HEIGHT, width: chartContentWidth },
                     ]}
                   >
                     <Svg width={chartContentWidth} height={CHART_HEIGHT}>
@@ -438,6 +447,17 @@ export default function NutritionDetails() {
               })}
             </View>
 
+            {mealsForDay.length ? (
+              <TouchableOpacity
+                style={styles.editMealsButton}
+                onPress={() => setIsEditModalOpen(true)}
+              >
+                <ThemedText style={styles.editMealsButtonText}>
+                  Edit meals for this day
+                </ThemedText>
+              </TouchableOpacity>
+            ) : null}
+
             <Card>
               <View style={styles.cardHeader}>
                 <ThemedText type="defaultSemiBold">{highlightTitle}</ThemedText>
@@ -519,6 +539,69 @@ export default function NutritionDetails() {
           </View>
         </View>
       </Modal>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isEditModalOpen}
+        onRequestClose={() => setIsEditModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View
+            style={[styles.modalCard, theme === "dark" && styles.modalCardDark]}
+          >
+            <ThemedText type="defaultSemiBold">Edit meals</ThemedText>
+            <ThemedText style={styles.helperText}>
+              Select a meal to edit what you logged.
+            </ThemedText>
+            <View style={styles.mealList}>
+              {mealsForDay.map((meal) => (
+                <TouchableOpacity
+                  key={meal.id}
+                  style={styles.mealRow}
+                  onPress={() => {
+                    const coercedItems = meal.items.map(coerceLoggedMealItem);
+
+                    dispatch(
+                      hydrateMealFromEntry({
+                        eatenAt: meal.eatenAt,
+                        entryId: meal.id,
+                        items: coercedItems,
+                        mealType: meal.mealType as TMealType,
+                      }),
+                    );
+                    setIsEditModalOpen(false);
+                    router.push("/(log-meal)/log-meal");
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="defaultSemiBold">
+                      {capitalize(meal.mealType)}
+                    </ThemedText>
+                    <ThemedText style={styles.helperText}>
+                      {meal.eatenAt ? formatTime(meal.eatenAt) : "Time not set"}
+                    </ThemedText>
+                    <ThemedText style={styles.mealItemsText}>
+                      {meal.items
+                        .map(
+                          (item) =>
+                            `${item.name} (${item.quantity} ${item.unit})`,
+                        )
+                        .join(", ")}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={styles.mealEditHint}>Edit</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonGhost]}
+              onPress={() => setIsEditModalOpen(false)}
+            >
+              <ThemedText style={styles.modalButtonTextGhost}>Close</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -536,9 +619,9 @@ function formatFullDate(value: string | null | undefined) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
     day: "numeric",
+    month: "short",
+    weekday: "short",
   });
 }
 
@@ -588,9 +671,9 @@ function FoodRow({
   metricUnit,
   color,
 }: {
+  color: string;
   item: FoodHighlight;
   metricUnit: string;
-  color: string;
 }) {
   return (
     <View style={styles.foodRow}>
@@ -631,4 +714,65 @@ function formatTime(iso: string) {
 function capitalize(value: string) {
   if (!value) return value;
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+// Helper types and functions for meal item coercion
+type AllowedItemSource = "user" | "barcode" | "image_ai" | "api";
+
+type ExpectedNutrients = {
+  caloriesKcal?: number;
+  carbsG?: number;
+  fatG?: number;
+  fiberG?: number;
+  phosphorusMg?: number;
+  potassiumMg?: number;
+  proteinG?: number;
+  sodiumMg?: number;
+  sugarG?: number;
+};
+
+function coerceLoggedMealItem(item: {
+  foodId: string;
+  name: string;
+  nutrients: Record<string, number | undefined>;
+  quantity: number;
+  source?: string;
+  uid: string;
+  unit: string;
+  [key: string]: unknown;
+}) {
+  return {
+    ...item,
+    nutrients: normalizeNutrients(item.nutrients),
+    source: normalizeSource(item.source),
+  };
+}
+
+function normalizeSource(value?: string): AllowedItemSource {
+  if (
+    value === "user" ||
+    value === "barcode" ||
+    value === "image_ai" ||
+    value === "api"
+  ) {
+    return value;
+  }
+  return "user";
+}
+
+function normalizeNutrients(
+  nutrients: Record<string, number | undefined> | null | undefined,
+): ExpectedNutrients {
+  if (!nutrients) return {};
+  return {
+    caloriesKcal: nutrients.caloriesKcal,
+    carbsG: nutrients.carbsG,
+    fatG: nutrients.fatG,
+    fiberG: nutrients.fiberG,
+    phosphorusMg: nutrients.phosphorusMg,
+    potassiumMg: nutrients.potassiumMg,
+    proteinG: nutrients.proteinG,
+    sodiumMg: nutrients.sodiumMg,
+    sugarG: nutrients.sugarG,
+  };
 }
