@@ -1,35 +1,35 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Button,
-  TextInput,
-  View,
-  Text,
-  ScrollView,
-  Pressable,
   Alert,
   BackHandler,
+  Button,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 
-import { useRouter, useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  clearMealState,
   fetchMealData,
   fetchNutritionData,
   ItemSummary,
-  selectFoodItems,
-  selectItemsSummary,
-  selectMealItemsFromFoodItems,
   removeMealItem,
-  clearMealState,
-  setActiveItem,
-  selectMeal,
-  selectActiveMealType,
-  selectIsDirty,
-  selectEatenAt,
   saveMealData,
+  selectActiveMealType,
+  selectEatenAt,
+  selectFoodItems,
+  selectIsDirty,
+  selectItemsSummary,
+  selectMeal,
+  selectMealItemsFromFoodItems,
+  setActiveItem,
   setEatenAt,
 } from "@/store/slices/logMealSlice";
 
@@ -76,25 +76,28 @@ export default function LogMeal() {
     });
   }
 
-  const confirmExit = useCallback((onLeave?: () => void) => {
-    if (isLeavingRef.current) return;
-    Alert.alert("Leave this screen?", "Your meal will not be saved.", [
-      { text: "Stay", style: "cancel" },
-      {
-        text: "Leave",
-        style: "destructive",
-        onPress: () => {
-          isLeavingRef.current = true;
-          dispatch(clearMealState());
-          if (onLeave) {
-            onLeave();
-            return;
-          }
-          router.back();
+  const confirmExit = useCallback(
+    (onLeave?: () => void) => {
+      if (isLeavingRef.current) return;
+      Alert.alert("Leave this screen?", "Your meal will not be saved.", [
+        { style: "cancel", text: "Stay" },
+        {
+          onPress: () => {
+            isLeavingRef.current = true;
+            dispatch(clearMealState());
+            if (onLeave) {
+              onLeave();
+              return;
+            }
+            router.back();
+          },
+          style: "destructive",
+          text: "Leave",
         },
-      },
-    ]);
-  }, [dispatch, router]);
+      ]);
+    },
+    [dispatch, router],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -154,8 +157,8 @@ export default function LogMeal() {
     foodId,
     uid,
   }: {
-    groupId: string;
     foodId: string;
+    groupId: string;
     uid: string;
   }) {
     dispatch(setActiveItem({ foodId, groupId, uid }));
@@ -178,8 +181,8 @@ export default function LogMeal() {
   });
   const formattedTime = dateTime.toLocaleTimeString("en-GB", {
     hour: "2-digit",
-    minute: "2-digit",
     hour12: false,
+    minute: "2-digit",
   });
   const dateLabel = isToday(dateTime) ? "Today" : "Selected";
   return (
@@ -207,9 +210,7 @@ export default function LogMeal() {
             onPress={() => setShowDateTimeModal(true)}
             style={logMealStyles.dateButton}
           >
-            <ThemedText style={logMealStyles.dateButtonText}>
-              Change
-            </ThemedText>
+            <ThemedText style={logMealStyles.dateButtonText}>Change</ThemedText>
           </TouchableOpacity>
         </View>
       </View>
@@ -220,7 +221,7 @@ export default function LogMeal() {
           keyboardType="default"
           value={searchTerm}
           onChangeText={setSearchTerm}
-          style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+          style={{ borderRadius: 8, borderWidth: 1, padding: 12 }}
         />
         <Button title="Continue" onPress={submit} />
       </View>
@@ -238,8 +239,8 @@ export default function LogMeal() {
               <Pressable
                 onPress={() =>
                   gotoItemDetails({
-                    groupId: item.groupId,
                     foodId: item.foodId,
+                    groupId: item.groupId,
                     uid: item.uid,
                   })
                 }
@@ -270,6 +271,7 @@ export default function LogMeal() {
           setShowDateTimeModal(false);
         }}
         title="Meal date and time"
+        disallowFutureDates={true}
       />
     </View>
   );

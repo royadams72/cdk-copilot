@@ -15,6 +15,7 @@ type DateTimeModalProps = {
   onCancel: () => void;
   onConfirm: (next: Date) => void;
   title?: string;
+  disallowFutureDates?: boolean;
 };
 
 function applyDate(base: Date, selected: Date) {
@@ -47,11 +48,13 @@ export function DateTimeModal({
   onCancel,
   onConfirm,
   title = "Select date and time",
+  disallowFutureDates = false,
 }: DateTimeModalProps) {
   const [draft, setDraft] = useState(value);
   const [activePicker, setActivePicker] = useState<
     "date" | "time" | null
   >(null);
+  const today = new Date();
 
   useEffect(() => {
     if (visible) {
@@ -84,6 +87,7 @@ export function DateTimeModal({
                   value={draft}
                   mode="date"
                   display="spinner"
+                  maximumDate={disallowFutureDates ? today : undefined}
                   onChange={(_, selected) => {
                     if (selected) setDraft((prev) => applyDate(prev, selected));
                   }}
@@ -126,6 +130,11 @@ export function DateTimeModal({
                   value={draft}
                   mode={activePicker}
                   display="default"
+                  maximumDate={
+                    disallowFutureDates && activePicker === "date"
+                      ? today
+                      : undefined
+                  }
                   onChange={(event, selected) => {
                     if (event.type === "dismissed") {
                       setActivePicker(null);
