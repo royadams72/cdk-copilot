@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import {
   Pressable,
@@ -13,13 +13,13 @@ import {
   fetchNutritionData,
   selectAcitveGroupSummaries,
   selectActiveItem,
+  selectEditingEntryId,
   selectGroupInfoById,
   setActiveItem,
   setMeal,
   setQuantity,
 } from "@/store/slices/logMealSlice";
 
-import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
@@ -30,21 +30,34 @@ export default function FoodDetails() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const selectedFood = useAppSelector(selectActiveItem);
+  const editingEntryId = useAppSelector(selectEditingEntryId);
   const foods = useAppSelector(selectAcitveGroupSummaries);
+  const requestedNutritionByUidRef = useRef(new Set<string>());
   const groupInfo = useAppSelector((state) => {
     const groupId = selectedFood?.groupId;
     if (!groupId) return null;
     return selectGroupInfoById(groupId)(state);
   });
 
-  useEffect(() => {
-    //  Check active item, if some nutrition data missing dispatch an action to get it
-    if (selectedFood && isAnyFieldEmpty(selectedFood?.nutrients) && groupInfo) {
-      dispatch(fetchNutritionData({ foodItems: selectedFood }));
-    }
-  }, [selectedFood, groupInfo, dispatch]);
+  const hasMissingCoreNutrients = (food: NonNullable<typeof selectedFood>) => {
+    const nutrients = food.nutrients ?? {};
+    return (
+      nutrients.caloriesKcal == null ||
+      nutrients.proteinG == null ||
+      nutrients.phosphorusMg == null ||
+      nutrients.potassiumMg == null ||
+      nutrients.sodiumMg == null
+    );
+  };
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    if (!selectedFood || !groupInfo || !selectedFood.uid) return;
+    if (!hasMissingCoreNutrients(selectedFood)) return;
+    if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
+
+    requestedNutritionByUidRef.current.add(selectedFood.uid);
+    dispatch(fetchNutritionData({ foodItems: selectedFood }));
+  }, [selectedFood, groupInfo, dispatch]);
   const handleSetQuantity = ({
     quantity,
     groupId,
@@ -122,7 +135,7 @@ export default function FoodDetails() {
             }}
           >
             <ThemedText style={styles.modalButtonTextPrimary}>
-              Add food
+              {editingEntryId ? `Update food` : `Add food`}
             </ThemedText>
           </TouchableOpacity>
         </View>

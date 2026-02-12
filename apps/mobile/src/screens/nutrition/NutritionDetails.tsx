@@ -56,11 +56,11 @@ export default function NutritionDetails() {
     return selectMeal(meatlType)(state);
   });
 
-  useEffect(() => {
-    if (meal && meal?.length > 0) {
-      dispatch(clearMealState());
-    }
-  }, [meal?.length, dispatch]);
+  // useEffect(() => {
+  //   if (meal && meal?.length > 0) {
+  //     dispatch(clearMealState());
+  //   }
+  // }, [meal?.length, dispatch]);
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",

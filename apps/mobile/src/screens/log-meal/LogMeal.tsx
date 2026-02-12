@@ -231,9 +231,9 @@ export default function LogMeal() {
             <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
           </TouchableOpacity>
         </View>
-        <ThemedText type="title">Nutrition</ThemedText>
+        <ThemedText type="title">Log Meal</ThemedText>
         <ThemedText style={styles.helperText}>
-          Track how your meals contribute to renal targets.
+          {editingEntryId ? `` : `Select`}
         </ThemedText>
         <View style={logMealStyles.dateRow}>
           <ThemedText style={logMealStyles.dateText}>
@@ -250,32 +250,25 @@ export default function LogMeal() {
       </View>
       <View>
         <TextInput
-          placeholder="Search"
+          placeholder="100g Roast chicken thighs with skin and 150g of white rice"
           autoCapitalize="none"
           keyboardType="default"
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={{ borderRadius: 8, borderWidth: 1, padding: 12 }}
         />
-        <Button title="Continue" onPress={submit} />
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => {
+            submit;
+          }}
+          style={styles.navButton}
+        >
+          <ThemedText style={styles.navButtonText}>Search</ThemedText>
+        </TouchableOpacity>
       </View>
       {items && (
         <ScrollView>
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => {
-              editingEntryId
-                ? dispatch(updateMealData())
-                : dispatch(saveMealData());
-              isLeavingRef.current = true;
-              router.replace("/(nutrition)/nutrition-details");
-            }}
-            style={styles.navButton}
-          >
-            <ThemedText style={styles.navButtonText}>
-              {editingEntryId ? "Update Meal" : "Save Meal"}
-            </ThemedText>
-          </TouchableOpacity>
           {items.map((item: ItemSummary) => (
             <View key={item.uid} style={logMealStyles.logButton}>
               <Pressable
@@ -301,6 +294,21 @@ export default function LogMeal() {
               </Pressable>
             </View>
           ))}
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => {
+              editingEntryId
+                ? dispatch(updateMealData())
+                : dispatch(saveMealData());
+              isLeavingRef.current = true;
+              router.replace("/(nutrition)/nutrition-details");
+            }}
+            style={styles.navButton}
+          >
+            <ThemedText style={styles.navButtonText}>
+              {editingEntryId ? "Update Meal" : "Save Meal"}
+            </ThemedText>
+          </TouchableOpacity>
         </ScrollView>
       )}
       <DateTimeModal
