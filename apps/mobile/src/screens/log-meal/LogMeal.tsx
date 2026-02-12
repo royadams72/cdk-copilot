@@ -66,6 +66,8 @@ export default function LogMeal() {
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
   const [showExistingMealModal, setShowExistingMealModal] = useState(false);
   const lastPromptRef = useRef<string | null>(null);
+  const autoLoadKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!eatenAtIso) return;
     const next = new Date(eatenAtIso);
@@ -87,31 +89,49 @@ export default function LogMeal() {
   const mealItemsFromFoodItems = useAppSelector(selectMealItemsFromFoodItems);
   // const meal = useAppSelector(selectMeal);
 
+  useEffect(() => {
+    if (!meatlType) return;
+    if (editingEntryId) return;
+    if ((meal?.length ?? 0) > 0) return;
+
+    const todayIso = new Date().toISOString();
+    const dayKey = todayIso.slice(0, 10);
+    const autoKey = `${meatlType}:${dayKey}`;
+    if (autoLoadKeyRef.current === autoKey) return;
+
+    autoLoadKeyRef.current = autoKey;
+    dispatch(fetchMealByDate({ eatenAt: todayIso, mealType: meatlType }));
+  }, [dispatch, meal, meatlType, editingEntryId]);
+
   async function submit() {
     console.log("submitted");
     setShouldLoadInitialNutrition(true);
-    dispatch(fetchMealData({ searchTerm })).then((res) => {});
+    dispatch(fetchMealData({ searchTerm }));
   }
 
   const confirmExit = useCallback(
     (onLeave?: () => void) => {
       if (isLeavingRef.current) return;
-      Alert.alert("Leave this screen?", "Your meal will not be saved.", [
-        { style: "cancel", text: "Stay" },
-        {
-          onPress: () => {
-            isLeavingRef.current = true;
-            dispatch(clearMealState());
-            if (onLeave) {
-              onLeave();
-              return;
-            }
-            router.back();
+      Alert.alert(
+        "Leave this screen?",
+        "Your meal will not be saved/updated.",
+        [
+          { style: "cancel", text: "Stay" },
+          {
+            onPress: () => {
+              isLeavingRef.current = true;
+              dispatch(clearMealState());
+              if (onLeave) {
+                onLeave();
+                return;
+              }
+              router.back();
+            },
+            style: "destructive",
+            text: "Leave",
           },
-          style: "destructive",
-          text: "Leave",
-        },
-      ]);
+        ],
+      );
     },
     [dispatch, router],
   );
@@ -176,7 +196,7 @@ export default function LogMeal() {
     uid: string;
   }) {
     dispatch(setActiveItem({ foodId, groupId, uid }));
-    router.push("/(log-meal)/food-details");
+    router.replace("/(log-meal)/food-details");
   }
 
   const isToday = (value: Date) => {
@@ -248,7 +268,7 @@ export default function LogMeal() {
                 ? dispatch(updateMealData())
                 : dispatch(saveMealData());
               isLeavingRef.current = true;
-              router.back();
+              router.replace("/(nutrition)/nutrition-details");
             }}
             style={styles.navButton}
           >
