@@ -28,8 +28,11 @@ import {
 } from "@/store/slices/dashboardSlice";
 
 import {
+  clearMealState,
   hydrateMealFromEntry,
   mealTypes,
+  selectActiveMealType,
+  selectMeal,
   setMealType,
 } from "@/store/slices/logMealSlice";
 import type { FoodHighlight } from "../dashboard/types";
@@ -46,6 +49,18 @@ export default function NutritionDetails() {
   const data = useAppSelector(selectDashboardData);
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
+  const meatlType = useAppSelector(selectActiveMealType);
+
+  const meal = useAppSelector((state) => {
+    if (!meatlType) return null;
+    return selectMeal(meatlType)(state);
+  });
+
+  useEffect(() => {
+    if (meal && meal?.length > 0) {
+      dispatch(clearMealState());
+    }
+  }, [meal?.length, dispatch]);
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",

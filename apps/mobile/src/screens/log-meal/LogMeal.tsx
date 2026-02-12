@@ -3,6 +3,7 @@ import {
   Alert,
   BackHandler,
   Button,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -16,7 +17,10 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  checkMealExists,
+  clearMealCandidate,
   clearMealState,
+  fetchMealByDate,
   fetchMealData,
   fetchNutritionData,
   ItemSummary,
@@ -29,6 +33,7 @@ import {
   selectIsDirty,
   selectItemsSummary,
   selectMeal,
+  selectMealCandidate,
   selectMealItemsFromFoodItems,
   setActiveItem,
   setEatenAt,
@@ -53,16 +58,27 @@ export default function LogMeal() {
   const isDirty = useAppSelector(selectIsDirty);
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
+  const mealCandidate = useAppSelector(selectMealCandidate);
   const isLeavingRef = useRef(false);
   const [dateTime, setDateTime] = useState(
     () => new Date(eatenAtIso ?? Date.now()),
   );
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
+  const [showExistingMealModal, setShowExistingMealModal] = useState(false);
+  const lastPromptRef = useRef<string | null>(null);
   useEffect(() => {
     if (!eatenAtIso) return;
     const next = new Date(eatenAtIso);
     if (!Number.isNaN(next.getTime())) setDateTime(next);
   }, [eatenAtIso]);
+
+  useEffect(() => {
+    if (!mealCandidate) return;
+    if (editingEntryId) return;
+    if (lastPromptRef.current === mealCandidate.entryId) return;
+    lastPromptRef.current = mealCandidate.entryId;
+    setShowExistingMealModal(true);
+  }, [mealCandidate, editingEntryId]);
 
   const meal = useAppSelector((state) => {
     if (!meatlType) return null;
@@ -227,11 +243,13 @@ export default function LogMeal() {
         <ScrollView>
           <TouchableOpacity
             accessibilityRole="button"
-            onPress={() =>
+            onPress={() => {
               editingEntryId
                 ? dispatch(updateMealData())
-                : dispatch(saveMealData())
-            }
+                : dispatch(saveMealData());
+              isLeavingRef.current = true;
+              router.back();
+            }}
             style={styles.navButton}
           >
             <ThemedText style={styles.navButtonText}>
@@ -272,11 +290,70 @@ export default function LogMeal() {
         onConfirm={(next) => {
           setDateTime(next);
           dispatch(setEatenAt({ eatenAt: next.toISOString() }));
+          if (meatlType && !editingEntryId) {
+            dispatch(
+              checkMealExists({
+                eatenAt: next.toISOString(),
+                mealType: meatlType,
+              }),
+            );
+          }
           setShowDateTimeModal(false);
         }}
         title="Meal date and time"
         disallowFutureDates={true}
       />
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showExistingMealModal}
+        onRequestClose={() => {
+          setShowExistingMealModal(false);
+          dispatch(clearMealCandidate());
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <ThemedText type="defaultSemiBold">Meal already exists</ThemedText>
+            <ThemedText style={styles.helperText}>
+              A {meatlType ?? "meal"} already exists on this date. Add to that
+              meal?
+            </ThemedText>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={() => {
+                  if (mealCandidate) {
+                    dispatch(
+                      fetchMealByDate({
+                        eatenAt:
+                          mealCandidate.eatenAt ?? dateTime.toISOString(),
+                        mealType: mealCandidate.mealType,
+                      }),
+                    );
+                  }
+                  setShowExistingMealModal(false);
+                }}
+              >
+                <ThemedText style={styles.modalButtonTextPrimary}>
+                  Yes, add
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonGhost]}
+                onPress={() => {
+                  setShowExistingMealModal(false);
+                  dispatch(clearMealCandidate());
+                }}
+              >
+                <ThemedText style={styles.modalButtonTextGhost}>
+                  No thanks
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

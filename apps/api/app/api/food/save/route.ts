@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       COLLECTIONS.NutritionLedger,
     );
     const body: Record<string, any> = await req.json();
-    const { eatenAt: eatenAtRaw, entryId, ...meal } = body ?? {};
+    const { eatenAt: eatenAtRaw, ...meal } = body ?? {};
     const type = Object.keys(meal);
     if (type.length > 1) {
       bad("Malformed 100", 500);
@@ -50,48 +50,6 @@ export async function POST(req: NextRequest) {
     const eatenAt = eatenAtRaw ? new Date(eatenAtRaw) : now;
     const resolvedEatenAt = Number.isNaN(eatenAt.getTime()) ? now : eatenAt;
     const totals = { ...getTotals(mealArray) };
-
-    if (entryId && ObjectId.isValid(entryId)) {
-      const entryObjectId = new ObjectId(entryId);
-      const existing = await collection.findOne({
-        _id: entryObjectId,
-        patientId: new ObjectId(caller.patientId),
-      });
-      if (!existing) {
-        return bad("Meal not found", { requestId }, 404);
-      }
-
-      const updated: TNutritionEntry = {
-        ...existing,
-        eatenAt: resolvedEatenAt,
-        items: mealArray,
-        mealType,
-        patientId: caller.patientId,
-        totals,
-        updatedAt: now,
-      };
-
-      const parsed = NutritionEntry.safeParse(updated);
-
-      if (!parsed.success) {
-        return bad("Malformed 101", { requestId }, 500);
-      }
-
-      await collection.updateOne(
-        { _id: entryObjectId },
-        {
-          $set: {
-            eatenAt: resolvedEatenAt,
-            items: mealArray,
-            mealType,
-            totals,
-            updatedAt: now,
-          },
-        },
-      );
-
-      return ok("meal updated");
-    }
 
     const doc: TNutritionEntry = {
       createdAt: now,
