@@ -216,6 +216,36 @@ export const updateMealData = createAsyncThunk<
   }
 });
 
+export const deleteMealData = createAsyncThunk<
+  ApiResponse<any> | null | string | undefined,
+  { entryId?: string } | void,
+  { rejectValue: string; state: RootState }
+>("logMeal/deleteMealData", async (arg, { getState, rejectWithValue }) => {
+  const state = getState() as RootState;
+  const entryId = arg?.entryId ?? state.logMeal.editingEntryId;
+  if (!entryId) {
+    return rejectWithValue("No meal to delete");
+  }
+
+  try {
+    const res = await authFetch(`${API}/api/food/delete`, {
+      body: JSON.stringify({ entryId }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    type Response = ApiResponse<any>;
+    const body: unknown = await res.json().catch(() => null);
+    const ok = !!(body as Response)?.ok;
+    const data = (body as Response)?.data;
+    if (!res.ok || !ok) {
+      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    }
+    return data as Response;
+  } catch (err: any) {
+    return rejectWithValue(err?.message ?? "Failed to delete your meal data");
+  }
+});
+
 export const checkMealExists = createAsyncThunk<
   { entryId: string; mealType: TMealType; eatenAt: string | null } | null,
   { mealType: TMealType; eatenAt: string },
@@ -413,6 +443,22 @@ const logMealSlice = createSlice({
           action.payload ??
           action.error.message ??
           "We couldn't update your meal data.";
+      });
+    builder
+      .addCase(deleteMealData.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(deleteMealData.fulfilled, (state) => {
+        resetLogMeal(state);
+        state.status = "succeeded";
+      })
+      .addCase(deleteMealData.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "We couldn't delete your meal data.";
       });
     builder
       .addCase(checkMealExists.pending, (state) => {

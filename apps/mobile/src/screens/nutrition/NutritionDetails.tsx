@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   RefreshControl,
@@ -28,11 +29,9 @@ import {
 } from "@/store/slices/dashboardSlice";
 
 import {
-  clearMealState,
+  deleteMealData,
   hydrateMealFromEntry,
   mealTypes,
-  selectActiveMealType,
-  selectMeal,
   setMealType,
 } from "@/store/slices/logMealSlice";
 import type { FoodHighlight } from "../dashboard/types";
@@ -49,18 +48,6 @@ export default function NutritionDetails() {
   const data = useAppSelector(selectDashboardData);
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
-  const meatlType = useAppSelector(selectActiveMealType);
-
-  const meal = useAppSelector((state) => {
-    if (!meatlType) return null;
-    return selectMeal(meatlType)(state);
-  });
-
-  // useEffect(() => {
-  //   if (meal && meal?.length > 0) {
-  //     dispatch(clearMealState());
-  //   }
-  // }, [meal?.length, dispatch]);
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
@@ -570,24 +557,7 @@ export default function NutritionDetails() {
             </ThemedText>
             <View style={styles.mealList}>
               {mealsForDay.map((meal) => (
-                <TouchableOpacity
-                  key={meal.id}
-                  style={styles.mealRow}
-                  onPress={() => {
-                    const coercedItems = meal.items.map(coerceLoggedMealItem);
-
-                    dispatch(
-                      hydrateMealFromEntry({
-                        eatenAt: meal.eatenAt,
-                        entryId: meal.id,
-                        items: coercedItems,
-                        mealType: meal.mealType as TMealType,
-                      }),
-                    );
-                    setIsEditModalOpen(false);
-                    router.push("/(log-meal)/log-meal");
-                  }}
-                >
+                <View key={meal.id} style={styles.mealRow}>
                   <View style={{ flex: 1 }}>
                     <ThemedText type="defaultSemiBold">
                       {capitalize(meal.mealType)}
@@ -604,8 +574,52 @@ export default function NutritionDetails() {
                         .join(", ")}
                     </ThemedText>
                   </View>
-                  <ThemedText style={styles.mealEditHint}>Edit</ThemedText>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonGhost]}
+                    onPress={() => {
+                      const coercedItems = meal.items.map(coerceLoggedMealItem);
+                      dispatch(
+                        hydrateMealFromEntry({
+                          eatenAt: meal.eatenAt,
+                          entryId: meal.id,
+                          items: coercedItems,
+                          mealType: meal.mealType as TMealType,
+                        }),
+                      );
+                      setIsEditModalOpen(false);
+                      router.push("/(log-meal)/log-meal");
+                    }}
+                  >
+                    <ThemedText style={styles.modalButtonTextGhost}>
+                      Edit
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonDelete]}
+                    onPress={() => {
+                      Alert.alert(
+                        "Delete this meal?",
+                        "This cannot be undone.",
+                        [
+                          { style: "cancel", text: "Cancel" },
+                          {
+                            onPress: () => {
+                              dispatch(deleteMealData({ entryId: meal.id }))
+                                .unwrap()
+                                .then(() => dispatch(fetchDashboard()));
+                            },
+                            style: "destructive",
+                            text: "Delete",
+                          },
+                        ],
+                      );
+                    }}
+                  >
+                    <ThemedText style={styles.modalButtonTextPrimary}>
+                      Delete
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
             <TouchableOpacity

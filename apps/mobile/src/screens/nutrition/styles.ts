@@ -193,6 +193,9 @@ export const styles = StyleSheet.create({
   modalButtonGhost: {
     backgroundColor: "rgba(148,163,184,0.25)",
   },
+  modalButtonDelete: {
+    backgroundColor: "#dc2626",
+  },
   modalButtonTextPrimary: {
     color: "#fff",
     fontWeight: "600",

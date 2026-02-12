@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   BackHandler,
-  Button,
   Modal,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import {
   checkMealExists,
   clearMealCandidate,
   clearMealState,
+  deleteMealData,
   fetchMealByDate,
   fetchMealData,
   fetchNutritionData,
@@ -309,6 +309,28 @@ export default function LogMeal() {
               {editingEntryId ? "Update Meal" : "Save Meal"}
             </ThemedText>
           </TouchableOpacity>
+          {editingEntryId ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                Alert.alert("Delete this meal?", "This cannot be undone.", [
+                  { style: "cancel", text: "Cancel" },
+                  {
+                    onPress: () => {
+                      dispatch(deleteMealData());
+                      isLeavingRef.current = true;
+                      router.replace("/(nutrition)/nutrition-details");
+                    },
+                    style: "destructive",
+                    text: "Delete",
+                  },
+                ]);
+              }}
+              style={[styles.navButton, { marginTop: 8 }]}
+            >
+              <ThemedText style={styles.navButtonText}>Delete Meal</ThemedText>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       )}
       <DateTimeModal
