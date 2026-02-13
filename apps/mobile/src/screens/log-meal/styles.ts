@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 
 export const logMealStyles = StyleSheet.create({
+  listCard: {
+    marginBottom: 10,
+  },
   dateRow: {
     marginTop: 10,
     flexDirection: "row",

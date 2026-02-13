@@ -3,9 +3,7 @@ import {
   Alert,
   BackHandler,
   Modal,
-  Pressable,
   ScrollView,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -15,6 +13,7 @@ import { useNavigation, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { FoodCard } from "@/components/food-card";
 import {
   checkMealExists,
   clearMealCandidate,
@@ -29,7 +28,6 @@ import {
   selectActiveMealType,
   selectEatenAt,
   selectEditingEntryId,
-  selectFoodItems,
   selectIsDirty,
   selectItemsSummary,
   selectMeal,
@@ -39,6 +37,7 @@ import {
   setEatenAt,
   updateMealData,
 } from "@/store/slices/logMealSlice";
+import { fetchDashboard } from "@/store/slices/dashboardSlice";
 
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
@@ -66,6 +65,7 @@ export default function LogMeal() {
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
   const [showExistingMealModal, setShowExistingMealModal] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isPersistingMeal, setIsPersistingMeal] = useState(false);
   const lastPromptRef = useRef<string | null>(null);
   const autoLoadKeyRef = useRef<string | null>(null);
   const allowNextNavigationRef = useRef(false);
@@ -114,6 +114,43 @@ export default function LogMeal() {
       await dispatch(fetchMealData({ searchTerm: nextQuery })).unwrap();
     } finally {
       setIsSearching(false);
+    }
+  }
+
+  async function persistMeal() {
+    if (isPersistingMeal) return;
+    setIsPersistingMeal(true);
+    try {
+      if (editingEntryId) {
+        await dispatch(updateMealData()).unwrap();
+      } else {
+        await dispatch(saveMealData()).unwrap();
+      }
+      await dispatch(fetchDashboard()).unwrap();
+      isLeavingRef.current = true;
+      router.replace("/(nutrition)/nutrition-details");
+    } catch (err: any) {
+      Alert.alert(
+        editingEntryId ? "Update failed" : "Save failed",
+        err?.message ?? "Please try again.",
+      );
+    } finally {
+      setIsPersistingMeal(false);
+    }
+  }
+
+  async function deleteMeal() {
+    if (isPersistingMeal) return;
+    setIsPersistingMeal(true);
+    try {
+      await dispatch(deleteMealData()).unwrap();
+      await dispatch(fetchDashboard()).unwrap();
+      isLeavingRef.current = true;
+      router.replace("/(nutrition)/nutrition-details");
+    } catch (err: any) {
+      Alert.alert("Delete failed", err?.message ?? "Please try again.");
+    } finally {
+      setIsPersistingMeal(false);
     }
   }
 
@@ -292,65 +329,65 @@ export default function LogMeal() {
       {items && (
         <ScrollView>
           {items.map((item: ItemSummary) => (
-            <View key={item.uid} style={logMealStyles.logButton}>
-              <Pressable
-                onPress={() =>
-                  gotoItemDetails({
-                    foodId: item.foodId,
-                    groupId: item.groupId,
-                    uid: item.uid,
-                  })
-                }
-              >
-                <Text style={logMealStyles.logButtonText}>
-                  {item.name} - {item.quantity} {item.unit}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={{ backgroundColor: "red" }}
-                onPress={() =>
-                  dispatch(removeMealItem({ groupId: item.groupId }))
-                }
-              >
-                <Text style={logMealStyles.logButtonText}>Remove</Text>
-              </Pressable>
-            </View>
+            <FoodCard
+              key={item.uid}
+              title={item.name}
+              subtitle={`${item.quantity} ${item.unit}`}
+              onPress={() =>
+                gotoItemDetails({
+                  foodId: item.foodId,
+                  groupId: item.groupId,
+                  uid: item.uid,
+                })
+              }
+              actions={[
+                {
+                  label: "Remove",
+                  onPress: () =>
+                    dispatch(removeMealItem({ groupId: item.groupId })),
+                  variant: "danger",
+                },
+              ]}
+              style={logMealStyles.listCard}
+            />
           ))}
           {items.length > 0 && (
             <TouchableOpacity
               accessibilityRole="button"
-              onPress={() => {
-                editingEntryId
-                  ? dispatch(updateMealData())
-                  : dispatch(saveMealData());
-                isLeavingRef.current = true;
-                router.replace("/(nutrition)/nutrition-details");
-              }}
-              style={styles.navButton}
+              disabled={isPersistingMeal}
+              onPress={persistMeal}
+              style={[styles.navButton, isPersistingMeal && { opacity: 0.5 }]}
             >
               <ThemedText style={styles.navButtonText}>
-                {editingEntryId ? "Update Meal" : "Save Meal"}
+                {isPersistingMeal
+                  ? editingEntryId
+                    ? "Updating..."
+                    : "Saving..."
+                  : editingEntryId
+                    ? "Update Meal"
+                    : "Save Meal"}
               </ThemedText>
             </TouchableOpacity>
           )}
           {editingEntryId ? (
             <TouchableOpacity
               accessibilityRole="button"
+              disabled={isPersistingMeal}
               onPress={() => {
                 Alert.alert("Delete this meal?", "This cannot be undone.", [
                   { style: "cancel", text: "Cancel" },
                   {
-                    onPress: () => {
-                      dispatch(deleteMealData());
-                      isLeavingRef.current = true;
-                      router.replace("/(nutrition)/nutrition-details");
-                    },
+                    onPress: deleteMeal,
                     style: "destructive",
                     text: "Delete",
                   },
                 ]);
               }}
-              style={[styles.navButton, { marginTop: 8 }]}
+              style={[
+                styles.navButton,
+                { marginTop: 8 },
+                isPersistingMeal && { opacity: 0.5 },
+              ]}
             >
               <ThemedText style={styles.navButtonText}>Delete Meal</ThemedText>
             </TouchableOpacity>

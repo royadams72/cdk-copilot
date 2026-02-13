@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import {
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -15,8 +14,8 @@ import {
   selectActiveItem,
   selectEditingEntryId,
   selectGroupInfoById,
+  saveActiveItemToMeal,
   setActiveItem,
-  setMeal,
   setQuantity,
 } from "@/store/slices/logMealSlice";
 
@@ -24,6 +23,7 @@ import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
 import { ThemedText } from "@/components/themed-text";
+import { FoodCard } from "@/components/food-card";
 // type Props = {};
 
 export default function FoodDetails() {
@@ -131,7 +131,7 @@ export default function FoodDetails() {
           <TouchableOpacity
             style={[styles.modalButton, styles.modalButtonPrimary]}
             onPress={() => {
-              dispatch(setMeal({ food: selectedFood }));
+              dispatch(saveActiveItemToMeal());
               router.push("/(log-meal)/log-meal");
             }}
           >
@@ -144,22 +144,21 @@ export default function FoodDetails() {
       <ScrollView>
         {foods &&
           foods.map((food) => (
-            <Pressable style={logMealStyles.logButton} key={food.uid}>
-              <Text
-                onPress={() =>
-                  dispatch(
-                    setActiveItem({
-                      foodId: food.foodId,
-                      groupId: food.groupId,
-                      uid: food.uid,
-                    }),
-                  )
-                }
-                style={logMealStyles.logButtonText}
-              >
-                {food.name}
-              </Text>
-            </Pressable>
+            <FoodCard
+              key={food.uid}
+              title={food.name}
+              subtitle={`${food.quantity} ${food.unit}`}
+              onPress={() =>
+                dispatch(
+                  setActiveItem({
+                    foodId: food.foodId,
+                    groupId: food.groupId,
+                    uid: food.uid,
+                  }),
+                )
+              }
+              style={logMealStyles.listCard}
+            />
           ))}
       </ScrollView>
     </View>

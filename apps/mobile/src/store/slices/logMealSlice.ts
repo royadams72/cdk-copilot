@@ -583,6 +583,28 @@ const logMealSlice = createSlice({
         state.isDirty = true;
       },
     ),
+    saveActiveItemToMeal: create.reducer((state) => {
+      if (!state.activeMealType || !state.activeItem) return;
+      const nextFood = { ...state.activeItem };
+      const mealItems = state.meal[state.activeMealType];
+      const existingGroupIndex = mealItems.findIndex(
+        (item) => item.groupId === nextFood.groupId,
+      );
+
+      if (existingGroupIndex >= 0) {
+        if (isSameMealItem(mealItems[existingGroupIndex], nextFood)) return;
+        mealItems[existingGroupIndex] = nextFood;
+        state.isDirty = true;
+        return;
+      }
+
+      const hasDuplicate = mealItems.some((item) =>
+        isSameMealItem(item, nextFood),
+      );
+      if (hasDuplicate) return;
+      mealItems.push(nextFood);
+      state.isDirty = true;
+    }),
     setActiveItem: create.reducer(
       (
         state,
@@ -681,7 +703,8 @@ export const {
   setQuantity,
   setActiveItem,
   setMealType,
-  setMeal,
+  // setMeal,
+  saveActiveItemToMeal,
   removeMealItem,
   clearMealState,
   setEatenAt,
@@ -969,13 +992,19 @@ function mergeUniqueFoodGroups(
 }
 
 function isSameMealItem(a: TFoodItem, b: TFoodItem) {
-  if (a.uid && b.uid && a.uid === b.uid) return true;
+  const sameIdentity =
+    a.uid && b.uid
+      ? a.uid === b.uid
+      : a.foodId === b.foodId &&
+        (a.name ?? "").trim().toLowerCase() ===
+          (b.name ?? "").trim().toLowerCase();
+
+  if (!sameIdentity) return false;
+
   return (
-    a.foodId === b.foodId &&
-    (a.name ?? "").trim().toLowerCase() ===
-      (b.name ?? "").trim().toLowerCase() &&
     a.quantity === b.quantity &&
-    (a.unit ?? "").trim().toLowerCase() === (b.unit ?? "").trim().toLowerCase()
+    (a.unit ?? "").trim().toLowerCase() ===
+      (b.unit ?? "").trim().toLowerCase()
   );
 }
 

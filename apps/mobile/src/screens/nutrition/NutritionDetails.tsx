@@ -16,6 +16,7 @@ import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import type { TMealType } from "@ckd/core";
 
 import { ThemedText } from "@/components/themed-text";
+import { FoodCard } from "@/components/food-card";
 import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
 import { formatDateShort, formatDecimal } from "../dashboard/utils";
@@ -563,69 +564,54 @@ export default function NutritionDetails() {
             </ThemedText>
             <View style={styles.mealList}>
               {mealsForDay.map((meal) => (
-                <View key={meal.id} style={styles.mealRow}>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText type="defaultSemiBold">
-                      {capitalize(meal.mealType)}
-                    </ThemedText>
-                    <ThemedText style={styles.helperText}>
-                      {meal.eatenAt ? formatTime(meal.eatenAt) : "Time not set"}
-                    </ThemedText>
-                    <ThemedText style={styles.mealItemsText}>
-                      {meal.items
-                        .map(
-                          (item) =>
-                            `${item.name} (${item.quantity} ${item.unit})`,
-                        )
-                        .join(", ")}
-                    </ThemedText>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.modalButtonGhost]}
-                    onPress={() => {
-                      const coercedItems = meal.items.map(coerceLoggedMealItem);
-                      dispatch(
-                        hydrateMealFromEntry({
-                          eatenAt: meal.eatenAt,
-                          entryId: meal.id,
-                          items: coercedItems,
-                          mealType: meal.mealType as TMealType,
-                        }),
-                      );
-                      setIsEditModalOpen(false);
-                      router.push("/(log-meal)/log-meal");
-                    }}
-                  >
-                    <ThemedText style={styles.modalButtonTextGhost}>
-                      Edit
-                    </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.modalButtonDelete]}
-                    onPress={() => {
-                      Alert.alert(
-                        "Delete this meal?",
-                        "This cannot be undone.",
-                        [
-                          { style: "cancel", text: "Cancel" },
-                          {
-                            onPress: () => {
-                              dispatch(deleteMealData({ entryId: meal.id }))
-                                .unwrap()
-                                .then(() => dispatch(fetchDashboard()));
+                <FoodCard
+                  key={meal.id}
+                  title={capitalize(meal.mealType)}
+                  subtitle={meal.eatenAt ? formatTime(meal.eatenAt) : "Time not set"}
+                  description={meal.items
+                    .map((item) => `${item.name} (${item.quantity} ${item.unit})`)
+                    .join(", ")}
+                  actions={[
+                    {
+                      label: "Edit",
+                      onPress: () => {
+                        const coercedItems = meal.items.map(coerceLoggedMealItem);
+                        dispatch(
+                          hydrateMealFromEntry({
+                            eatenAt: meal.eatenAt,
+                            entryId: meal.id,
+                            items: coercedItems,
+                            mealType: meal.mealType as TMealType,
+                          }),
+                        );
+                        setIsEditModalOpen(false);
+                        router.push("/(log-meal)/log-meal");
+                      },
+                    },
+                    {
+                      label: "Delete",
+                      onPress: () => {
+                        Alert.alert(
+                          "Delete this meal?",
+                          "This cannot be undone.",
+                          [
+                            { style: "cancel", text: "Cancel" },
+                            {
+                              onPress: () => {
+                                dispatch(deleteMealData({ entryId: meal.id }))
+                                  .unwrap()
+                                  .then(() => dispatch(fetchDashboard()));
+                              },
+                              style: "destructive",
+                              text: "Delete",
                             },
-                            style: "destructive",
-                            text: "Delete",
-                          },
-                        ],
-                      );
-                    }}
-                  >
-                    <ThemedText style={styles.modalButtonTextPrimary}>
-                      Delete
-                    </ThemedText>
-                  </TouchableOpacity>
-                </View>
+                          ],
+                        );
+                      },
+                      variant: "danger",
+                    },
+                  ]}
+                />
               ))}
             </View>
             <TouchableOpacity
@@ -711,18 +697,16 @@ function FoodRow({
   metricUnit: string;
 }) {
   return (
-    <View style={styles.foodRow}>
-      <View style={{ flex: 1 }}>
-        <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-        <ThemedText style={styles.foodMeta}>{formatFoodMeta(item)}</ThemedText>
-        <ThemedText style={styles.helperText}>
-          Adds {formatChartValue(item.amount, metricUnit)} to your day.
+    <FoodCard
+      title={item.name}
+      subtitle={formatFoodMeta(item)}
+      description={`Adds ${formatChartValue(item.amount, metricUnit)} to your day.`}
+      rightContent={
+        <ThemedText style={[styles.foodAmount, { color }]}>
+          {formatChartValue(item.amount, metricUnit)}
         </ThemedText>
-      </View>
-      <ThemedText style={[styles.foodAmount, { color }]}>
-        {formatChartValue(item.amount, metricUnit)}
-      </ThemedText>
-    </View>
+      }
+    />
   );
 }
 
