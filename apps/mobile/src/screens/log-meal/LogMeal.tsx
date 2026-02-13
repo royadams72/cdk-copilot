@@ -269,6 +269,7 @@ export default function LogMeal() {
     minute: "2-digit",
   });
   const dateLabel = isToday(dateTime) ? "Today" : "Selected";
+  const canSubmitMeal = items.length > 0 && (!editingEntryId || isDirty);
 
   const capitalize = (value: string | null | undefined) => {
     if (!value) return "";
@@ -354,9 +355,12 @@ export default function LogMeal() {
           {items.length > 0 && (
             <TouchableOpacity
               accessibilityRole="button"
-              disabled={isPersistingMeal}
+              disabled={isPersistingMeal || !canSubmitMeal}
               onPress={persistMeal}
-              style={[styles.navButton, isPersistingMeal && { opacity: 0.5 }]}
+              style={[
+                styles.navButton,
+                (isPersistingMeal || !canSubmitMeal) && { opacity: 0.5 },
+              ]}
             >
               <ThemedText style={styles.navButtonText}>
                 {isPersistingMeal
