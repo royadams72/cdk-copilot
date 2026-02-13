@@ -37,7 +37,11 @@ export async function POST(req: NextRequest) {
       COLLECTIONS.NutritionLedger,
     );
     const body: Record<string, any> = await req.json();
-    const { eatenAt: eatenAtRaw, ...meal } = body ?? {};
+    const { eatenAt: eatenAtRaw, entryId, ...meal } = body ?? {};
+    if (!entryId || !ObjectId.isValid(entryId)) {
+      return bad("Missing entryId", { requestId }, 400);
+    }
+
     const type = Object.keys(meal);
     if (type.length > 1) {
       bad("Malformed 100", 500);
@@ -49,34 +53,46 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const eatenAt = eatenAtRaw ? new Date(eatenAtRaw) : now;
     const resolvedEatenAt = Number.isNaN(eatenAt.getTime()) ? now : eatenAt;
-    const totals = { ...getTotals(mealArray) };
 
-    const doc: TNutritionEntry = {
-      createdAt: now,
+    const entryObjectId = new ObjectId(entryId);
+    const existing = await collection.findOne({
+      _id: entryObjectId,
+      patientId: new ObjectId(caller.patientId),
+    });
+    if (!existing) {
+      return bad("Meal not found", { requestId }, 404);
+    }
+
+    const totals = { ...getTotals(mealArray) };
+    const updated: TNutritionEntry = {
+      ...existing,
       eatenAt: resolvedEatenAt,
       items: mealArray,
       mealType,
       patientId: caller.patientId,
-      photos: [],
-      status: "active",
-      tags: [],
       totals,
       updatedAt: now,
     };
 
-    const parsed = NutritionEntry.safeParse(doc);
+    const parsed = NutritionEntry.safeParse(updated);
     if (!parsed.success) {
-      bad("Malformed 101", { requestId }, 500);
+      return bad("Malformed 101", { requestId }, 500);
     }
 
-    if (parsed?.data) {
-      await collection.insertOne({
-        ...parsed.data,
-        patientId: new ObjectId(parsed.data.patientId),
-      });
-    }
+    await collection.updateOne(
+      { _id: entryObjectId },
+      {
+        $set: {
+          eatenAt: resolvedEatenAt,
+          items: mealArray,
+          mealType,
+          totals,
+          updatedAt: now,
+        },
+      },
+    );
 
-    return ok("meal saved");
+    return ok("meal updated");
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

@@ -16,6 +16,7 @@ import type {
   TEdamamMeasure,
   TEdamamNutritionResponse,
   TFoodItem,
+  TFoodItemEntry,
   TLogMealEdamamResponse,
   TLogMealItem,
   TMealType,
@@ -49,11 +50,18 @@ export type logMealState = {
   activeItem: TFoodItem | null;
   activeItems: TFoodItem[] | null;
   activeMealType: TMealType | null;
+  eatenAt: string | null;
+  editingEntryId: string | null;
   error: string | null;
   foodItems: FoodItemsObj[] | null;
   isDirty: boolean;
   lastLoadedAt: string | null;
   meal: Record<TMealType, TFoodItem[]>;
+  mealCandidate: {
+    entryId: string;
+    mealType: TMealType;
+    eatenAt: string | null;
+  } | null;
   status: "idle" | "loading" | "succeeded" | "failed";
 };
 
@@ -69,11 +77,14 @@ const initialState: logMealState = {
   activeItem: null,
   activeItems: null,
   activeMealType: null,
+  eatenAt: new Date().toISOString(),
+  editingEntryId: null,
   error: null,
   foodItems: null,
   isDirty: false,
   lastLoadedAt: null,
   meal: createEmptyMeals(),
+  mealCandidate: null,
   status: "idle",
 };
 
@@ -136,7 +147,12 @@ export const saveMealData = createAsyncThunk<
     return rejectWithValue("No active meal type");
   }
   const meal = state.logMeal.meal[activeMealType] ?? [];
-  const payload = { [activeMealType]: meal } as Record<TMealType, TFoodItem[]>;
+  const payload = {
+    [activeMealType]: meal,
+    eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
+  } as Record<TMealType, TFoodItem[]> & {
+    eatenAt: string;
+  };
 
   try {
     const res = await authFetch(`${API}/api/food/save`, {
@@ -157,6 +173,145 @@ export const saveMealData = createAsyncThunk<
   }
 });
 
+export const updateMealData = createAsyncThunk<
+  ApiResponse<any> | null | string | undefined,
+  void,
+  { rejectValue: string; state: RootState }
+>("logMeal/updateMealData", async (_, { getState, rejectWithValue }) => {
+  const state = getState() as RootState;
+  const activeMealType = state.logMeal.activeMealType;
+  const entryId = state.logMeal.editingEntryId;
+  if (!activeMealType) {
+    return rejectWithValue("No active meal type");
+  }
+  if (!entryId) {
+    return rejectWithValue("No meal to update");
+  }
+  const meal = state.logMeal.meal[activeMealType] ?? [];
+  const payload = {
+    [activeMealType]: meal,
+    eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
+    entryId,
+  } as Record<TMealType, TFoodItem[]> & {
+    eatenAt: string;
+    entryId: string;
+  };
+
+  try {
+    const res = await authFetch(`${API}/api/food/update`, {
+      body: JSON.stringify(payload),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    type Response = ApiResponse<any>;
+    const body: unknown = await res.json().catch(() => null);
+    const ok = !!(body as Response)?.ok;
+    const data = (body as Response)?.data;
+    if (!res.ok || !ok) {
+      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    }
+    return data as Response;
+  } catch (err: any) {
+    return rejectWithValue(err?.message ?? "Failed to update your meal data");
+  }
+});
+
+export const deleteMealData = createAsyncThunk<
+  ApiResponse<any> | null | string | undefined,
+  { entryId?: string } | void,
+  { rejectValue: string; state: RootState }
+>("logMeal/deleteMealData", async (arg, { getState, rejectWithValue }) => {
+  const state = getState() as RootState;
+  const entryId = arg?.entryId ?? state.logMeal.editingEntryId;
+  if (!entryId) {
+    return rejectWithValue("No meal to delete");
+  }
+
+  try {
+    const res = await authFetch(`${API}/api/food/delete`, {
+      body: JSON.stringify({ entryId }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    type Response = ApiResponse<any>;
+    const body: unknown = await res.json().catch(() => null);
+    const ok = !!(body as Response)?.ok;
+    const data = (body as Response)?.data;
+    if (!res.ok || !ok) {
+      throw new Error(formatApiError(res.status, (body as any) ?? null));
+    }
+    return data as Response;
+  } catch (err: any) {
+    return rejectWithValue(err?.message ?? "Failed to delete your meal data");
+  }
+});
+
+export const checkMealExists = createAsyncThunk<
+  { eatenAt: string | null; entryId: string; mealType: TMealType } | null,
+  { eatenAt: string; mealType: TMealType },
+  { rejectValue: string }
+>(
+  "logMeal/checkMealExists",
+  async ({ mealType, eatenAt }, { rejectWithValue }) => {
+    try {
+      const res = await authFetch(`${API}/api/food/exists`, {
+        body: JSON.stringify({ eatenAt, mealType }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const body: unknown = await res.json().catch(() => null);
+      const ok = !!(body as any)?.ok;
+      const data = (body as any)?.data;
+      if (!res.ok || !ok) {
+        throw new Error(formatApiError(res.status, (body as any) ?? null));
+      }
+      return (data?.exists ? data : null) as {
+        eatenAt: string | null;
+        entryId: string;
+        mealType: TMealType;
+      } | null;
+    } catch (err: any) {
+      return rejectWithValue(err?.message ?? "Failed to check existing meals");
+    }
+  },
+);
+
+export const fetchMealByDate = createAsyncThunk<
+  {
+    eatenAt: string | null;
+    entryId: string;
+    items: TFoodItemEntry[];
+    mealType: TMealType;
+  } | null,
+  { eatenAt: string; mealType: TMealType },
+  { rejectValue: string }
+>(
+  "logMeal/fetchMealByDate",
+  async ({ mealType, eatenAt }, { rejectWithValue }) => {
+    try {
+      const res = await authFetch(`${API}/api/food/by-date`, {
+        body: JSON.stringify({ eatenAt, mealType }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const body: unknown = await res.json().catch(() => null);
+      const ok = !!(body as any)?.ok;
+      const data = (body as any)?.data;
+      if (!res.ok || !ok) {
+        throw new Error(formatApiError(res.status, (body as any) ?? null));
+      }
+      return (data?.entry ?? null) as {
+        eatenAt: string | null;
+        entryId: string;
+        items: TFoodItemEntry[];
+        mealType: TMealType;
+      } | null;
+    } catch (err: any) {
+      return rejectWithValue(err?.message ?? "Failed to load your meal");
+    }
+  },
+);
+
 const logMealSlice = createSlice({
   extraReducers: (builder) => {
     builder
@@ -167,12 +322,16 @@ const logMealSlice = createSlice({
       .addCase(fetchMealData.fulfilled, (state, action) => {
         if (!action.payload) return;
         state.status = "succeeded";
-        state.foodItems = mapFoodItems(action.payload);
+        const incomingGroups = mapFoodItems(action.payload);
+        state.foodItems = mergeUniqueFoodGroups(
+          state.foodItems,
+          incomingGroups,
+        );
         if (state.activeMealType) {
-          state.meal[state.activeMealType] = [
-            ...state.meal[state.activeMealType],
-            ...setMealItems(state.foodItems),
-          ];
+          state.meal[state.activeMealType] = mergeUniqueMealItems(
+            state.meal[state.activeMealType],
+            setMealItems(incomingGroups),
+          );
         }
         state.isDirty = true;
 
@@ -277,6 +436,7 @@ const logMealSlice = createSlice({
       })
       .addCase(saveMealData.fulfilled, (state, action) => {
         resetLogMeal(state);
+        state.status = "succeeded";
       })
       .addCase(saveMealData.rejected, (state, action) => {
         state.status = "failed";
@@ -285,13 +445,121 @@ const logMealSlice = createSlice({
           action.error.message ??
           "We couldn't save your meal data.";
       });
+    builder
+      .addCase(updateMealData.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(updateMealData.fulfilled, (state) => {
+        resetLogMeal(state);
+        state.status = "succeeded";
+      })
+      .addCase(updateMealData.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "We couldn't update your meal data.";
+      });
+    builder
+      .addCase(deleteMealData.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(deleteMealData.fulfilled, (state) => {
+        resetLogMeal(state);
+        state.status = "succeeded";
+      })
+      .addCase(deleteMealData.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "We couldn't delete your meal data.";
+      });
+    builder
+      .addCase(checkMealExists.pending, (state) => {
+        state.mealCandidate = null;
+      })
+      .addCase(checkMealExists.fulfilled, (state, action) => {
+        state.mealCandidate = action.payload ?? null;
+      })
+      .addCase(checkMealExists.rejected, (state) => {
+        state.mealCandidate = null;
+      });
+    builder
+      .addCase(fetchMealByDate.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(fetchMealByDate.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        if (action.payload) {
+          mergeEntryIntoState(state, action.payload);
+          state.mealCandidate = null;
+        }
+      })
+      .addCase(fetchMealByDate.rejected, (state, action) => {
+        state.status = "failed";
+        state.error =
+          action.payload ?? action.error.message ?? "Failed to load your meal.";
+      });
   },
   initialState,
   name: "logMeal",
   reducers: (create) => ({
+    clearMealCandidate: create.reducer((state) => {
+      state.mealCandidate = null;
+    }),
     clearMealState: create.reducer((state) => {
       resetLogMeal(state);
     }),
+    hydrateMealFromEntry: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          eatenAt: string | null;
+          entryId: string;
+          items: TFoodItemEntry[];
+          mealType: TMealType;
+        }>,
+      ) => {
+        const { entryId, mealType, eatenAt, items } = action.payload;
+        const nextFoodItems: FoodItemsObj[] = items.map((item, index) => {
+          const groupId = `${entryId}:${item.uid ?? index}`;
+          const foodItem: TFoodItem = {
+            ...item,
+            groupId,
+            measures: [],
+          };
+          return {
+            foodItems: [foodItem],
+            groupId,
+            groupInfo: {
+              original: item.name,
+              normalised: item.name.toLowerCase(),
+              quantity: item.quantity,
+              unit: item.unit ?? "",
+              food: item.name,
+            },
+          };
+        });
+
+        state.activeMealType = mealType;
+        state.eatenAt = eatenAt ?? new Date().toISOString();
+        state.editingEntryId = entryId;
+        state.foodItems = nextFoodItems;
+        state.meal = createEmptyMeals();
+        state.meal[mealType] = nextFoodItems
+          .map((entry) => entry.foodItems[0])
+          .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+        state.activeItem = null;
+        state.activeItems = null;
+        state.isDirty = false;
+        state.error = null;
+        state.status = "idle";
+      },
+    ),
     removeMealItem: create.reducer(
       (state, action: PayloadAction<{ groupId: string }>) => {
         const { groupId } = action.payload;
@@ -315,6 +583,28 @@ const logMealSlice = createSlice({
         state.isDirty = true;
       },
     ),
+    saveActiveItemToMeal: create.reducer((state) => {
+      if (!state.activeMealType || !state.activeItem) return;
+      const nextFood = { ...state.activeItem };
+      const mealItems = state.meal[state.activeMealType];
+      const existingGroupIndex = mealItems.findIndex(
+        (item) => item.groupId === nextFood.groupId,
+      );
+
+      if (existingGroupIndex >= 0) {
+        if (isSameMealItem(mealItems[existingGroupIndex], nextFood)) return;
+        mealItems[existingGroupIndex] = nextFood;
+        state.isDirty = true;
+        return;
+      }
+
+      const hasDuplicate = mealItems.some((item) =>
+        isSameMealItem(item, nextFood),
+      );
+      if (hasDuplicate) return;
+      mealItems.push(nextFood);
+      state.isDirty = true;
+    }),
     setActiveItem: create.reducer(
       (
         state,
@@ -327,12 +617,33 @@ const logMealSlice = createSlice({
         item ? (state.activeItem = item) : null;
       },
     ),
+    setEatenAt: create.reducer(
+      (state, action: PayloadAction<{ eatenAt: string }>) => {
+        state.eatenAt = action.payload.eatenAt;
+        state.isDirty = true;
+      },
+    ),
     setMeal: create.reducer(
       (state, action: PayloadAction<{ food: TFoodItem }>) => {
         if (!state.activeMealType) return;
-        state.meal[state.activeMealType].push({
-          ...action.payload.food,
-        });
+        const nextFood = { ...action.payload.food };
+        const mealItems = state.meal[state.activeMealType];
+        const existingGroupIndex = mealItems.findIndex(
+          (item) => item.groupId === nextFood.groupId,
+        );
+
+        if (existingGroupIndex >= 0) {
+          if (isSameMealItem(mealItems[existingGroupIndex], nextFood)) return;
+          mealItems[existingGroupIndex] = nextFood;
+          state.isDirty = true;
+          return;
+        }
+
+        const hasDuplicate = mealItems.some((item) =>
+          isSameMealItem(item, nextFood),
+        );
+        if (hasDuplicate) return;
+        mealItems.push(nextFood);
         state.isDirty = true;
       },
     ),
@@ -343,6 +654,8 @@ const logMealSlice = createSlice({
           state.activeMealType = mealType;
           state.foodItems = [];
           state.isDirty = false;
+          state.editingEntryId = null;
+          state.eatenAt = new Date().toISOString();
         }
       },
     ),
@@ -390,9 +703,13 @@ export const {
   setQuantity,
   setActiveItem,
   setMealType,
-  setMeal,
+  // setMeal,
+  saveActiveItemToMeal,
   removeMealItem,
   clearMealState,
+  setEatenAt,
+  hydrateMealFromEntry,
+  clearMealCandidate,
 } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
@@ -424,10 +741,24 @@ export const selectFoodItems = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.foodItems,
 );
-
 export const selectIsDirty = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.isDirty,
+);
+
+export const selectEatenAt = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.eatenAt,
+);
+
+export const selectEditingEntryId = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.editingEntryId,
+);
+
+export const selectMealCandidate = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.mealCandidate,
 );
 
 export const selectMealItemsFromFoodItems = createSelector(
@@ -442,27 +773,25 @@ export const selectMealItemsFromFoodItems = createSelector(
 );
 
 export const selectItemsSummary = createSelector(
-  selectFoodItems,
-  (foodItemsArr: FoodItemsObj[] | null) => {
-    return Array.isArray(foodItemsArr)
-      ? foodItemsArr
-          .map((entry: FoodItemsObj) => {
-            // const label = entry.matches?.[0]?.food?.label;
-            if (!entry) return null;
-            const item = entry.foodItems[0];
-            const { uid, name, foodId, groupId, quantity } = item;
-            if (!foodId || !groupId) return null;
-            return {
-              foodId,
-              groupId,
-              name,
-              quantity,
-              uid,
-              unit: entry.groupInfo.unit ?? "",
-            } satisfies ItemSummary;
-          })
-          .filter((item): item is ItemSummary => item !== null)
-      : [];
+  mealState,
+  selectActiveMealType,
+  (meal, activeMealType) => {
+    if (!activeMealType) return [];
+    const activeMealItems = meal[activeMealType] ?? [];
+    return activeMealItems
+      .map((item) => {
+        const { uid, name, foodId, groupId, quantity, unit } = item;
+        if (!uid || !foodId || !groupId) return null;
+        return {
+          foodId,
+          groupId,
+          name,
+          quantity,
+          uid,
+          unit: unit ?? "",
+        } satisfies ItemSummary;
+      })
+      .filter((entry): entry is ItemSummary => entry !== null);
   },
 );
 
@@ -632,11 +961,126 @@ function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
 }
 
+function buildGroupSignature(group: FoodItemsObj) {
+  const first = group.foodItems?.[0];
+  const name = (first?.name ?? "").trim().toLowerCase();
+  const foodId = first?.foodId ?? "";
+  const quantity = first?.quantity ?? 0;
+  const unit = (group.groupInfo?.unit ?? first?.unit ?? "")
+    .trim()
+    .toLowerCase();
+  return `${foodId}|${name}|${quantity}|${unit}`;
+}
+
+function mergeUniqueFoodGroups(
+  existing: FoodItemsObj[] | null,
+  incoming: FoodItemsObj[] | null,
+): FoodItemsObj[] {
+  const base = existing ?? [];
+  const next = incoming ?? [];
+  if (!next.length) return base;
+
+  const seen = new Set(base.map(buildGroupSignature));
+  const merged = [...base];
+  for (const group of next) {
+    const signature = buildGroupSignature(group);
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    merged.push(group);
+  }
+  return merged;
+}
+
+function isSameMealItem(a: TFoodItem, b: TFoodItem) {
+  const sameIdentity =
+    a.uid && b.uid
+      ? a.uid === b.uid
+      : a.foodId === b.foodId &&
+        (a.name ?? "").trim().toLowerCase() ===
+          (b.name ?? "").trim().toLowerCase();
+
+  if (!sameIdentity) return false;
+
+  return (
+    a.quantity === b.quantity &&
+    (a.unit ?? "").trim().toLowerCase() ===
+      (b.unit ?? "").trim().toLowerCase()
+  );
+}
+
+function mergeUniqueMealItems(existing: TFoodItem[], incoming: TFoodItem[]) {
+  if (!incoming.length) return existing;
+  const merged = [...existing];
+  for (const item of incoming) {
+    if (merged.some((existingItem) => isSameMealItem(existingItem, item))) {
+      continue;
+    }
+    merged.push(item);
+  }
+  return merged;
+}
+
 function resetLogMeal(state: RootState["logMeal"]) {
   state.activeItem = null;
   state.foodItems = null;
   state.meal = createEmptyMeals();
   state.activeMealType = null;
+  state.eatenAt = new Date().toISOString();
+  state.editingEntryId = null;
+  state.mealCandidate = null;
+}
+
+function mergeEntryIntoState(
+  state: RootState["logMeal"],
+  payload: {
+    eatenAt: string | null;
+    entryId: string;
+    items: TFoodItemEntry[];
+    mealType: TMealType;
+  },
+) {
+  const { entryId, mealType, eatenAt, items } = payload;
+  const existingGroups = new Set(
+    (state.foodItems ?? []).map((group) => group.groupId),
+  );
+  const nextGroups: FoodItemsObj[] = items.map((item, index) => {
+    const baseId = `${entryId}:${item.uid ?? index}`;
+    let groupId = baseId;
+    let suffix = 1;
+    while (existingGroups.has(groupId)) {
+      groupId = `${baseId}:${suffix++}`;
+    }
+    existingGroups.add(groupId);
+    const foodItem: TFoodItem = {
+      ...item,
+      groupId,
+      measures: [],
+    };
+    return {
+      foodItems: [foodItem],
+      groupId,
+      groupInfo: {
+        original: item.name,
+        normalised: item.name.toLowerCase(),
+        quantity: item.quantity,
+        unit: item.unit ?? "",
+        food: item.name,
+      },
+    };
+  });
+
+  state.activeMealType = mealType;
+  state.eatenAt = eatenAt ?? state.eatenAt ?? new Date().toISOString();
+  state.editingEntryId = entryId;
+  state.foodItems = mergeUniqueFoodGroups(state.foodItems, nextGroups);
+  state.meal = state.meal ?? createEmptyMeals();
+  state.meal[mealType] = mergeUniqueMealItems(
+    state.meal[mealType] ?? [],
+    nextGroups
+      .map((entry) => entry.foodItems[0])
+      .filter((foodItem): foodItem is TFoodItem => !!foodItem),
+  );
+  state.isDirty = true;
 }
 
 function extractNutrition(

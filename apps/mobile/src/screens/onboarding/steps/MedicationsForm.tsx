@@ -3,9 +3,9 @@ import { Alert, Button, ScrollView, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
+  type Resolver,
   useFieldArray,
   useForm,
-  type Resolver,
 } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,18 +18,18 @@ import { DateField, LabeledInput } from "./FormFields";
 import { useRouter } from "expo-router";
 
 const emptyMedication: TMedicationFormValues["medications"][number] = {
-  name: "",
-  form: "",
-  strength: "",
-  route: "",
+  dmplusdCode: "",
   dose: "",
+  endAt: null,
+  form: "",
   frequency: "",
   instructions: "",
-  startAt: null,
-  endAt: null,
-  status: "active",
-  dmplusdCode: "",
+  name: "",
+  route: "",
   snomedCode: "",
+  startAt: null,
+  status: "active",
+  strength: "",
 };
 
 export default function MedicationsForm({
@@ -43,14 +43,14 @@ export default function MedicationsForm({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<TMedicationFormValues>({
-    resolver: zodResolver(
-      MedicationsFormSchema
-    ) as Resolver<TMedicationFormValues>,
     defaultValues: {
       medications: defaults?.medications?.length
         ? defaults.medications
         : [emptyMedication],
     },
+    resolver: zodResolver(
+      MedicationsFormSchema,
+    ) as Resolver<TMedicationFormValues>,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -91,7 +91,7 @@ export default function MedicationsForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 24 }}>
+    <ScrollView contentContainerStyle={{ gap: 24, padding: 16 }}>
       {fields.map((field, index) => {
         const base = `medications.${index}` as const;
         const medErrors =
@@ -100,7 +100,7 @@ export default function MedicationsForm({
         return (
           <View
             key={field.id}
-            style={{ borderWidth: 1, borderRadius: 12, padding: 16, gap: 12 }}
+            style={{ borderRadius: 12, borderWidth: 1, gap: 12, padding: 16 }}
           >
             <Text style={{ fontWeight: "700" }}>Medication {index + 1}</Text>
 
@@ -289,7 +289,6 @@ export default function MedicationsForm({
         // disabled={isSubmitting}
         // onPress={handleSubmit(onSubmit)}
         onPress={() => {
-          console.log("button pressed directly");
           router.push("/(auth)/onboarding/labs-form");
         }}
       />

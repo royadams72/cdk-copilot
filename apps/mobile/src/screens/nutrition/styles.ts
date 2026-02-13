@@ -103,6 +103,17 @@ export const styles = StyleSheet.create({
     gap: 16,
     marginTop: 8,
   },
+  editMealsButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(99,102,241,0.15)",
+  },
+  editMealsButtonText: {
+    fontWeight: "600",
+    color: "#1f2937",
+  },
   summaryGrid: {
     gap: 12,
     marginTop: 4,
@@ -182,6 +193,9 @@ export const styles = StyleSheet.create({
   modalButtonGhost: {
     backgroundColor: "rgba(148,163,184,0.25)",
   },
+  modalButtonDelete: {
+    backgroundColor: "#dc2626",
+  },
   modalButtonTextPrimary: {
     color: "#fff",
     fontWeight: "600",
@@ -189,5 +203,27 @@ export const styles = StyleSheet.create({
   modalButtonTextGhost: {
     fontWeight: "600",
     color: "#111827",
+  },
+  mealList: {
+    gap: 10,
+    marginTop: 4,
+  },
+  mealRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(148,163,184,0.2)",
+  },
+  mealItemsText: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  mealEditHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4C1D95",
   },
 });

@@ -1,4 +1,4 @@
-import { TNutritionEntry } from "@/packages/core/dist/isomorphic";
+import { TFoodItemEntry, TMealType, TNutritionEntry } from "@/packages/core/dist/isomorphic";
 import { ObjectId } from "mongodb";
 import { RADIAL_METRICS } from "../../app/api/dashboard/route";
 
@@ -14,6 +14,7 @@ export type LabDoc = {
 };
 
 export type NutritionEntryDoc = Omit<TNutritionEntry, "patientId"> & {
+  _id: ObjectId;
   patientId: ObjectId;
 };
 
@@ -36,6 +37,13 @@ export type FoodHighlight = {
 export type FoodHighlightResult = {
   latestDate: string | null;
   itemsByDate: Record<string, Record<ChartMetricKey, FoodHighlight[]>>;
+};
+
+export type NutritionMealEntry = {
+  id: string;
+  mealType: TMealType;
+  eatenAt: string | null;
+  items: TFoodItemEntry[];
 };
 
 export type NutrientKey =

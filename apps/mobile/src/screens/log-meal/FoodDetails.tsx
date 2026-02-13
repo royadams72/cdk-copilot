@@ -1,72 +1,82 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import {
-  View,
-  Text,
-  Pressable,
   ScrollView,
+  Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchNutritionData,
   selectAcitveGroupSummaries,
   selectActiveItem,
+  selectEditingEntryId,
   selectGroupInfoById,
+  saveActiveItemToMeal,
   setActiveItem,
-  setMeal,
   setQuantity,
 } from "@/store/slices/logMealSlice";
 
-import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { logMealStyles } from "./styles";
 import { styles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
 import { ThemedText } from "@/components/themed-text";
+import { FoodCard } from "@/components/food-card";
 // type Props = {};
 
 export default function FoodDetails() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const selectedFood = useAppSelector(selectActiveItem);
+  const editingEntryId = useAppSelector(selectEditingEntryId);
   const foods = useAppSelector(selectAcitveGroupSummaries);
+  const requestedNutritionByUidRef = useRef(new Set<string>());
   const groupInfo = useAppSelector((state) => {
     const groupId = selectedFood?.groupId;
     if (!groupId) return null;
     return selectGroupInfoById(groupId)(state);
   });
 
-  useEffect(() => {
-    console.log(selectedFood?.nutrients);
-    //  Check active item, if some nutrition data missing dispatch an action to get it
-    if (selectedFood && isAnyFieldEmpty(selectedFood?.nutrients) && groupInfo) {
-      console.log(selectedFood.nutrients);
+  const hasMissingCoreNutrients = (food: NonNullable<typeof selectedFood>) => {
+    const nutrients = food.nutrients ?? {};
+    return (
+      nutrients.caloriesKcal == null ||
+      nutrients.proteinG == null ||
+      nutrients.phosphorusMg == null ||
+      nutrients.potassiumMg == null ||
+      nutrients.sodiumMg == null
+    );
+  };
 
-      dispatch(fetchNutritionData({ foodItems: selectedFood }));
-      // console.log("selectedFood::", selectedFood);
-    }
+  useEffect(() => {
+    if (!selectedFood || !groupInfo || !selectedFood.uid) return;
+    if (!hasMissingCoreNutrients(selectedFood)) return;
+    if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
+
+    requestedNutritionByUidRef.current.add(selectedFood.uid);
+    dispatch(fetchNutritionData({ foodItems: selectedFood }));
   }, [selectedFood, groupInfo, dispatch]);
 
-  useEffect(() => {}, []);
   const handleSetQuantity = ({
     quantity,
     groupId,
     foodId,
     uid,
   }: {
-    quantity: string;
-    groupId: string;
     foodId: string;
+    groupId: string;
+    quantity: string;
     uid: string;
   }) => {
     const nextQuantity = Number.parseFloat(quantity);
     if (Number.isNaN(nextQuantity)) return;
     dispatch(
       setQuantity({
-        quantity: nextQuantity,
-        groupId,
         foodId,
+        groupId,
+        quantity: nextQuantity,
         uid,
       }),
     );
@@ -94,14 +104,14 @@ export default function FoodDetails() {
                 const nextQuantity = Number.parseFloat(quantity);
                 if (Number.isNaN(nextQuantity)) return;
                 handleSetQuantity({
-                  quantity,
-                  groupId: selectedFood.groupId,
                   foodId: selectedFood.foodId,
+                  groupId: selectedFood.groupId,
+                  quantity,
                   uid: selectedFood.uid,
                 });
               }
             }}
-            style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+            style={{ borderRadius: 8, borderWidth: 1, padding: 12 }}
           />
 
           <View>
@@ -121,12 +131,12 @@ export default function FoodDetails() {
           <TouchableOpacity
             style={[styles.modalButton, styles.modalButtonPrimary]}
             onPress={() => {
-              dispatch(setMeal({ food: selectedFood }));
+              dispatch(saveActiveItemToMeal());
               router.push("/(log-meal)/log-meal");
             }}
           >
             <ThemedText style={styles.modalButtonTextPrimary}>
-              Add food
+              {editingEntryId ? `Update food` : `Add food`}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -134,22 +144,21 @@ export default function FoodDetails() {
       <ScrollView>
         {foods &&
           foods.map((food) => (
-            <Pressable style={logMealStyles.logButton} key={food.uid}>
-              <Text
-                onPress={() =>
-                  dispatch(
-                    setActiveItem({
-                      foodId: food.foodId,
-                      groupId: food.groupId,
-                      uid: food.uid,
-                    }),
-                  )
-                }
-                style={logMealStyles.logButtonText}
-              >
-                {food.name}
-              </Text>
-            </Pressable>
+            <FoodCard
+              key={food.uid}
+              title={food.name}
+              subtitle={`${food.quantity} ${food.unit}`}
+              onPress={() =>
+                dispatch(
+                  setActiveItem({
+                    foodId: food.foodId,
+                    groupId: food.groupId,
+                    uid: food.uid,
+                  }),
+                )
+              }
+              style={logMealStyles.listCard}
+            />
           ))}
       </ScrollView>
     </View>
