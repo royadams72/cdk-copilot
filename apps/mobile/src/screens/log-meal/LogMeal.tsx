@@ -68,6 +68,7 @@ export default function LogMeal() {
   const [isSearching, setIsSearching] = useState(false);
   const lastPromptRef = useRef<string | null>(null);
   const autoLoadKeyRef = useRef<string | null>(null);
+  const allowNextNavigationRef = useRef(false);
 
   useEffect(() => {
     if (!eatenAtIso) return;
@@ -158,6 +159,10 @@ export default function LogMeal() {
       );
 
       const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+        if (allowNextNavigationRef.current) {
+          allowNextNavigationRef.current = false;
+          return;
+        }
         if (isLeavingRef.current) return;
         if (!isDirty) return;
         e.preventDefault();
@@ -202,6 +207,7 @@ export default function LogMeal() {
     groupId: string;
     uid: string;
   }) {
+    allowNextNavigationRef.current = true;
     dispatch(setActiveItem({ foodId, groupId, uid }));
     router.replace("/(log-meal)/food-details");
   }
@@ -246,9 +252,6 @@ export default function LogMeal() {
         </View>
         <ThemedText type="title">
           {editingEntryId ? `Update` : `Log`} {capitalize(meatlType)}
-        </ThemedText>
-        <ThemedText style={styles.helperText}>
-          {editingEntryId ? `` : `Select`}
         </ThemedText>
         <View style={logMealStyles.dateRow}>
           <ThemedText style={logMealStyles.dateText}>

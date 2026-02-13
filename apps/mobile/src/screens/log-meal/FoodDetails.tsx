@@ -58,6 +58,7 @@ export default function FoodDetails() {
     requestedNutritionByUidRef.current.add(selectedFood.uid);
     dispatch(fetchNutritionData({ foodItems: selectedFood }));
   }, [selectedFood, groupInfo, dispatch]);
+
   const handleSetQuantity = ({
     quantity,
     groupId,
