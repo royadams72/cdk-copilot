@@ -65,6 +65,7 @@ export default function LogMeal() {
   );
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
   const [showExistingMealModal, setShowExistingMealModal] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const lastPromptRef = useRef<string | null>(null);
   const autoLoadKeyRef = useRef<string | null>(null);
 
@@ -104,9 +105,15 @@ export default function LogMeal() {
   }, [dispatch, meal, meatlType, editingEntryId]);
 
   async function submit() {
-    console.log("submitted");
+    const nextQuery = searchTerm.trim();
+    if (!nextQuery || isSearching) return;
+    setIsSearching(true);
     setShouldLoadInitialNutrition(true);
-    dispatch(fetchMealData({ searchTerm }));
+    try {
+      await dispatch(fetchMealData({ searchTerm: nextQuery })).unwrap();
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   const confirmExit = useCallback(
@@ -219,6 +226,12 @@ export default function LogMeal() {
     minute: "2-digit",
   });
   const dateLabel = isToday(dateTime) ? "Today" : "Selected";
+
+  const capitalize = (value: string | null | undefined) => {
+    if (!value) return "";
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  };
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
@@ -231,7 +244,9 @@ export default function LogMeal() {
             <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
           </TouchableOpacity>
         </View>
-        <ThemedText type="title">Log Meal</ThemedText>
+        <ThemedText type="title">
+          {editingEntryId ? `Update` : `Log`} {capitalize(meatlType)}
+        </ThemedText>
         <ThemedText style={styles.helperText}>
           {editingEntryId ? `` : `Select`}
         </ThemedText>
@@ -259,12 +274,16 @@ export default function LogMeal() {
         />
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => {
-            submit;
-          }}
-          style={styles.navButton}
+          disabled={isSearching || searchTerm.trim().length === 0}
+          onPress={() => submit()}
+          style={[
+            styles.navButton,
+            (isSearching || searchTerm.trim().length === 0) && { opacity: 0.5 },
+          ]}
         >
-          <ThemedText style={styles.navButtonText}>Search</ThemedText>
+          <ThemedText style={styles.navButtonText}>
+            {isSearching ? "Searching..." : "Search"}
+          </ThemedText>
         </TouchableOpacity>
       </View>
       {items && (
@@ -294,21 +313,23 @@ export default function LogMeal() {
               </Pressable>
             </View>
           ))}
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => {
-              editingEntryId
-                ? dispatch(updateMealData())
-                : dispatch(saveMealData());
-              isLeavingRef.current = true;
-              router.replace("/(nutrition)/nutrition-details");
-            }}
-            style={styles.navButton}
-          >
-            <ThemedText style={styles.navButtonText}>
-              {editingEntryId ? "Update Meal" : "Save Meal"}
-            </ThemedText>
-          </TouchableOpacity>
+          {items.length > 0 && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                editingEntryId
+                  ? dispatch(updateMealData())
+                  : dispatch(saveMealData());
+                isLeavingRef.current = true;
+                router.replace("/(nutrition)/nutrition-details");
+              }}
+              style={styles.navButton}
+            >
+              <ThemedText style={styles.navButtonText}>
+                {editingEntryId ? "Update Meal" : "Save Meal"}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
           {editingEntryId ? (
             <TouchableOpacity
               accessibilityRole="button"

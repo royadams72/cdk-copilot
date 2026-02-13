@@ -309,12 +309,13 @@ const logMealSlice = createSlice({
       .addCase(fetchMealData.fulfilled, (state, action) => {
         if (!action.payload) return;
         state.status = "succeeded";
-        state.foodItems = mapFoodItems(action.payload);
+        const incomingGroups = mapFoodItems(action.payload);
+        state.foodItems = mergeUniqueFoodGroups(state.foodItems, incomingGroups);
         if (state.activeMealType) {
-          state.meal[state.activeMealType] = [
-            ...state.meal[state.activeMealType],
-            ...setMealItems(state.foodItems),
-          ];
+          state.meal[state.activeMealType] = mergeUniqueMealItems(
+            state.meal[state.activeMealType],
+            setMealItems(incomingGroups),
+          );
         }
         state.isDirty = true;
 
@@ -587,9 +588,12 @@ const logMealSlice = createSlice({
     setMeal: create.reducer(
       (state, action: PayloadAction<{ food: TFoodItem }>) => {
         if (!state.activeMealType) return;
-        state.meal[state.activeMealType].push({
-          ...action.payload.food,
-        });
+        const nextFood = { ...action.payload.food };
+        const hasDuplicate = state.meal[state.activeMealType].some((item) =>
+          isSameMealItem(item, nextFood),
+        );
+        if (hasDuplicate) return;
+        state.meal[state.activeMealType].push(nextFood);
         state.isDirty = true;
       },
     ),
@@ -909,6 +913,58 @@ function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
 }
 
+function buildGroupSignature(group: FoodItemsObj) {
+  const first = group.foodItems?.[0];
+  const name = (first?.name ?? "").trim().toLowerCase();
+  const foodId = first?.foodId ?? "";
+  const quantity = first?.quantity ?? 0;
+  const unit = (group.groupInfo?.unit ?? first?.unit ?? "")
+    .trim()
+    .toLowerCase();
+  return `${foodId}|${name}|${quantity}|${unit}`;
+}
+
+function mergeUniqueFoodGroups(
+  existing: FoodItemsObj[] | null,
+  incoming: FoodItemsObj[] | null,
+): FoodItemsObj[] {
+  const base = existing ?? [];
+  const next = incoming ?? [];
+  if (!next.length) return base;
+
+  const seen = new Set(base.map(buildGroupSignature));
+  const merged = [...base];
+  for (const group of next) {
+    const signature = buildGroupSignature(group);
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    merged.push(group);
+  }
+  return merged;
+}
+
+function isSameMealItem(a: TFoodItem, b: TFoodItem) {
+  if (a.uid && b.uid && a.uid === b.uid) return true;
+  return (
+    a.foodId === b.foodId &&
+    (a.name ?? "").trim().toLowerCase() === (b.name ?? "").trim().toLowerCase() &&
+    a.quantity === b.quantity &&
+    (a.unit ?? "").trim().toLowerCase() === (b.unit ?? "").trim().toLowerCase()
+  );
+}
+
+function mergeUniqueMealItems(existing: TFoodItem[], incoming: TFoodItem[]) {
+  if (!incoming.length) return existing;
+  const merged = [...existing];
+  for (const item of incoming) {
+    if (merged.some((existingItem) => isSameMealItem(existingItem, item))) {
+      continue;
+    }
+    merged.push(item);
+  }
+  return merged;
+}
+
 function resetLogMeal(state: RootState["logMeal"]) {
   state.activeItem = null;
   state.foodItems = null;
@@ -961,14 +1017,14 @@ function mergeEntryIntoState(
   state.activeMealType = mealType;
   state.eatenAt = eatenAt ?? state.eatenAt ?? new Date().toISOString();
   state.editingEntryId = entryId;
-  state.foodItems = [...(state.foodItems ?? []), ...nextGroups];
+  state.foodItems = mergeUniqueFoodGroups(state.foodItems, nextGroups);
   state.meal = state.meal ?? createEmptyMeals();
-  state.meal[mealType] = [
-    ...(state.meal[mealType] ?? []),
-    ...nextGroups
+  state.meal[mealType] = mergeUniqueMealItems(
+    state.meal[mealType] ?? [],
+    nextGroups
       .map((entry) => entry.foodItems[0])
       .filter((foodItem): foodItem is TFoodItem => !!foodItem),
-  ];
+  );
   state.isDirty = true;
 }
 

@@ -188,6 +188,12 @@ export default function NutritionDetails() {
     return data?.nutrition.mealsByDate?.[highlightDate] ?? [];
   }, [data, highlightDate]);
 
+  useEffect(() => {
+    if (mealsForDay.length === 0) {
+      setIsEditModalOpen(false);
+    }
+  }, [mealsForDay.length]);
+
   const handleRefresh = useCallback(() => {
     dispatch(fetchDashboard());
   }, [dispatch]);
