@@ -118,7 +118,15 @@ export function summarizeNutrition(
   to: Date,
   rangeDays: number
 ) {
-  const totals = entries.reduce(
+  const rangeStart = startOfDay(from);
+  const rangeEndExclusive = new Date(startOfDay(to).getTime() + DAY_MS);
+  const entriesInRange = entries.filter((entry) => {
+    const entryDate = resolveEntryDate(entry);
+    if (!entryDate) return false;
+    return entryDate >= rangeStart && entryDate < rangeEndExclusive;
+  });
+
+  const totals = entriesInRange.reduce(
     (acc, entry) => {
       const entryTotals = extractNutrition(entry);
       for (const key of Object.keys(acc) as NutrientKey[]) {
@@ -148,20 +156,20 @@ export function summarizeNutrition(
   });
 
   const ratio = buildRatio(totals, clinicalDoc?.targets);
-  const dailySeries = buildDailySeries(entries, to, rangeDays);
-  const foodHighlights = buildFoodHighlights(entries);
-  const mealsByDate = buildMealsByDate(entries);
+  const dailySeries = buildDailySeries(entriesInRange, to, rangeDays);
+  const foodHighlights = buildFoodHighlights(entriesInRange);
+  const mealsByDate = buildMealsByDate(entriesInRange);
 
   return {
     range: {
       from: from.toISOString(),
       to: to.toISOString(),
       days: rangeDays,
-      entries: entries.length,
-      lastEntryAt: entries[0]?.eatenAt
-        ? entries[0].eatenAt!.toISOString()
-        : entries[0]?.createdAt
-        ? entries[0].createdAt!.toISOString()
+      entries: entriesInRange.length,
+      lastEntryAt: entriesInRange[0]?.eatenAt
+        ? entriesInRange[0].eatenAt!.toISOString()
+        : entriesInRange[0]?.createdAt
+        ? entriesInRange[0].createdAt!.toISOString()
         : null,
     },
     totals,

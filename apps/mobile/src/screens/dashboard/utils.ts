@@ -14,8 +14,8 @@ export function formatDateShort(value: string | null | undefined) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString(undefined, {
-    month: "short",
     day: "numeric",
+    month: "short",
   });
 }
 
@@ -44,7 +44,7 @@ export function ratioStatusLabel(status: DashboardRatio["status"]) {
 
 export function getStatusStyles(
   status: DashboardRatio["status"],
-  theme: "light" | "dark"
+  theme: "light" | "dark",
 ) {
   if (status === "in-range") {
     return {

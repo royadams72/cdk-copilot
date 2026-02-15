@@ -26,6 +26,7 @@ import {
   fetchDashboard,
   selectDashboardData,
   selectDashboardError,
+  selectDashboardScope,
   selectDashboardStatus,
 } from "@/store/slices/dashboardSlice";
 
@@ -49,6 +50,7 @@ export default function NutritionDetails() {
   const data = useAppSelector(selectDashboardData);
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
+  const scope = useAppSelector(selectDashboardScope);
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
@@ -195,8 +197,14 @@ export default function NutritionDetails() {
     }
   }, [mealsForDay.length]);
 
+  useEffect(() => {
+    if ((status === "idle" && !data) || scope !== "all") {
+      dispatch(fetchDashboard({ scope: "all" }));
+    }
+  }, [data, dispatch, scope, status]);
+
   const handleRefresh = useCallback(() => {
-    dispatch(fetchDashboard());
+    dispatch(fetchDashboard({ scope: "all" }));
   }, [dispatch]);
 
   if (loading) {
@@ -262,9 +270,16 @@ export default function NutritionDetails() {
           <>
             <Card>
               <View style={styles.cardHeader}>
-                <ThemedText type="defaultSemiBold">Weekly intake</ThemedText>
+                <ThemedText type="defaultSemiBold">Nutrition intake</ThemedText>
                 <ThemedText style={styles.helperText}>
-                  Last {data?.nutrition.range.days ?? 7} days
+                  Since{" "}
+                  {new Date(
+                    data?.nutrition.range.from ?? Date.now(),
+                  ).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </ThemedText>
               </View>
               <View style={styles.chartLegend}>
@@ -598,10 +613,12 @@ export default function NutritionDetails() {
                             { style: "cancel", text: "Cancel" },
                             {
                               onPress: () => {
-                                dispatch(deleteMealData({ entryId: meal.id }))
-                                  .unwrap()
-                                  .then(() => dispatch(fetchDashboard()));
-                              },
+                              dispatch(deleteMealData({ entryId: meal.id }))
+                                .unwrap()
+                                .then(() =>
+                                  dispatch(fetchDashboard({ scope: "all" })),
+                                );
+                            },
                               style: "destructive",
                               text: "Delete",
                             },

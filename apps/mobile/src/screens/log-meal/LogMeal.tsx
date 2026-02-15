@@ -126,7 +126,7 @@ export default function LogMeal() {
       } else {
         await dispatch(saveMealData()).unwrap();
       }
-      await dispatch(fetchDashboard()).unwrap();
+      await dispatch(fetchDashboard({ scope: "all" })).unwrap();
       isLeavingRef.current = true;
       router.replace("/(nutrition)/nutrition-details");
     } catch (err: any) {
@@ -144,7 +144,7 @@ export default function LogMeal() {
     setIsPersistingMeal(true);
     try {
       await dispatch(deleteMealData()).unwrap();
-      await dispatch(fetchDashboard()).unwrap();
+      await dispatch(fetchDashboard({ scope: "all" })).unwrap();
       isLeavingRef.current = true;
       router.replace("/(nutrition)/nutrition-details");
     } catch (err: any) {

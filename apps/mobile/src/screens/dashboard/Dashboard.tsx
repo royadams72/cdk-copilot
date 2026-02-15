@@ -14,6 +14,7 @@ import {
   fetchDashboard,
   selectDashboardData,
   selectDashboardError,
+  selectDashboardScope,
   selectDashboardStatus,
 } from "@/store/slices/dashboardSlice";
 
@@ -30,21 +31,22 @@ export default function Dashboard() {
   const data = useAppSelector(selectDashboardData);
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
+  const scope = useAppSelector(selectDashboardScope);
   const loading = status === "loading" && !data;
   const refreshing = status === "loading" && !!data;
 
   useEffect(() => {
-    if (status === "idle" && !data) {
-      dispatch(fetchDashboard());
+    if ((status === "idle" && !data) || scope !== "today") {
+      dispatch(fetchDashboard({ scope: "today" }));
     }
-  }, [data, dispatch, status]);
+  }, [data, dispatch, scope, status]);
 
   const handleRefresh = useCallback(() => {
-    dispatch(fetchDashboard());
+    dispatch(fetchDashboard({ scope: "today" }));
   }, [dispatch]);
 
   const handleRetry = useCallback(() => {
-    dispatch(fetchDashboard());
+    dispatch(fetchDashboard({ scope: "today" }));
   }, [dispatch]);
 
   const rangeSummary = useMemo(() => {

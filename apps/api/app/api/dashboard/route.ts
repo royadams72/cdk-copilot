@@ -109,17 +109,28 @@ export async function GET(req: NextRequest) {
       fetchNutritionEntries(db, patientObjectId),
     ]);
 
+    const scope = req.nextUrl.searchParams.get("scope");
+    const normalizedScope = scope === "all" ? "all" : "today";
     const rangeEnd = new Date();
-    const firstEl = nutritionDocs.reverse()[0];
+    let rangeStart = new Date(rangeEnd);
+    rangeStart.setHours(0, 0, 0, 0);
+    let rangeDays = 1;
 
-    const rangeDays = Math.round(
-      (Date.parse(rangeEnd.toDateString()) -
-        Date.parse(firstEl.eatenAt.toDateString())) /
-        (1000 * 3600 * 24)
-    );
-    const rangeStart = new Date(
-      rangeEnd.getTime() - rangeDays * 24 * 60 * 60 * 1000
-    );
+    if (normalizedScope === "all" && nutritionDocs.length > 0) {
+      const earliest = nutritionDocs.reduce<Date | null>((acc, entry) => {
+        const entryDate = entry.eatenAt ?? entry.createdAt ?? null;
+        if (!entryDate) return acc;
+        if (!acc || entryDate < acc) return entryDate;
+        return acc;
+      }, null);
+
+      if (earliest) {
+        rangeStart = new Date(earliest);
+        rangeStart.setHours(0, 0, 0, 0);
+        const diffMs = rangeEnd.getTime() - rangeStart.getTime();
+        rangeDays = Math.max(1, Math.floor(diffMs / DAY_MS) + 1);
+      }
+    }
 
     const labs = summarizeLabs(labDocs);
     const nutrition = summarizeNutrition(

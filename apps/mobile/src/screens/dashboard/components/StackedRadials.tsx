@@ -66,7 +66,7 @@ export function StackedRadialsCard({
 
 function legendValue(radial: DashboardRadial) {
   if (radial.percent !== null && radial.percent !== undefined) {
-    return `${Math.round(clamp(radial.percent, 0, 1) * 100)}%`;
+    return `${toDisplayPercent(radial.percent)}%`;
   }
   if (radial.actual !== null && radial.actual !== undefined) {
     const precision = radial.unit === "g" ? 1 : 0;
@@ -98,6 +98,7 @@ function StackedRadialChart({
               radial.percent !== null && radial.percent !== undefined
                 ? clamp(radial.percent, 0, 1)
                 : 0;
+            const displayPercent = toDisplayPercent(percent);
             return (
               <React.Fragment key={radial.id}>
                 <Circle
@@ -108,17 +109,19 @@ function StackedRadialChart({
                   strokeWidth={STACKED_STROKE}
                   fill="transparent"
                 />
-                <Circle
-                  cx={STACKED_SIZE / 2}
-                  cy={STACKED_SIZE / 2}
-                  r={radius}
-                  stroke={radial.color}
-                  strokeWidth={STACKED_STROKE}
-                  strokeLinecap="round"
-                  strokeDasharray={`${circumference} ${circumference}`}
-                  strokeDashoffset={circumference * (1 - percent)}
-                  fill="transparent"
-                />
+                {displayPercent > 0 ? (
+                  <Circle
+                    cx={STACKED_SIZE / 2}
+                    cy={STACKED_SIZE / 2}
+                    r={radius}
+                    stroke={radial.color}
+                    strokeWidth={STACKED_STROKE}
+                    strokeLinecap="round"
+                    strokeDasharray={`${circumference} ${circumference}`}
+                    strokeDashoffset={circumference * (1 - percent)}
+                    fill="transparent"
+                  />
+                ) : null}
               </React.Fragment>
             );
           })}
@@ -129,4 +132,8 @@ function StackedRadialChart({
       </ThemedText>
     </View>
   );
+}
+
+function toDisplayPercent(value: number) {
+  return Math.round(clamp(value, 0, 1) * 100);
 }
