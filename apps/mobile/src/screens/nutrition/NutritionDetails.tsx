@@ -77,12 +77,18 @@ export default function NutritionDetails() {
   }, [data, metricConfig.key]);
 
   const chartTarget = useMemo(() => {
+    if (metricConfig.key === "phosphorus_protein_ratio") {
+      const ratioTarget = data?.nutrition.ratio?.target;
+      return typeof ratioTarget === "number" && Number.isFinite(ratioTarget)
+        ? ratioTarget
+        : null;
+    }
     if (!data?.nutrition.radials) return null;
     const radial = data.nutrition.radials.find(
       (item) => item.id === metricConfig.id,
     );
     return radial?.target ?? null;
-  }, [data, metricConfig.id]);
+  }, [data, metricConfig.id, metricConfig.key]);
 
   const chartDomainMax = useMemo(() => {
     const values = chartSeries.map((point) => point.value);

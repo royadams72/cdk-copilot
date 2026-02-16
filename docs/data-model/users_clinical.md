@@ -17,6 +17,8 @@
 - `medications` · array of { name, dose?, frequency?, startedAt?, stoppedAt? }
 - `allergies` · string[]
 - `dietaryPreferences` · string[]
+- `heightCm` . number
+- `weightKg` . number
 - `contraindications` · string[]
 - `targets` · optional object of: caloriesKcal, proteinG, phosphorusMg, potassiumMg, sodiumMg, fluidMl
 - `careTeam` · array of { role, name?, org?, contact? }
@@ -61,7 +63,7 @@ db.users_clinical.findOne({ userId });
 // Update plan and bump updatedAt
 db.users_clinical.updateOne(
   { userId },
-  { $set: { fitnessPlans: newPlan, updatedAt: new Date() } }
+  { $set: { fitnessPlans: newPlan, updatedAt: new Date() } },
 );
 ```
 
