@@ -16,6 +16,7 @@ import {
   NutritionDailyPoint,
   FoodHighlightResult,
   ChartMetricKey,
+  FoodHighlightMetricKey,
   FoodHighlight,
   NutritionMealEntry,
 } from "../types/dashboard";
@@ -250,7 +251,7 @@ function buildFoodHighlights(
   let latestEntryDate: Date | null = null;
   const bucketsByDay = new Map<
     string,
-    Record<ChartMetricKey, FoodHighlight[]>
+    Record<FoodHighlightMetricKey, FoodHighlight[]>
   >();
 
   for (const entry of entries) {
@@ -286,6 +287,21 @@ function buildFoodHighlights(
           eatenAt: eatenAtIso,
         });
       }
+
+      const phosphorus = normaliseNumber(item.nutrients?.phosphorusMg);
+      const protein = normaliseNumber(item.nutrients?.proteinG);
+      const ratio = normaliseNumber(item.nutrients?.phosphorus_protein_ratio);
+      const resolvedRatio =
+        ratio ?? (phosphorus && protein && protein > 0 ? phosphorus / protein : null);
+      if (resolvedRatio && resolvedRatio > 0) {
+        buckets.phosphorus_protein_ratio.push({
+          name,
+          amount: resolvedRatio,
+          unit: "mg/g",
+          mealType: entry.mealType ?? null,
+          eatenAt: eatenAtIso,
+        });
+      }
     }
   }
 
@@ -294,7 +310,7 @@ function buildFoodHighlights(
       key,
       sortFoodHighlightBucket(foods),
     ])
-  ) as Record<string, Record<ChartMetricKey, FoodHighlight[]>>;
+  ) as Record<string, Record<FoodHighlightMetricKey, FoodHighlight[]>>;
 
   return {
     latestDate: latestEntryDate ? dayKey(latestEntryDate) : null,
@@ -340,22 +356,23 @@ function buildMealsByDate(
 }
 
 function initFoodHighlightBuckets() {
-  const buckets = {} as Record<ChartMetricKey, FoodHighlight[]>;
+  const buckets = {} as Record<FoodHighlightMetricKey, FoodHighlight[]>;
   for (const metric of RADIAL_METRICS) {
     buckets[metric.key] = [];
   }
+  buckets.phosphorus_protein_ratio = [];
   return buckets;
 }
 
 function sortFoodHighlightBucket(
-  bucket: Record<ChartMetricKey, FoodHighlight[]>
+  bucket: Record<FoodHighlightMetricKey, FoodHighlight[]>
 ) {
   return Object.fromEntries(
     Object.entries(bucket).map(([key, foods]) => [
       key,
       foods.sort((a, b) => b.amount - a.amount).slice(0, FOOD_HIGHLIGHT_LIMIT),
     ])
-  ) as Record<ChartMetricKey, FoodHighlight[]>;
+  ) as Record<FoodHighlightMetricKey, FoodHighlight[]>;
 }
 
 function resolveEntryDate(entry: NutritionEntryDoc) {

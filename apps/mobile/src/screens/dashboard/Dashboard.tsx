@@ -23,7 +23,7 @@ import { Card } from "./components/Card";
 import { LabsCard } from "./components/LabsCard";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
-import { RatioCard } from "./components/RadioCard";
+import { RatioCard } from "./components/RatioCard";
 
 export default function Dashboard() {
   const router = useRouter();

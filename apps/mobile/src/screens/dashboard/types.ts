@@ -33,7 +33,8 @@ export type NutritionMetricKey =
   | "proteinG"
   | "phosphorusMg"
   | "potassiumMg"
-  | "sodiumMg";
+  | "sodiumMg"
+  | "phosphorus_protein_ratio";
 
 export type NutritionDailyPoint = {
   date: string;

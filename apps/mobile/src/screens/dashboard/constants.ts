@@ -58,4 +58,11 @@ export const NUTRITION_METRICS: Array<{
     unit: "mg",
     color: STACKED_COLORS[3],
   },
+  {
+    id: "phosphorus-protein-ratio",
+    key: "phosphorus_protein_ratio",
+    label: "Phosphorus/Protein ratio",
+    unit: "mg/g",
+    color: STACKED_COLORS[4],
+  },
 ];
