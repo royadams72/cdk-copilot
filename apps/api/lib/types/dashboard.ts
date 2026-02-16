@@ -20,6 +20,7 @@ export type NutritionEntryDoc = Omit<TNutritionEntry, "patientId"> & {
 
 export type ChartMetric = (typeof RADIAL_METRICS)[number];
 export type ChartMetricKey = ChartMetric["key"];
+export type FoodHighlightMetricKey = ChartMetricKey | "phosphorus_protein_ratio";
 export type NutritionDailyPoint = {
   date: string;
   label: string;
@@ -36,7 +37,7 @@ export type FoodHighlight = {
 
 export type FoodHighlightResult = {
   latestDate: string | null;
-  itemsByDate: Record<string, Record<ChartMetricKey, FoodHighlight[]>>;
+  itemsByDate: Record<string, Record<FoodHighlightMetricKey, FoodHighlight[]>>;
 };
 
 export type NutritionMealEntry = {

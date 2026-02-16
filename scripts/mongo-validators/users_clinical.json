@@ -1,21 +1,117 @@
 {
   "collMod": "users_clinical",
+  "indexes": [
+    { "key": { "orgId": 1, "patientId": 1 }, "options": { "unique": true } },
+    { "key": { "orgId": 1, "updatedAt": -1 } },
+    { "key": { "patientId": 1 } },
+    { "key": { "lastClinicalUpdateAt": -1, "orgId": 1 } }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
-      "required": [
-        "patientId",
-        "createdAt",
-        "updatedAt",
-        "createdBy",
-        "updatedBy"
-      ],
+      "required": ["patientId", "updatedAt", "updatedBy"],
       "properties": {
         "orgId": { "bsonType": "string" },
+
         "patientId": { "bsonType": "objectId" },
-        "problems": { "bsonType": "array", "items": { "bsonType": "string" } },
+
+        "ckdStage": {
+          "bsonType": ["string", "null"],
+          "enum": ["1", "2", "3a", "3b", "4", "5", null]
+        },
+        "egfrCurrent": {
+          "bsonType": ["double", "int", "long", "decimal", "null"]
+        },
+        "acrCategory": {
+          "bsonType": ["string", "null"],
+          "enum": ["A1", "A2", "A3", null]
+        },
+        "dialysisStatus": {
+          "bsonType": "string",
+          "enum": ["none", "hemodialysis", "peritoneal", "post-transplant"]
+        },
+
+        "diagnoses": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["label"],
+            "properties": {
+              "code": { "bsonType": "string" },
+              "label": { "bsonType": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+
+        "medications": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "bsonType": "string" },
+              "dose": { "bsonType": "string" },
+              "frequency": { "bsonType": "string" },
+              "startedAt": { "bsonType": "date" },
+              "stoppedAt": { "bsonType": "date" }
+            },
+            "additionalProperties": true
+          }
+        },
+
         "allergies": { "bsonType": "array", "items": { "bsonType": "string" } },
+        "dietaryPreferences": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+
+        "heightCm": { "bsonType": ["double", "int", "long", "decimal"] },
+        "weightKg": { "bsonType": ["double", "int", "long", "decimal"] },
+
+        "contraindications": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+
+        "targets": {
+          "bsonType": "object",
+          "properties": {
+            "caloriesKcal": {
+              "bsonType": ["double", "int", "long", "decimal"]
+            },
+            "proteinG": { "bsonType": ["double", "int", "long", "decimal"] },
+            "phosphorusMg": {
+              "bsonType": ["double", "int", "long", "decimal"]
+            },
+            "potassiumMg": { "bsonType": ["double", "int", "long", "decimal"] },
+            "sodiumMg": { "bsonType": ["double", "int", "long", "decimal"] },
+            "fluidMl": { "bsonType": ["double", "int", "long", "decimal"] }
+          },
+          "additionalProperties": true
+        },
+
+        "careTeam": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["role"],
+            "properties": {
+              "role": { "bsonType": "string" },
+              "name": { "bsonType": "string" },
+              "org": { "bsonType": "string" },
+              "contact": { "bsonType": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+
+        "lastClinicalUpdateAt": { "bsonType": ["date", "null"] },
+
         "notes": { "bsonType": "string" },
+
         "createdAt": { "bsonType": "date" },
         "updatedAt": { "bsonType": "date" },
         "createdBy": { "bsonType": "string" },
@@ -23,12 +119,5 @@
       },
       "additionalProperties": true
     }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
-  "indexes": [
-    { "key": { "orgId": 1, "patientId": 1 }, "options": { "unique": true } },
-    { "key": { "orgId": 1, "updatedAt": -1 } },
-    { "key": { "patientId": 1 } }
-  ]
+  }
 }

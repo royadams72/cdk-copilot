@@ -1,18 +1,18 @@
 import { NextRequest } from "next/server";
-import { ObjectId, type Db } from "mongodb";
+import { type Db, ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { ok, bad } from "@/apps/api/lib/http/responses";
+import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES, TUserClinicalSummary } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import {
-  fetchRecentLabs,
   fetchNutritionEntries,
+  fetchRecentLabs,
+  normaliseNumber,
   summarizeLabs,
   summarizeNutrition,
-  normaliseNumber,
 } from "@/apps/api/lib/utils/dashboard";
 export const runtime = "nodejs";
 
@@ -20,57 +20,57 @@ export const DEFAULT_RATIO_THRESHOLD = 12;
 export const TRACKED_LABS = [
   {
     id: "egfr",
-    label: "eGFR",
     codes: ["33914-3"],
+    label: "eGFR",
     nameMatch: /egfr/i,
     unitFallback: "mL/min/1.73m²",
   },
   {
     id: "phosphorus",
-    label: "Serum phosphorus",
     codes: ["2777-1", "2778-9"],
+    label: "Serum phosphorus",
     nameMatch: /phosph/,
     unitFallback: "mg/dL",
   },
   {
     id: "potassium",
-    label: "Serum potassium",
     codes: ["2823-3"],
+    label: "Serum potassium",
     nameMatch: /potass/,
     unitFallback: "mmol/L",
   },
 ] as const;
 
 export const RADIAL_METRICS = [
-  { id: "protein", label: "Protein", key: "proteinG", unit: "g", precision: 1 },
+  { id: "protein", key: "proteinG", label: "Protein", precision: 1, unit: "g" },
   {
     id: "phosphorus",
-    label: "Phosphorus",
     key: "phosphorusMg",
-    unit: "mg",
+    label: "Phosphorus",
     precision: 0,
+    unit: "mg",
   },
   {
     id: "potassium",
-    label: "Potassium",
     key: "potassiumMg",
-    unit: "mg",
+    label: "Potassium",
     precision: 0,
+    unit: "mg",
   },
   {
     id: "sodium",
-    label: "Sodium",
     key: "sodiumMg",
-    unit: "mg",
+    label: "Sodium",
     precision: 0,
+    unit: "mg",
   },
 ] as const;
 
 export const ZERO_TOTALS: Record<NutrientKey, number> = {
   caloriesKcal: 0,
-  proteinG: 0,
   phosphorusMg: 0,
   potassiumMg: 0,
+  proteinG: 0,
   sodiumMg: 0,
 };
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
     ) {
       return bad("Patient context missing", undefined, 403);
     }
+    console.log("caller.patientId::", caller.patientId);
 
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
@@ -98,12 +99,12 @@ export async function GET(req: NextRequest) {
         {
           projection: {
             ckdStage: 1,
-            egfrCurrent: 1,
             dialysisStatus: 1,
+            egfrCurrent: 1,
             lastClinicalUpdateAt: 1,
             targets: 1,
           },
-        }
+        },
       ),
       fetchRecentLabs(db, patientObjectId),
       fetchNutritionEntries(db, patientObjectId),
@@ -138,10 +139,12 @@ export async function GET(req: NextRequest) {
       clinicalDoc,
       rangeStart,
       rangeEnd,
-      rangeDays
+      rangeDays,
     );
 
     return ok({
+      labs,
+      nutrition,
       patientId: caller.patientId,
       summary: {
         ckdStage: clinicalDoc?.ckdStage ?? null,
@@ -151,8 +154,6 @@ export async function GET(req: NextRequest) {
           ? clinicalDoc.lastClinicalUpdateAt.toISOString()
           : null,
       },
-      labs,
-      nutrition,
     });
   } catch (err: any) {
     const status = err?.status || 500;

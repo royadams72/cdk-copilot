@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { authFetch } from "@/lib/authFetch";
 import { API } from "@/constants/api";
 import { ThemedText } from "@/components/themed-text";
-import { View, ActivityIndicator } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { styles } from "../dashboard/styles";
 import { ErrorState } from "../dashboard/Dashboard";
 async function loadSessionToken() {
@@ -30,9 +30,9 @@ const Bootstrap = () => {
 
         if (!token.jwt && token.refreshToken) {
           const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
             body: JSON.stringify({ refreshToken: token.refreshToken }),
+            headers: { "content-type": "application/json" },
+            method: "POST",
           });
           const refreshBody = await refreshRes
             .json()
@@ -59,7 +59,6 @@ const Bootstrap = () => {
         }
 
         const res = await authFetch(`${API}/api/users/get-user`);
-        console.log("res::", res);
         const data = await res.json();
 
         if (data.ok) {
@@ -71,9 +70,9 @@ const Bootstrap = () => {
             return;
           }
           const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
             body: JSON.stringify({ refreshToken: token.refreshToken }),
+            headers: { "content-type": "application/json" },
+            method: "POST",
           });
           const refreshBody = await refreshRes
             .json()

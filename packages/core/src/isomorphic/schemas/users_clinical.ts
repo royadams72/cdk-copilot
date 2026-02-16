@@ -16,27 +16,27 @@ export const ACR = z.enum(["A1", "A2", "A3"]); // Albumin-to-Creatinine Ratio ca
 
 const Dx = z.object({ code: z.string().optional(), label: z.string().min(1) });
 const Med = z.object({
-  name: z.string().min(1),
   dose: z.string().optional(),
   frequency: z.string().optional(),
+  name: z.string().min(1),
   startedAt: z.coerce.date().optional(),
   stoppedAt: z.coerce.date().nullable().optional(),
 });
 
 export const Targets = z.object({
   caloriesKcal: z.number().int().positive().max(8000).optional(),
-  proteinG: z.number().positive().max(400).optional(),
+  fluidMl: z.number().positive().max(8000).optional(),
   phosphorusMg: z.number().positive().max(5000).optional(),
   potassiumMg: z.number().positive().max(10000).optional(),
+  proteinG: z.number().positive().max(400).optional(),
   sodiumMg: z.number().positive().max(20000).optional(),
-  fluidMl: z.number().positive().max(8000).optional(),
 });
 
 export const CareTeamMember = z.object({
-  role: z.string().min(1),
+  contact: z.string().optional(),
   name: z.string().optional(),
   org: z.string().optional(),
-  contact: z.string().optional(),
+  role: z.string().min(1),
 });
 
 export const UserClinical_Base = z.object({
@@ -69,8 +69,8 @@ export const UserClinical_Base = z.object({
 
 export const UserClinical_Create = UserClinical_Base.omit({
   createdAt: true,
-  updatedAt: true,
   createdBy: true,
+  updatedAt: true,
   updatedBy: true,
 });
 
@@ -80,16 +80,16 @@ const numberLike = z
   .optional()
   .refine(
     (val) => !val || val.trim() === "" || !Number.isNaN(Number(val)),
-    "Enter a number"
+    "Enter a number",
   );
 
 const TargetsForm = z.object({
   caloriesKcal: numberLike,
-  proteinG: numberLike,
+  fluidMl: numberLike,
   phosphorusMg: numberLike,
   potassiumMg: numberLike,
+  proteinG: numberLike,
   sodiumMg: numberLike,
-  fluidMl: numberLike,
 });
 
 const LabeledString = z.object({
@@ -97,38 +97,38 @@ const LabeledString = z.object({
 });
 
 export const ClinicalFormSchema = z.object({
-  ckdStage: z.enum(["", ...CKD_STAGE_VALUES] as const),
-  egfrCurrent: numberLike,
   acrCategory: z.enum(["", ...ACR.options]),
-  dialysisStatus: DialysisStatus,
-  weightKg: numberLike,
-  heightCm: numberLike,
-  diagnoses: z
-    .array(
-      z.object({
-        label: z.string().min(1, "Diagnosis label required"),
-        code: z.string().optional(),
-      })
-    )
-    .default([]),
   allergies: z.array(LabeledString).default([]),
-  dietaryPreferences: z.array(LabeledString).default([]),
-  contraindications: z.array(LabeledString).default([]).optional(),
   careTeam: z
     .array(
       z.object({
-        role: z.string().min(1, "Role is required"),
+        contact: z.string().optional(),
         name: z.string().optional(),
         org: z.string().optional(),
-        contact: z.string().optional(),
-      })
+        role: z.string().min(1, "Role is required"),
+      }),
     )
     .default([]),
+  ckdStage: z.enum(["", ...CKD_STAGE_VALUES] as const),
+  contraindications: z.array(LabeledString).default([]).optional(),
+  diagnoses: z
+    .array(
+      z.object({
+        code: z.string().optional(),
+        label: z.string().min(1, "Diagnosis label required"),
+      }),
+    )
+    .default([]),
+  dialysisStatus: DialysisStatus,
+  dietaryPreferences: z.array(LabeledString).default([]),
+  egfrCurrent: numberLike,
+  heightCm: numberLike,
+  weightKg: numberLike,
 });
 export const UserClinicalSummary = UserClinical_Base.pick({
   ckdStage: true,
-  egfrCurrent: true,
   dialysisStatus: true,
+  egfrCurrent: true,
   lastClinicalUpdateAt: true,
   targets: true,
 });

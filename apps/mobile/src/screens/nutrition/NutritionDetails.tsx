@@ -72,17 +72,23 @@ export default function NutritionDetails() {
     return data.nutrition.dailySeries.map((point, index) => ({
       ...point,
       index,
-      value: Math.max(point.totals[metricConfig.key] ?? 0, 0),
+      value: Math.max(metricValue(point.totals, metricConfig.key), 0),
     }));
   }, [data, metricConfig.key]);
 
   const chartTarget = useMemo(() => {
+    if (metricConfig.key === "phosphorus_protein_ratio") {
+      const ratioTarget = data?.nutrition.ratio?.target;
+      return typeof ratioTarget === "number" && Number.isFinite(ratioTarget)
+        ? ratioTarget
+        : null;
+    }
     if (!data?.nutrition.radials) return null;
     const radial = data.nutrition.radials.find(
       (item) => item.id === metricConfig.id,
     );
     return radial?.target ?? null;
-  }, [data, metricConfig.id]);
+  }, [data, metricConfig.id, metricConfig.key]);
 
   const chartDomainMax = useMemo(() => {
     const values = chartSeries.map((point) => point.value);
@@ -436,7 +442,7 @@ export default function NutritionDetails() {
                       </ThemedText>
                       <ThemedText style={styles.summaryValue}>
                         {formatChartValue(
-                          selectedPoint.totals?.[metric.key] ?? 0,
+                          metricValue(selectedPoint.totals, metric.key),
                           metric.unit,
                         )}
                       </ThemedText>
@@ -648,8 +654,22 @@ function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
     return `0 ${unit}`;
   }
-  const decimals = unit === "g" ? 1 : 0;
+  const decimals = unit === "g" ? 1 : unit === "mg/g" ? 2 : 0;
   return `${formatDecimal(value ?? 0, decimals)} ${unit}`;
+}
+
+function metricValue(
+  totals: Record<string, number> | null | undefined,
+  key: string,
+) {
+  if (!totals) return 0;
+  if (key === "phosphorus_protein_ratio") {
+    const phosphorus = totals.phosphorusMg ?? 0;
+    const protein = totals.proteinG ?? 0;
+    if (!protein || protein <= 0) return 0;
+    return phosphorus / protein;
+  }
+  return totals[key] ?? 0;
 }
 
 function formatFullDate(value: string | null | undefined) {
