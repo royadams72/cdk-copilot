@@ -171,4 +171,30 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#4C1D95",
   },
+  medSummaryRow: {
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(148,163,184,0.4)",
+    gap: 2,
+  },
+  medSummaryTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  medSummaryMeta: {
+    fontSize: 13,
+    opacity: 0.75,
+  },
+  primaryActionButton: {
+    marginTop: 4,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(16,185,129,0.16)",
+  },
+  primaryActionText: {
+    fontWeight: "700",
+    color: "#065F46",
+  },
 });

@@ -88,6 +88,20 @@ export type DashboardData = {
     lastClinicalUpdateAt: string | null;
   };
   labs: Record<string, LabSummary | null>;
+  medications: {
+    activeCount: number;
+    totalCount: number;
+    recent: Array<{
+      id: string;
+      name: string;
+      dose: string | null;
+      frequency: string | null;
+      route: string | null;
+      form: string | null;
+      startAt: string | null;
+      status: "active" | "paused" | "stopped" | "completed";
+    }>;
+  };
   nutrition: {
     range: DashboardRange;
     totals: Record<string, number>;

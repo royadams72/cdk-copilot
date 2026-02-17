@@ -1,5 +1,16 @@
 {
-  "collMod": "medications",
+  "collMod": "medications_ledger",
+  "indexes": [
+    { "key": { "orgId": 1, "patientId": 1, "status": 1 } },
+    { "key": { "patientId": 1, "startAt": -1 } },
+    { "key": { "dmplusdCode": 1 } },
+    {
+      "key": { "createdBy": 1, "measuredAt": -1 },
+      "options": { "name": "byCreatedBy_time" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
@@ -24,7 +35,6 @@
         "snomedCode": { "bsonType": "string" },
         "name": { "bsonType": "string" },
         "form": { "bsonType": "string" },
-        "strength": { "bsonType": "string" },
         "route": { "bsonType": "string" },
         "dose": { "bsonType": "string" },
         "frequency": { "bsonType": "string" },
@@ -41,16 +51,5 @@
       },
       "additionalProperties": true
     }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
-  "indexes": [
-    { "key": { "orgId": 1, "patientId": 1, "status": 1 } },
-    { "key": { "patientId": 1, "startAt": -1 } },
-    { "key": { "dmplusdCode": 1 } },
-    {
-      "key": { "createdBy": 1, "measuredAt": -1 },
-      "options": { "name": "byCreatedBy_time" }
-    }
-  ]
+  }
 }

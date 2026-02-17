@@ -24,6 +24,7 @@ import { LabsCard } from "./components/LabsCard";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { RatioCard } from "./components/RatioCard";
+import { MedicationCard } from "./components/MedicationCard";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -110,6 +111,12 @@ export default function Dashboard() {
           ) : null}
 
           {data && <RatioCard ratio={data.nutrition.ratio} />}
+          {data && (
+            <MedicationCard
+              medications={data.medications}
+              onAdd={() => router.push("/(dashboard)/add-medication")}
+            />
+          )}
 
           {data && <LabsCard labs={data.labs} />}
         </>

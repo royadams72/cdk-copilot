@@ -13,6 +13,20 @@ export type LabDoc = {
   abnormalFlag?: string;
 };
 
+export type MedicationLedgerDoc = {
+  _id: ObjectId;
+  patientId: ObjectId;
+  name?: string;
+  dose?: string;
+  frequency?: string;
+  route?: string;
+  form?: string;
+  startAt?: Date;
+  status?: "active" | "paused" | "stopped" | "completed";
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
 export type NutritionEntryDoc = Omit<TNutritionEntry, "patientId"> & {
   _id: ObjectId;
   patientId: ObjectId;

@@ -10,9 +10,12 @@
  *
  * Usage
  *   pnpm add mongodb unzipper sax
+ *
  *  pnpm tsx scripts/ingest-dmd.ts \
-  --zip data/nhsbsa_dmd.zip \
+  --zip data/nhsbsa_dmd-16-02-26.zip \
   --types VMP
+   --sourceVersion 16-02-26 \
+  --batchSize 2000
  *
  * Env
  *   MONGODB_URI_APP=mongodb+srv://...
@@ -180,12 +183,20 @@ function createSaxRowIngestor(opts: {
   collection: Collection<DrugsRefDoc>;
   dmdType: DmdType;
   dryRun: boolean;
+  sourceStream: NodeJS.ReadableStream;
   sourceVersion: string;
 }) {
-  const { dmdType, sourceVersion, collection, dryRun, batchSize } = opts;
+  const {
+    dmdType,
+    sourceVersion,
+    collection,
+    dryRun,
+    batchSize,
+    sourceStream,
+  } = opts;
 
   // dm+d tag mappings for minimal VMP/AMP:
-  // VMP: often uses <VPID> (some variants may expose <VMPID>)
+  // VMP IDs may appear as <VPID> (common) or <VMPID> depending on release.
   // AMP: <AMP><AMPID>..</AMPID><NM>..</NM><INVALID>0/1</INVALID>...</AMP>
   const rootTag = dmdType; // "VMP" or "AMP"
   const idTagCandidates = dmdType === "VMP" ? ["VPID", "VMPID"] : ["AMPID"];
@@ -193,12 +204,18 @@ function createSaxRowIngestor(opts: {
   // optional parent mapping (AMP → VMP) varies by schema; in many releases it’s <VPID> inside AMP
   const parentTagCandidates = dmdType === "AMP" ? ["VPID", "VMPID"] : [];
 
+  const stripNs = (tagName: string) => {
+    const i = tagName.lastIndexOf(":");
+    return i >= 0 ? tagName.slice(i + 1) : tagName;
+  };
+
   let current: RowBuilder | null = null;
   let currentTextTag: string | null = null;
   let currentText = "";
 
   let pendingOps: any[] = [];
   let totalSeen = 0;
+  let totalQueued = 0;
   let totalUpserts = 0;
   let flushChain: Promise<void> = Promise.resolve();
   let flushError: Error | null = null;
@@ -256,7 +273,7 @@ function createSaxRowIngestor(opts: {
   const parser = sax.createStream(true, { trim: true });
 
   parser.on("opentag", (node: sax.Tag) => {
-    const tag = node.name;
+    const tag = stripNs(node.name);
     if (tag === rootTag) {
       current = { _tag: rootTag };
       return;
@@ -281,7 +298,8 @@ function createSaxRowIngestor(opts: {
     currentText += text;
   });
 
-  parser.on("closetag", (tag: string) => {
+  parser.on("closetag", (rawTag: string) => {
+    const tag = stripNs(rawTag);
     if (current && currentTextTag && tag === currentTextTag) {
       current[currentTextTag] = (currentText ?? "").trim();
       currentTextTag = null;
@@ -295,6 +313,7 @@ function createSaxRowIngestor(opts: {
       current = null;
 
       if (doc) {
+        totalQueued++;
         pendingOps.push({
           updateOne: {
             filter: { dmplusdCode: doc.dmplusdCode },
@@ -305,14 +324,14 @@ function createSaxRowIngestor(opts: {
       }
 
       if (pendingOps.length >= batchSize) {
-        // Avoid backpressure issues: pause stream while flushing
-        (parser as any)._parser?.pause?.();
+        // Apply backpressure by pausing the ZIP entry stream, not sax internals.
+        sourceStream.pause();
         flushChain = flushChain
           .then(async () => {
             await flush();
           })
           .then(() => {
-            (parser as any)._parser?.resume?.();
+            sourceStream.resume();
           })
           .catch((err) => {
             flushError = err instanceof Error ? err : new Error(String(err));
@@ -322,13 +341,15 @@ function createSaxRowIngestor(opts: {
     }
   });
 
-  parser.on("error", () => {});
+  parser.on("error", (err) => {
+    flushError = err instanceof Error ? err : new Error(String(err));
+  });
 
   async function finish() {
     await flushChain;
     if (flushError) throw flushError;
     await flush();
-    return { totalSeen, totalUpserts };
+    return { totalQueued, totalSeen, totalUpserts };
   }
 
   return { finish, parser };
@@ -344,32 +365,31 @@ async function ingestXmlEntry(opts: {
 }) {
   const { entry, dmdType, sourceVersion, collection, dryRun, batchSize } = opts;
 
+  const maybeStreamFactory = (entry as any).stream;
+  const source: NodeJS.ReadableStream =
+    typeof maybeStreamFactory === "function"
+      ? maybeStreamFactory.call(entry)
+      : (entry as any);
+
+  if (!source || typeof (source as any).pipe !== "function") {
+    throw new TypeError(
+      `ZIP entry '${(entry as any)?.path ?? "unknown"}' is not streamable`,
+    );
+  }
+
   const { parser, finish } = createSaxRowIngestor({
     batchSize,
     collection,
     dmdType,
     dryRun,
+    sourceStream: source,
     sourceVersion,
   });
 
   await new Promise<void>((resolve, reject) => {
-    const maybeStreamFactory = (entry as any).stream;
-    const source =
-      typeof maybeStreamFactory === "function"
-        ? maybeStreamFactory.call(entry)
-        : (entry as any);
-
-    if (!source || typeof source.pipe !== "function") {
-      reject(
-        new TypeError(
-          `ZIP entry '${(entry as any)?.path ?? "unknown"}' is not streamable`,
-        ),
-      );
-      return;
-    }
-
     source.on("error", reject);
-    source.pipe(parser).on("end", resolve).on("error", reject);
+    parser.on("error", reject);
+    source.pipe(parser).on("end", resolve);
   });
 
   return await finish();
@@ -415,7 +435,7 @@ async function main() {
     for (const r of results) {
       // eslint-disable-next-line no-console
       console.log(
-        `[${r.type}] file=${r.file} seen=${r.totalSeen} upserts~=${r.totalUpserts} dryRun=${args.dryRun}`,
+        `[${r.type}] file=${r.file} seen=${r.totalSeen} queued=${r.totalQueued} upserts~=${r.totalUpserts} dryRun=${args.dryRun}`,
       );
     }
   } finally {

@@ -1,23 +1,24 @@
 import { COLLECTIONS } from "@/packages/core/dist/server";
 import { Db, ObjectId } from "mongodb";
 import {
+  DAY_MS,
+  DEFAULT_RATIO_THRESHOLD,
+  FOOD_HIGHLIGHT_LIMIT,
+  RADIAL_METRICS,
   TRACKED_LABS,
   ZERO_TOTALS,
-  RADIAL_METRICS,
-  DAY_MS,
-  FOOD_HIGHLIGHT_LIMIT,
-  DEFAULT_RATIO_THRESHOLD,
 } from "@/apps/api/app/api/dashboard/route";
 
 import {
-  NutritionEntryDoc,
+  ChartMetricKey,
+  FoodHighlight,
+  FoodHighlightMetricKey,
+  FoodHighlightResult,
   LabDoc,
+  MedicationLedgerDoc,
   NutrientKey,
   NutritionDailyPoint,
-  FoodHighlightResult,
-  ChartMetricKey,
-  FoodHighlightMetricKey,
-  FoodHighlight,
+  NutritionEntryDoc,
   NutritionMealEntry,
 } from "../types/dashboard";
 
@@ -28,17 +29,17 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
       { patientId },
       {
         projection: {
-          code: 1,
-          name: 1,
-          value: 1,
-          unit: 1,
-          takenAt: 1,
-          createdAt: 1,
           abnormalFlag: 1,
+          code: 1,
+          createdAt: 1,
+          name: 1,
+          takenAt: 1,
+          unit: 1,
+          value: 1,
         },
-      }
+      },
     )
-    .sort({ takenAt: -1, createdAt: -1 })
+    .sort({ createdAt: -1, takenAt: -1 })
     .limit(200)
     .toArray();
 }
@@ -50,16 +51,41 @@ export async function fetchNutritionEntries(db: Db, patientId: ObjectId) {
       {
         projection: {
           _id: 1,
-          totals: 1,
-          items: 1,
-          eatenAt: 1,
           createdAt: 1,
+          eatenAt: 1,
+          items: 1,
           mealType: 1,
+          totals: 1,
         },
-      }
+      },
     )
 
-    .sort({ eatenAt: -1, createdAt: -1 })
+    .sort({ createdAt: -1, eatenAt: -1 })
+    .limit(200)
+    .toArray();
+}
+
+export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
+  return db
+    .collection<MedicationLedgerDoc>(COLLECTIONS.MedicationsLedger)
+    .find(
+      { patientId },
+      {
+        projection: {
+          _id: 1,
+          createdAt: 1,
+          dose: 1,
+          form: 1,
+          frequency: 1,
+          name: 1,
+          route: 1,
+          startAt: 1,
+          status: 1,
+          updatedAt: 1,
+        },
+      },
+    )
+    .sort({ createdAt: -1, startAt: -1, updatedAt: -1 })
     .limit(200)
     .toArray();
 }
@@ -86,29 +112,49 @@ export function resolveLabConfig(doc: LabDoc) {
   return TRACKED_LABS.find(
     (config) =>
       (code && config.codes.some((c) => c.toLowerCase() === code)) ||
-      (config.nameMatch && config.nameMatch.test(name))
+      (config.nameMatch && config.nameMatch.test(name)),
   );
+}
+
+export function summarizeMedications(medications: MedicationLedgerDoc[]) {
+  const active = medications.filter((med) => med.status === "active");
+  const recent = medications.slice(0, 3).map((med) => ({
+    id: med._id.toString(),
+    dose: med.dose ?? null,
+    form: med.form ?? null,
+    frequency: med.frequency ?? null,
+    name: med.name ?? "Medication",
+    route: med.route ?? null,
+    startAt: med.startAt ? med.startAt.toISOString() : null,
+    status: med.status ?? "active",
+  }));
+
+  return {
+    activeCount: active.length,
+    recent,
+    totalCount: medications.length,
+  };
 }
 
 function formatLab(
   doc: LabDoc,
-  config: (typeof TRACKED_LABS)[number]
+  config: (typeof TRACKED_LABS)[number],
 ): {
   id: string;
-  label: string;
-  value: number | null;
-  unit: string;
-  takenAt: string | null;
   abnormalFlag: string | null;
+  label: string;
+  takenAt: string | null;
+  unit: string;
+  value: number | null;
 } {
   const numericValue = normaliseNumber(doc.value);
   return {
     id: config.id,
-    label: doc.name ?? config.label,
-    value: numericValue,
-    unit: doc.unit ?? config.unitFallback,
-    takenAt: doc.takenAt ? doc.takenAt.toISOString() : null,
     abnormalFlag: doc.abnormalFlag ?? null,
+    label: doc.name ?? config.label,
+    takenAt: doc.takenAt ? doc.takenAt.toISOString() : null,
+    unit: doc.unit ?? config.unitFallback,
+    value: numericValue,
   };
 }
 
@@ -117,7 +163,7 @@ export function summarizeNutrition(
   clinicalDoc: any,
   from: Date,
   to: Date,
-  rangeDays: number
+  rangeDays: number,
 ) {
   const rangeStart = startOfDay(from);
   const rangeEndExclusive = new Date(startOfDay(to).getTime() + DAY_MS);
@@ -135,7 +181,7 @@ export function summarizeNutrition(
       }
       return acc;
     },
-    { ...ZERO_TOTALS }
+    { ...ZERO_TOTALS },
   );
 
   const radials = RADIAL_METRICS.map((metric) => {
@@ -148,11 +194,11 @@ export function summarizeNutrition(
 
     return {
       id: metric.id,
-      label: metric.label,
-      unit: metric.unit,
       actual,
-      target: targetValue,
+      label: metric.label,
       percent,
+      target: targetValue,
+      unit: metric.unit,
     };
   });
 
@@ -162,6 +208,10 @@ export function summarizeNutrition(
   const mealsByDate = buildMealsByDate(entriesInRange);
 
   return {
+    dailySeries,
+    foodHighlights,
+    mealsByDate,
+    radials,
     range: {
       from: from.toISOString(),
       to: to.toISOString(),
@@ -170,15 +220,11 @@ export function summarizeNutrition(
       lastEntryAt: entriesInRange[0]?.eatenAt
         ? entriesInRange[0].eatenAt!.toISOString()
         : entriesInRange[0]?.createdAt
-        ? entriesInRange[0].createdAt!.toISOString()
-        : null,
+          ? entriesInRange[0].createdAt!.toISOString()
+          : null,
     },
-    totals,
-    radials,
     ratio,
-    dailySeries,
-    foodHighlights,
-    mealsByDate,
+    totals,
   };
 }
 
@@ -200,7 +246,7 @@ function extractNutrition(entry: NutritionEntryDoc) {
 
 function mergeNutrients(
   target: Record<NutrientKey, number>,
-  source: Partial<Record<NutrientKey, number>>
+  source: Partial<Record<NutrientKey, number>>,
 ) {
   for (const key of Object.keys(target) as NutrientKey[]) {
     const value = source[key];
@@ -213,7 +259,7 @@ function mergeNutrients(
 function buildDailySeries(
   entries: NutritionEntryDoc[],
   rangeEnd: Date,
-  rangeDays: number
+  rangeDays: number,
 ): NutritionDailyPoint[] {
   const endDay = startOfDay(rangeEnd);
   const startDay = new Date(endDay.getTime() - (rangeDays - 1) * DAY_MS);
@@ -246,7 +292,7 @@ function buildDailySeries(
 }
 
 function buildFoodHighlights(
-  entries: NutritionEntryDoc[]
+  entries: NutritionEntryDoc[],
 ): FoodHighlightResult {
   let latestEntryDate: Date | null = null;
   const bucketsByDay = new Map<
@@ -270,8 +316,8 @@ function buildFoodHighlights(
     const eatenAtIso = entry.eatenAt
       ? entry.eatenAt.toISOString()
       : entry.createdAt
-      ? entry.createdAt.toISOString()
-      : null;
+        ? entry.createdAt.toISOString()
+        : null;
 
     const buckets = bucketsByDay.get(bucketKey)!;
     for (const item of entry.items ?? []) {
@@ -280,11 +326,11 @@ function buildFoodHighlights(
         const nutrientValue = normaliseNumber(item.nutrients?.[metric.key]);
         if (!nutrientValue || nutrientValue <= 0) continue;
         buckets[metric.key as ChartMetricKey].push({
-          name,
           amount: nutrientValue,
-          unit: metric.unit,
-          mealType: entry.mealType ?? null,
           eatenAt: eatenAtIso,
+          mealType: entry.mealType ?? null,
+          name,
+          unit: metric.unit,
         });
       }
 
@@ -292,14 +338,15 @@ function buildFoodHighlights(
       const protein = normaliseNumber(item.nutrients?.proteinG);
       const ratio = normaliseNumber(item.nutrients?.phosphorus_protein_ratio);
       const resolvedRatio =
-        ratio ?? (phosphorus && protein && protein > 0 ? phosphorus / protein : null);
+        ratio ??
+        (phosphorus && protein && protein > 0 ? phosphorus / protein : null);
       if (resolvedRatio && resolvedRatio > 0) {
         buckets.phosphorus_protein_ratio.push({
-          name,
           amount: resolvedRatio,
-          unit: "mg/g",
-          mealType: entry.mealType ?? null,
           eatenAt: eatenAtIso,
+          mealType: entry.mealType ?? null,
+          name,
+          unit: "mg/g",
         });
       }
     }
@@ -309,17 +356,17 @@ function buildFoodHighlights(
     Array.from(bucketsByDay.entries()).map(([key, foods]) => [
       key,
       sortFoodHighlightBucket(foods),
-    ])
+    ]),
   ) as Record<string, Record<FoodHighlightMetricKey, FoodHighlight[]>>;
 
   return {
-    latestDate: latestEntryDate ? dayKey(latestEntryDate) : null,
     itemsByDate: sortedByDay,
+    latestDate: latestEntryDate ? dayKey(latestEntryDate) : null,
   };
 }
 
 function buildMealsByDate(
-  entries: NutritionEntryDoc[]
+  entries: NutritionEntryDoc[],
 ): Record<string, NutritionMealEntry[]> {
   const buckets = new Map<string, NutritionMealEntry[]>();
 
@@ -333,13 +380,13 @@ function buildMealsByDate(
     const eatenAtIso = entry.eatenAt
       ? entry.eatenAt.toISOString()
       : entry.createdAt
-      ? entry.createdAt.toISOString()
-      : null;
+        ? entry.createdAt.toISOString()
+        : null;
     buckets.get(bucketKey)!.push({
       id: entry._id.toString(),
-      mealType: entry.mealType ?? "snack",
       eatenAt: eatenAtIso,
       items: entry.items ?? [],
+      mealType: entry.mealType ?? "snack",
     });
   }
 
@@ -351,7 +398,7 @@ function buildMealsByDate(
         const bTime = b.eatenAt ? Date.parse(b.eatenAt) : 0;
         return bTime - aTime;
       }),
-    ])
+    ]),
   );
 }
 
@@ -365,13 +412,13 @@ function initFoodHighlightBuckets() {
 }
 
 function sortFoodHighlightBucket(
-  bucket: Record<FoodHighlightMetricKey, FoodHighlight[]>
+  bucket: Record<FoodHighlightMetricKey, FoodHighlight[]>,
 ) {
   return Object.fromEntries(
     Object.entries(bucket).map(([key, foods]) => [
       key,
       foods.sort((a, b) => b.amount - a.amount).slice(0, FOOD_HIGHLIGHT_LIMIT),
-    ])
+    ]),
   ) as Record<FoodHighlightMetricKey, FoodHighlight[]>;
 }
 
@@ -404,7 +451,7 @@ function dayKey(date: Date) {
 
 function buildRatio(
   totals: Record<NutrientKey, number>,
-  targets?: Record<string, number>
+  targets?: Record<string, number>,
 ) {
   const actual =
     totals.proteinG > 0
@@ -423,10 +470,10 @@ function buildRatio(
   }
 
   return {
-    value: actual,
+    status,
     target,
     unit: "mg phosphorus per g protein",
-    status,
+    value: actual,
   };
 }
 

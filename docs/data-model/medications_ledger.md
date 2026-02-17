@@ -14,16 +14,15 @@
 - `snomedCode?` · string
 - `name` · string · denormalised label (from `drugs_ref` for quick display)
 - `form?` · string (tablet, solution)
-- `strength?` · string (e.g., `10 mg`)
 - `route?` · string (oral, IV)
 - `dose` · string (free text or structured, e.g., `10 mg`)
 - `frequency` · string (e.g., `once daily`)
 - `instructions?` · string (SIG / special notes)
-- `startAt` · Date
-- `endAt?` · Date
+- `startAt` · Date & Time
+- `endAt?` · Date & Time
 - `status` · enum (`active|paused|stopped|completed`)
 - `source` · enum (`manual|import|integration`) · default `manual`
-- `createdAt` / `updatedAt` · Date
+- `createdAt` / `updatedAt` · Date & Time
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 
 ## Example
@@ -43,11 +42,11 @@
   "dose": "800 mg",
   "frequency": "three times daily with meals",
   "instructions": "Swallow whole with water.",
-  "startAt": "2025-09-01T00:00:00.000Z",
+  "startAt": "the date/time the patient started taking this regimen” (effective date)",
   "status": "active",
   "source": "manual",
-  "createdAt": "2025-09-01T10:00:00.000Z",
-  "updatedAt": "2025-10-08T18:44:00.000Z"
+  "createdAt": "Date Time",
+  "updatedAt": "Date Time"
 }
 ```
 
