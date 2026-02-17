@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 
@@ -37,19 +39,34 @@ const FORM_OPTIONS = [
   "cream",
   "inhaler",
 ];
+const DOSE_UNIT_OPTIONS = [
+  "mg",
+  "mcg",
+  "g",
+  "ml",
+  "units",
+  "tablet",
+  "capsule",
+  "puff",
+  "drop",
+];
 
 function cleanText(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function normaliseDose(value: string) {
-  const cleaned = cleanText(value).toLowerCase();
-  if (!cleaned) return "";
-  const match = cleaned.match(
-    /^(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml|units?|tablet(?:s)?|capsule(?:s)?|puff(?:s)?|drop(?:s)?)$/i
-  );
-  if (!match) return cleaned;
-  return `${match[1]} ${match[2].toLowerCase()}`;
+function formatDateUk(value: Date) {
+  return value.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function toUtcDateIso(value: Date) {
+  return new Date(
+    Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()),
+  ).toISOString();
 }
 
 function normaliseFrequency(value: string) {
@@ -71,12 +88,14 @@ export default function AddMedication() {
   const dispatch = useAppDispatch();
 
   const [name, setName] = useState("");
-  const [dose, setDose] = useState("");
+  const [doseAmount, setDoseAmount] = useState("");
+  const [doseUnit, setDoseUnit] = useState(DOSE_UNIT_OPTIONS[0]);
   const [frequency, setFrequency] = useState("");
   const [route, setRoute] = useState("");
   const [form, setForm] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [startAt, setStartAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startAt, setStartAt] = useState(() => new Date());
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState<DrugSuggestion | null>(null);
   const [suggestions, setSuggestions] = useState<DrugSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
@@ -119,24 +138,23 @@ export default function AddMedication() {
 
   async function handleSubmit() {
     const cleanedName = cleanText(name);
-    const cleanedDose = normaliseDose(dose);
+    const cleanedDoseAmount = cleanText(doseAmount);
     const cleanedFrequency = normaliseFrequency(frequency);
     const cleanedInstructions = cleanText(instructions);
-    const cleanedStart = cleanText(startAt);
 
-    if (!cleanedName || !cleanedDose || !cleanedStart) {
+    if (!cleanedName || !cleanedDoseAmount) {
       setErrorMessage("Name, dose and start date are required.");
       setShowErrorModal(true);
       return;
     }
 
-    const parsedStart = new Date(cleanedStart);
-    if (Number.isNaN(parsedStart.getTime())) {
-      setErrorMessage("Start date must be a valid date (YYYY-MM-DD).");
+    if (!/^\d+(\.\d+)?$/.test(cleanedDoseAmount)) {
+      setErrorMessage("Dose amount must be a number.");
       setShowErrorModal(true);
       return;
     }
 
+    const cleanedDose = `${cleanedDoseAmount} ${doseUnit}`;
     setSubmitting(true);
     try {
       const payload = {
@@ -146,7 +164,7 @@ export default function AddMedication() {
         route: cleanText(route),
         form: cleanText(form),
         instructions: cleanedInstructions,
-        startAt: parsedStart.toISOString(),
+        startAt: toUtcDateIso(startAt),
         drugRefId: selectedDrug?.id,
         dmplusdCode: selectedDrug?.dmplusdCode ?? undefined,
         snomedCode: selectedDrug?.snomedCode ?? undefined,
@@ -290,19 +308,35 @@ export default function AddMedication() {
 
         <View>
           <ThemedText>Dose</ThemedText>
-          <TextInput
-            value={dose}
-            onChangeText={setDose}
-            onBlur={() => setDose(normaliseDose(dose))}
-            placeholder="e.g. 800 mg"
-            style={{
-              borderWidth: 1,
-              borderColor: "rgba(148,163,184,0.5)",
-              borderRadius: 10,
-              padding: 10,
-              marginTop: 6,
-            }}
-          />
+          <View style={{ marginTop: 6, flexDirection: "row", gap: 10 }}>
+            <TextInput
+              value={doseAmount}
+              onChangeText={(value) => setDoseAmount(value.replace(/[^0-9.]/g, ""))}
+              placeholder="e.g. 50"
+              keyboardType="decimal-pad"
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: "rgba(148,163,184,0.5)",
+                borderRadius: 10,
+                padding: 10,
+              }}
+            />
+            <View
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: "rgba(148,163,184,0.5)",
+                borderRadius: 10,
+              }}
+            >
+              <Picker selectedValue={doseUnit} onValueChange={setDoseUnit}>
+                {DOSE_UNIT_OPTIONS.map((option) => (
+                  <Picker.Item key={option} label={option} value={option} />
+                ))}
+              </Picker>
+            </View>
+          </View>
         </View>
 
         <View>
@@ -323,12 +357,9 @@ export default function AddMedication() {
         </View>
 
         <View>
-          <ThemedText>Start date (YYYY-MM-DD)</ThemedText>
-          <TextInput
-            value={startAt}
-            onChangeText={setStartAt}
-            placeholder="2026-02-16"
-            autoCapitalize="none"
+          <ThemedText>Start date</ThemedText>
+          <TouchableOpacity
+            onPress={() => setShowStartDatePicker(true)}
             style={{
               borderWidth: 1,
               borderColor: "rgba(148,163,184,0.5)",
@@ -336,7 +367,40 @@ export default function AddMedication() {
               padding: 10,
               marginTop: 6,
             }}
-          />
+          >
+            <ThemedText>{formatDateUk(startAt)}</ThemedText>
+          </TouchableOpacity>
+          {showStartDatePicker ? (
+            <View style={{ marginTop: 8 }}>
+              <DateTimePicker
+                value={startAt}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={(event, selected) => {
+                  if (event.type === "dismissed") {
+                    setShowStartDatePicker(false);
+                    return;
+                  }
+                  if (selected) setStartAt(selected);
+                  if (Platform.OS !== "ios") setShowStartDatePicker(false);
+                }}
+              />
+              {Platform.OS === "ios" ? (
+                <TouchableOpacity
+                  onPress={() => setShowStartDatePicker(false)}
+                  style={{
+                    marginTop: 8,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor: "rgba(148,163,184,0.2)",
+                  }}
+                >
+                  <ThemedText style={{ fontWeight: "600" }}>Done</ThemedText>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View>
