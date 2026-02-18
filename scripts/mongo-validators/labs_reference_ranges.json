@@ -1,0 +1,131 @@
+{
+  "collMod": "labs_reference_ranges",
+  "indexes": [
+    {
+      "key": {
+        "loincCode": 1,
+        "unit": 1,
+        "sex": 1,
+        "ageMin": 1,
+        "ageMax": 1,
+        "orgId": 1
+      },
+      "options": { "unique": true }
+    },
+    { "key": { "category": 1 } },
+    { "key": { "orgId": 1 } }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "loincCode",
+        "testName",
+        "category",
+        "unit",
+        "sex",
+        "ageMin",
+        "ageMax",
+        "referenceType",
+        "source",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+
+        "loincCode": { "bsonType": "string", "minLength": 3, "maxLength": 20 },
+        "testName": { "bsonType": "string", "minLength": 2, "maxLength": 200 },
+        "category": { "bsonType": "string", "minLength": 2, "maxLength": 60 },
+        "unit": { "bsonType": "string", "minLength": 1, "maxLength": 30 },
+
+        "sex": { "bsonType": "string", "enum": ["male", "female", "any"] },
+
+        "ageMin": {
+          "bsonType": ["int", "double"],
+          "minimum": 0,
+          "maximum": 150
+        },
+        "ageMax": {
+          "bsonType": ["int", "double"],
+          "minimum": 0,
+          "maximum": 150
+        },
+
+        "referenceType": {
+          "bsonType": "string",
+          "enum": ["absolute", "calculated"]
+        },
+
+        "lower": { "bsonType": ["double", "int", "decimal", "null"] },
+        "upper": { "bsonType": ["double", "int", "decimal", "null"] },
+
+        "criticalLow": { "bsonType": ["double", "int", "decimal", "null"] },
+        "criticalHigh": { "bsonType": ["double", "int", "decimal", "null"] },
+
+        "bands": {
+          "bsonType": ["array", "null"],
+          "items": {
+            "bsonType": "object",
+            "additionalProperties": false,
+            "required": ["label", "minInclusive", "maxExclusive"],
+            "properties": {
+              "label": {
+                "bsonType": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "minInclusive": {
+                "bsonType": ["double", "int", "decimal", "null"]
+              },
+              "maxExclusive": {
+                "bsonType": ["double", "int", "decimal", "null"]
+              },
+              "note": { "bsonType": ["string", "null"], "maxLength": 240 }
+            }
+          }
+        },
+
+        "orgId": { "bsonType": ["string", "null"], "maxLength": 80 },
+
+        "source": {
+          "bsonType": "string",
+          "enum": ["uk_default", "custom", "imported"]
+        },
+
+        "version": {
+          "bsonType": ["int", "double"],
+          "minimum": 1,
+          "maximum": 9999
+        },
+
+        "createdAt": { "bsonType": ["date", "string"] },
+        "updatedAt": { "bsonType": ["date", "string"] }
+      },
+
+      "anyOf": [
+        {
+          "properties": {
+            "referenceType": { "bsonType": "string", "enum": ["absolute"] },
+            "bands": { "bsonType": ["null"] }
+          },
+          "required": ["referenceType", "lower", "upper"]
+        },
+        {
+          "properties": {
+            "referenceType": { "bsonType": "string", "enum": ["calculated"] },
+            "lower": { "bsonType": ["null"] },
+            "upper": { "bsonType": ["null"] }
+          },
+          "required": ["referenceType", "bands"]
+        }
+      ]
+    }
+  }
+}
