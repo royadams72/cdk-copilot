@@ -11,9 +11,13 @@ type MedicationSummary = DashboardData["medications"];
 export function MedicationCard({
   medications,
   onAdd,
+  onEdit,
+  onHistory,
 }: {
   medications: MedicationSummary;
   onAdd: () => void;
+  onEdit: (medicationId: string) => void;
+  onHistory: () => void;
 }) {
   return (
     <Card>
@@ -25,7 +29,15 @@ export function MedicationCard({
       {medications.recent.length ? (
         medications.recent.map((med) => (
           <View key={med.id} style={styles.medSummaryRow}>
-            <ThemedText style={styles.medSummaryTitle}>{med.name}</ThemedText>
+            <View style={styles.medSummaryHeaderRow}>
+              <ThemedText style={styles.medSummaryTitle}>{med.name}</ThemedText>
+              <TouchableOpacity
+                style={styles.medEditButton}
+                onPress={() => onEdit(med.id)}
+              >
+                <ThemedText style={styles.medEditButtonText}>Edit</ThemedText>
+              </TouchableOpacity>
+            </View>
             <ThemedText style={styles.medSummaryMeta}>
               {[med.dose, med.frequency].filter(Boolean).join(" · ") ||
                 "Dose/frequency not set"}
@@ -41,9 +53,14 @@ export function MedicationCard({
         </ThemedText>
       )}
 
-      <TouchableOpacity style={styles.primaryActionButton} onPress={onAdd}>
-        <ThemedText style={styles.primaryActionText}>Add medication</ThemedText>
-      </TouchableOpacity>
+      <View style={styles.medActionsRow}>
+        <TouchableOpacity style={styles.primaryActionButton} onPress={onAdd}>
+          <ThemedText style={styles.primaryActionText}>Add medication</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryActionButton} onPress={onHistory}>
+          <ThemedText style={styles.secondaryActionText}>Med history</ThemedText>
+        </TouchableOpacity>
+      </View>
     </Card>
   );
 }

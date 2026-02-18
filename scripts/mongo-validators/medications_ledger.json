@@ -39,6 +39,7 @@
         "dose": { "bsonType": "string" },
         "frequency": { "bsonType": "string" },
         "instructions": { "bsonType": "string" },
+        "latestReason": { "bsonType": "string" },
         "startAt": { "bsonType": "date" },
         "endAt": { "bsonType": "date" },
         "status": { "enum": ["active", "paused", "stopped", "completed"] },

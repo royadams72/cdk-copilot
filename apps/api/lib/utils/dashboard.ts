@@ -118,7 +118,7 @@ export function resolveLabConfig(doc: LabDoc) {
 
 export function summarizeMedications(medications: MedicationLedgerDoc[]) {
   const active = medications.filter((med) => med.status === "active");
-  const recent = medications.slice(0, 3).map((med) => ({
+  const recent = active.slice(0, 3).map((med) => ({
     id: med._id.toString(),
     dose: med.dose ?? null,
     form: med.form ?? null,
@@ -126,7 +126,7 @@ export function summarizeMedications(medications: MedicationLedgerDoc[]) {
     name: med.name ?? "Medication",
     route: med.route ?? null,
     startAt: med.startAt ? med.startAt.toISOString() : null,
-    status: med.status ?? "active",
+    status: "active" as const,
   }));
 
   return {

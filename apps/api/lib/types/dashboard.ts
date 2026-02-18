@@ -23,6 +23,14 @@ export type MedicationLedgerDoc = {
   form?: string;
   startAt?: Date;
   status?: "active" | "paused" | "stopped" | "completed";
+  editHistory?: Array<{
+    at: Date;
+    by: string;
+    reason?: string;
+    type: "edited" | "status_change";
+    changes?: string[];
+    toStatus?: "active" | "paused" | "stopped" | "completed";
+  }>;
   createdAt?: Date;
   updatedAt?: Date;
 };

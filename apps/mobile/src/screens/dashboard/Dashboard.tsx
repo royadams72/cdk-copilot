@@ -114,7 +114,11 @@ export default function Dashboard() {
           {data && (
             <MedicationCard
               medications={data.medications}
-              onAdd={() => router.push("/(dashboard)/add-medication")}
+              onAdd={() => router.push("/(medications)/add-medication")}
+              onEdit={(medicationId) =>
+                router.push(`/(medications)/add-medication?id=${medicationId}`)
+              }
+              onHistory={() => router.push("/(medications)/medication-history")}
             />
           )}
 
