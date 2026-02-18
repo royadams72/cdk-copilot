@@ -6,7 +6,6 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
-import type { MedicationEventDoc } from "@/apps/api/lib/utils/medicationsProjection";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -62,46 +61,6 @@ export async function GET(req: NextRequest) {
 
     const current = rawDocs as MedicationDoc[];
 
-    const detailEditEventTypes = [
-      "name_changed",
-      "dose_changed",
-      "frequency_changed",
-      "route_changed",
-      "form_changed",
-      "startAt_changed",
-      "instructions_changed",
-      "dmplusdCode_changed",
-      "snomedCode_changed",
-      "drugRefId_changed",
-    ] as const;
-    const detailEdits = await db
-      .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
-      .find(
-        {
-          patientId,
-          eventType: { $in: [...detailEditEventTypes] },
-        },
-        {
-          projection: {
-            _id: 0,
-            at: 1,
-            medicationId: 1,
-            reason: 1,
-          },
-        },
-      )
-      .sort({ at: -1 })
-      .limit(2000)
-      .toArray();
-
-    const editedByMedication = new Map<string, { at?: Date; reason?: string }>();
-    for (const ev of detailEdits) {
-      const key = ev.medicationId.toString();
-      if (!editedByMedication.has(key)) {
-        editedByMedication.set(key, { at: ev.at, reason: ev.reason });
-      }
-    }
-
     const mapHistoryItem = (d: MedicationDoc) => ({
       id: (d.medicationId ?? d._id).toString(),
       dose: d.dose ?? null,
@@ -112,26 +71,8 @@ export async function GET(req: NextRequest) {
       status: (d.status ?? "active") as MedicationStatus,
       updatedAt: d.updatedAt ? d.updatedAt.toISOString() : null,
     });
-
-    const paused = current.filter((d) => d.status === "paused").map(mapHistoryItem);
-    const stopped = current.filter((d) => d.status === "stopped").map(mapHistoryItem);
-    const completed = current
-      .filter((d) => d.status === "completed")
-      .map(mapHistoryItem);
-    const edited = current
-      .filter((d) => editedByMedication.has((d.medicationId ?? d._id).toString()))
-      .map((d) => {
-        const key = (d.medicationId ?? d._id).toString();
-        const editMeta = editedByMedication.get(key);
-        const mapped = mapHistoryItem(d);
-        return {
-          ...mapped,
-          latestReason: editMeta?.reason ?? mapped.latestReason,
-          updatedAt: editMeta?.at ? editMeta.at.toISOString() : mapped.updatedAt,
-        };
-      });
-
-    return ok({ completed, edited, paused, stopped });
+    const items = current.map(mapHistoryItem);
+    return ok({ items });
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

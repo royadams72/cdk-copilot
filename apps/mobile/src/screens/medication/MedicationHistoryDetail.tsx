@@ -109,6 +109,22 @@ export default function MedicationHistoryDetail() {
               </ThemedText>
             </View>
 
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/(medications)/add-medication?id=${medication.id}`)
+              }
+              style={{
+                borderWidth: 1,
+                borderColor: "rgba(37,99,235,0.45)",
+                borderRadius: 10,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                alignSelf: "flex-start",
+              }}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>Edit medication</ThemedText>
+            </TouchableOpacity>
+
             <View
               style={{
                 borderWidth: 1,
@@ -118,7 +134,7 @@ export default function MedicationHistoryDetail() {
                 gap: 8,
               }}
             >
-              <ThemedText type="defaultSemiBold">Edit history</ThemedText>
+              <ThemedText type="defaultSemiBold">Activity history</ThemedText>
               {medication.editHistory?.length ? (
                 medication.editHistory
                   .slice()
@@ -157,7 +173,7 @@ export default function MedicationHistoryDetail() {
                     </View>
                   ))
               ) : (
-                <ThemedText style={{ opacity: 0.7 }}>No edit history recorded.</ThemedText>
+                <ThemedText style={{ opacity: 0.7 }}>No history recorded.</ThemedText>
               )}
             </View>
           </>

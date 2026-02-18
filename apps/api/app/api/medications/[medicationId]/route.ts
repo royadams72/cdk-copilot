@@ -80,6 +80,63 @@ function mapOut(state: MedicationState) {
   };
 }
 
+function toDisplayValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "empty";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return JSON.stringify(value);
+}
+
+function eventLabel(eventType: MedicationEventType) {
+  if (eventType === "startAt_changed") return "start date";
+  if (eventType.endsWith("_changed")) {
+    return eventType.replace("_changed", "");
+  }
+  return eventType;
+}
+
+function mapHistoryEvent(event: MedicationEventDoc) {
+  const data = (event.data ?? {}) as Record<string, unknown>;
+  if (event.eventType === "status_changed") {
+    const from = data.from;
+    const to = data.to;
+    const toStatus =
+      to === "active" || to === "paused" || to === "stopped" || to === "completed"
+        ? to
+        : null;
+    return {
+      at: event.at.toISOString(),
+      by: event.by,
+      changes: [`status: ${toDisplayValue(from)} -> ${toDisplayValue(to)}`],
+      reason: event.reason ?? "",
+      toStatus,
+      type: "status_change" as const,
+    };
+  }
+
+  if (event.eventType === "created") {
+    return {
+      at: event.at.toISOString(),
+      by: event.by,
+      changes: ["medication created"],
+      reason: event.reason ?? "",
+      toStatus: null,
+      type: "edited" as const,
+    };
+  }
+
+  const label = eventLabel(event.eventType);
+  return {
+    at: event.at.toISOString(),
+    by: event.by,
+    changes: [`${label}: ${toDisplayValue(data.from)} -> ${toDisplayValue(data.to)}`],
+    reason: event.reason ?? "",
+    toStatus: null,
+    type: "edited" as const,
+  };
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { medicationId: string } },
@@ -118,7 +175,11 @@ export async function GET(
     for (const ev of events) {
       state = applyMedicationEvent(state, ev);
     }
-    return ok(mapOut(state));
+    const detail = mapOut(state);
+    return ok({
+      ...detail,
+      editHistory: events.map(mapHistoryEvent),
+    });
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

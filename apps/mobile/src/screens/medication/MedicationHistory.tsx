@@ -19,10 +19,7 @@ type HistoryItem = {
 };
 
 type HistoryResponse = {
-  paused: HistoryItem[];
-  stopped: HistoryItem[];
-  completed: HistoryItem[];
-  edited: HistoryItem[];
+  items: HistoryItem[];
 };
 
 function formatDate(value: string | null) {
@@ -32,12 +29,10 @@ function formatDate(value: string | null) {
   return d.toLocaleDateString("en-GB");
 }
 
-function Section({
-  title,
+function MedicationList({
   items,
   onSelect,
 }: {
-  title: string;
   items: HistoryItem[];
   onSelect: (id: string) => void;
 }) {
@@ -51,13 +46,11 @@ function Section({
         gap: 8,
       }}
     >
-      <ThemedText type="defaultSemiBold">
-        {title} ({items.length})
-      </ThemedText>
+      <ThemedText type="defaultSemiBold">All medications ({items.length})</ThemedText>
       {items.length ? (
         items.map((item) => (
           <TouchableOpacity
-            key={`${title}-${item.id}`}
+            key={item.id}
             onPress={() => onSelect(item.id)}
             style={{
               borderTopWidth: 1,
@@ -69,6 +62,9 @@ function Section({
             <ThemedText style={{ fontWeight: "700" }}>{item.name}</ThemedText>
             <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
               {[item.dose, item.frequency].filter(Boolean).join(" · ") || "Dose/frequency not set"}
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
+              Current status: {item.status}
             </ThemedText>
             <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
               Updated {formatDate(item.updatedAt)}
@@ -90,12 +86,7 @@ function Section({
 export default function MedicationHistory() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<HistoryResponse>({
-    completed: [],
-    edited: [],
-    paused: [],
-    stopped: [],
-  });
+  const [data, setData] = useState<HistoryResponse>({ items: [] });
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -112,10 +103,7 @@ export default function MedicationHistory() {
         if (cancelled) return;
         setData(
           body.data ?? {
-            completed: [],
-            edited: [],
-            paused: [],
-            stopped: [],
+            items: [],
           },
         );
       } catch (err: any) {
@@ -140,7 +128,7 @@ export default function MedicationHistory() {
         </TouchableOpacity>
         <ThemedText type="title">Medication history</ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
-          Paused, stopped, completed, and edited medications.
+          Select a medication to view full status and edit history.
         </ThemedText>
 
         {loading ? (
@@ -149,28 +137,10 @@ export default function MedicationHistory() {
             <ThemedText>Loading history...</ThemedText>
           </View>
         ) : (
-          <>
-            <Section
-              title="Paused"
-              items={data.paused}
-              onSelect={(id) => router.push(`/(medications)/medication-details?id=${id}`)}
-            />
-            <Section
-              title="Stopped"
-              items={data.stopped}
-              onSelect={(id) => router.push(`/(medications)/medication-details?id=${id}`)}
-            />
-            <Section
-              title="Completed"
-              items={data.completed}
-              onSelect={(id) => router.push(`/(medications)/medication-details?id=${id}`)}
-            />
-            <Section
-              title="Edited"
-              items={data.edited}
-              onSelect={(id) => router.push(`/(medications)/medication-details?id=${id}`)}
-            />
-          </>
+          <MedicationList
+            items={data.items}
+            onSelect={(id) => router.push(`/(medications)/medication-details?id=${id}`)}
+          />
         )}
       </ScrollView>
 
