@@ -16,6 +16,7 @@
 - `reportedAt?` · Date · when result reported
 - `source` · enum (`import|integration|manual`) · default `import`
 - `status` · enum (`final|corrected|preliminary|cancelled`) · default `final`
+- `latestReason` · string reason for edit
 - `correctionOf?` · ObjectId (if this row corrects another)
 - `abnormalFlag?` · enum (`L|LL|H|HH|A|N`) · low/high/abnormal/normal flags if supplied
 - `note?` · string (non-PII operational note)
