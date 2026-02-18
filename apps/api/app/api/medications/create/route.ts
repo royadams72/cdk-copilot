@@ -6,6 +6,10 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  rebuildAndUpsertMedicationCurrent,
+} from "@/apps/api/lib/utils/medicationsProjection";
+import type { MedicationEventDoc } from "@/apps/api/lib/utils/medicationsProjection";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -83,35 +87,42 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
     const db = await getDb();
-    const payload: Record<string, unknown> = {
-      createdAt: now,
-      createdBy: caller.principalId,
+    const patientId = new ObjectId(caller.patientId);
+    const medicationId = new ObjectId();
+    const data: Record<string, unknown> = {
       dose,
       frequency: frequency || "as directed",
       name: titleCase(name),
-      orgId: caller.orgId ?? "org_demo",
-      patientId: new ObjectId(caller.patientId),
-      source: "manual",
-      startAt,
+      startAt: startAt.toISOString(),
       status: "active",
-      updatedAt: now,
-      updatedBy: caller.principalId,
     };
 
-    if (instructions) payload.instructions = instructions;
-    if (route) payload.route = route.toLowerCase();
-    if (form) payload.form = form.toLowerCase();
-    if (dmplusdCode) payload.dmplusdCode = dmplusdCode;
-    if (snomedCode) payload.snomedCode = snomedCode;
+    if (instructions) data.instructions = instructions;
+    if (route) data.route = route.toLowerCase();
+    if (form) data.form = form.toLowerCase();
+    if (dmplusdCode) data.dmplusdCode = dmplusdCode;
+    if (snomedCode) data.snomedCode = snomedCode;
     if (drugRefIdRaw && ObjectId.isValid(drugRefIdRaw)) {
-      payload.drugRefId = new ObjectId(drugRefIdRaw);
+      data.drugRefId = drugRefIdRaw;
     }
 
-    const result = await db
-      .collection(COLLECTIONS.MedicationsLedger)
-      .insertOne(payload);
+    const eventDoc: MedicationEventDoc = {
+      _id: new ObjectId(),
+      at: now,
+      by: caller.principalId,
+      data,
+      eventType: "created",
+      medicationId,
+      orgId: caller.orgId ?? "org_demo",
+      patientId,
+    };
 
-    return ok({ id: result.insertedId.toString() }, 201);
+    await db
+      .collection(COLLECTIONS.MedicationsLedger)
+      .insertOne(eventDoc);
+    await rebuildAndUpsertMedicationCurrent(db, patientId, medicationId);
+
+    return ok({ id: medicationId.toString() }, 201);
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

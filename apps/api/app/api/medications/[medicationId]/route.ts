@@ -6,162 +6,19 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  applyMedicationEvent,
+  emptyMedicationState,
+  rebuildAndUpsertMedicationCurrent,
+} from "@/apps/api/lib/utils/medicationsProjection";
+import type {
+  MedicationEventDoc,
+  MedicationEventType,
+  MedicationState,
+  MedicationStatus,
+} from "@/apps/api/lib/utils/medicationsProjection";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
-
-type MedicationStatus = "active" | "paused" | "stopped" | "completed";
-
-type MedicationEventType =
-  | "created"
-  | "name_changed"
-  | "dose_changed"
-  | "frequency_changed"
-  | "route_changed"
-  | "form_changed"
-  | "startAt_changed"
-  | "dmplusdCode_changed"
-  | "snomedCode_changed"
-  | "drugRefId_changed"
-  | "instructions_changed"
-  | "status_changed";
-
-type MedicationEventDoc = {
-  _id: ObjectId;
-  at: Date;
-  by: string;
-  data?: Record<string, unknown>;
-  eventType: MedicationEventType;
-  medicationId: ObjectId;
-  patientId: ObjectId;
-  reason?: string;
-};
-
-type MedicationState = {
-  dmplusdCode: string | null;
-  dose: string;
-  drugRefId: ObjectId | null;
-  endAt: Date | null;
-  form: string;
-  frequency: string;
-  instructions: string;
-  latestReason: string | null;
-  medicationId: ObjectId;
-  name: string;
-  route: string;
-  snomedCode: string | null;
-  startAt: Date | null;
-  status: MedicationStatus;
-  updatedAt: Date | null;
-  updatedBy: string | null;
-};
-
-function emptyState(medicationId: ObjectId): MedicationState {
-  return {
-    dmplusdCode: null,
-    dose: "",
-    drugRefId: null,
-    endAt: null,
-    form: "",
-    frequency: "",
-    instructions: "",
-    latestReason: null,
-    medicationId,
-    name: "",
-    route: "",
-    snomedCode: null,
-    startAt: null,
-    status: "active",
-    updatedAt: null,
-    updatedBy: null,
-  };
-}
-
-function applyEvent(
-  state: MedicationState,
-  ev: MedicationEventDoc,
-): MedicationState {
-  const next: MedicationState = { ...state };
-  next.updatedAt = ev.at;
-  next.updatedBy = ev.by;
-  if (ev.reason && ev.reason.trim()) next.latestReason = ev.reason.trim();
-
-  const d = (ev.data ?? {}) as Record<string, unknown>;
-
-  switch (ev.eventType) {
-    case "created": {
-      if (typeof d.name === "string") next.name = d.name;
-      if (typeof d.dose === "string") next.dose = d.dose;
-      if (typeof d.frequency === "string") next.frequency = d.frequency;
-      if (typeof d.route === "string") next.route = d.route;
-      if (typeof d.form === "string") next.form = d.form;
-      if (typeof d.instructions === "string")
-        next.instructions = d.instructions;
-      if (d.startAt) next.startAt = new Date(d.startAt as any);
-      if (typeof d.status === "string")
-        next.status = d.status as MedicationStatus;
-      if (typeof d.dmplusdCode === "string") next.dmplusdCode = d.dmplusdCode;
-      if (typeof d.snomedCode === "string") next.snomedCode = d.snomedCode;
-      if (typeof d.drugRefId === "string" && ObjectId.isValid(d.drugRefId)) {
-        next.drugRefId = new ObjectId(d.drugRefId);
-      }
-      return next;
-    }
-    case "name_changed": {
-      if (typeof d.to === "string") next.name = d.to;
-      return next;
-    }
-    case "dose_changed": {
-      if (typeof d.to === "string") next.dose = d.to;
-      return next;
-    }
-    case "frequency_changed": {
-      if (typeof d.to === "string") next.frequency = d.to;
-      return next;
-    }
-    case "route_changed": {
-      if (typeof d.to === "string") next.route = d.to;
-      return next;
-    }
-    case "form_changed": {
-      if (typeof d.to === "string") next.form = d.to;
-      return next;
-    }
-    case "instructions_changed": {
-      if (typeof d.to === "string") next.instructions = d.to;
-      return next;
-    }
-    case "startAt_changed": {
-      if (d.to === null) next.startAt = null;
-      else if (d.to) next.startAt = new Date(d.to as any);
-      return next;
-    }
-    case "dmplusdCode_changed": {
-      if (d.to === null) next.dmplusdCode = null;
-      else if (typeof d.to === "string") next.dmplusdCode = d.to;
-      return next;
-    }
-    case "snomedCode_changed": {
-      if (d.to === null) next.snomedCode = null;
-      else if (typeof d.to === "string") next.snomedCode = d.to;
-      return next;
-    }
-    case "drugRefId_changed": {
-      if (d.to === null) next.drugRefId = null;
-      else if (typeof d.to === "string" && ObjectId.isValid(d.to))
-        next.drugRefId = new ObjectId(d.to);
-      return next;
-    }
-    case "status_changed": {
-      const to = d.to as any;
-      if (to) next.status = to as MedicationStatus;
-      if (to === "stopped" || to === "completed") next.endAt = ev.at;
-      if (to === "active" || to === "paused") next.endAt = null;
-      return next;
-    }
-    default:
-      return next;
-  }
-}
 
 function cleanText(value: unknown) {
   if (typeof value !== "string") return "";
@@ -249,13 +106,17 @@ export async function GET(
         medicationId,
         patientId,
       })
-      .sort({ at: 1 })
+      .sort({ at: 1, _id: 1 })
       .toArray();
     if (!events || events.length === 0)
       return bad("Medication not found", undefined, 404);
-    let state = emptyState(medicationId);
+    let state = emptyMedicationState(
+      medicationId,
+      patientId,
+      caller.orgId ?? "org_demo",
+    );
     for (const ev of events) {
-      state = applyEvent(state, ev);
+      state = applyMedicationEvent(state, ev);
     }
     return ok(mapOut(state));
   } catch (err: any) {
@@ -292,13 +153,17 @@ export async function PATCH(
     const events = await db
       .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
       .find({ medicationId, patientId })
-      .sort({ at: 1 })
+      .sort({ at: 1, _id: 1 })
       .toArray();
     if (!events || events.length === 0)
       return bad("Medication not found", undefined, 404);
-    let state = emptyState(medicationId);
+    let state = emptyMedicationState(
+      medicationId,
+      patientId,
+      caller.orgId ?? "org_demo",
+    );
     for (const ev of events) {
-      state = applyEvent(state, ev);
+      state = applyMedicationEvent(state, ev);
     }
 
     // Parse/normalize incoming
@@ -509,6 +374,7 @@ export async function PATCH(
         data: evData,
         eventType: change.eventType,
         medicationId,
+        orgId: caller.orgId ?? "org_demo",
         patientId,
         reason: editReason || undefined,
       });
@@ -522,6 +388,7 @@ export async function PATCH(
         data: { from: state.status, to: nextStatus },
         eventType: "status_changed",
         medicationId,
+        orgId: caller.orgId ?? "org_demo",
         patientId,
         reason: editReason || undefined,
       });
@@ -532,17 +399,13 @@ export async function PATCH(
         .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
         .insertMany(eventDocs);
     }
-    // Re-query all events and replay
-    const eventsAfter = await db
-      .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
-      .find({ medicationId, patientId })
-      .sort({ at: 1 })
-      .toArray();
-    let stateAfter = emptyState(medicationId);
-    for (const ev of eventsAfter) {
-      stateAfter = applyEvent(stateAfter, ev);
-    }
-    return ok(mapOut(stateAfter));
+    const replay = await rebuildAndUpsertMedicationCurrent(
+      db,
+      patientId,
+      medicationId,
+    );
+    if (!replay) return bad("Medication not found", undefined, 404);
+    return ok(mapOut(replay.state));
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

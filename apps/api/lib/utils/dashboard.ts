@@ -15,12 +15,12 @@ import {
   FoodHighlightMetricKey,
   FoodHighlightResult,
   LabDoc,
-  MedicationLedgerDoc,
   NutrientKey,
   NutritionDailyPoint,
   NutritionEntryDoc,
   NutritionMealEntry,
 } from "../types/dashboard";
+import type { MedicationCurrentDoc } from "../types/dashboard";
 
 export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
   return db
@@ -67,13 +67,13 @@ export async function fetchNutritionEntries(db: Db, patientId: ObjectId) {
 
 export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
   return db
-    .collection<MedicationLedgerDoc>(COLLECTIONS.MedicationsLedger)
+    .collection<MedicationCurrentDoc>(COLLECTIONS.MedicationsCurrent)
     .find(
       { patientId },
       {
         projection: {
           _id: 1,
-          createdAt: 1,
+          medicationId: 1,
           dose: 1,
           form: 1,
           frequency: 1,
@@ -85,7 +85,7 @@ export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
         },
       },
     )
-    .sort({ createdAt: -1, startAt: -1, updatedAt: -1 })
+    .sort({ updatedAt: -1, startAt: -1 })
     .limit(200)
     .toArray();
 }
@@ -116,10 +116,10 @@ export function resolveLabConfig(doc: LabDoc) {
   );
 }
 
-export function summarizeMedications(medications: MedicationLedgerDoc[]) {
+export function summarizeMedications(medications: MedicationCurrentDoc[]) {
   const active = medications.filter((med) => med.status === "active");
   const recent = active.slice(0, 3).map((med) => ({
-    id: med._id.toString(),
+    id: (med.medicationId ?? med._id).toString(),
     dose: med.dose ?? null,
     form: med.form ?? null,
     frequency: med.frequency ?? null,

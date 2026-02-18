@@ -13,8 +13,9 @@ export type LabDoc = {
   abnormalFlag?: string;
 };
 
-export type MedicationLedgerDoc = {
+export type MedicationCurrentDoc = {
   _id: ObjectId;
+  medicationId?: ObjectId;
   patientId: ObjectId;
   name?: string;
   dose?: string;

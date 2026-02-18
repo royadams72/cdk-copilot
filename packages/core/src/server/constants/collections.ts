@@ -26,6 +26,7 @@ export const COLLECTIONS = {
 
   LabsLedger: "labs_ledger",
   MeasurementsLedger: "measurements_ledger",
+  MedicationsCurrent: "medications_current",
   MedicationsLedger: "medications_ledger",
   NutritionLedger: "nutrition_ledger",
 
