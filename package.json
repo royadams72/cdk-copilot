@@ -1,32 +1,17 @@
 {
-  "name": "ckd-copilot",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "dev": "pnpm -r run dev",
-    "build": "pnpm -r run build",
-    "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
-    "ingest:cofid": "tsx scripts/ingest-cofid.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
-    "mobile:dev": "pnpm --filter ./apps/mobile exec expo start --dev-client",
-    "mobile:rebuild:android": "pnpm --filter ./apps/mobile exec expo run:android",
-    "core:build": "pnpm -w --filter @ckd/core run build",
-    "api:dev": "pnpm  --filter ./apps/api dev",
-    "db:export:nutrition": "mongoexport --uri=\"$MONGODB_URI_APP\" --db=ckd-copilot --collection=nutrition_ledger --out=nutrition_ledger.json"
-  },
-  "keywords": [],
   "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.16.1",
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
+  "dependencies": {
+    "fast-xml-parser": "^5.3.6",
+    "mongodb": "^6.20.0",
+    "sax": "^1.4.4",
+    "unzipper": "^0.12.3"
+  },
+  "description": "",
   "devDependencies": {
     "@next/env": "^16.0.8",
     "@types/node": "^24.5.0",
+    "@types/sax": "^1.2.7",
+    "@types/unzipper": "^0.10.11",
     "dotenv": "^17.2.3",
     "expo": "~54.0.21",
     "redux-devtools-expo-dev-plugin": "^2.0.0",
@@ -35,7 +20,28 @@
     "typescript": "^5.9.2",
     "xlsx": "^0.18.5"
   },
-  "dependencies": {
-    "mongodb": "^6.20.0"
-  }
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "ckd-copilot",
+  "packageManager": "pnpm@10.16.1",
+  "scripts": {
+    "dev": "pnpm -r run dev",
+    "build": "pnpm -r run build",
+    "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
+    "ingest:cofid": "tsx scripts/ingest-cofid.ts",
+    "ingest:dmd": "tsx scripts/ingest-dmd.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
+    "mobile:dev": "pnpm --filter ./apps/mobile exec expo start --dev-client",
+    "mobile:rebuild:android": "pnpm --filter ./apps/mobile exec expo run:android",
+    "core:build": "pnpm -w --filter @ckd/core run build",
+    "api:dev": "pnpm  --filter ./apps/api dev",
+    "db:export:nutrition": "mongoexport --uri=\"$MONGODB_URI_APP\" --db=ckd-copilot --collection=nutrition_ledger --out=nutrition_ledger.json"
+  },
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
 }

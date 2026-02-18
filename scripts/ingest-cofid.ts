@@ -9,9 +9,8 @@ dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 
 import type {
   TBaseFoodSchema,
-  TNutrientsPer100gSchema,
-  NutirentCodesSchema,
   TNutirentCodesSchema,
+  TNutrientsPer100gSchema,
 } from "../packages/core/src/isomorphic/";
 
 // NOTE: no runtime imports (getDb/xlsx) before env is loaded
@@ -65,30 +64,30 @@ async function main() {
   const rows2: any[] = xlsx.utils.sheet_to_json(sheet2, { defval: null });
 
   type CofidCell = {
-    value: number | null;
     code: "Tr" | "N" | null;
+    value: number | null;
   };
 
   function parseCofidCell(v: any): CofidCell {
     if (v === null || v === undefined || v === "") {
-      return { value: null, code: null };
+      return { code: null, value: null };
     }
 
     if (v === "N") {
-      return { value: 0, code: "N" };
+      return { code: "N", value: 0 };
     }
 
     if (v === "Tr") {
       // or 0 if you prefer – but you still keep code: "Tr"
-      return { value: 0.5, code: "Tr" };
+      return { code: "Tr", value: 0.5 };
     }
 
     const n = Number(v);
     if (Number.isNaN(n)) {
-      return { value: null, code: null };
+      return { code: null, value: null };
     }
 
-    return { value: n, code: null };
+    return { code: null, value: n };
   }
   // console.log("rows.length =", rows.length);
 
@@ -121,30 +120,30 @@ async function main() {
     if (!code || !desc) continue;
 
     nutrients = {
-      energyKcal: parseCofidCell(row[KCAL_COL]).value,
-      protein_g: parseCofidCell(row[PROT_COL]).value,
-      fat_g: parseCofidCell(row[FAT_COL]).value,
       carbs_g: parseCofidCell(row[CARB_COL]).value,
+      energyKcal: parseCofidCell(row[KCAL_COL]).value,
+      fat_g: parseCofidCell(row[FAT_COL]).value,
+      protein_g: parseCofidCell(row[PROT_COL]).value,
     };
     nutirentCodes = {
-      energyKcal: parseCofidCell(row[KCAL_COL]).code,
-      protein_g: parseCofidCell(row[PROT_COL]).code,
-      fat_g: parseCofidCell(row[FAT_COL]).code,
       carbs_g: parseCofidCell(row[CARB_COL]).code,
+      energyKcal: parseCofidCell(row[KCAL_COL]).code,
+      fat_g: parseCofidCell(row[FAT_COL]).code,
+      protein_g: parseCofidCell(row[PROT_COL]).code,
     };
 
     for (const row2 of rows2) {
       nutrients = {
         ...nutrients,
-        potassium_mg: parseCofidCell(row2[K_COL]).value,
         phosphorus_mg: parseCofidCell(row2[P_COL]).value,
+        potassium_mg: parseCofidCell(row2[K_COL]).value,
         sodium_mg: parseCofidCell(row2[NA_COL]).value,
       };
 
       nutirentCodes = {
         ...nutirentCodes,
-        potassium_mg: parseCofidCell(row2[K_COL]).code,
         phosphorus_mg: parseCofidCell(row2[P_COL]).code,
+        potassium_mg: parseCofidCell(row2[K_COL]).code,
         sodium_mg: parseCofidCell(row2[NA_COL]).code,
       };
     }
@@ -152,14 +151,14 @@ async function main() {
     const keywords = makeKeywords(desc);
 
     const doc: TBaseFoodSchema = {
+      category: row[GROUP_COL] ? String(row[GROUP_COL]) : null,
+      description: desc,
+      keywords,
+      nutirentCodes,
+      nutrientsPer100g: nutrients,
+      searchName,
       source: "cofid",
       sourceFoodCode: code,
-      description: desc,
-      category: row[GROUP_COL] ? String(row[GROUP_COL]) : null,
-      searchName,
-      keywords,
-      nutrientsPer100g: nutrients,
-      nutirentCodes,
     };
 
     docs.push(doc);

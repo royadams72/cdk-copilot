@@ -171,4 +171,63 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#4C1D95",
   },
+  medSummaryRow: {
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(148,163,184,0.4)",
+    gap: 2,
+  },
+  medSummaryHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  medSummaryTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    flex: 1,
+  },
+  medSummaryMeta: {
+    fontSize: 13,
+    opacity: 0.75,
+  },
+  medEditButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(59,130,246,0.15)",
+  },
+  medEditButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1E3A8A",
+  },
+  medActionsRow: {
+    marginTop: 4,
+    flexDirection: "row",
+    gap: 8,
+  },
+  primaryActionButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(16,185,129,0.16)",
+  },
+  primaryActionText: {
+    fontWeight: "700",
+    color: "#065F46",
+  },
+  secondaryActionButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(59,130,246,0.15)",
+  },
+  secondaryActionText: {
+    fontWeight: "700",
+    color: "#1E3A8A",
+  },
 });

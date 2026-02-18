@@ -1,56 +1,53 @@
 {
-  "collMod": "medications",
+  "collMod": "medications_ledger",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "medicationId": 1, "at": 1 },
+      "options": { "name": "byPatient_medication_eventTime" }
+    },
+    {
+      "key": { "patientId": 1, "at": -1 },
+      "options": { "name": "byPatient_recentEvents" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
       "required": [
-        "orgId",
         "patientId",
-        "name",
-        "dose",
-        "frequency",
-        "startAt",
-        "status",
-        "createdAt",
-        "updatedAt",
-        "createdBy",
-        "updatedBy"
+        "medicationId",
+        "eventType",
+        "at",
+        "by"
       ],
       "properties": {
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
-        "drugRefId": { "bsonType": "objectId" },
-        "dmplusdCode": { "bsonType": "string" },
-        "snomedCode": { "bsonType": "string" },
-        "name": { "bsonType": "string" },
-        "form": { "bsonType": "string" },
-        "strength": { "bsonType": "string" },
-        "route": { "bsonType": "string" },
-        "dose": { "bsonType": "string" },
-        "frequency": { "bsonType": "string" },
-        "instructions": { "bsonType": "string" },
-        "startAt": { "bsonType": "date" },
-        "endAt": { "bsonType": "date" },
-        "status": { "enum": ["active", "paused", "stopped", "completed"] },
-        "authorUserId": { "bsonType": "string" },
-        "source": { "enum": ["manual", "import", "integration"] },
-        "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" },
-        "createdBy": { "bsonType": "string" },
-        "updatedBy": { "bsonType": "string" }
+        "medicationId": { "bsonType": "objectId" },
+        "eventType": {
+          "enum": [
+            "created",
+            "name_changed",
+            "dose_changed",
+            "frequency_changed",
+            "route_changed",
+            "form_changed",
+            "startAt_changed",
+            "instructions_changed",
+            "dmplusdCode_changed",
+            "snomedCode_changed",
+            "drugRefId_changed",
+            "status_changed"
+          ]
+        },
+        "at": { "bsonType": "date" },
+        "by": { "bsonType": "string" },
+        "reason": { "bsonType": "string" },
+        "data": { "bsonType": "object" }
       },
       "additionalProperties": true
     }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
-  "indexes": [
-    { "key": { "orgId": 1, "patientId": 1, "status": 1 } },
-    { "key": { "patientId": 1, "startAt": -1 } },
-    { "key": { "dmplusdCode": 1 } },
-    {
-      "key": { "createdBy": 1, "measuredAt": -1 },
-      "options": { "name": "byCreatedBy_time" }
-    }
-  ]
+  }
 }

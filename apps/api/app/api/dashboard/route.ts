@@ -8,9 +8,11 @@ import { ROLES, TUserClinicalSummary } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import {
+  fetchRecentMedications,
   fetchNutritionEntries,
   fetchRecentLabs,
   normaliseNumber,
+  summarizeMedications,
   summarizeLabs,
   summarizeNutrition,
 } from "@/apps/api/lib/utils/dashboard";
@@ -93,7 +95,8 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
 
-    const [clinicalDoc, labDocs, nutritionDocs] = await Promise.all([
+    const [clinicalDoc, labDocs, nutritionDocs, medicationDocs] =
+      await Promise.all([
       db.collection<TUserClinicalSummary>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         {
@@ -108,6 +111,7 @@ export async function GET(req: NextRequest) {
       ),
       fetchRecentLabs(db, patientObjectId),
       fetchNutritionEntries(db, patientObjectId),
+      fetchRecentMedications(db, patientObjectId),
     ]);
 
     const scope = req.nextUrl.searchParams.get("scope");
@@ -141,9 +145,11 @@ export async function GET(req: NextRequest) {
       rangeEnd,
       rangeDays,
     );
+    const medications = summarizeMedications(medicationDocs);
 
     return ok({
       labs,
+      medications,
       nutrition,
       patientId: caller.patientId,
       summary: {

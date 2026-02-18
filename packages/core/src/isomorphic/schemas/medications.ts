@@ -24,6 +24,7 @@ export const MedicationLedger_Base = z
     dose: z.string().min(1), // free text or structured
     frequency: z.string().min(1), // e.g., "once daily"
     instructions: z.string().min(1).optional(),
+    latestReason: z.string().min(1).optional(),
     startAt: z.date().nullable(),
     endAt: z.date().optional().nullable(),
     status: MedicationStatus,
@@ -47,8 +48,8 @@ export const MedicationLedger_Base = z
 export const MedicationLedger_Create = MedicationLedger_Base.omit({
   _id: true,
   createdAt: true,
-  updatedAt: true,
   createdBy: true,
+  updatedAt: true,
   updatedBy: true,
 }).extend({
   // keep default for source at create-time
@@ -58,40 +59,40 @@ export const MedicationLedger_Create = MedicationLedger_Base.omit({
 export const MedicationLedger_Update = z
   .object({
     // immutable identifiers excluded; patchable fields only
-    drugRefId: objectIdHex.optional(),
     dmplusdCode: z.string().min(1).optional(),
-    snomedCode: z.string().min(1).optional(),
-    name: z.string().min(1).optional(),
-    form: z.string().min(1).optional(),
-    strength: z.string().min(1).optional(),
-    route: z.string().min(1).optional(),
     dose: z.string().min(1).optional(),
+    drugRefId: objectIdHex.optional(),
+    endAt: z.date().optional(),
+    form: z.string().min(1).optional(),
     frequency: z.string().min(1).optional(),
     instructions: z.string().min(1).optional(),
-    startAt: z.date().optional(),
-    endAt: z.date().optional(),
-    status: MedicationStatus.optional(),
+    name: z.string().min(1).optional(),
+    route: z.string().min(1).optional(),
+    snomedCode: z.string().min(1).optional(),
     source: MedicationSource.optional(),
+    startAt: z.date().optional(),
+    status: MedicationStatus.optional(),
+    strength: z.string().min(1).optional(),
   })
   .refine(
     // if both provided, enforce start/end order
     (p) => !(p.startAt && p.endAt) || p.endAt >= p.startAt,
-    { message: "endAt must be on/after startAt", path: ["endAt"] }
+    { message: "endAt must be on/after startAt", path: ["endAt"] },
   );
 
 export const MedicationFormEntry = MedicationLedger_Base.pick({
-  name: true,
-  form: true,
-  strength: true,
-  route: true,
+  dmplusdCode: true,
   dose: true,
+  endAt: true,
+  form: true,
   frequency: true,
   instructions: true,
-  startAt: true,
-  endAt: true,
-  status: true,
-  dmplusdCode: true,
+  name: true,
+  route: true,
   snomedCode: true,
+  startAt: true,
+  status: true,
+  strength: true,
 });
 
 export const MedicationsFormSchema = z.object({

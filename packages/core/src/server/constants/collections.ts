@@ -2,7 +2,7 @@
  * Central registry of MongoDB collection names.
  * Keep values in snake_case (actual Mongo names) and keys in PascalCase.
  */
-import type { Db, Collection, Document as MongoDocument } from "mongodb";
+import type { Collection, Db, Document as MongoDocument } from "mongodb";
 
 export const COLLECTIONS = {
   AppErrorLogs: "app_error_logs",
@@ -26,7 +26,8 @@ export const COLLECTIONS = {
 
   LabsLedger: "labs_ledger",
   MeasurementsLedger: "measurements_ledger",
-  Medications: "medications",
+  MedicationsCurrent: "medications_current",
+  MedicationsLedger: "medications_ledger",
   NutritionLedger: "nutrition_ledger",
 
   Orgs: "orgs",
@@ -52,20 +53,20 @@ type Projection<T extends MongoDocument, K extends keyof T = keyof T> = {
 // Overload 1: plain collection
 export function getCollection<T extends MongoDocument>(
   db: Db,
-  name: CollectionName
+  name: CollectionName,
 ): Collection<T>;
 
 // Overload 2: collection + projection helper
 export function getCollection<T extends MongoDocument, K extends keyof T>(
   db: Db,
   name: CollectionName,
-  fields: readonly K[]
+  fields: readonly K[],
 ): { collection: Collection<T>; projection: Projection<T, K> };
 
 export function getCollection<T extends MongoDocument, K extends keyof T>(
   db: Db,
   name: CollectionName,
-  fields?: readonly K[]
+  fields?: readonly K[],
 ) {
   const collection = db.collection<T>(name);
 
@@ -73,10 +74,13 @@ export function getCollection<T extends MongoDocument, K extends keyof T>(
     return collection;
   }
 
-  const projection = fields.reduce((proj, field) => {
-    (proj as any)[field as string] = 1;
-    return proj;
-  }, {} as Record<string, 1>) as Projection<T, K>;
+  const projection = fields.reduce(
+    (proj, field) => {
+      (proj as any)[field as string] = 1;
+      return proj;
+    },
+    {} as Record<string, 1>,
+  ) as Projection<T, K>;
 
   return { collection, projection };
 }

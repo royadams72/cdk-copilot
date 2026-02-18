@@ -13,6 +13,29 @@ export type LabDoc = {
   abnormalFlag?: string;
 };
 
+export type MedicationCurrentDoc = {
+  _id: ObjectId;
+  medicationId?: ObjectId;
+  patientId: ObjectId;
+  name?: string;
+  dose?: string;
+  frequency?: string;
+  route?: string;
+  form?: string;
+  startAt?: Date;
+  status?: "active" | "paused" | "stopped" | "completed";
+  editHistory?: Array<{
+    at: Date;
+    by: string;
+    reason?: string;
+    type: "edited" | "status_change";
+    changes?: string[];
+    toStatus?: "active" | "paused" | "stopped" | "completed";
+  }>;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
 export type NutritionEntryDoc = Omit<TNutritionEntry, "patientId"> & {
   _id: ObjectId;
   patientId: ObjectId;

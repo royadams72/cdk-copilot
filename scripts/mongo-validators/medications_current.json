@@ -1,0 +1,56 @@
+{
+  "collMod": "medications_current",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "status": 1, "startAt": -1 },
+      "options": { "name": "byPatient_status_startAt" }
+    },
+    {
+      "key": { "patientId": 1, "medicationId": 1 },
+      "options": { "name": "uniqPatient_medication", "unique": true }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "medicationId",
+        "name",
+        "dose",
+        "frequency",
+        "startAt",
+        "status",
+        "updatedAt",
+        "updatedBy",
+        "lastEventAt",
+        "lastEventId"
+      ],
+      "properties": {
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "medicationId": { "bsonType": "objectId" },
+        "name": { "bsonType": "string" },
+        "dose": { "bsonType": "string" },
+        "frequency": { "bsonType": "string" },
+        "route": { "bsonType": "string" },
+        "form": { "bsonType": "string" },
+        "instructions": { "bsonType": "string" },
+        "startAt": { "bsonType": ["date", "null"] },
+        "endAt": { "bsonType": ["date", "null"] },
+        "status": { "enum": ["active", "paused", "stopped", "completed"] },
+        "drugRefId": { "bsonType": ["objectId", "null"] },
+        "dmplusdCode": { "bsonType": ["string", "null"] },
+        "snomedCode": { "bsonType": ["string", "null"] },
+        "latestReason": { "bsonType": ["string", "null"] },
+        "updatedAt": { "bsonType": "date" },
+        "updatedBy": { "bsonType": "string" },
+        "lastEventAt": { "bsonType": "date" },
+        "lastEventId": { "bsonType": "objectId" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
