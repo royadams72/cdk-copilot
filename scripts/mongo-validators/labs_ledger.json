@@ -1,58 +1,5 @@
 {
   "collMod": "labs_ledger",
-  "validator": {
-    "$jsonSchema": {
-      "bsonType": "object",
-      "required": [
-        "orgId",
-        "patientId",
-        "code",
-        "name",
-        "value",
-        "takenAt",
-        "source",
-        "status",
-        "createdAt",
-        "updatedAt",
-        "createdBy",
-        "updatedBy"
-      ],
-      "properties": {
-        "_id": { "bsonType": "objectId" },
-        "orgId": { "bsonType": "string" },
-        "patientId": { "bsonType": "objectId" },
-        "code": { "bsonType": "string" },
-        "name": { "bsonType": "string" },
-        "value": { "bsonType": ["double", "string", "int", "long", "decimal"] },
-        "unit": { "bsonType": "string" },
-        "refRange": {
-          "bsonType": "object",
-          "properties": {
-            "low": { "bsonType": ["double", "int", "long", "decimal"] },
-            "high": { "bsonType": ["double", "int", "long", "decimal"] },
-            "text": { "bsonType": "string" }
-          },
-          "additionalProperties": false
-        },
-        "takenAt": { "bsonType": "date" },
-        "reportedAt": { "bsonType": "date" },
-        "source": { "enum": ["import", "integration", "manual"] },
-        "status": {
-          "enum": ["final", "corrected", "preliminary", "cancelled"]
-        },
-        "correctionOf": { "bsonType": "objectId" },
-        "abnormalFlag": { "enum": ["L", "LL", "H", "HH", "A", "N"] },
-        "note": { "bsonType": "string" },
-        "createdAt": { "bsonType": "date" },
-        "updatedAt": { "bsonType": "date" },
-        "createdBy": { "bsonType": "string" },
-        "updatedBy": { "bsonType": "string" }
-      },
-      "additionalProperties": false
-    }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
   "indexes": [
     {
       "key": { "patientId": 1, "code": 1, "takenAt": -1 },
@@ -96,5 +43,68 @@
       }
     },
     { "key": { "createdAt": -1 }, "options": { "name": "byCreated_desc" } }
-  ]
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "code",
+        "name",
+        "value",
+        "takenAt",
+        "source",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "code": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "value": { "bsonType": ["double", "string", "int", "long", "decimal"] },
+        "unit": { "bsonType": ["string", "null"] },
+        "refRange": {
+          "bsonType": ["object", "null"],
+          "properties": {
+            "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+            "high": {
+              "bsonType": ["double", "int", "long", "decimal", "null"]
+            },
+            "text": { "bsonType": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "takenAt": { "bsonType": "date" },
+        "reportedAt": { "bsonType": ["date", "null"] },
+        "source": {
+          "bsonType": "string",
+          "enum": ["import", "integration", "manual"]
+        },
+        "status": {
+          "bsonType": "string",
+          "enum": ["final", "corrected", "preliminary", "cancelled"]
+        },
+        "latestReason": { "bsonType": ["string", "null"] },
+        "correctionOf": { "bsonType": ["objectId", "null"] },
+        "abnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N"]
+        },
+        "note": { "bsonType": ["string", "null"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
 }
