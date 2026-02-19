@@ -1,10 +1,11 @@
-labs_reference_ranges Collection
+# labs_reference_ranges Collection
 
-Purpose
+## Purpose
 
-Stores dynamic laboratory reference ranges used to evaluate patient lab results.
+## Stores dynamic laboratory reference ranges used to evaluate patient lab results.
 
-This collection allows:
+## This collection allows:
+
 • Age-specific ranges
 • Sex-specific ranges
 • Unit validation
@@ -13,9 +14,9 @@ This collection allows:
 
 ⸻
 
-Collection: labs_reference_ranges
+## Collection: labs_reference_ranges
 
-Document Structure
+## Document Structure
 
 ```js
 {

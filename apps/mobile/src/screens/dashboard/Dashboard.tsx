@@ -20,7 +20,7 @@ import {
 
 import { styles } from "./styles";
 import { Card } from "./components/Card";
-import { LabsCard } from "./components/LabsCard";
+import { LabsCard } from "../labs/components/LabsCard";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { RatioCard } from "./components/RatioCard";

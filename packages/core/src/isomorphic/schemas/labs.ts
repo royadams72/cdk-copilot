@@ -24,7 +24,7 @@ export const RefRange = z
     { message: "refRange.low must be ≤ refRange.high" }
   );
 
-export const LabResult_Base = z.object({
+export const LabLedger_Base = z.object({
   _id: objectIdHex, // Primary Key (PK)
   orgId: z.string().min(1),
   patientId: objectIdHex, // ref: patients
@@ -45,8 +45,31 @@ export const LabResult_Base = z.object({
   updatedBy: PrincipalId, // ref principalId
 });
 
+export const LabCurrent_Base = z.object({
+  _id: objectIdHex, // Primary Key (PK)
+  orgId: z.string().min(1),
+  patientId: objectIdHex, // ref: patients
+  code: z.string().min(1),
+  name: z.string().min(1),
+  value: z.union([z.number(), z.string().min(1)]),
+  unit: z.string().min(1).nullable().optional(),
+  takenAt: z.date(),
+  reportedAt: z.date().nullable().optional(),
+  source: LabSource.default("import"),
+  status: LabStatus.default("final"),
+  abnormalFlag: LabAbnormalFlag.optional().default(""),
+  refRange: RefRange.optional(),
+  ledgerId: objectIdHex,
+  prevLedgerId: objectIdHex.nullable().optional(),
+  updatedReason: z.string().min(1).nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  createdBy: PrincipalId,
+  updatedBy: PrincipalId,
+});
+
 // For creates: server usually sets _id/createdAt/updatedAt/createdBy/updatedBy
-export const LabResult_Create = LabResult_Base.omit({
+export const LabLedger_Create = LabLedger_Base.omit({
   _id: true,
   createdAt: true,
   updatedAt: true,
@@ -58,7 +81,7 @@ export const LabResult_Create = LabResult_Base.omit({
 });
 
 // For updates: partial, but keep immutable IDs out of reach if you prefer
-export const LabResult_Update = z.object({
+export const LabLedger_Update = z.object({
   code: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   value: z.union([z.number(), z.string().min(1)]).optional(),
@@ -72,7 +95,15 @@ export const LabResult_Update = z.object({
   note: z.string().min(1).optional(),
 });
 
-export const LabFormEntry = LabResult_Base.omit({
+export const LabCurrent_Upsert = LabCurrent_Base.omit({
+  _id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+});
+
+export const LabFormEntry = LabLedger_Base.omit({
   _id: true,
   createdAt: true,
   updatedAt: true,
@@ -92,4 +123,11 @@ export const LabsSchema = z.object({
 });
 
 export type TLabsFormValues = z.infer<typeof LabsSchema>;
-export type TLabResult = z.infer<typeof LabResult_Base>;
+export type TLabLedger = z.infer<typeof LabLedger_Base>;
+export type TLabCurrent = z.infer<typeof LabCurrent_Base>;
+
+// Backward-compatible aliases while the app migrates to explicit ledger/current naming.
+export const LabResult_Base = LabLedger_Base;
+export const LabResult_Create = LabLedger_Create;
+export const LabResult_Update = LabLedger_Update;
+export type TLabResult = TLabLedger;

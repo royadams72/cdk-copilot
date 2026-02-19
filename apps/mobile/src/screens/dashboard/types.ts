@@ -75,6 +75,11 @@ export type LabSummary = {
   label: string;
   value: number | null;
   unit: string;
+  refRange: {
+    low: number | null;
+    high: number | null;
+    text: string | null;
+  };
   takenAt: string | null;
   abnormalFlag: string | null;
 };

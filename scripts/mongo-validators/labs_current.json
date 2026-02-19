@@ -49,6 +49,17 @@
 
         "value": { "bsonType": ["double", "string", "int", "long", "decimal"] },
         "unit": { "bsonType": ["string", "null"] },
+        "refRange": {
+          "bsonType": ["object", "null"],
+          "properties": {
+            "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+            "high": {
+              "bsonType": ["double", "int", "long", "decimal", "null"]
+            },
+            "text": { "bsonType": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
 
         "takenAt": { "bsonType": "date" },
         "reportedAt": { "bsonType": ["date", "null"] },

@@ -23,8 +23,30 @@ import {
 import type { MedicationCurrentDoc } from "../types/dashboard";
 
 export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
+  const current = await db
+    .collection<LabDoc>(COLLECTIONS.LabsCurrent)
+    .find(
+      { patientId },
+      {
+        projection: {
+          abnormalFlag: 1,
+          code: 1,
+          name: 1,
+          refRange: 1,
+          reportedAt: 1,
+          takenAt: 1,
+          unit: 1,
+          value: 1,
+        },
+      },
+    )
+    .sort({ takenAt: -1, reportedAt: -1, updatedAt: -1 })
+    .limit(200)
+    .toArray();
+  if (current.length > 0) return current;
+
   return db
-    .collection(COLLECTIONS.LabsLedger)
+    .collection<LabDoc>(COLLECTIONS.LabsLedger)
     .find(
       { patientId },
       {
@@ -33,6 +55,8 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
           code: 1,
           createdAt: 1,
           name: 1,
+          refRange: 1,
+          reportedAt: 1,
           takenAt: 1,
           unit: 1,
           value: 1,
@@ -143,6 +167,7 @@ function formatLab(
   id: string;
   abnormalFlag: string | null;
   label: string;
+  refRange: { low: number | null; high: number | null; text: string | null };
   takenAt: string | null;
   unit: string;
   value: number | null;
@@ -152,6 +177,11 @@ function formatLab(
     id: config.id,
     abnormalFlag: doc.abnormalFlag ?? null,
     label: doc.name ?? config.label,
+    refRange: {
+      low: normaliseNumber(doc.refRange?.low),
+      high: normaliseNumber(doc.refRange?.high),
+      text: doc.refRange?.text ?? null,
+    },
     takenAt: doc.takenAt ? doc.takenAt.toISOString() : null,
     unit: doc.unit ?? config.unitFallback,
     value: numericValue,
