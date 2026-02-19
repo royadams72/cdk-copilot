@@ -60,7 +60,22 @@
           },
           "additionalProperties": false
         },
-
+        "sourceAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "derivedAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "overrideAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "effectiveAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
         "takenAt": { "bsonType": "date" },
         "reportedAt": { "bsonType": ["date", "null"] },
 
@@ -75,7 +90,7 @@
 
         "abnormalFlag": {
           "bsonType": ["string", "null"],
-          "enum": ["L", "LL", "H", "HH", "A", "N"]
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
         },
 
         "ledgerId": { "bsonType": "objectId" },

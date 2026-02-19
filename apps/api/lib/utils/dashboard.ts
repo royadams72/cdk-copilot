@@ -31,9 +31,12 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
         projection: {
           abnormalFlag: 1,
           code: 1,
+          derivedAbnormalFlag: 1,
+          effectiveAbnormalFlag: 1,
           name: 1,
           refRange: 1,
           reportedAt: 1,
+          sourceAbnormalFlag: 1,
           takenAt: 1,
           unit: 1,
           value: 1,
@@ -54,9 +57,12 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
           abnormalFlag: 1,
           code: 1,
           createdAt: 1,
+          derivedAbnormalFlag: 1,
+          effectiveAbnormalFlag: 1,
           name: 1,
           refRange: 1,
           reportedAt: 1,
+          sourceAbnormalFlag: 1,
           takenAt: 1,
           unit: 1,
           value: 1,
@@ -173,9 +179,15 @@ function formatLab(
   value: number | null;
 } {
   const numericValue = normaliseNumber(doc.value);
+  const effectiveFlag =
+    doc.effectiveAbnormalFlag ??
+    doc.sourceAbnormalFlag ??
+    doc.derivedAbnormalFlag ??
+    doc.abnormalFlag ??
+    null;
   return {
     id: config.id,
-    abnormalFlag: doc.abnormalFlag ?? null,
+    abnormalFlag: effectiveFlag,
     label: doc.name ?? config.label,
     refRange: {
       low: normaliseNumber(doc.refRange?.low),

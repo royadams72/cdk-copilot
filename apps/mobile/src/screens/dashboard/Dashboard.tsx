@@ -122,7 +122,14 @@ export default function Dashboard() {
             />
           )}
 
-          {data && <LabsCard labs={data.labs} />}
+          {data && (
+            <LabsCard
+              labs={data.labs}
+              onAdd={() => router.push("/(labs)/add-labs")}
+              onEdit={() => router.push("/(labs)/add-labs?mode=edit")}
+              onHistory={() => router.push("/(labs)/labs-history")}
+            />
+          )}
         </>
       )}
     </ScrollView>

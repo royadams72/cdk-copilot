@@ -1,5 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 import { LAB_CONFIG } from "../../dashboard/constants";
 import { Card } from "../../dashboard/components/Card";
@@ -66,8 +66,14 @@ function statusLabel(
 
 export function LabsCard({
   labs,
+  onAdd,
+  onEdit,
+  onHistory,
 }: {
   labs: Record<string, LabSummary | null>;
+  onAdd: () => void;
+  onEdit: () => void;
+  onHistory: () => void;
 }) {
   return (
     <Card>
@@ -237,6 +243,50 @@ export function LabsCard({
           </View>
         );
       })}
+      <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        <TouchableOpacity
+          onPress={onAdd}
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+            backgroundColor: "rgba(16,185,129,0.16)",
+          }}
+        >
+          <ThemedText style={{ fontWeight: "700", color: "#065F46" }}>
+            Add lab results
+          </ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onEdit}
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+            backgroundColor: "rgba(59,130,246,0.15)",
+          }}
+        >
+          <ThemedText style={{ fontWeight: "700", color: "#1E3A8A" }}>
+            Edit
+          </ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onHistory}
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+            backgroundColor: "rgba(245,158,11,0.18)",
+          }}
+        >
+          <ThemedText style={{ fontWeight: "700", color: "#92400E" }}>
+            Labs history
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
     </Card>
   );
 }

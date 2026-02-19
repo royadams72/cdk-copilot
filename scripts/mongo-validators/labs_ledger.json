@@ -94,9 +94,25 @@
         },
         "latestReason": { "bsonType": ["string", "null"] },
         "correctionOf": { "bsonType": ["objectId", "null"] },
+        "sourceAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "derivedAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "overrideAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "effectiveAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
         "abnormalFlag": {
           "bsonType": ["string", "null"],
-          "enum": ["L", "LL", "H", "HH", "A", "N"]
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
         },
         "note": { "bsonType": ["string", "null"] },
         "createdAt": { "bsonType": "date" },

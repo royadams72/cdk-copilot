@@ -138,6 +138,44 @@
 }
 ```
 
+## Example 3 — eGFR (Adult, CKD-EPI 2021)
+
+```js
+{
+  loincCode: "33914-3",
+  testName: "eGFR (CKD-EPI 2021)",
+  category: "renal",
+  unit: "mL/min/1.73m²",
+  sex: "any",
+  ageMin: 18,
+  ageMax: 150,
+  lower: 60,
+  upper: null,
+  criticalLow: 15,
+  criticalHigh: null,
+  referenceType: "absolute",
+  orgId: null,
+  source: "uk_default",
+  version: 1,
+  createdAt: new Date(),
+  updatedAt: new Date()
+}
+```
+
+### Interpretation Notes
+
+- ≥ 90 → Normal (Stage 1 if other markers present)
+- 60–89 → Mild reduction (Stage 2 if other markers present)
+- 45–59 → Stage 3a
+- 30–44 → Stage 3b
+- 15–29 → Stage 4
+- < 15 → Stage 5 (Kidney failure)
+
+Lower threshold of 60 aligns with UK CKD definition (persistent eGFR < 60 for ≥3 months).
+Critical threshold of 15 aligns with kidney failure definition.
+
+---
+
 ## Lookup Logic
 
 ### When a lab result is inserted:
@@ -200,3 +238,4 @@ findOne({
     •	Haemoglobin adult ranges: NHS lab page.  ￼[text](https://www.nbt.nhs.uk/severn-pathology/requesting/test-information/haemoglobin)
     •	uACR categories A1/A2/A3: NHS kidney disease diagnosis page and Kidney Care UK explainer.  ￼[text](https://www.nhs.uk/conditions/kidney-disease/diagnosis)
     •	HbA1c thresholds (normal/prediabetes/diabetes): Diabetes UK.  ￼[text](https://www.diabetes.org.uk/about-diabetes/looking-after-diabetes/hba1c)
+    •	eGFR CKD staging thresholds: NHS Chronic Kidney Disease diagnosis guidance and Kidney Care UK.  [text](https://www.nhs.uk/conditions/kidney-disease/diagnosis/)

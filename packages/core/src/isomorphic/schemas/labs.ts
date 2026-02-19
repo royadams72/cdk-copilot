@@ -12,6 +12,7 @@ export const LabStatus = z.enum([
   "cancelled",
 ]);
 export const LabAbnormalFlag = z.enum(["", "L", "LL", "H", "HH", "A", "N"]);
+export const LabAbnormalFlagValue = z.enum(["L", "LL", "H", "HH", "A", "N"]);
 
 export const RefRange = z
   .object({
@@ -38,6 +39,10 @@ export const LabLedger_Base = z.object({
   source: LabSource.default("import"),
   status: LabStatus.default("final"),
   abnormalFlag: LabAbnormalFlag.optional().default(""),
+  sourceAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  derivedAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  overrideAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  effectiveAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   note: z.string().min(1).optional(), // non-PII operational note
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -58,6 +63,10 @@ export const LabCurrent_Base = z.object({
   source: LabSource.default("import"),
   status: LabStatus.default("final"),
   abnormalFlag: LabAbnormalFlag.optional().default(""),
+  sourceAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  derivedAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  overrideAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  effectiveAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   refRange: RefRange.optional(),
   ledgerId: objectIdHex,
   prevLedgerId: objectIdHex.nullable().optional(),
@@ -92,6 +101,10 @@ export const LabLedger_Update = z.object({
   source: LabSource.optional(),
   status: LabStatus.optional(),
   abnormalFlag: LabAbnormalFlag.optional(),
+  sourceAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  derivedAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  overrideAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
+  effectiveAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   note: z.string().min(1).optional(),
 });
 

@@ -18,27 +18,28 @@
 
 ## Fields
 
-| Field           |             Type | Required | Notes                                                                                                                                          |
-| --------------- | ---------------: | :------: | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `_id`           |         ObjectId |    ✅    | Primary key (PK)                                                                                                                               |
-| `orgId`         |           string |    ✅    | Tenant/organisation identifier                                                                                                                 |
-| `patientId`     |         ObjectId |    ✅    | Reference to `patients._id`                                                                                                                    |
-| `code`          |           string |    ✅    | Test code (prefer Logical Observation Identifiers Names and Codes (LOINC) or Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT)) |
-| `name`          |           string |    ✅    | Denormalised display name                                                                                                                      |
-| `value`         | number \| string |    ✅    | Latest value                                                                                                                                   |
-| `unit`          |   string \| null |    ⛔️    | Latest unit                                                                                                                                    |
-| `takenAt`       |             Date |    ✅    | Latest sample collection timestamp                                                                                                             |
-| `reportedAt`    |     Date \| null |    ⛔️    | Latest reported/authorised timestamp                                                                                                           |
-| `source`        |             enum |    ✅    | `import` \| `integration` \| `manual`                                                                                                          |
-| `status`        |             enum |    ✅    | `final` \| `corrected` \| `preliminary` \| `cancelled`                                                                                         |
-| `abnormalFlag`  |     enum \| null |    ⛔️    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` if supplied                                                                                           |
-| `ledgerId`      |         ObjectId |    ✅    | Pointer to the ledger row that produced this current value                                                                                     |
-| `prevLedgerId`  | ObjectId \| null |    ⛔️    | Optional pointer to prior ledger row replaced by this current value                                                                            |
-| `updatedReason` |   string \| null |    ⛔️    | Operational reason (e.g., “new import”, “correction applied”)                                                                                  |
-| `createdAt`     |             Date |    ✅    | Created timestamp                                                                                                                              |
-| `updatedAt`     |             Date |    ✅    | Updated timestamp                                                                                                                              |
-| `createdBy`     |           string |    ✅    | Principal identifier                                                                                                                           |
-| `updatedBy`     |           string |    ✅    | Principal identifier                                                                                                                           |
+| Field                 |             Type | Required | Notes                                                                                                                                          |
+| --------------------- | ---------------: | :------: | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                 |         ObjectId |    ✅    | Primary key (PK)                                                                                                                               |
+| `orgId`               |           string |    ✅    | Tenant/organisation identifier                                                                                                                 |
+| `patientId`           |         ObjectId |    ✅    | Reference to `patients._id`                                                                                                                    |
+| `code`                |           string |    ✅    | Test code (prefer Logical Observation Identifiers Names and Codes (LOINC) or Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT)) |
+| `name`                |           string |    ✅    | Denormalised display name                                                                                                                      |
+| `value`               | number \| string |    ✅    | Latest value                                                                                                                                   |
+| `unit`                |   string \| null |    ⛔️    | Latest unit                                                                                                                                    |
+| `takenAt`             |             Date |    ✅    | Latest sample collection timestamp                                                                                                             |
+| `reportedAt`          |     Date \| null |    ⛔️    | Latest reported/authorised timestamp                                                                                                           |
+| `source`              |             enum |    ✅    | `import` \| `integration` \| `manual`                                                                                                          |
+| `status`              |             enum |    ✅    | `final` \| `corrected` \| `preliminary` \| `cancelled`                                                                                         |
+| `sourceAbnormalFlag`  |     enum \| null |    ⛔️    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` if supplied by clinician                                                                              |
+| `derivedAbnormalFlag` |     enum \| null |    ✅    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` if calculated by app                                                                                  |
+| `ledgerId`            |         ObjectId |    ✅    | Pointer to the ledger row that produced this current value                                                                                     |
+| `prevLedgerId`        | ObjectId \| null |    ⛔️    | Optional pointer to prior ledger row replaced by this current value                                                                            |
+| `updatedReason`       |   string \| null |    ⛔️    | Operational reason (e.g., “new import”, “correction applied”)                                                                                  |
+| `createdAt`           |             Date |    ✅    | Created timestamp                                                                                                                              |
+| `updatedAt`           |             Date |    ✅    | Updated timestamp                                                                                                                              |
+| `createdBy`           |           string |    ✅    | Principal identifier                                                                                                                           |
+| `updatedBy`           |           string |    ✅    | Principal identifier                                                                                                                           |
 
 ## Example document
 
@@ -55,7 +56,8 @@
   "reportedAt": "2025-09-28T12:05:00.000Z",
   "source": "import",
   "status": "final",
-  "abnormalFlag": "L",
+  "sourceAbnormalFlag": null,
+  "derivedAbnormalFlag": "computed",
   "ledgerId": { "$oid": "66fb00a2e1b3d0c5a4f1d111" },
   "prevLedgerId": null,
   "updatedReason": "new import",

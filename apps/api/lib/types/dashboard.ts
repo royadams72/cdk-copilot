@@ -18,6 +18,9 @@ export type LabDoc = {
   reportedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  sourceAbnormalFlag?: string | null;
+  derivedAbnormalFlag?: string | null;
+  effectiveAbnormalFlag?: string | null;
   abnormalFlag?: string;
 };
 
