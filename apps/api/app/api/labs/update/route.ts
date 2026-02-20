@@ -43,6 +43,27 @@ function parseDate(value: unknown): Date | null {
   return parsed;
 }
 
+function parseRangeNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim();
+  if (!cleaned) return null;
+  const numeric = Number(cleaned);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseRefRange(item: Record<string, unknown>) {
+  const raw =
+    item.refRange && typeof item.refRange === "object"
+      ? (item.refRange as Record<string, unknown>)
+      : null;
+  const low = parseRangeNumber(item.refRangeLow ?? raw?.low);
+  const high = parseRangeNumber(item.refRangeHigh ?? raw?.high);
+  const text = cleanText(item.refRangeText ?? raw?.text) || null;
+  if (low === null && high === null && !text) return null;
+  return { high, low, text };
+}
+
 function valuesEqual(a: number | string, b: number | string) {
   if (typeof a === "number" && typeof b === "number") return a === b;
   return String(a).trim() === String(b).trim();
@@ -86,32 +107,11 @@ export async function PATCH(req: NextRequest) {
       const value = parseValue(item.value);
       const takenAt = parseDate(item.takenAt);
       const reportedAt = parseDate(item.reportedAt);
-      const low =
-        typeof item.refRangeLow === "number"
-          ? item.refRangeLow
-          : typeof item.refRangeLow === "string" && item.refRangeLow.trim()
-            ? Number(item.refRangeLow)
-            : null;
-      const high =
-        typeof item.refRangeHigh === "number"
-          ? item.refRangeHigh
-          : typeof item.refRangeHigh === "string" && item.refRangeHigh.trim()
-            ? Number(item.refRangeHigh)
-            : null;
-      const refRangeText = cleanText(item.refRangeText) || null;
+      const refRange = parseRefRange(item);
 
       if (!code || !name || value === null || !takenAt) {
         return bad("Each lab requires code, name, value, and takenAt", undefined, 400);
       }
-
-      const refRange =
-        low !== null || high !== null || refRangeText
-          ? {
-              high: Number.isFinite(high as number) ? (high as number) : null,
-              low: Number.isFinite(low as number) ? (low as number) : null,
-              text: refRangeText,
-            }
-          : null;
 
       const key = `${code}::${unit ?? ""}`;
       const prev = currentByKey.get(key);
@@ -151,4 +151,3 @@ export async function PATCH(req: NextRequest) {
     return bad(err?.message || "Server error", undefined, status);
   }
 }
-

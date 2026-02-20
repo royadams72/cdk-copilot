@@ -6,78 +6,96 @@ export type LabSource = "import" | "integration" | "manual";
 export type LabStatus = "final" | "corrected" | "preliminary" | "cancelled";
 
 export type LabRefRange = {
-  low?: number | null;
   high?: number | null;
+  low?: number | null;
   text?: string | null;
 };
 
 export type LabInput = {
   code: string;
-  name: string;
-  value: number | string;
-  unit?: string | null;
-  takenAt: Date;
-  reportedAt?: Date | null;
-  refRange?: LabRefRange | null;
-  source: LabSource;
-  status: LabStatus;
-  sourceAbnormalFlag?: LabAbnormalFlag | null;
-  latestReason?: string | null;
-  note?: string | null;
   correctionOf?: ObjectId | null;
+  latestReason?: string | null;
+  name: string;
+  note?: string | null;
+  refRange?: LabRefRange | null;
+  reportedAt?: Date | null;
+  source: LabSource;
+  sourceAbnormalFlag?: LabAbnormalFlag | null;
+  status: LabStatus;
+  takenAt: Date;
+  unit?: string | null;
+  value: number | string;
 };
 
 export type LabLedgerDoc = {
   _id: ObjectId;
-  orgId: string;
-  patientId: ObjectId;
+  abnormalFlag?: LabAbnormalFlag | null;
   code: string;
+  correctionOf?: ObjectId | null;
+  createdAt: Date;
+  createdBy: string;
+  derivedAbnormalFlag?: LabAbnormalFlag;
+  effectiveAbnormalFlag?: LabAbnormalFlag;
+  latestReason?: string | null;
   name: string;
-  value: number | string;
-  unit?: string | null;
+  note?: string | null;
+  orgId: string;
+  overrideAbnormalFlag?: LabAbnormalFlag;
+  patientId: ObjectId;
   refRange?: LabRefRange | null;
-  takenAt: Date;
   reportedAt?: Date | null;
   source: LabSource;
-  status: LabStatus;
-  latestReason?: string | null;
-  correctionOf?: ObjectId | null;
   sourceAbnormalFlag?: LabAbnormalFlag;
-  derivedAbnormalFlag?: LabAbnormalFlag;
-  overrideAbnormalFlag?: LabAbnormalFlag;
-  effectiveAbnormalFlag?: LabAbnormalFlag;
-  abnormalFlag?: LabAbnormalFlag | null;
-  note?: string | null;
-  createdAt: Date;
+  status: LabStatus;
+  takenAt: Date;
+  unit?: string | null;
   updatedAt: Date;
-  createdBy: string;
   updatedBy: string;
+  value: number | string;
 };
 
 type LabCurrentDoc = {
   _id: ObjectId;
-  orgId: string;
-  patientId: ObjectId;
+  abnormalFlag?: LabAbnormalFlag | null;
   code: string;
+  createdAt: Date;
+  createdBy: string;
+  derivedAbnormalFlag?: LabAbnormalFlag;
+  effectiveAbnormalFlag?: LabAbnormalFlag;
+  ledgerId: ObjectId;
   name: string;
-  value: number | string;
-  unit?: string | null;
-  takenAt: Date;
+  orgId: string;
+  overrideAbnormalFlag?: LabAbnormalFlag;
+  patientId: ObjectId;
+  prevLedgerId?: ObjectId | null;
+  refRange?: LabRefRange | null;
   reportedAt?: Date | null;
   source: LabSource;
-  status: LabStatus;
   sourceAbnormalFlag?: LabAbnormalFlag;
-  derivedAbnormalFlag?: LabAbnormalFlag;
-  overrideAbnormalFlag?: LabAbnormalFlag;
-  effectiveAbnormalFlag?: LabAbnormalFlag;
-  abnormalFlag?: LabAbnormalFlag | null;
-  ledgerId: ObjectId;
-  prevLedgerId?: ObjectId | null;
-  updatedReason?: string | null;
-  createdAt: Date;
+  status: LabStatus;
+  takenAt: Date;
+  unit?: string | null;
   updatedAt: Date;
-  createdBy: string;
   updatedBy: string;
+  updatedReason?: string | null;
+  value: number | string;
+};
+
+type ReferenceRangeDoc = {
+  criticalHigh?: number | null;
+  criticalLow?: number | null;
+  loincCode?: string;
+  lower?: number | null;
+  orgId?: string | null;
+  unit?: string | null;
+  upper?: number | null;
+  version?: number;
+};
+
+type ResolvedRange = {
+  criticalHigh: number | null;
+  criticalLow: number | null;
+  refRange: LabRefRange | null;
 };
 
 function toNumberValue(value: number | string): number | null {
@@ -89,20 +107,112 @@ function toNumberValue(value: number | string): number | null {
   return null;
 }
 
+function normalizeUnit(value?: string | null) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/µ/g, "u")
+    .replace(/\s+/g, "");
+}
+
+function pickBestReferenceRange(
+  candidates: ReferenceRangeDoc[],
+  unit?: string | null,
+): ReferenceRangeDoc | null {
+  if (candidates.length === 0) return null;
+  if (!unit) {
+    return candidates
+      .slice()
+      .sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
+  }
+  const target = normalizeUnit(unit);
+  const exact = candidates.filter(
+    (doc) => normalizeUnit(doc.unit ?? null) === target,
+  );
+  const pool = exact.length > 0 ? exact : candidates;
+  return pool
+    .slice()
+    .sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
+}
+
+async function resolveReferenceRangeSnapshot(
+  db: Db,
+  args: { loincCode: string; orgId?: string | null; unit?: string | null },
+): Promise<ResolvedRange | null> {
+  const { loincCode, orgId, unit } = args;
+  if (!loincCode) return null;
+
+  const projection = {
+    _id: 0,
+    criticalHigh: 1,
+    criticalLow: 1,
+    loincCode: 1,
+    lower: 1,
+    orgId: 1,
+    unit: 1,
+    upper: 1,
+    version: 1,
+  } as const;
+
+  let match: ReferenceRangeDoc | null = null;
+  if (orgId) {
+    const orgCandidates = await db
+      .collection<ReferenceRangeDoc>(COLLECTIONS.LabsReferenceRanges)
+      .find({ loincCode, orgId }, { projection })
+      .toArray();
+    match = pickBestReferenceRange(orgCandidates, unit);
+  }
+  if (!match) {
+    const fallbackCandidates = await db
+      .collection<ReferenceRangeDoc>(COLLECTIONS.LabsReferenceRanges)
+      .find({ loincCode }, { projection })
+      .toArray();
+    match = pickBestReferenceRange(fallbackCandidates, unit);
+  }
+  if (!match) return null;
+
+  const low = typeof match.lower === "number" ? match.lower : null;
+  const high = typeof match.upper === "number" ? match.upper : null;
+  const criticalLow =
+    typeof match.criticalLow === "number" ? match.criticalLow : null;
+  const criticalHigh =
+    typeof match.criticalHigh === "number" ? match.criticalHigh : null;
+  const refRange = low !== null || high !== null ? { low, high, text: null } : null;
+
+  return { criticalHigh, criticalLow, refRange };
+}
+
 export function deriveAbnormalFlag(
   value: number | string,
-  refRange?: LabRefRange | null,
+  range?: {
+    criticalHigh?: number | null;
+    criticalLow?: number | null;
+    high?: number | null;
+    low?: number | null;
+  } | null,
 ): LabAbnormalFlag | null {
-  if (!refRange) return null;
+  if (!range) return null;
   const num = toNumberValue(value);
   if (num === null) return null;
 
-  const low = typeof refRange.low === "number" ? refRange.low : null;
-  const high = typeof refRange.high === "number" ? refRange.high : null;
+  const low = typeof range.low === "number" ? range.low : null;
+  const high = typeof range.high === "number" ? range.high : null;
+  const criticalLow =
+    typeof range.criticalLow === "number" ? range.criticalLow : null;
+  const criticalHigh =
+    typeof range.criticalHigh === "number" ? range.criticalHigh : null;
 
+  if (criticalLow !== null && num < criticalLow) return "LL";
+  if (criticalHigh !== null && num > criticalHigh) return "HH";
   if (low !== null && num < low) return "L";
   if (high !== null && num > high) return "H";
-  if (low !== null || high !== null) return "N";
+  if (
+    low !== null ||
+    high !== null ||
+    criticalLow !== null ||
+    criticalHigh !== null
+  ) {
+    return "N";
+  }
   return null;
 }
 
@@ -120,15 +230,26 @@ function isMoreRecent(newer: LabLedgerDoc, current: LabCurrentDoc) {
 export async function writeLabLedgerAndCurrent(
   db: Db,
   args: {
+    input: LabInput;
     orgId: string;
     patientId: ObjectId;
     principalId: string;
-    input: LabInput;
   },
 ) {
   const { orgId, patientId, principalId, input } = args;
   const now = new Date();
-  const derivedAbnormalFlag = deriveAbnormalFlag(input.value, input.refRange);
+  const resolvedRange = await resolveReferenceRangeSnapshot(db, {
+    loincCode: input.code,
+    orgId,
+    unit: input.unit ?? null,
+  });
+  const effectiveRefRange = resolvedRange?.refRange ?? input.refRange ?? null;
+  const derivedAbnormalFlag = deriveAbnormalFlag(input.value, {
+    criticalHigh: resolvedRange?.criticalHigh ?? null,
+    criticalLow: resolvedRange?.criticalLow ?? null,
+    high: effectiveRefRange?.high ?? null,
+    low: effectiveRefRange?.low ?? null,
+  });
   const effectiveAbnormalFlag =
     input.sourceAbnormalFlag ?? derivedAbnormalFlag ?? null;
 
@@ -143,7 +264,7 @@ export async function writeLabLedgerAndCurrent(
     note: input.note ?? null,
     orgId,
     patientId,
-    refRange: input.refRange ?? null,
+    refRange: effectiveRefRange,
     reportedAt: input.reportedAt ?? null,
     source: input.source,
     status: input.status,
@@ -167,7 +288,9 @@ export async function writeLabLedgerAndCurrent(
     ledgerDoc.effectiveAbnormalFlag = effectiveAbnormalFlag;
   }
 
-  await db.collection<LabLedgerDoc>(COLLECTIONS.LabsLedger).insertOne(ledgerDoc);
+  await db
+    .collection<LabLedgerDoc>(COLLECTIONS.LabsLedger)
+    .insertOne(ledgerDoc);
 
   const currentFilter = {
     code: ledgerDoc.code,
@@ -182,7 +305,6 @@ export async function writeLabLedgerAndCurrent(
   if (existing && !isMoreRecent(ledgerDoc, existing)) {
     return { currentUpdated: false, ledgerId: ledgerDoc._id };
   }
-
   const currentDoc: Partial<LabCurrentDoc> = {
     code: ledgerDoc.code,
     createdAt: existing?.createdAt ?? now,
@@ -192,6 +314,7 @@ export async function writeLabLedgerAndCurrent(
     orgId,
     patientId,
     prevLedgerId: existing?.ledgerId ?? null,
+    refRange: ledgerDoc.refRange ?? null,
     reportedAt: ledgerDoc.reportedAt ?? null,
     source: ledgerDoc.source,
     status: ledgerDoc.status,

@@ -11,6 +11,7 @@ export const STACKED_COLORS = [
 export const LAB_CONFIG = [
   {
     id: "egfr",
+    codes: ["33914-3"],
     label: "eGFR",
     unit: "mL/min/1.73m²",
     precision: 0,
@@ -19,6 +20,7 @@ export const LAB_CONFIG = [
   },
   {
     id: "phosphorus",
+    codes: ["2777-1", "2778-9"],
     label: "Serum phosphorus",
     unit: "mg/dL",
     precision: 1,
@@ -27,6 +29,7 @@ export const LAB_CONFIG = [
   },
   {
     id: "potassium",
+    codes: ["2823-3"],
     label: "Serum potassium",
     unit: "mmol/L",
     precision: 1,

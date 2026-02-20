@@ -52,9 +52,11 @@
         "refRange": {
           "bsonType": ["object", "null"],
           "properties": {
-            "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+            "low": {
+              "bsonType": ["double", "int", "long", "decimal", "string", "null"]
+            },
             "high": {
-              "bsonType": ["double", "int", "long", "decimal", "null"]
+              "bsonType": ["double", "int", "long", "decimal", "string", "null"]
             },
             "text": { "bsonType": ["string", "null"] }
           },

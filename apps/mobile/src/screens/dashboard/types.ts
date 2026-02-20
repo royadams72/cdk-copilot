@@ -71,6 +71,7 @@ export type NutritionMealEntry = {
 };
 
 export type LabSummary = {
+  code: string;
   id: string;
   label: string;
   value: number | null;
@@ -92,7 +93,10 @@ export type DashboardData = {
     dialysisStatus: string | null;
     lastClinicalUpdateAt: string | null;
   };
-  labs: Record<string, LabSummary | null>;
+  labs: {
+    tracked: Record<string, LabSummary | null>;
+    recent: LabSummary[];
+  };
   medications: {
     activeCount: number;
     totalCount: number;

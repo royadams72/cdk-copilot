@@ -38,14 +38,6 @@ type CurrentLabResponse = {
   }>;
 };
 
-type ReferenceRangeResponse = {
-  items: Array<{
-    code: string;
-    name: string;
-    unit: string;
-  }>;
-};
-
 function buildDefaultLabs(baseDate: Date) {
   return LAB_DEFINITIONS.map((lab) => ({
     code: lab.code,
@@ -86,61 +78,6 @@ export default function AddLabs() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      try {
-        const res = await authFetch(`${API}/api/labs/reference-ranges`, {
-          method: "GET",
-        });
-        const body = (await res.json().catch(() => null)) as
-          | { ok?: boolean; data?: ReferenceRangeResponse }
-          | null;
-        if (!res.ok || !body?.ok) return;
-        if (cancelled) return;
-
-        const items = body.data?.items ?? [];
-        const mergedItems = [
-          ...items,
-          ...LAB_DEFINITIONS.map((lab) => ({
-            code: lab.code,
-            name: lab.name,
-            unit: lab.unit,
-          })),
-        ];
-        if (!mergedItems.length) return;
-        setLabs((prev) => {
-          const previousByCode = new Map(prev.map((item) => [item.code, item] as const));
-          const seen = new Set<string>();
-          return mergedItems
-            .filter((item) => {
-              if (!item.code || seen.has(item.code)) return false;
-              seen.add(item.code);
-              return true;
-            })
-            .map((item) => {
-            const existing = previousByCode.get(item.code);
-            return {
-              code: item.code,
-              hasCustomDate: existing?.hasCustomDate ?? false,
-              name: item.name,
-              precision: existing?.precision ?? 1,
-              takenAt: existing?.takenAt ?? today,
-              unit: item.unit,
-              value: existing?.value ?? "",
-            };
-          });
-        });
-      } catch {
-        // Keep local defaults if range list fetch fails.
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [today]);
 
   useEffect(() => {
     if (!isEdit) return;

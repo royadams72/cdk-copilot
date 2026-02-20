@@ -70,18 +70,33 @@ export function LabsCard({
   onEdit,
   onHistory,
 }: {
-  labs: Record<string, LabSummary | null>;
+  labs: {
+    tracked: Record<string, LabSummary | null>;
+    recent: LabSummary[];
+  };
   onAdd: () => void;
   onEdit: () => void;
   onHistory: () => void;
 }) {
+  const displayLabs =
+    labs.recent?.length > 0
+      ? labs.recent.slice(0, 3)
+      : Object.values(labs.tracked ?? {})
+          .filter((lab): lab is LabSummary => !!lab)
+          .slice(0, 3);
+
   return (
     <Card>
       <ThemedText type="defaultSemiBold">Latest labs</ThemedText>
-      {LAB_CONFIG.map((config) => {
-        const lab = labs?.[config.id];
+      {displayLabs.map((lab, index) => {
+        const config =
+          LAB_CONFIG.find((item) =>
+            item.codes.some((code) => code.toLowerCase() === lab.code.toLowerCase()),
+          ) ??
+          LAB_CONFIG.find((item) => item.label.toLowerCase() === lab.label.toLowerCase());
+
         const value = lab?.value ?? null;
-        const range = resolveRange(lab, config.normalLow, config.normalHigh);
+        const range = resolveRange(lab, config?.normalLow, config?.normalHigh);
         const { min, max, normalLow, normalHigh } = computeScale(
           value,
           range.low,
@@ -109,7 +124,7 @@ export function LabsCard({
 
         return (
           <View
-            key={config.id}
+            key={`${lab.code || lab.id}-${lab.takenAt ?? index}`}
             style={{
               borderTopWidth: 1,
               borderColor: "rgba(148,163,184,0.35)",
@@ -127,11 +142,11 @@ export function LabsCard({
             >
               <View style={{ flex: 1 }}>
                 <ThemedText style={{ fontSize: 17, fontWeight: "600" }}>
-                  {config.label}
+                  {lab.label}
                 </ThemedText>
                 <ThemedText style={{ opacity: 0.72, fontSize: 13 }}>
                   {range.low !== null && range.high !== null
-                    ? `Normal range: ${formatDecimal(range.low, config.precision)} - ${formatDecimal(range.high, config.precision)} ${lab?.unit ?? config.unit}`
+                    ? `Normal range: ${formatDecimal(range.low, config?.precision ?? 1)} - ${formatDecimal(range.high, config?.precision ?? 1)} ${lab?.unit ?? config?.unit ?? ""}`
                     : range.text ?? "Reference range unavailable"}
                 </ThemedText>
                 <ThemedText style={{ opacity: 0.68, fontSize: 12, marginTop: 2 }}>
@@ -161,7 +176,7 @@ export function LabsCard({
                     }}
                   >
                     <ThemedText style={{ color: "white", fontWeight: "700" }}>
-                      {value !== null ? formatDecimal(value, config.precision) : "—"}
+                      {value !== null ? formatDecimal(value, config?.precision ?? 1) : "—"}
                     </ThemedText>
                   </View>
                   {!!status && (
@@ -173,7 +188,7 @@ export function LabsCard({
                   )}
                 </View>
                 <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
-                  {lab?.unit ?? config.unit}
+                  {lab?.unit ?? config?.unit ?? ""}
                 </ThemedText>
               </View>
             </View>
@@ -232,10 +247,10 @@ export function LabsCard({
                   }}
                 >
                   <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                    {formatDecimal(range.low, config.precision)}
+                    {formatDecimal(range.low, config?.precision ?? 1)}
                   </ThemedText>
                   <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                    {formatDecimal(range.high, config.precision)}
+                    {formatDecimal(range.high, config?.precision ?? 1)}
                   </ThemedText>
                 </View>
               )}
@@ -243,6 +258,9 @@ export function LabsCard({
           </View>
         );
       })}
+      {displayLabs.length === 0 ? (
+        <ThemedText style={{ opacity: 0.7 }}>No recent lab results yet.</ThemedText>
+      ) : null}
       <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <TouchableOpacity
           onPress={onAdd}
