@@ -34,11 +34,12 @@ export const LabLedger_Base = z.object({
   value: z.union([z.number(), z.string().min(1)]),
   unit: z.string().min(1).optional(), // e.g. mL/min/1.73m²
   refRange: RefRange.optional(),
+  derivedFromRangeId: objectIdHex.nullable().optional(),
+  derivedFromRangeVersion: z.union([z.string(), z.number()]).nullable().optional(),
   takenAt: z.date().nullable(),
   reportedAt: z.date().optional().nullable(),
   source: LabSource.default("import"),
   status: LabStatus.default("final"),
-  abnormalFlag: LabAbnormalFlag.optional().default(""),
   sourceAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   derivedAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   overrideAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
@@ -62,7 +63,6 @@ export const LabCurrent_Base = z.object({
   reportedAt: z.date().nullable().optional(),
   source: LabSource.default("import"),
   status: LabStatus.default("final"),
-  abnormalFlag: LabAbnormalFlag.optional().default(""),
   sourceAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   derivedAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   overrideAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
@@ -75,6 +75,19 @@ export const LabCurrent_Base = z.object({
   updatedAt: z.date(),
   createdBy: PrincipalId,
   updatedBy: PrincipalId,
+}).superRefine((doc, ctx) => {
+  const hasNonDerivedFlag =
+    doc.overrideAbnormalFlag !== null && doc.overrideAbnormalFlag !== undefined
+      ? true
+      : doc.sourceAbnormalFlag !== null && doc.sourceAbnormalFlag !== undefined;
+  if (hasNonDerivedFlag && doc.derivedAbnormalFlag !== null && doc.derivedAbnormalFlag !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "derivedAbnormalFlag must be null when sourceAbnormalFlag or overrideAbnormalFlag is set",
+      path: ["derivedAbnormalFlag"],
+    });
+  }
 });
 
 // For creates: server usually sets _id/createdAt/updatedAt/createdBy/updatedBy
@@ -100,7 +113,8 @@ export const LabLedger_Update = z.object({
   reportedAt: z.date().optional(),
   source: LabSource.optional(),
   status: LabStatus.optional(),
-  abnormalFlag: LabAbnormalFlag.optional(),
+  derivedFromRangeId: objectIdHex.nullable().optional(),
+  derivedFromRangeVersion: z.union([z.string(), z.number()]).nullable().optional(),
   sourceAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   derivedAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
   overrideAbnormalFlag: LabAbnormalFlagValue.nullable().optional(),
@@ -122,6 +136,8 @@ export const LabFormEntry = LabLedger_Base.omit({
   updatedAt: true,
   createdBy: true,
   updatedBy: true,
+  derivedFromRangeId: true,
+  derivedFromRangeVersion: true,
   refRange: true,
   orgId: true,
   patientId: true,

@@ -15,6 +15,7 @@
 - **Write path:** whenever a new ledger entry is inserted into `labs_ledger`, upsert `labs_current` if the new entry is more recent (`takenAt`, then `reportedAt`).
 - **Source of truth:** `labs_ledger` is canonical; `labs_current` is derived.
 - **Corrections:** if a ledger row is `status="corrected"`, the current doc should point to the correcting row (and optionally keep `prevLedgerId`).
+- **Flags:** UI/alerts should read `effectiveAbnormalFlag`. `derivedAbnormalFlag` must be `null` when `overrideAbnormalFlag` or `sourceAbnormalFlag` is present.
 
 ## Fields
 
@@ -32,7 +33,9 @@
 | `source`              |             enum |    ✅    | `import` \| `integration` \| `manual`                                                                                                          |
 | `status`              |             enum |    ✅    | `final` \| `corrected` \| `preliminary` \| `cancelled`                                                                                         |
 | `sourceAbnormalFlag`  |     enum \| null |    ⛔️    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` if supplied by clinician                                                                              |
-| `derivedAbnormalFlag` |     enum \| null |    ✅    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` if calculated by app                                                                                  |
+| `derivedAbnormalFlag` |     enum \| null |    ⛔️    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` only when effective flag comes from derivation                                                        |
+| `overrideAbnormalFlag` |    enum \| null |    ⛔️    | Clinician override; takes precedence over source and derived                                                                                     |
+| `effectiveAbnormalFlag` |   enum \| null |    ⛔️    | Effective flag used by UI/alerts: `override ?? source ?? derived`                                                                               |
 | `ledgerId`            |         ObjectId |    ✅    | Pointer to the ledger row that produced this current value                                                                                     |
 | `prevLedgerId`        | ObjectId \| null |    ⛔️    | Optional pointer to prior ledger row replaced by this current value                                                                            |
 | `updatedReason`       |   string \| null |    ⛔️    | Operational reason (e.g., “new import”, “correction applied”)                                                                                  |
@@ -57,7 +60,9 @@
   "source": "import",
   "status": "final",
   "sourceAbnormalFlag": null,
-  "derivedAbnormalFlag": "computed",
+  "overrideAbnormalFlag": null,
+  "derivedAbnormalFlag": "LL",
+  "effectiveAbnormalFlag": "LL",
   "ledgerId": { "$oid": "66fb00a2e1b3d0c5a4f1d111" },
   "prevLedgerId": null,
   "updatedReason": "new import",

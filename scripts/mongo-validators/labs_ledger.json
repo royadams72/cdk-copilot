@@ -14,7 +14,7 @@
       "options": { "name": "byOrgPatient_time" }
     },
     {
-      "key": { "orgId": 1, "abnormalFlag": 1, "takenAt": -1 },
+      "key": { "orgId": 1, "effectiveAbnormalFlag": 1, "takenAt": -1 },
       "options": { "name": "abnormal_review" }
     },
     {
@@ -81,6 +81,10 @@
             "text": { "bsonType": ["string", "null"] }
           },
           "additionalProperties": false
+        },
+        "derivedFromRangeId": { "bsonType": ["objectId", "null"] },
+        "derivedFromRangeVersion": {
+          "bsonType": ["string", "double", "int", "long", "decimal", "null"]
         },
         "takenAt": { "bsonType": "date" },
         "reportedAt": { "bsonType": ["date", "null"] },

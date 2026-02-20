@@ -105,7 +105,27 @@
         "createdBy": { "bsonType": "string" },
         "updatedBy": { "bsonType": "string" }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "not": {
+            "required": ["sourceAbnormalFlag", "derivedAbnormalFlag"],
+            "properties": {
+              "sourceAbnormalFlag": { "bsonType": "string" },
+              "derivedAbnormalFlag": { "bsonType": "string" }
+            }
+          }
+        },
+        {
+          "not": {
+            "required": ["overrideAbnormalFlag", "derivedAbnormalFlag"],
+            "properties": {
+              "overrideAbnormalFlag": { "bsonType": "string" },
+              "derivedAbnormalFlag": { "bsonType": "string" }
+            }
+          }
+        }
+      ]
     }
   }
 }

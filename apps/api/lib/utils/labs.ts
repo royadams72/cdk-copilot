@@ -17,6 +17,7 @@ export type LabInput = {
   latestReason?: string | null;
   name: string;
   note?: string | null;
+  overrideAbnormalFlag?: LabAbnormalFlag | null;
   refRange?: LabRefRange | null;
   reportedAt?: Date | null;
   source: LabSource;
@@ -29,12 +30,13 @@ export type LabInput = {
 
 export type LabLedgerDoc = {
   _id: ObjectId;
-  abnormalFlag?: LabAbnormalFlag | null;
   code: string;
   correctionOf?: ObjectId | null;
   createdAt: Date;
   createdBy: string;
   derivedAbnormalFlag?: LabAbnormalFlag;
+  derivedFromRangeId?: ObjectId | null;
+  derivedFromRangeVersion?: string | number | null;
   effectiveAbnormalFlag?: LabAbnormalFlag;
   latestReason?: string | null;
   name: string;
@@ -56,22 +58,21 @@ export type LabLedgerDoc = {
 
 type LabCurrentDoc = {
   _id: ObjectId;
-  abnormalFlag?: LabAbnormalFlag | null;
   code: string;
   createdAt: Date;
   createdBy: string;
-  derivedAbnormalFlag?: LabAbnormalFlag;
-  effectiveAbnormalFlag?: LabAbnormalFlag;
+  derivedAbnormalFlag?: LabAbnormalFlag | null;
+  effectiveAbnormalFlag?: LabAbnormalFlag | null;
   ledgerId: ObjectId;
   name: string;
   orgId: string;
-  overrideAbnormalFlag?: LabAbnormalFlag;
+  overrideAbnormalFlag?: LabAbnormalFlag | null;
   patientId: ObjectId;
   prevLedgerId?: ObjectId | null;
   refRange?: LabRefRange | null;
   reportedAt?: Date | null;
   source: LabSource;
-  sourceAbnormalFlag?: LabAbnormalFlag;
+  sourceAbnormalFlag?: LabAbnormalFlag | null;
   status: LabStatus;
   takenAt: Date;
   unit?: string | null;
@@ -82,12 +83,14 @@ type LabCurrentDoc = {
 };
 
 type ReferenceRangeDoc = {
+  _id?: ObjectId;
   criticalHigh?: number | null;
   criticalLow?: number | null;
   loincCode?: string;
   lower?: number | null;
   orgId?: string | null;
   unit?: string | null;
+  updatedAt?: Date | string;
   upper?: number | null;
   version?: number;
 };
@@ -95,6 +98,8 @@ type ReferenceRangeDoc = {
 type ResolvedRange = {
   criticalHigh: number | null;
   criticalLow: number | null;
+  rangeId: ObjectId | null;
+  rangeVersion: string | number | null;
   refRange: LabRefRange | null;
 };
 
@@ -142,12 +147,13 @@ async function resolveReferenceRangeSnapshot(
   if (!loincCode) return null;
 
   const projection = {
-    _id: 0,
+    _id: 1,
     criticalHigh: 1,
     criticalLow: 1,
     loincCode: 1,
     lower: 1,
     orgId: 1,
+    updatedAt: 1,
     unit: 1,
     upper: 1,
     version: 1,
@@ -176,9 +182,18 @@ async function resolveReferenceRangeSnapshot(
     typeof match.criticalLow === "number" ? match.criticalLow : null;
   const criticalHigh =
     typeof match.criticalHigh === "number" ? match.criticalHigh : null;
+  const rangeId = match._id ?? null;
+  const rangeVersion =
+    typeof match.version === "number"
+      ? match.version
+      : match.updatedAt instanceof Date
+        ? match.updatedAt.toISOString()
+        : typeof match.updatedAt === "string"
+          ? match.updatedAt
+          : null;
   const refRange = low !== null || high !== null ? { low, high, text: null } : null;
 
-  return { criticalHigh, criticalLow, refRange };
+  return { criticalHigh, criticalLow, rangeId, rangeVersion, refRange };
 }
 
 export function deriveAbnormalFlag(
@@ -250,8 +265,14 @@ export async function writeLabLedgerAndCurrent(
     high: effectiveRefRange?.high ?? null,
     low: effectiveRefRange?.low ?? null,
   });
+  const overrideAbnormalFlag = input.overrideAbnormalFlag ?? null;
+  const sourceAbnormalFlag = input.sourceAbnormalFlag ?? null;
+  const effectiveDerivedAbnormalFlag =
+    overrideAbnormalFlag !== null || sourceAbnormalFlag !== null
+      ? null
+      : derivedAbnormalFlag;
   const effectiveAbnormalFlag =
-    input.sourceAbnormalFlag ?? derivedAbnormalFlag ?? null;
+    overrideAbnormalFlag ?? sourceAbnormalFlag ?? effectiveDerivedAbnormalFlag ?? null;
 
   const ledgerDoc: LabLedgerDoc = {
     _id: new ObjectId(),
@@ -274,18 +295,26 @@ export async function writeLabLedgerAndCurrent(
     updatedBy: principalId,
     value: input.value,
   };
-  if (effectiveAbnormalFlag) {
-    ledgerDoc.abnormalFlag = effectiveAbnormalFlag;
-  }
   // Keep compatibility with older validators: only persist optional abnormal fields when present.
-  if (input.sourceAbnormalFlag) {
-    ledgerDoc.sourceAbnormalFlag = input.sourceAbnormalFlag;
+  if (sourceAbnormalFlag !== null) {
+    ledgerDoc.sourceAbnormalFlag = sourceAbnormalFlag;
   }
-  if (derivedAbnormalFlag) {
-    ledgerDoc.derivedAbnormalFlag = derivedAbnormalFlag;
+  if (effectiveDerivedAbnormalFlag !== null) {
+    ledgerDoc.derivedAbnormalFlag = effectiveDerivedAbnormalFlag;
   }
-  if (effectiveAbnormalFlag) {
+  if (overrideAbnormalFlag !== null) {
+    ledgerDoc.overrideAbnormalFlag = overrideAbnormalFlag;
+  }
+  if (effectiveAbnormalFlag !== null) {
     ledgerDoc.effectiveAbnormalFlag = effectiveAbnormalFlag;
+  }
+  if (
+    effectiveDerivedAbnormalFlag !== null &&
+    effectiveAbnormalFlag === effectiveDerivedAbnormalFlag &&
+    resolvedRange?.rangeId
+  ) {
+    ledgerDoc.derivedFromRangeId = resolvedRange.rangeId;
+    ledgerDoc.derivedFromRangeVersion = resolvedRange.rangeVersion ?? null;
   }
 
   await db
@@ -325,17 +354,25 @@ export async function writeLabLedgerAndCurrent(
     updatedReason: ledgerDoc.latestReason ?? "new result",
     value: ledgerDoc.value,
   };
-  if (ledgerDoc.effectiveAbnormalFlag) {
-    currentDoc.abnormalFlag = ledgerDoc.effectiveAbnormalFlag;
+  if (ledgerDoc.overrideAbnormalFlag) {
+    currentDoc.overrideAbnormalFlag = ledgerDoc.overrideAbnormalFlag;
+  } else {
+    currentDoc.overrideAbnormalFlag = null;
   }
   if (ledgerDoc.sourceAbnormalFlag) {
     currentDoc.sourceAbnormalFlag = ledgerDoc.sourceAbnormalFlag;
+  } else {
+    currentDoc.sourceAbnormalFlag = null;
   }
   if (ledgerDoc.derivedAbnormalFlag) {
     currentDoc.derivedAbnormalFlag = ledgerDoc.derivedAbnormalFlag;
+  } else {
+    currentDoc.derivedAbnormalFlag = null;
   }
   if (ledgerDoc.effectiveAbnormalFlag) {
     currentDoc.effectiveAbnormalFlag = ledgerDoc.effectiveAbnormalFlag;
+  } else {
+    currentDoc.effectiveAbnormalFlag = null;
   }
 
   await db

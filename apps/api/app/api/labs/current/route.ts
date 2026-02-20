@@ -63,9 +63,10 @@ export async function GET(req: NextRequest) {
 
     return ok({
       items: docs.map((doc) => ({
-        abnormalFlag: doc.effectiveAbnormalFlag ?? null,
+        abnormalFlag: doc.effectiveAbnormalFlag ?? null, // Backward compatibility.
         code: doc.code,
         currentId: doc._id.toString(),
+        effectiveAbnormalFlag: doc.effectiveAbnormalFlag ?? null,
         id: doc._id.toString(),
         latestReason: doc.latestReason ?? null,
         ledgerId: doc.ledgerId?.toString() ?? null,
@@ -87,4 +88,3 @@ export async function GET(req: NextRequest) {
     return bad(err?.message || "Server error", undefined, status);
   }
 }
-

@@ -296,7 +296,6 @@ function formatLab(
     doc.effectiveAbnormalFlag ??
     doc.sourceAbnormalFlag ??
     doc.derivedAbnormalFlag ??
-    doc.abnormalFlag ??
     null;
   return {
     code: doc.code ?? "",

@@ -17,6 +17,7 @@
   - `derivedAbnormalFlag` is computed by CKD Copilot from the reference range snapshot / range record.
   - `overrideAbnormalFlag` is a clinician override for that specific reading.
   - `effectiveAbnormalFlag` is stored for fast reads and equals: `overrideAbnormalFlag ?? sourceAbnormalFlag ?? derivedAbnormalFlag`.
+  - `derivedFromRangeId` / `derivedFromRangeVersion` are only written when `derivedAbnormalFlag` is the chosen `effectiveAbnormalFlag`.
   - Do not change historical rows because ranges change; write a correction row when needed.
   - **Update rule:** Only a trusted integration source may set `sourceAbnormalFlag`, and only a clinician may set or change `overrideAbnormalFlag`. Patients and automated derivation logic must never directly modify these fields; they may only influence `derivedAbnormalFlag` via recalculation and must write a correction row if interpretation changes.
 - **Codes:** prefer **Logical Observation Identifiers Names and Codes (LOINC)**, otherwise **Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT)**.
@@ -37,7 +38,7 @@
 | `refRange.high`           |           number \| null |    ⛔️    | Upper bound                                                                                  |
 | `refRange.text`           |           string \| null |    ⛔️    | Human text (e.g., `A2: 3–30 mg/mmol`)                                                        |
 | `derivedFromRangeId`      |         ObjectId \| null |    ⛔️    | Reference to `labs_reference_ranges` record used to derive flags (if applicable)             |
-| `derivedFromRangeVersion` | string \| number \| null |    ⛔️    | Optional version/hash of the range record used (for audit/debug)(`labs_ref_ranges`updatedAt) |
+| `derivedFromRangeVersion` | string \| number \| null |    ⛔️    | Optional range version (fallback: range `updatedAt` ISO string)                                |
 | `takenAt`                 |                     Date |    ✅    | Sample collection timestamp                                                                  |
 | `reportedAt`              |             Date \| null |    ⛔️    | Reported/authorised timestamp                                                                |
 | `source`                  |                     enum |    ✅    | `import` \| `integration` \| `manual` (default: `import`)                                    |
@@ -70,14 +71,14 @@
     "high": null,
     "text": "Below 60 may indicate reduced kidney function"
   },
-  "derivedFromRangeId": null,
-  "derivedFromRangeVersion": null,
+  "derivedFromRangeId": { "$oid": "66fb00a2e1b3d0c5a4f1d999" },
+  "derivedFromRangeVersion": 3,
   "derivedAbnormalFlag": "L",
   "takenAt": "2025-09-28T08:30:00.000Z",
   "reportedAt": "2025-09-28T12:05:00.000Z",
   "source": "import",
   "status": "final",
-  "sourceAbnormalFlag": "L",
+  "sourceAbnormalFlag": null,
   "overrideAbnormalFlag": null,
   "effectiveAbnormalFlag": "L",
   "latestReason": null,
