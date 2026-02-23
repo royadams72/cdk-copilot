@@ -20,7 +20,7 @@ import {
 
 import { styles } from "./styles";
 import { Card } from "./components/Card";
-import { LabsCard } from "./components/LabsCard";
+import { LabsCard } from "../labs/components/LabsCard";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { RatioCard } from "./components/RatioCard";
@@ -122,7 +122,14 @@ export default function Dashboard() {
             />
           )}
 
-          {data && <LabsCard labs={data.labs} />}
+          {data && (
+            <LabsCard
+              labs={data.labs}
+              onAdd={() => router.push("/(labs)/add-labs")}
+              onEdit={() => router.push("/(labs)/labs-history?mode=edit")}
+              onHistory={() => router.push("/(labs)/labs-history")}
+            />
+          )}
         </>
       )}
     </ScrollView>

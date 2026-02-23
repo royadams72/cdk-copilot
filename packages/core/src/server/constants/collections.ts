@@ -25,6 +25,8 @@ export const COLLECTIONS = {
   FitPlans: "fit_plans",
 
   LabsLedger: "labs_ledger",
+  LabsCurrent: "labs_current",
+  LabsReferenceRanges: "labs_reference_ranges",
   MeasurementsLedger: "measurements_ledger",
   MedicationsCurrent: "medications_current",
   MedicationsLedger: "medications_ledger",

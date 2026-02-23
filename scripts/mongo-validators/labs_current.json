@@ -1,0 +1,131 @@
+{
+  "collMod": "labs_current",
+  "indexes": [
+    {
+      "key": { "orgId": 1, "patientId": 1, "code": 1, "unit": 1 },
+      "options": { "name": "uniq_current_byOrgPatientCodeUnit", "unique": true }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1 },
+      "options": { "name": "byOrgPatient" }
+    },
+    {
+      "key": { "orgId": 1, "code": 1 },
+      "options": { "name": "byOrgCode" }
+    },
+    {
+      "key": { "ledgerId": 1 },
+      "options": { "name": "byLedgerId" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "code",
+        "name",
+        "value",
+        "takenAt",
+        "source",
+        "status",
+        "ledgerId",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+
+        "code": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+
+        "value": { "bsonType": ["double", "string", "int", "long", "decimal"] },
+        "unit": { "bsonType": ["string", "null"] },
+        "refRange": {
+          "bsonType": ["object", "null"],
+          "properties": {
+            "low": {
+              "bsonType": ["double", "int", "long", "decimal", "string", "null"]
+            },
+            "high": {
+              "bsonType": ["double", "int", "long", "decimal", "string", "null"]
+            },
+            "text": { "bsonType": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "sourceAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "derivedAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "overrideAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "effectiveAbnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+        "takenAt": { "bsonType": "date" },
+        "reportedAt": { "bsonType": ["date", "null"] },
+
+        "source": {
+          "bsonType": "string",
+          "enum": ["import", "integration", "manual"]
+        },
+        "status": {
+          "bsonType": "string",
+          "enum": ["final", "corrected", "preliminary", "cancelled"]
+        },
+
+        "abnormalFlag": {
+          "bsonType": ["string", "null"],
+          "enum": ["L", "LL", "H", "HH", "A", "N", null]
+        },
+
+        "ledgerId": { "bsonType": "objectId" },
+        "prevLedgerId": { "bsonType": ["objectId", "null"] },
+
+        "updatedReason": { "bsonType": ["string", "null"] },
+
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "not": {
+            "required": ["sourceAbnormalFlag", "derivedAbnormalFlag"],
+            "properties": {
+              "sourceAbnormalFlag": { "bsonType": "string" },
+              "derivedAbnormalFlag": { "bsonType": "string" }
+            }
+          }
+        },
+        {
+          "not": {
+            "required": ["overrideAbnormalFlag", "derivedAbnormalFlag"],
+            "properties": {
+              "overrideAbnormalFlag": { "bsonType": "string" },
+              "derivedAbnormalFlag": { "bsonType": "string" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -4,12 +4,23 @@ import { RADIAL_METRICS } from "../../app/api/dashboard/route";
 
 export type LabDoc = {
   _id: ObjectId;
+  ledgerId?: ObjectId;
   code?: string;
   name?: string;
   value?: number | string;
   unit?: string;
+  refRange?: {
+    low?: number | null;
+    high?: number | null;
+    text?: string | null;
+  } | null;
   takenAt?: Date;
+  reportedAt?: Date;
   createdAt?: Date;
+  updatedAt?: Date;
+  sourceAbnormalFlag?: string | null;
+  derivedAbnormalFlag?: string | null;
+  effectiveAbnormalFlag?: string | null;
   abnormalFlag?: string;
 };
 

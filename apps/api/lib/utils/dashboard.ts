@@ -22,9 +22,135 @@ import {
 } from "../types/dashboard";
 import type { MedicationCurrentDoc } from "../types/dashboard";
 
+type ReferenceRangeDoc = {
+  ageMax?: number;
+  ageMin?: number;
+  loincCode?: string;
+  lower?: number | null;
+  sex?: "male" | "female" | "any";
+  testName?: string;
+  unit?: string;
+  upper?: number | null;
+};
+
+function normalizeUnit(value?: string) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/µ/g, "u")
+    .replace(/\s+/g, "");
+}
+
+function hasRefRange(doc: LabDoc) {
+  return (
+    typeof doc.refRange?.low === "number" ||
+    typeof doc.refRange?.high === "number" ||
+    !!doc.refRange?.text
+  );
+}
+
+async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
+  const needs = docs.filter(
+    (doc) => !hasRefRange(doc) && !!doc.code && !!doc.unit,
+  );
+  if (needs.length === 0) return docs;
+
+  const codes = Array.from(
+    new Set(needs.map((doc) => doc.code).filter((v): v is string => !!v)),
+  );
+  if (codes.length === 0) return docs;
+
+  const refs = await db
+    .collection<ReferenceRangeDoc>("labs_reference_ranges")
+    .find(
+      { loincCode: { $in: codes } },
+      {
+        projection: {
+          _id: 0,
+          ageMax: 1,
+          ageMin: 1,
+          loincCode: 1,
+          lower: 1,
+          sex: 1,
+          testName: 1,
+          unit: 1,
+          upper: 1,
+        },
+      },
+    )
+    .toArray();
+
+  const byCode = new Map<string, ReferenceRangeDoc[]>();
+  for (const ref of refs) {
+    const code = ref.loincCode;
+    if (!code) continue;
+    const list = byCode.get(code) ?? [];
+    list.push(ref);
+    byCode.set(code, list);
+  }
+
+  const assumedAge = 18;
+  return docs.map((doc) => {
+    if (hasRefRange(doc) || !doc.code || !doc.unit) return doc;
+
+    const candidates = byCode.get(doc.code) ?? [];
+    if (!candidates.length) return doc;
+
+    const unitNorm = normalizeUnit(doc.unit);
+    const match =
+      candidates.find((ref) => {
+        if (normalizeUnit(ref.unit) !== unitNorm) return false;
+        const sexOk = !ref.sex || ref.sex === "any";
+        const ageMin = typeof ref.ageMin === "number" ? ref.ageMin : 0;
+        const ageMax = typeof ref.ageMax === "number" ? ref.ageMax : 200;
+        return sexOk && assumedAge >= ageMin && assumedAge <= ageMax;
+      }) ??
+      candidates.find((ref) => normalizeUnit(ref.unit) === unitNorm);
+
+    if (!match) return doc;
+    return {
+      ...doc,
+      refRange: {
+        high: typeof match.upper === "number" ? match.upper : null,
+        low: typeof match.lower === "number" ? match.lower : null,
+        text:
+          typeof match.lower === "number" || typeof match.upper === "number"
+            ? null
+            : null,
+      },
+    };
+  });
+}
+
 export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
-  return db
-    .collection(COLLECTIONS.LabsLedger)
+  const current = await db
+    .collection<LabDoc>(COLLECTIONS.LabsCurrent)
+    .find(
+      { patientId },
+      {
+        projection: {
+          abnormalFlag: 1,
+          code: 1,
+          derivedAbnormalFlag: 1,
+          effectiveAbnormalFlag: 1,
+          name: 1,
+          refRange: 1,
+          reportedAt: 1,
+          sourceAbnormalFlag: 1,
+          takenAt: 1,
+          unit: 1,
+          value: 1,
+        },
+      },
+    )
+    .sort({ takenAt: -1, reportedAt: -1, updatedAt: -1 })
+    .limit(200)
+    .toArray();
+  if (current.length > 0) {
+    return hydrateRefRanges(db, current);
+  }
+
+  const ledger = await db
+    .collection<LabDoc>(COLLECTIONS.LabsLedger)
     .find(
       { patientId },
       {
@@ -32,7 +158,12 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
           abnormalFlag: 1,
           code: 1,
           createdAt: 1,
+          derivedAbnormalFlag: 1,
+          effectiveAbnormalFlag: 1,
           name: 1,
+          refRange: 1,
+          reportedAt: 1,
+          sourceAbnormalFlag: 1,
           takenAt: 1,
           unit: 1,
           value: 1,
@@ -42,6 +173,7 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
     .sort({ createdAt: -1, takenAt: -1 })
     .limit(200)
     .toArray();
+  return hydrateRefRanges(db, ledger);
 }
 export async function fetchNutritionEntries(db: Db, patientId: ObjectId) {
   return db
@@ -103,7 +235,17 @@ export function summarizeLabs(labs: LabDoc[]) {
   for (const config of TRACKED_LABS) {
     summary[config.id] = latestById[config.id] ?? null;
   }
-  return summary;
+  const recent = labs
+    .slice()
+    .sort((a, b) => {
+      const aTime = a.takenAt?.getTime() ?? 0;
+      const bTime = b.takenAt?.getTime() ?? 0;
+      return bTime - aTime;
+    })
+    .slice(0, 3)
+    .map((doc) => formatLab(doc, resolveLabConfig(doc)));
+
+  return { recent, tracked: summary };
 }
 
 export function resolveLabConfig(doc: LabDoc) {
@@ -138,22 +280,35 @@ export function summarizeMedications(medications: MedicationCurrentDoc[]) {
 
 function formatLab(
   doc: LabDoc,
-  config: (typeof TRACKED_LABS)[number],
+  config?: (typeof TRACKED_LABS)[number],
 ): {
+  code: string;
   id: string;
   abnormalFlag: string | null;
   label: string;
+  refRange: { low: number | null; high: number | null; text: string | null };
   takenAt: string | null;
   unit: string;
   value: number | null;
 } {
   const numericValue = normaliseNumber(doc.value);
+  const effectiveFlag =
+    doc.effectiveAbnormalFlag ??
+    doc.sourceAbnormalFlag ??
+    doc.derivedAbnormalFlag ??
+    null;
   return {
-    id: config.id,
-    abnormalFlag: doc.abnormalFlag ?? null,
-    label: doc.name ?? config.label,
+    code: doc.code ?? "",
+    id: config?.id ?? (doc.code ?? doc.name ?? "lab"),
+    abnormalFlag: effectiveFlag,
+    label: doc.name ?? config?.label ?? "Lab",
+    refRange: {
+      low: normaliseNumber(doc.refRange?.low),
+      high: normaliseNumber(doc.refRange?.high),
+      text: doc.refRange?.text ?? null,
+    },
     takenAt: doc.takenAt ? doc.takenAt.toISOString() : null,
-    unit: doc.unit ?? config.unitFallback,
+    unit: doc.unit ?? config?.unitFallback ?? "",
     value: numericValue,
   };
 }

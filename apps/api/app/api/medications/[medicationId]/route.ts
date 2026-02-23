@@ -82,7 +82,11 @@ function mapOut(state: MedicationState) {
 
 function toDisplayValue(value: unknown) {
   if (value === null || value === undefined || value === "") return "empty";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return String(value);
   }
   return JSON.stringify(value);
@@ -102,38 +106,43 @@ function mapHistoryEvent(event: MedicationEventDoc) {
     const from = data.from;
     const to = data.to;
     const toStatus =
-      to === "active" || to === "paused" || to === "stopped" || to === "completed"
+      to === "active" ||
+      to === "paused" ||
+      to === "stopped" ||
+      to === "completed"
         ? to
         : null;
     return {
+      type: "status_change" as const,
       at: event.at.toISOString(),
       by: event.by,
       changes: [`status: ${toDisplayValue(from)} -> ${toDisplayValue(to)}`],
       reason: event.reason ?? "",
       toStatus,
-      type: "status_change" as const,
     };
   }
 
   if (event.eventType === "created") {
     return {
+      type: "edited" as const,
       at: event.at.toISOString(),
       by: event.by,
       changes: ["medication created"],
       reason: event.reason ?? "",
       toStatus: null,
-      type: "edited" as const,
     };
   }
 
   const label = eventLabel(event.eventType);
   return {
+    type: "edited" as const,
     at: event.at.toISOString(),
     by: event.by,
-    changes: [`${label}: ${toDisplayValue(data.from)} -> ${toDisplayValue(data.to)}`],
+    changes: [
+      `${label}: ${toDisplayValue(data.from)} -> ${toDisplayValue(data.to)}`,
+    ],
     reason: event.reason ?? "",
     toStatus: null,
-    type: "edited" as const,
   };
 }
 
@@ -163,7 +172,7 @@ export async function GET(
         medicationId,
         patientId,
       })
-      .sort({ at: 1, _id: 1 })
+      .sort({ _id: 1, at: 1 })
       .toArray();
     if (!events || events.length === 0)
       return bad("Medication not found", undefined, 404);
@@ -214,7 +223,7 @@ export async function PATCH(
     const events = await db
       .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
       .find({ medicationId, patientId })
-      .sort({ at: 1, _id: 1 })
+      .sort({ _id: 1, at: 1 })
       .toArray();
     if (!events || events.length === 0)
       return bad("Medication not found", undefined, 404);
