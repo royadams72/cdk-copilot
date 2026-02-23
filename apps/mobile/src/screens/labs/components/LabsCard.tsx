@@ -124,7 +124,7 @@ export function LabsCard({
 
         return (
           <View
-            key={`${lab.code || lab.id}-${lab.takenAt ?? index}`}
+            key={`${lab.id ?? lab.code ?? "lab"}-${lab.takenAt ?? "no-date"}-${index}`}
             style={{
               borderTopWidth: 1,
               borderColor: "rgba(148,163,184,0.35)",

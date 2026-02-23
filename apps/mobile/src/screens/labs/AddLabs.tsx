@@ -67,8 +67,12 @@ function toUtcDateIso(value: Date) {
 export default function AddLabs() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; takenAt?: string }>();
   const isEdit = params.mode === "edit";
+  const editTakenAt =
+    typeof params.takenAt === "string" && params.takenAt.trim().length > 0
+      ? params.takenAt
+      : null;
   const today = useMemo(() => new Date(), []);
 
   const [labs, setLabs] = useState<LabFormItem[]>(buildDefaultLabs(today));
@@ -86,7 +90,10 @@ export default function AddLabs() {
     const run = async () => {
       try {
         setLoading(true);
-        const res = await authFetch(`${API}/api/labs/current`, { method: "GET" });
+        const endpoint = editTakenAt
+          ? `${API}/api/labs/history?takenDate=${encodeURIComponent(editTakenAt)}`
+          : `${API}/api/labs/current`;
+        const res = await authFetch(endpoint, { method: "GET" });
         const body = (await res.json().catch(() => null)) as
           | { ok?: boolean; data?: CurrentLabResponse; message?: string }
           | null;
@@ -105,7 +112,7 @@ export default function AddLabs() {
             const takenAt = current.takenAt ? new Date(current.takenAt) : today;
             return {
               ...item,
-              hasCustomDate: false,
+              hasCustomDate: !!editTakenAt,
               takenAt: Number.isNaN(takenAt.getTime()) ? today : takenAt,
               unit: current.unit ?? item.unit,
               value: String(current.value ?? ""),
@@ -115,7 +122,8 @@ export default function AddLabs() {
             const firstDateIso = arr[0].takenAt.toISOString();
             return {
               ...item,
-              hasCustomDate: item.takenAt.toISOString() !== firstDateIso,
+              hasCustomDate:
+                !!editTakenAt || item.takenAt.toISOString() !== firstDateIso,
             };
           }),
         );
@@ -132,7 +140,7 @@ export default function AddLabs() {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, today]);
+  }, [editTakenAt, isEdit, today]);
 
   function updateLab(index: number, updates: Partial<LabFormItem>) {
     setLabs((prev) => {
@@ -210,7 +218,9 @@ export default function AddLabs() {
         </TouchableOpacity>
         <ThemedText type="title">{isEdit ? "Edit labs" : "Add lab results"}</ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
-          Enter values for the labs you want to submit.
+          {isEdit && editTakenAt
+            ? `Editing labs for ${formatDateUk(new Date(editTakenAt))}.`
+            : "Enter values for the labs you want to submit."}
         </ThemedText>
 
         {loading ? (

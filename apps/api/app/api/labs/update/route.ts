@@ -64,6 +64,17 @@ function parseRefRange(item: Record<string, unknown>) {
   return { high, low, text };
 }
 
+function formatMongoValidationMessage(err: any) {
+  if (!err || err?.code !== 121) return err?.message || "Server error";
+  const details = err?.errInfo?.details;
+  if (!details) return err?.message || "Document failed validation";
+  try {
+    return `Document failed validation: ${JSON.stringify(details)}`;
+  } catch {
+    return err?.message || "Document failed validation";
+  }
+}
+
 function valuesEqual(a: number | string, b: number | string) {
   if (typeof a === "number" && typeof b === "number") return a === b;
   return String(a).trim() === String(b).trim();
@@ -148,6 +159,6 @@ export async function PATCH(req: NextRequest) {
     return ok({ items: results });
   } catch (err: any) {
     const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return bad(formatMongoValidationMessage(err), undefined, status);
   }
 }

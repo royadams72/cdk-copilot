@@ -51,6 +51,17 @@ function parseRefRange(item: Record<string, unknown>) {
   return { high, low, text };
 }
 
+function formatMongoValidationMessage(err: any) {
+  if (!err || err?.code !== 121) return err?.message || "Server error";
+  const details = err?.errInfo?.details;
+  if (!details) return err?.message || "Document failed validation";
+  try {
+    return `Document failed validation: ${JSON.stringify(details)}`;
+  } catch {
+    return err?.message || "Document failed validation";
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const caller = await requireUser(req);
@@ -122,6 +133,6 @@ export async function POST(req: NextRequest) {
     return ok({ items: results }, 201);
   } catch (err: any) {
     const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return bad(formatMongoValidationMessage(err), undefined, status);
   }
 }
