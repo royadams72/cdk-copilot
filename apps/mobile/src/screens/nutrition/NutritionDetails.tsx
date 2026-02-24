@@ -37,6 +37,8 @@ import {
   setMealType,
 } from "@/store/slices/logMealSlice";
 import type { FoodHighlight } from "../dashboard/types";
+import { RatioCard } from "../dashboard/components/RatioCard";
+import { AccordionCard } from "../dashboard/components/AccordionCard";
 
 const CHART_HEIGHT = 240;
 const CHART_PADDING = { bottom: 40, left: 40, right: 20, top: 20 } as const;
@@ -427,13 +429,10 @@ export default function NutritionDetails() {
             </Card>
 
             {selectedPoint ? (
-              <Card>
-                <View style={styles.cardHeader}>
-                  <ThemedText type="defaultSemiBold">Daily totals</ThemedText>
-                  <ThemedText style={styles.helperText}>
-                    {formatFullDate(selectedPoint.date)}
-                  </ThemedText>
-                </View>
+              <AccordionCard
+                title="Daily totals"
+                subtitle={formatFullDate(selectedPoint.date)}
+              >
                 <View style={styles.summaryGrid}>
                   {NUTRITION_METRICS.map((metric) => (
                     <View key={metric.id} style={styles.summaryRow}>
@@ -449,7 +448,7 @@ export default function NutritionDetails() {
                     </View>
                   ))}
                 </View>
-              </Card>
+              </AccordionCard>
             ) : null}
 
             <View style={styles.metricRow}>
@@ -487,14 +486,10 @@ export default function NutritionDetails() {
                 </ThemedText>
               </TouchableOpacity>
             ) : null}
-
-            <Card>
-              <View style={styles.cardHeader}>
-                <ThemedText type="defaultSemiBold">{highlightTitle}</ThemedText>
-                <ThemedText style={styles.helperText}>
-                  Highest {metricConfig.label.toLowerCase()} sources
-                </ThemedText>
-              </View>
+            <AccordionCard
+              title={highlightTitle}
+              subtitle={`Highest ${metricConfig.label.toLowerCase()} sources`}
+            >
               {highlights.length ? (
                 <View style={styles.foodList}>
                   {highlights.map((item, index) => {
@@ -513,7 +508,7 @@ export default function NutritionDetails() {
                   {highlightFallbackMessage}
                 </ThemedText>
               )}
-            </Card>
+            </AccordionCard>
           </>
         ) : (
           <Card>
@@ -526,6 +521,7 @@ export default function NutritionDetails() {
             </ThemedText>
           </Card>
         )}
+        {data && <RatioCard ratio={data.nutrition.ratio} />}
       </ScrollView>
       <Modal
         transparent
@@ -588,15 +584,20 @@ export default function NutritionDetails() {
                 <FoodCard
                   key={meal.id}
                   title={capitalize(meal.mealType)}
-                  subtitle={meal.eatenAt ? formatTime(meal.eatenAt) : "Time not set"}
+                  subtitle={
+                    meal.eatenAt ? formatTime(meal.eatenAt) : "Time not set"
+                  }
                   description={meal.items
-                    .map((item) => `${item.name} (${item.quantity} ${item.unit})`)
+                    .map(
+                      (item) => `${item.name} (${item.quantity} ${item.unit})`,
+                    )
                     .join(", ")}
                   actions={[
                     {
                       label: "Edit",
                       onPress: () => {
-                        const coercedItems = meal.items.map(coerceLoggedMealItem);
+                        const coercedItems =
+                          meal.items.map(coerceLoggedMealItem);
                         dispatch(
                           hydrateMealFromEntry({
                             eatenAt: meal.eatenAt,
@@ -619,12 +620,12 @@ export default function NutritionDetails() {
                             { style: "cancel", text: "Cancel" },
                             {
                               onPress: () => {
-                              dispatch(deleteMealData({ entryId: meal.id }))
-                                .unwrap()
-                                .then(() =>
-                                  dispatch(fetchDashboard({ scope: "all" })),
-                                );
-                            },
+                                dispatch(deleteMealData({ entryId: meal.id }))
+                                  .unwrap()
+                                  .then(() =>
+                                    dispatch(fetchDashboard({ scope: "all" })),
+                                  );
+                              },
                               style: "destructive",
                               text: "Delete",
                             },

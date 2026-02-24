@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -41,10 +41,6 @@ export default function Dashboard() {
   }, [data, dispatch, scope, status]);
 
   const handleRefresh = useCallback(() => {
-    dispatch(fetchDashboard({ scope: "today" }));
-  }, [dispatch]);
-
-  const handleRetry = useCallback(() => {
     dispatch(fetchDashboard({ scope: "today" }));
   }, [dispatch]);
 
@@ -105,7 +101,7 @@ export default function Dashboard() {
       }
     >
       {showBlockingError && error ? (
-        <ErrorState message={error} onRetry={handleRetry} />
+        <ErrorState message={error} />
       ) : (
         <>
           <View style={styles.header}>
@@ -121,40 +117,49 @@ export default function Dashboard() {
           </View>
 
           {status === "failed" && error && data && (
-            <InlineError message={error} onRetry={handleRetry} />
+            <InlineError message={error} />
           )}
 
           {data?.nutrition.radials?.length ? (
             <>
-              <StackedRadialsCard
-                centerLabel="Nutrition"
-                radials={data.nutrition.radials}
-                subtitle="Weekly intake"
-                title="Nutrition"
-              />
-              <TouchableOpacity
-                style={styles.detailLink}
+              <Pressable
+                style={styles.selectableCard}
                 onPress={() => router.push("/(nutrition)/nutrition-details")}
               >
-                <ThemedText style={styles.detailLinkText}>
-                  Open nutrition details
-                </ThemedText>
-              </TouchableOpacity>
+                <StackedRadialsCard
+                  centerLabel="Nutrition"
+                  radials={data.nutrition.radials}
+                  subtitle="Weekly intake"
+                  title="Nutrition"
+                />
+              </Pressable>
 
-              <StackedRadialsCard
-                centerLabel="Health"
-                radials={healthRadials}
-                subtitle="Daily activity"
-                title="Health"
-              />
-              <TouchableOpacity
-                style={styles.detailLink}
+              <Pressable
+                style={styles.selectableCard}
                 onPress={() => router.push("/(fitness)/fitness-details")}
               >
-                <ThemedText style={styles.detailLinkText}>
-                  Open fitness details
-                </ThemedText>
-              </TouchableOpacity>
+                <StackedRadialsCard
+                  centerLabel="Health"
+                  radials={healthRadials}
+                  subtitle="Daily activity"
+                  title="Health"
+                />
+              </Pressable>
+
+              <Pressable
+                style={styles.selectableCard}
+                onPress={() => router.push("/(dashboard)/meds-labs")}
+              >
+                <Card>
+                  <ThemedText type="defaultSemiBold">Meds/Labs</ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    {data.medications.activeCount} active medications
+                  </ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    {data.labs.recent.length} recent lab results
+                  </ThemedText>
+                </Card>
+              </Pressable>
             </>
           ) : null}
         </>
@@ -165,10 +170,8 @@ export default function Dashboard() {
 
 export function ErrorState({
   message,
-  onRetry,
 }: {
   message: string;
-  onRetry?: () => void;
 }) {
   return (
     <Card>
@@ -176,27 +179,19 @@ export function ErrorState({
         We couldn't load your dashboard
       </ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
-      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-        <ThemedText style={styles.retryText}>Try again</ThemedText>
-      </TouchableOpacity>
+      <ThemedText style={styles.helperText}>
+        Pull down to refresh and try again.
+      </ThemedText>
     </Card>
   );
 }
 
-function InlineError({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
+function InlineError({ message }: { message: string }) {
   return (
     <Card>
       <ThemedText type="defaultSemiBold">Couldn't refresh</ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
-      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-        <ThemedText style={styles.retryText}>Retry</ThemedText>
-      </TouchableOpacity>
+      <ThemedText style={styles.helperText}>Pull down to retry.</ThemedText>
     </Card>
   );
 }

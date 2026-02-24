@@ -2,6 +2,51 @@ import { StyleSheet } from "react-native";
 import { STACKED_SIZE } from "./constants";
 
 export const styles = StyleSheet.create({
+  accordionArrow: {
+    fontSize: 30,
+    fontWeight: "700",
+  },
+  accordionArrowClosed: {
+    transform: [{ rotate: "0deg" }],
+  },
+  accordionArrowOpen: {
+    transform: [{ rotate: "90deg" }],
+  },
+  accordionBody: {
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(148,163,184,0.4)",
+  },
+  accordionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  accordionHeaderCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  cardDark: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  cardLight: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#fff",
+  },
+  centerLabel: {
+    position: "absolute",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   container: {
     flex: 1,
   },
@@ -9,118 +54,6 @@ export const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     paddingBottom: 32,
-  },
-  loading: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  header: {
-    gap: 4,
-  },
-  subtleText: {
-    opacity: 0.7,
-  },
-  stackedRadialCard: {
-    paddingBottom: 20,
-  },
-  stackedHeader: {
-    gap: 2,
-  },
-  stackedLayout: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-  },
-  legendColumn: {
-    flex: 1,
-    gap: 8,
-  },
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-  },
-  legendLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  legendSubtext: {
-    fontSize: 13,
-    opacity: 0.75,
-  },
-  stackedChartWrap: {
-    width: STACKED_SIZE,
-    height: STACKED_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stackedChart: {
-    width: STACKED_SIZE,
-    height: STACKED_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  centerLabel: {
-    position: "absolute",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  helperText: {
-    fontSize: 13,
-    opacity: 0.7,
-  },
-  ratioRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  ratioValue: {
-    fontSize: 24,
-    fontWeight: "600",
-  },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  labRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(148,163,184,0.4)",
-  },
-  labLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  labSubtext: {
-    fontSize: 13,
-    opacity: 0.7,
-    marginTop: 2,
-  },
-  labValueWrap: {
-    alignItems: "flex-end",
-  },
-  labValue: {
-    fontSize: 22,
-    fontWeight: "600",
-  },
-  labUnit: {
-    fontSize: 12,
-    opacity: 0.7,
   },
   flagPill: {
     marginTop: 4,
@@ -134,63 +67,73 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#854D0E",
   },
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
+  header: {
+    gap: 4,
   },
-  cardLight: {
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#fff",
+  helperText: {
+    fontSize: 13,
+    opacity: 0.7,
   },
-  cardDark: {
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    backgroundColor: "rgba(255,255,255,0.05)",
+  labLabel: {
+    fontSize: 16,
+    fontWeight: "500",
   },
-  retryButton: {
-    marginTop: 4,
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(79,70,229,0.15)",
-  },
-  retryText: {
-    fontWeight: "600",
-  },
-  detailLink: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(99,102,241,0.15)",
-  },
-  detailLinkText: {
-    fontWeight: "600",
-    color: "#4C1D95",
-  },
-  medSummaryRow: {
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(148,163,184,0.4)",
-    gap: 2,
-  },
-  medSummaryHeaderRow: {
+  labRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(148,163,184,0.4)",
+  },
+  labSubtext: {
+    fontSize: 13,
+    opacity: 0.7,
+    marginTop: 2,
+  },
+  labUnit: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  labValue: {
+    fontSize: 22,
+    fontWeight: "600",
+  },
+  labValueWrap: {
+    alignItems: "flex-end",
+  },
+  legendColumn: {
+    flex: 1,
     gap: 8,
   },
-  medSummaryTitle: {
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  legendLabel: {
     fontSize: 15,
     fontWeight: "600",
-    flex: 1,
   },
-  medSummaryMeta: {
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  legendSubtext: {
     fontSize: 13,
     opacity: 0.75,
+  },
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  medActionsRow: {
+    marginTop: 4,
+    flexDirection: "row",
+    gap: 8,
   },
   medEditButton: {
     paddingHorizontal: 10,
@@ -203,10 +146,26 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1E3A8A",
   },
-  medActionsRow: {
-    marginTop: 4,
+  medSummaryHeaderRow: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
+  },
+  medSummaryMeta: {
+    fontSize: 13,
+    opacity: 0.75,
+  },
+  medSummaryRow: {
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(148,163,184,0.4)",
+    gap: 2,
+  },
+  medSummaryTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    flex: 1,
   },
   primaryActionButton: {
     alignSelf: "flex-start",
@@ -219,6 +178,15 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#065F46",
   },
+  ratioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  ratioValue: {
+    fontSize: 24,
+    fontWeight: "600",
+  },
   secondaryActionButton: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,
@@ -229,5 +197,43 @@ export const styles = StyleSheet.create({
   secondaryActionText: {
     fontWeight: "700",
     color: "#1E3A8A",
+  },
+  selectableCard: {
+    borderRadius: 16,
+  },
+  stackedChart: {
+    width: STACKED_SIZE,
+    height: STACKED_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stackedChartWrap: {
+    width: STACKED_SIZE,
+    height: STACKED_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stackedHeader: {
+    gap: 2,
+  },
+  stackedLayout: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  stackedRadialCard: {
+    paddingBottom: 20,
+  },
+  statusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  subtleText: {
+    opacity: 0.7,
   },
 });

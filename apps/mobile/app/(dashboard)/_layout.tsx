@@ -4,6 +4,7 @@ export default function DashboardLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="dashboard" />
+      <Stack.Screen name="meds-labs" />
       <Stack.Screen name="add-medication" />
     </Stack>
   );
