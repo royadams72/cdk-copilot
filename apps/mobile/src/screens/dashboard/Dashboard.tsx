@@ -23,6 +23,7 @@ import { Card } from "./components/Card";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
+import { useStepCount } from "@/hooks/useStepCount";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
   const scope = useAppSelector(selectDashboardScope);
+  const { percentOfGoal, stepsToday } = useStepCount(10000);
   const loading = status === "loading" && !data;
   const refreshing = status === "loading" && !!data;
 
@@ -55,9 +57,9 @@ export default function Dashboard() {
         id: "steps",
         label: "Steps",
         unit: "steps",
-        actual: null,
+        actual: stepsToday,
         target: 10000,
-        percent: null,
+        percent: percentOfGoal,
       },
       {
         id: "minutes-exercise",
@@ -76,7 +78,7 @@ export default function Dashboard() {
         percent: null,
       },
     ],
-    [],
+    [percentOfGoal, stepsToday],
   );
 
   if (loading) {

@@ -5,18 +5,20 @@ import { useRouter } from "expo-router";
 import { ThemedText } from "@/components/themed-text";
 import { StackedRadialsCard } from "../dashboard/components/StackedRadials";
 import { DashboardRadial } from "../dashboard/types";
+import { useStepCount } from "@/hooks/useStepCount";
 
 export default function FitnessDashboard() {
   const router = useRouter();
+  const { percentOfGoal, status, stepsToday } = useStepCount(10000);
   const healthRadials = useMemo<DashboardRadial[]>(
     () => [
       {
         id: "steps",
         label: "Steps",
         unit: "steps",
-        actual: null,
+        actual: stepsToday,
         target: 10000,
-        percent: null,
+        percent: percentOfGoal,
       },
       {
         id: "minutes-exercise",
@@ -35,7 +37,7 @@ export default function FitnessDashboard() {
         percent: null,
       },
     ],
-    [],
+    [percentOfGoal, stepsToday],
   );
 
   return (
@@ -52,6 +54,11 @@ export default function FitnessDashboard() {
         <ThemedText style={{ opacity: 0.72 }}>
           Activity progress and movement goals.
         </ThemedText>
+        {status === "permission-denied" ? (
+          <ThemedText style={{ opacity: 0.72 }}>
+            Enable motion permissions to count steps.
+          </ThemedText>
+        ) : null}
       </View>
 
       <StackedRadialsCard

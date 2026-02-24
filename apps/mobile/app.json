@@ -12,7 +12,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ckdcopilot.ckdapp",
-      "associatedDomains": ["applinks:ckd.app"]
+      "associatedDomains": ["applinks:ckd.app"],
+      "infoPlist": {
+        "NSMotionUsageDescription": "CKD Copilot uses motion data to count your daily steps."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +27,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.ckdcopilot.ckdapp",
+      "permissions": ["ACTIVITY_RECOGNITION"],
       "intentFilters": [
         {
           "action": "VIEW",
