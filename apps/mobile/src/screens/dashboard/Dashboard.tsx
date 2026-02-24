@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -20,11 +20,10 @@ import {
 
 import { styles } from "./styles";
 import { Card } from "./components/Card";
-import { LabsCard } from "../labs/components/LabsCard";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
-import { RatioCard } from "./components/RatioCard";
-import { MedicationCard } from "./components/MedicationCard";
+import { DashboardRadial } from "./types";
+import { useStepCount } from "@/hooks/useStepCount";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -33,6 +32,7 @@ export default function Dashboard() {
   const status = useAppSelector(selectDashboardStatus);
   const error = useAppSelector(selectDashboardError);
   const scope = useAppSelector(selectDashboardScope);
+  const { percentOfGoal, stepsToday } = useStepCount(10000);
   const loading = status === "loading" && !data;
   const refreshing = status === "loading" && !!data;
 
@@ -46,14 +46,40 @@ export default function Dashboard() {
     dispatch(fetchDashboard({ scope: "today" }));
   }, [dispatch]);
 
-  const handleRetry = useCallback(() => {
-    dispatch(fetchDashboard({ scope: "today" }));
-  }, [dispatch]);
-
   const rangeSummary = useMemo(() => {
     if (!data) return "";
     return describeRange(data.nutrition.range);
   }, [data]);
+
+  const healthRadials = useMemo<DashboardRadial[]>(
+    () => [
+      {
+        id: "steps",
+        label: "Steps",
+        unit: "steps",
+        actual: stepsToday,
+        target: 10000,
+        percent: percentOfGoal,
+      },
+      {
+        id: "minutes-exercise",
+        label: "Minutes exercise",
+        unit: "min",
+        actual: null,
+        target: 30,
+        percent: null,
+      },
+      {
+        id: "calories-burned",
+        label: "Calories burned",
+        unit: "kcal",
+        actual: null,
+        target: 500,
+        percent: null,
+      },
+    ],
+    [percentOfGoal, stepsToday],
+  );
 
   if (loading) {
     return (
@@ -77,7 +103,7 @@ export default function Dashboard() {
       }
     >
       {showBlockingError && error ? (
-        <ErrorState message={error} onRetry={handleRetry} />
+        <ErrorState message={error} />
       ) : (
         <>
           <View style={styles.header}>
@@ -93,43 +119,51 @@ export default function Dashboard() {
           </View>
 
           {status === "failed" && error && data && (
-            <InlineError message={error} onRetry={handleRetry} />
+            <InlineError message={error} />
           )}
 
           {data?.nutrition.radials?.length ? (
             <>
-              <StackedRadialsCard radials={data.nutrition.radials} />
-              <TouchableOpacity
-                style={styles.detailLink}
+              <Pressable
+                style={styles.selectableCard}
                 onPress={() => router.push("/(nutrition)/nutrition-details")}
               >
-                <ThemedText style={styles.detailLinkText}>
-                  Open nutrition details
-                </ThemedText>
-              </TouchableOpacity>
+                <StackedRadialsCard
+                  centerLabel="Nutrition"
+                  radials={data.nutrition.radials}
+                  subtitle="Weekly intake"
+                  title="Nutrition"
+                />
+              </Pressable>
+
+              <Pressable
+                style={styles.selectableCard}
+                onPress={() => router.push("/(fitness)/fitness-details")}
+              >
+                <StackedRadialsCard
+                  centerLabel="Health"
+                  radials={healthRadials}
+                  subtitle="Daily activity"
+                  title="Health"
+                />
+              </Pressable>
+
+              <Pressable
+                style={styles.selectableCard}
+                onPress={() => router.push("/(dashboard)/meds-labs")}
+              >
+                <Card>
+                  <ThemedText type="defaultSemiBold">Meds/Labs</ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    {data.medications.activeCount} active medications
+                  </ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    {data.labs.recent.length} recent lab results
+                  </ThemedText>
+                </Card>
+              </Pressable>
             </>
           ) : null}
-
-          {data && <RatioCard ratio={data.nutrition.ratio} />}
-          {data && (
-            <MedicationCard
-              medications={data.medications}
-              onAdd={() => router.push("/(medications)/add-medication")}
-              onEdit={(medicationId) =>
-                router.push(`/(medications)/add-medication?id=${medicationId}`)
-              }
-              onHistory={() => router.push("/(medications)/medication-history")}
-            />
-          )}
-
-          {data && (
-            <LabsCard
-              labs={data.labs}
-              onAdd={() => router.push("/(labs)/add-labs")}
-              onEdit={() => router.push("/(labs)/labs-history?mode=edit")}
-              onHistory={() => router.push("/(labs)/labs-history")}
-            />
-          )}
         </>
       )}
     </ScrollView>
@@ -138,10 +172,8 @@ export default function Dashboard() {
 
 export function ErrorState({
   message,
-  onRetry,
 }: {
   message: string;
-  onRetry?: () => void;
 }) {
   return (
     <Card>
@@ -149,27 +181,19 @@ export function ErrorState({
         We couldn't load your dashboard
       </ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
-      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-        <ThemedText style={styles.retryText}>Try again</ThemedText>
-      </TouchableOpacity>
+      <ThemedText style={styles.helperText}>
+        Pull down to refresh and try again.
+      </ThemedText>
     </Card>
   );
 }
 
-function InlineError({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
+function InlineError({ message }: { message: string }) {
   return (
     <Card>
       <ThemedText type="defaultSemiBold">Couldn't refresh</ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
-      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-        <ThemedText style={styles.retryText}>Retry</ThemedText>
-      </TouchableOpacity>
+      <ThemedText style={styles.helperText}>Pull down to retry.</ThemedText>
     </Card>
   );
 }

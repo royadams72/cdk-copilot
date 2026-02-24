@@ -246,7 +246,7 @@ export default function LogMeal() {
   }) {
     allowNextNavigationRef.current = true;
     dispatch(setActiveItem({ foodId, groupId, uid }));
-    router.replace("/(log-meal)/food-details");
+    router.push("/(log-meal)/food-details");
   }
 
   const isToday = (value: Date) => {

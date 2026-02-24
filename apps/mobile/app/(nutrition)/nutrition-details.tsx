@@ -1,1 +1,1 @@
-export { default } from "@/screens/nutrition/NutritionDetails";
+export { default } from "@/screens/nutrition/NutritionDashboard";
