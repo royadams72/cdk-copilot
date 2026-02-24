@@ -20,11 +20,9 @@ import {
 
 import { styles } from "./styles";
 import { Card } from "./components/Card";
-import { LabsCard } from "../labs/components/LabsCard";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
-import { RatioCard } from "./components/RatioCard";
-import { MedicationCard } from "./components/MedicationCard";
+import { DashboardRadial } from "./types";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -54,6 +52,36 @@ export default function Dashboard() {
     if (!data) return "";
     return describeRange(data.nutrition.range);
   }, [data]);
+
+  const healthRadials = useMemo<DashboardRadial[]>(
+    () => [
+      {
+        id: "steps",
+        label: "Steps",
+        unit: "steps",
+        actual: null,
+        target: 10000,
+        percent: null,
+      },
+      {
+        id: "minutes-exercise",
+        label: "Minutes exercise",
+        unit: "min",
+        actual: null,
+        target: 30,
+        percent: null,
+      },
+      {
+        id: "calories-burned",
+        label: "Calories burned",
+        unit: "kcal",
+        actual: null,
+        target: 500,
+        percent: null,
+      },
+    ],
+    [],
+  );
 
   if (loading) {
     return (
@@ -98,7 +126,12 @@ export default function Dashboard() {
 
           {data?.nutrition.radials?.length ? (
             <>
-              <StackedRadialsCard radials={data.nutrition.radials} />
+              <StackedRadialsCard
+                centerLabel="Nutrition"
+                radials={data.nutrition.radials}
+                subtitle="Weekly intake"
+                title="Nutrition"
+              />
               <TouchableOpacity
                 style={styles.detailLink}
                 onPress={() => router.push("/(nutrition)/nutrition-details")}
@@ -107,29 +140,23 @@ export default function Dashboard() {
                   Open nutrition details
                 </ThemedText>
               </TouchableOpacity>
+
+              <StackedRadialsCard
+                centerLabel="Health"
+                radials={healthRadials}
+                subtitle="Daily activity"
+                title="Health"
+              />
+              <TouchableOpacity
+                style={styles.detailLink}
+                onPress={() => router.push("/(fitness)/fitness-details")}
+              >
+                <ThemedText style={styles.detailLinkText}>
+                  Open fitness details
+                </ThemedText>
+              </TouchableOpacity>
             </>
           ) : null}
-
-          {data && <RatioCard ratio={data.nutrition.ratio} />}
-          {data && (
-            <MedicationCard
-              medications={data.medications}
-              onAdd={() => router.push("/(medications)/add-medication")}
-              onEdit={(medicationId) =>
-                router.push(`/(medications)/add-medication?id=${medicationId}`)
-              }
-              onHistory={() => router.push("/(medications)/medication-history")}
-            />
-          )}
-
-          {data && (
-            <LabsCard
-              labs={data.labs}
-              onAdd={() => router.push("/(labs)/add-labs")}
-              onEdit={() => router.push("/(labs)/labs-history?mode=edit")}
-              onHistory={() => router.push("/(labs)/labs-history")}
-            />
-          )}
         </>
       )}
     </ScrollView>

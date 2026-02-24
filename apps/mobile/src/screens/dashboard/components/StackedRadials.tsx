@@ -17,8 +17,14 @@ import { formatDecimal } from "../utils";
 
 export function StackedRadialsCard({
   radials,
+  title = "Diet",
+  subtitle = "Weekly intake",
+  centerLabel = "Intake",
 }: {
+  centerLabel?: string;
   radials: DashboardRadial[];
+  subtitle?: string;
+  title?: string;
 }) {
   const theme = useColorScheme() ?? "light";
   const trackColor = theme === "light" ? "#E5E7EB" : "rgba(255,255,255,0.2)";
@@ -31,8 +37,8 @@ export function StackedRadialsCard({
   return (
     <Card style={styles.stackedRadialCard}>
       <View style={styles.stackedHeader}>
-        <ThemedText type="defaultSemiBold">Diet</ThemedText>
-        <ThemedText style={styles.subtleText}>Weekly intake</ThemedText>
+        <ThemedText type="defaultSemiBold">{title}</ThemedText>
+        <ThemedText style={styles.subtleText}>{subtitle}</ThemedText>
       </View>
       <View style={styles.stackedLayout}>
         <View style={styles.legendColumn}>
@@ -54,6 +60,7 @@ export function StackedRadialsCard({
         </View>
         <View style={styles.stackedChartWrap}>
           <StackedRadialChart
+            centerLabel={centerLabel}
             radials={decorated}
             trackColor={trackColor}
             textColor={textColor}
@@ -76,10 +83,12 @@ function legendValue(radial: DashboardRadial) {
 }
 
 function StackedRadialChart({
+  centerLabel,
   radials,
   trackColor,
   textColor,
 }: {
+  centerLabel: string;
   radials: Array<DashboardRadial & { color: string }>;
   trackColor: string;
   textColor: string;
@@ -128,7 +137,7 @@ function StackedRadialChart({
         </G>
       </Svg>
       <ThemedText style={[styles.centerLabel, { color: textColor }]}>
-        Intake
+        {centerLabel}
       </ThemedText>
     </View>
   );
