@@ -1,6 +1,6 @@
 // EmailSignup.tsx
 import { useState } from "react";
-import { View, TextInput, Button, Alert, Text } from "react-native";
+import { Alert, Button, Text, TextInput, View } from "react-native";
 import { API } from "@/constants/api";
 export default function EmailSignup() {
   const [email, setEmail] = useState("");
@@ -8,16 +8,16 @@ export default function EmailSignup() {
   async function submit() {
     try {
       const res = await fetch(`${API}/api/patients/signup-init`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
         body: JSON.stringify({ email }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
       });
 
       const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        Alert.alert("Check your email", "Tap the link to continue in the app.");
-        return;
-      }
+      // if (res.ok) {
+      //   Alert.alert("Check your email", "Tap the link to continue in the app.");
+      //   return;
+      // }
       if (!res.ok) {
         Alert.alert(
           "Signup failed",
@@ -42,7 +42,7 @@ export default function EmailSignup() {
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
-        style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+        style={{ borderRadius: 8, borderWidth: 1, padding: 12 }}
       />
       <Button title="Continue" onPress={submit} />
     </View>

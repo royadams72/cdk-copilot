@@ -16,7 +16,7 @@ import {
 import { ObjectId } from "mongodb";
 import { randomBytes } from "crypto";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
-import { SessionUser, requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { DEFAULT_SCOPES, SCOPES } from "@ckd/core";
 
 export async function POST(req: NextRequest) {
@@ -38,13 +38,13 @@ export async function POST(req: NextRequest) {
     const res = await validateAuth(
       auth_tokens,
       COLLECTION_TYPE.OauthCode,
-      parsed
+      parsed,
     );
 
     if (!res.ok)
       return NextResponse.json(
-        { ok: false, error: res.error },
-        { status: 400 }
+        { error: res.error, ok: false },
+        { status: 400 },
       );
 
     const patients = db.collection(COLLECTIONS.Patients);
@@ -52,34 +52,48 @@ export async function POST(req: NextRequest) {
       {
         _id: res.doc.patientId,
       },
-      { projection: { _id: 1 } }
+      { projection: { _id: 1 } },
     );
 
     if (!patient)
       return NextResponse.json(
-        { ok: false, error: "There is no patient record" },
-        { status: 400 }
+        { error: "There is no patient record", ok: false },
+        { status: 400 },
       );
 
     const consumed = await consumeAuth(auth_tokens, res.doc._id);
     if (!consumed.ok)
       return NextResponse.json(
-        { ok: false, error: consumed.error },
-        { status: 400 }
+        { error: consumed.error, ok: false },
+        { status: 400 },
       );
 
     const auth_links = db.collection(COLLECTIONS.AuthLinks);
+    const usersPii = db.collection(COLLECTIONS.UsersPII);
     const provider = "password";
-    const credentialId = `cred_${randomBytes(12).toString("hex")}`;
-    const user_auth_link = {
-      provider,
-      credentialId,
-      email: res.doc.email,
-      principalId: String(res.doc.principalId),
-      active: true,
-      createdAt: new Date(),
-    };
-    await auth_links.insertOne(user_auth_link);
+    const existingAuthLink = await auth_links.findOne(
+      { active: true, email: res.doc.email, provider },
+      { projection: { credentialId: 1, principalId: 1 } },
+    );
+    const credentialId =
+      existingAuthLink?.credentialId ??
+      `cred_${randomBytes(12).toString("hex")}`;
+
+    if (!existingAuthLink) {
+      await auth_links.insertOne({
+        active: true,
+        createdAt: new Date(),
+        credentialId,
+        email: res.doc.email,
+        principalId: String(res.doc.principalId),
+        provider,
+      });
+    } else if (existingAuthLink.principalId !== String(res.doc.principalId)) {
+      await auth_links.updateOne(
+        { active: true, credentialId: existingAuthLink.credentialId, provider },
+        { $set: { principalId: String(res.doc.principalId) } },
+      );
+    }
 
     const puser = { ...user, principalId: String(res.doc.principalId) };
 
@@ -90,10 +104,10 @@ export async function POST(req: NextRequest) {
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const jwt = await new SignJWT({
-      sub: credentialId,
-      principalId: res.doc.principalId ?? null,
       orgId: res.doc.orgId,
+      principalId: res.doc.principalId ?? null,
       scopes,
+      sub: credentialId,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setIssuedAt()
@@ -105,33 +119,43 @@ export async function POST(req: NextRequest) {
     const refreshExpiresAt = new Date(Date.now() + refreshTtlMs);
     const refreshToken = setToken();
     const refreshDoc: AuthTokenDoc = {
+      id: b64url(refreshToken.id),
       _id: new ObjectId(),
       type: COLLECTION_TYPE.Refresh,
-      id: b64url(refreshToken.id),
-      secretHash: refreshToken.secretHash.toString("base64"),
+      createdAt: new Date(),
+      credentialId,
+      email: res.doc.email,
+      expiresAt: refreshExpiresAt,
+      orgId: res.doc.orgId ?? null,
       patientId: res.doc.patientId as ObjectId,
       principalId: String(res.doc.principalId),
-      credentialId,
-      sessionId,
-      orgId: res.doc.orgId ?? null,
-      email: res.doc.email,
-      scopes,
-      role: res.doc.role,
-      createdAt: new Date(),
-      expiresAt: refreshExpiresAt,
-      usedAt: null,
-      revokedAt: null,
-      rotatedAt: null,
       replacedById: null,
+      revokedAt: null,
+      role: res.doc.role,
+      rotatedAt: null,
+      scopes,
+      secretHash: refreshToken.secretHash.toString("base64"),
+      sessionId,
+      usedAt: null,
     };
     await auth_tokens.insertOne(refreshDoc);
-
-    return NextResponse.json({ jwt, refreshToken: refreshToken.token });
+    const pii = await usersPii.findOne(
+      { email: res.doc.email ?? "" },
+      {
+        collation: { locale: "en", strength: 2 },
+        projection: { onboardingCompleted: 1 },
+      },
+    );
+    return NextResponse.json({
+      jwt,
+      onboardingCompleted: !!pii?.onboardingCompleted,
+      refreshToken: refreshToken.token,
+    });
   } catch (e) {
     console.error(e);
     return NextResponse.json(
-      { error: "Error in exchange", e },
-      { status: 400 }
+      { e, error: "Error in exchange" },
+      { status: 400 },
     );
   }
 }

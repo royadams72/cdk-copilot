@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
 
     await usersAccounts.updateOne(
-      { principleId: activeUser.principalId },
+      { principalId: activeUser.principalId },
       { $set: { lastActiveAt: new Date() } }
     );
     return NextResponse.json({ ok: true }, { status: 200 });

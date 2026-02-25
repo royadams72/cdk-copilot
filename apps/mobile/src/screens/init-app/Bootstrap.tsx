@@ -105,7 +105,7 @@ const Bootstrap = () => {
       // await clearSessionToken();
       // router.replace("/(init-app)/welcome");
     })();
-  }, [error]);
+  }, []);
   // TODO: Use loader
   return (
     <>

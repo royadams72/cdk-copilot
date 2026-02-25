@@ -26,12 +26,16 @@ export default function VerifyScreen() {
       });
 
       if (res.ok) {
-        const { jwt, refreshToken } = await res.json();
+        const { jwt, refreshToken, onboardingCompleted } = await res.json();
         await SecureStore.setItemAsync("ckd_jwt", jwt);
         if (refreshToken) {
           await SecureStore.setItemAsync("ckd_refresh", refreshToken);
         }
-        router.replace("./onboarding/pii-form");
+        if (onboardingCompleted) {
+          router.replace("/(dashboard)/dashboard");
+        } else {
+          router.replace("./onboarding/pii-form");
+        }
       } else {
         router.replace("./check-email");
       }

@@ -9,14 +9,7 @@ import { z } from "zod";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
 import { COLLECTIONS } from "@ckd/core/server";
-import {
-  ROLES,
-  DEFAULT_SCOPES,
-  EmailLower,
-  TUsersAccount,
-  TUserPII,
-} from "@ckd/core";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { DEFAULT_SCOPES, ROLES, TUsersAccount } from "@ckd/core";
 
 export type colType = "oauth_code" | "email_verify" | "password_reset";
 export enum COLLECTION_TYPE {
@@ -54,66 +47,196 @@ export async function POST(req: NextRequest) {
     if (!VERIFY_URL || !REDIRECT_URI || !EMAIL_FROM || !APP_ORIGIN) {
       return NextResponse.json(
         {
-          ok: false,
           error: "missing_params: env",
+          ok: false,
         },
         { status: 400 },
       );
     }
-    const { email } = parsed.data;
+    const email = parsed.data.email.trim().toLowerCase();
 
     // Create patient record
     const patients = db.collection(COLLECTIONS.Patients);
     const auth_tokens = db.collection(COLLECTIONS.AuthTokens);
     const users_pii = db.collection(COLLECTIONS.UsersPII);
-    // Check that patients does not exist
+    const accounts = db.collection<TUsersAccount>(COLLECTIONS.UsersAccounts);
 
-    // const isUserActive = await users_pii.findOne<TUserPII>(
-    //   { email },
-    //   { projection: { _id: 1 } },
-    // );
-
-    // if (isUserActive) {
-    //   return bad("User already exists", 500);
-    // }
-    // Generate identifiers
-    const patientId = new ObjectId();
-    const principalId = `pr_${randomBytes(12).toString("hex")}`;
-    const scopes = [...DEFAULT_SCOPES];
     const now = new Date();
+    const scopes = [...DEFAULT_SCOPES];
 
-    const patientDoc = {
-      _id: patientId,
-      principalId,
-      orgId: "",
-      summary: {},
-      flags: [],
-      createdAt: now,
-      updatedAt: now,
-    };
+    const existingPii = await users_pii.findOne(
+      { email },
+      {
+        collation: { locale: "en", strength: 2 },
+        projection: { patientId: 1, principalId: 1, role: 1, scopes: 1 },
+      },
+    );
 
-    // Insert patient
+    const patientByPiiId =
+      existingPii?.patientId instanceof ObjectId
+        ? await patients.findOne(
+            { _id: existingPii.patientId },
+            { projection: { _id: 1, principalId: 1 } },
+          )
+        : null;
 
-    await patients.insertOne(patientDoc);
+    const existingAccount = await accounts.findOne(
+      { isActive: true, principalId: existingPii?.principalId },
+      {
+        collation: { locale: "en", strength: 2 },
+        projection: { principalId: 1, role: 1, scopes: 1 },
+      },
+    );
 
-    // Issue verification token
+    let principalId =
+      (existingAccount?.principalId as string | undefined) ??
+      (existingPii?.principalId as string | undefined) ??
+      (patientByPiiId?.principalId as string | undefined) ??
+      `pr_${randomBytes(12).toString("hex")}`;
+
+    const patientByPrincipal = await patients.findOne(
+      { principalId },
+      { projection: { _id: 1 } },
+    );
+
+    let patientId =
+      (existingPii?.patientId as ObjectId | undefined) ??
+      (patientByPrincipal?._id as ObjectId | undefined) ??
+      (patientByPiiId?._id as ObjectId | undefined) ??
+      new ObjectId();
+
+    let role =
+      (existingAccount?.role as any) ??
+      ((existingPii as any)?.role as any) ??
+      ROLES.Patient;
+
+    const effectiveScopes = existingAccount?.scopes?.length
+      ? existingAccount.scopes
+      : Array.isArray((existingPii as any)?.scopes) &&
+          (existingPii as any).scopes.length
+        ? (existingPii as any).scopes
+        : scopes;
+
+    if (existingPii && !existingAccount) {
+      await accounts.updateOne(
+        { principalId },
+        {
+          $set: {
+            email,
+            isActive: true,
+            role,
+            scopes: effectiveScopes,
+            updatedAt: now,
+            updatedBy: principalId,
+          },
+          $setOnInsert: {
+            principalId,
+            createdAt: now,
+            createdBy: principalId,
+          },
+        },
+        { upsert: true },
+      );
+    }
+
+    await patients.updateOne(
+      { _id: patientId },
+      {
+        $set: { updatedAt: now },
+        $setOnInsert: {
+          _id: patientId,
+          createdAt: now,
+          flags: [],
+          orgId: "",
+          principalId,
+          summary: {},
+        },
+      },
+      { upsert: true },
+    );
+
+    // Existing identity (account and/or pii): email a direct oauth-code sign-in link.
+    if (existingAccount || existingPii) {
+      // Invalidate older unconsumed oauth-code links so only the newest sign-in link is valid.
+      await auth_tokens.updateMany(
+        {
+          type: COLLECTION_TYPE.OauthCode,
+          email,
+          usedAt: null,
+        },
+        { $set: { usedAt: now } },
+      );
+
+      const { id, token, secretHash } = setToken();
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+      const auth_tokens_doc: AuthTokenDoc = {
+        id: b64url(id),
+        _id: new ObjectId(),
+        type: COLLECTION_TYPE.OauthCode,
+        createdAt: now,
+        email,
+        expiresAt,
+        patientId,
+        principalId,
+        redirectUri: REDIRECT_URI,
+        role,
+        scopes: effectiveScopes,
+        secretHash: secretHash.toString("base64"),
+        usedAt: null as Date | null,
+      };
+      await auth_tokens.insertOne(auth_tokens_doc);
+
+      const signInUrl = new URL(REDIRECT_URI);
+      signInUrl.searchParams.set("token", token);
+      if (resend) {
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          html: `
+          <p>Use this secure link to sign in.</p>
+          <p><a href="${signInUrl.toString()}">Sign in</a></p>
+          <p>This link expires at ${expiresAt.toISOString()}.</p>
+        `,
+          subject: "Sign in to CKD Copilot",
+          to: email,
+        });
+      } else {
+        console.log(
+          "[DEV] Email disabled. Sign-in link:",
+          signInUrl.toString(),
+        );
+      }
+
+      return NextResponse.json({ existingUser: true, status: "ok" });
+    }
+
+    // New user: issue verification token and continue provisioning via /api/auth/verify.
+    // Invalidate older unconsumed verification links so only the newest verify link is valid.
+    await auth_tokens.updateMany(
+      {
+        type: COLLECTION_TYPE.EmailVerify,
+        email,
+        usedAt: null,
+      },
+      { $set: { usedAt: now } },
+    );
+
     const { id, token, secretHash } = setToken();
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
 
     const auth_tokens_doc: AuthTokenDoc = {
+      id: b64url(id),
       _id: new ObjectId(),
       type: COLLECTION_TYPE.EmailVerify,
-      id: b64url(id),
-      email,
-      redirectUri: REDIRECT_URI,
-      secretHash: secretHash.toString("base64"),
-      patientId: new ObjectId(patientId),
-      principalId,
-      role: ROLES.Patient,
-      scopes,
-      expiresAt,
-      usedAt: null as Date | null,
       createdAt: now,
+      email,
+      expiresAt,
+      patientId,
+      principalId,
+      redirectUri: REDIRECT_URI,
+      role,
+      scopes: effectiveScopes,
+      secretHash: secretHash.toString("base64"),
+      usedAt: null as Date | null,
     };
 
     await auth_tokens.insertOne(auth_tokens_doc);
@@ -125,13 +248,13 @@ export async function POST(req: NextRequest) {
     if (resend) {
       await resend.emails.send({
         from: EMAIL_FROM,
-        to: email,
-        subject: "Confirm your email",
         html: `
         <p>Confirm your email to continue.</p>
         <p><a href="${verifyUrl.toString()}">Verify email</a></p>
         <p>This link expires at ${expiresAt.toISOString()}.</p>
       `,
+        subject: "Confirm your email",
+        to: email,
       });
     } else {
       console.log(
@@ -140,7 +263,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ status: "ok" });
+    return NextResponse.json({ existingUser: false, status: "ok" });
   } catch (e: any) {
     console.error(
       "There was an error",
