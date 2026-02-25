@@ -55,27 +55,27 @@ export default function Dashboard() {
     () => [
       {
         id: "steps",
-        label: "Steps",
-        unit: "steps",
         actual: stepsToday,
-        target: 10000,
+        label: "Steps",
         percent: percentOfGoal,
+        target: 10000,
+        unit: "steps",
       },
       {
         id: "minutes-exercise",
-        label: "Minutes exercise",
-        unit: "min",
         actual: null,
-        target: 30,
+        label: "Minutes exercise",
         percent: null,
+        target: 30,
+        unit: "min",
       },
       {
         id: "calories-burned",
-        label: "Calories burned",
-        unit: "kcal",
         actual: null,
-        target: 500,
+        label: "Calories burned",
         percent: null,
+        target: 500,
+        unit: "kcal",
       },
     ],
     [percentOfGoal, stepsToday],
@@ -170,11 +170,7 @@ export default function Dashboard() {
   );
 }
 
-export function ErrorState({
-  message,
-}: {
-  message: string;
-}) {
+export function ErrorState({ message }: { message: string }) {
   return (
     <Card>
       <ThemedText type="defaultSemiBold">
