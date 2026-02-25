@@ -8,7 +8,7 @@
 
 - `_id` · ObjectId · **Primary Key (PK)**
 - `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
-- `email` · string · unique · example: `roy@example.com`
+- `email` · string · unique · example: `roy@example.com` only added for clinicians patients email is in users_pii
 - `orgId` · string · organisation identifier (NHS Trust / provider)
 - `role` · enum (`patient|clinician|dietitian|admin`)
 - `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`
@@ -62,17 +62,17 @@ db.users_accounts.createIndex({ orgId: 1, isActive: 1 });
 // Membership lookups (multikey)
 db.users_accounts.createIndex(
   { orgId: 1, facilityIds: 1 },
-  { name: "byOrgFacility" }
+  { name: "byOrgFacility" },
 );
 db.users_accounts.createIndex(
   { orgId: 1, careTeamIds: 1 },
-  { name: "byOrgCareTeam" }
+  { name: "byOrgCareTeam" },
 );
 
 // Explicit patient grants
 db.users_accounts.createIndex(
   { allowedPatientIds: 1 },
-  { name: "byAllowedPatient" }
+  { name: "byAllowedPatient" },
 );
 ```
 

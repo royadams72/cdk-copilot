@@ -176,7 +176,7 @@ importers:
         specifier: ^15.0.7
         version: 15.0.7(expo@54.0.21)
       expo-sensors:
-        specifier: ~15.0.7
+        specifier: ~15.0.8
         version: 15.0.8(expo@54.0.21)(react-native@0.81.4(@babel/core@7.28.5)(@types/react@19.1.17)(react@19.1.0))
       expo-splash-screen:
         specifier: ~31.0.10

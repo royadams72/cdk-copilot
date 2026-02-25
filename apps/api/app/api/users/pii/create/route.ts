@@ -40,8 +40,12 @@ export async function POST(req: NextRequest) {
     await userPII_db.updateOne(
       { patientId: user.patientId },
       {
-        $set: doc,
-      }
+        $addToSet: { onboardingSteps: "pii" },
+        $set: {
+          ...doc,
+          onboardingCompleted: true,
+        },
+      },
     );
 
     await updateScopes(user, [
