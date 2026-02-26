@@ -1,20 +1,3 @@
-# Targets collections
-
-This document defines the MongoDB collections used to support **nutrition and clinical targets** in CKD Copilot.
-
-Design goals:
-
-- **Auditable**: every target recommendation can be traced to a rule and a version.
-- **Deterministic**: the app computes recommendations via rules (not via free-form AI).
-- **Override-friendly**: users and clinicians can override recommendations with explicit reasons.
-- **Append-only history**: all changes are captured in a ledger.
-
-## Collections
-
-- `targets_reference` — versioned ruleset of recommended targets (the “reference database”).
-- `targets_current` — the currently effective targets for a patient (read-optimized).
-- `targets_ledger` — append-only event log of target changes (source of truth history).
-
 # targets_ledger
 
 This document defines the `targets_ledger` MongoDB collection.
@@ -52,6 +35,7 @@ This collection should NEVER be updated in-place (except controlled supersession
 | `createdBy`    | `object`           | ✅       | Actor who triggered event |
 | `eventType`    | `string`           | ✅       | Type of change            |
 | `metric`       | `string`           | ✅       | Metric affected           |
+| `domain`       | `string`           | ✅       | `renal` or `lifestyle`    |
 | `before`       | `object \| null`   | ✅       | State before change       |
 | `after`        | `object`           | ✅       | State after change        |
 | `derivedFrom`  | `object \| null`   | ❌       | Rule lineage              |
@@ -104,7 +88,8 @@ This collection should NEVER be updated in-place (except controlled supersession
     "actorType": "clinician",
     "displayName": "Dietitian A"
   },
-  "eventType": "clinician_override_set",
+  "eventType": "clinician_changed_target",
+  "domain": "renal",
   "metric": "protein_g_kg_day",
   "before": { "type": "max", "value": 0.8 },
   "after": { "type": "exact", "value": 0.9 },
@@ -135,3 +120,5 @@ This collection should NEVER be updated in-place (except controlled supersession
 - Never modify historical values.
 - Use `correctionOf` + `superseded: true` for logical corrections.
 - `targets_current` must always reflect the latest non-superseded ledger state.
+- If a target comes from rule evaluation, `derivedFrom` should reference
+  `clinical_reference_rules.ruleId/version`.

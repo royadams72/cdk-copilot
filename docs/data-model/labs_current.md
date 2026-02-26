@@ -16,6 +16,8 @@
 - **Source of truth:** `labs_ledger` is canonical; `labs_current` is derived.
 - **Corrections:** if a ledger row is `status="corrected"`, the current doc should point to the correcting row (and optionally keep `prevLedgerId`).
 - **Flags:** UI/alerts should read `effectiveAbnormalFlag`. `derivedAbnormalFlag` must be `null` when `overrideAbnormalFlag` or `sourceAbnormalFlag` is present.
+- **Reference lineage:** if `derivedAbnormalFlag` is used, keep lineage fields in the
+  source `labs_ledger` row pointing to `clinical_reference_rules` (`kind="lab_range"`).
 
 ## Fields
 

@@ -20,10 +20,29 @@
 - **Location:** `UserClinical.egfrCurrent`
 - **Type:** number (0–200), nullable
 - **Units:** mL/min/1.73m²
-- **Notes:** single latest value; historicals should live in a separate measurements ledger
+- **Notes:** single latest value; historicals should live in `labs_ledger`
 
 ### ACR (Albumin‑to‑Creatinine Ratio)
 
 - **Location:** `UserClinical.acrCategory`
 - **Type:** enum `A1|A2|A3`, nullable
-- **Notes:** category only in baseline; raw labs belong in the measurements ledger
+- **Notes:** category only in baseline; raw labs belong in the labs ledger
+
+### targets.current
+
+- **Location:** `targets_current.targets[*].effective`
+- **Type:** object (`type`, `low?`, `high?`, `value?`, `basis?`)
+- **Notes:** effective target after override resolution (`override ?? recommended`)
+
+### measurements.value
+
+- **Location:** `measurements_ledger` (kind-specific fields like `count`, `valueKg`)
+- **Type:** numeric observation payload
+- **Notes:** observed fact only, never a target/goal
+
+### clinical reference rule
+
+- **Location:** `clinical_reference_rules`
+- **Type:** versioned rule row with `kind`, `code`, `appliesWhen`, `rule`, `priority`
+- **Notes:** replaces separate documented reference sources (`targets_reference`,
+  `labs_reference_ranges`)

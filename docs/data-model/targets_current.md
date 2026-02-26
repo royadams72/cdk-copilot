@@ -1,20 +1,3 @@
-# Targets collections
-
-This document defines the MongoDB collections used to support **nutrition and clinical targets** in CKD Copilot.
-
-Design goals:
-
-- **Auditable**: every target recommendation can be traced to a rule and a version.
-- **Deterministic**: the app computes recommendations via rules (not via free-form AI).
-- **Override-friendly**: users and clinicians can override recommendations with explicit reasons.
-- **Append-only history**: all changes are captured in a ledger.
-
-## Collections
-
-- `targets_reference` — versioned ruleset of recommended targets (the “reference database”).
-- `targets_current` — the currently effective targets for a patient (read-optimized).
-- `targets_ledger` — append-only event log of target changes (source of truth history).
-
 # targets_current
 
 This document defines the `targets_current` MongoDB collection.
@@ -76,7 +59,7 @@ This collection should always be updated together with a corresponding
 
 | Field        | Type     | Required | Description                       |
 | ------------ | -------- | -------- | --------------------------------- |
-| `ruleset`    | `string` | ✅       | e.g. `targets_reference`          |
+| `ruleset`    | `string` | ✅       | e.g. `clinical_reference_rules`   |
 | `runId`      | `string` | ✅       | Unique engine run id              |
 | `computedAt` | `date`   | ✅       | When recommendation was generated |
 
@@ -88,18 +71,26 @@ Each key in `targets` maps to:
 
 ```json
 {
+  "domain": "renal",
+  "metric": "sodium_mg_day",
   "unit": "mg/day",
   "recommended": { "type": "max", "value": 2000, "basis": "perDay" },
   "override": null,
   "effective": { "type": "max", "value": 2000, "basis": "perDay" },
   "derivedFrom": {
-    "ruleId": "kdigo-2024-sodium-all-ckd-v1",
+    "ruleId": "ckd-sodium-default-v1",
     "version": 1,
     "matchedAt": "2026-02-25T12:00:00.000Z"
   },
   "overrideMeta": null
 }
 ```
+
+`domain` should be used to separate clinical/nutrition targets from lifestyle
+targets while still using one target pipeline:
+
+- `renal` for CKD and renal nutrition targets
+- `lifestyle` for goals like steps/day or sleep duration
 
 ---
 

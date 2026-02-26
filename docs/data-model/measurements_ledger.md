@@ -1,9 +1,12 @@
 # measurements_ledger (Measurement Ledger)
 
-**Purpose:** Single, append-only timeline of measurements (vitals, activity, labs) per patient.
+**Purpose:** Single, append-only timeline of observed measurements (vitals, activity) per patient.
 **Contains PII (Personally Identifiable Information):** No direct PII; linked via `patientId`.
 **Access:** Patient (self), app server; clinicians if assigned. All access **audited** (who/when/which id).
-**Notes:** Store both **`measuredAt`** (when taken) and **`receivedAt`** (ingest time) to handle out‑of‑order device syncs.
+**Notes:** Store both **`measuredAt`** (when taken) and **`receivedAt`** (ingest time) to handle out-of-order device syncs.
+
+**Boundary:** This collection stores observed facts only. Targets/goals belong in
+`targets_current`/`targets_ledger`.
 
 ## Shape (summary)
 
@@ -19,7 +22,6 @@
 
 - **Fields per kind:**
 
-  - **weight:** `kg/lbs`
   - **blood_pressure:** `systolicMmHg`, `diastolicMmHg`, `pulseBpm?`
   - **heart_rate:** `bpm`
   - **steps:** `count`
@@ -58,3 +60,8 @@ db.measurements_ledger.createIndex(
 
 - Treat as **Clinical**: restrict by role, audit all reads/writes; no payloads in logs.
 - Keep forever unless policy dictates otherwise; you can summarise or downsample old activity data.
+
+## Optional derived collection
+
+If needed for fast reads, maintain `measurements_current` as a materialized latest
+view per `(patientId, kind)` derived from `measurements_ledger`.
