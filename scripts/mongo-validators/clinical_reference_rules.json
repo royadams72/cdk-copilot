@@ -1,0 +1,129 @@
+{
+  "collMod": "clinical_reference_rules",
+  "indexes": [
+    {
+      "key": { "ruleId": 1, "version": 1 },
+      "options": { "name": "uniq_rule_version", "unique": true }
+    },
+    {
+      "key": { "kind": 1, "code": 1, "status": 1, "priority": -1 },
+      "options": { "name": "byKindCodeStatusPriority" }
+    },
+    {
+      "key": { "orgId": 1, "kind": 1, "code": 1, "status": 1, "priority": -1 },
+      "options": { "name": "byOrgKindCodeStatusPriority" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "ruleId",
+        "version",
+        "status",
+        "kind",
+        "code",
+        "unit",
+        "appliesWhen",
+        "priority",
+        "rule",
+        "source",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "ruleId": { "bsonType": "string", "minLength": 1 },
+        "version": { "bsonType": ["int", "long", "double", "decimal"], "minimum": 1 },
+        "status": {
+          "bsonType": "string",
+          "enum": ["active", "deprecated", "disabled"]
+        },
+        "kind": {
+          "bsonType": "string",
+          "enum": ["lab_range", "clinical_target", "health_target"]
+        },
+        "code": { "bsonType": "string", "minLength": 1 },
+        "label": { "bsonType": ["string", "null"] },
+        "unit": { "bsonType": "string", "minLength": 1 },
+        "orgId": { "bsonType": ["string", "null"] },
+        "appliesWhen": {
+          "bsonType": "object",
+          "properties": {
+            "ageMin": { "bsonType": ["int", "long", "double", "decimal"] },
+            "ageMax": { "bsonType": ["int", "long", "double", "decimal"] },
+            "ckdStage": {
+              "bsonType": "string",
+              "enum": ["1", "2", "3a", "3b", "4", "5", "any"]
+            },
+            "dialysis": {
+              "bsonType": "string",
+              "enum": ["none", "hemodialysis", "peritoneal", "any"]
+            },
+            "sex": {
+              "bsonType": "string",
+              "enum": ["male", "female", "any"]
+            },
+            "diabetes": { "bsonType": ["bool", "null"] },
+            "pregnancy": { "bsonType": ["bool", "null"] },
+            "labConstraints": { "bsonType": "object" },
+            "medConstraints": { "bsonType": "object" }
+          },
+          "additionalProperties": false
+        },
+        "priority": { "bsonType": ["int", "long", "double", "decimal"], "minimum": 0, "maximum": 99 },
+        "rule": {
+          "bsonType": "object",
+          "properties": {
+            "target": {
+              "bsonType": "object",
+              "properties": {
+                "type": {
+                  "bsonType": "string",
+                  "enum": ["range", "max", "min", "exact"]
+                },
+                "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                "high": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                "value": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                "basis": {
+                  "bsonType": ["string", "null"],
+                  "enum": ["perDay", "perKgPerDay", null]
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false
+            },
+            "range": {
+              "bsonType": "object",
+              "properties": {
+                "lower": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                "upper": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                "criticalLow": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                "criticalHigh": { "bsonType": ["double", "int", "long", "decimal", "null"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "source": {
+          "bsonType": "object",
+          "required": ["publisher", "title", "year"],
+          "properties": {
+            "publisher": { "bsonType": "string", "minLength": 1 },
+            "title": { "bsonType": "string", "minLength": 1 },
+            "year": { "bsonType": ["int", "long", "double", "decimal"] },
+            "url": { "bsonType": ["string", "null"] },
+            "note": { "bsonType": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

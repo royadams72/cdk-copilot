@@ -23,14 +23,24 @@ import {
 import type { MedicationCurrentDoc } from "../types/dashboard";
 
 type ReferenceRangeDoc = {
+  code?: string;
+  kind?: "lab_range";
+  label?: string;
+  orgId?: string | null;
+  priority?: number;
+  rule?: {
+    range?: {
+      criticalHigh?: number | null;
+      criticalLow?: number | null;
+      lower?: number | null;
+      upper?: number | null;
+    };
+  };
+  status?: "active" | "deprecated" | "disabled";
   ageMax?: number;
   ageMin?: number;
-  loincCode?: string;
-  lower?: number | null;
   sex?: "male" | "female" | "any";
-  testName?: string;
   unit?: string;
-  upper?: number | null;
 };
 
 function normalizeUnit(value?: string) {
@@ -60,20 +70,20 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
   if (codes.length === 0) return docs;
 
   const refs = await db
-    .collection<ReferenceRangeDoc>("labs_reference_ranges")
+    .collection<ReferenceRangeDoc>("clinical_reference_rules")
     .find(
-      { loincCode: { $in: codes } },
+      { kind: "lab_range", status: "active", code: { $in: codes } },
       {
         projection: {
           _id: 0,
           ageMax: 1,
           ageMin: 1,
-          loincCode: 1,
-          lower: 1,
+          code: 1,
+          orgId: 1,
+          priority: 1,
+          rule: 1,
           sex: 1,
-          testName: 1,
           unit: 1,
-          upper: 1,
         },
       },
     )
@@ -81,7 +91,7 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
 
   const byCode = new Map<string, ReferenceRangeDoc[]>();
   for (const ref of refs) {
-    const code = ref.loincCode;
+    const code = ref.code;
     if (!code) continue;
     const list = byCode.get(code) ?? [];
     list.push(ref);
@@ -107,13 +117,15 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
       candidates.find((ref) => normalizeUnit(ref.unit) === unitNorm);
 
     if (!match) return doc;
+    const lower = typeof match.rule?.range?.lower === "number" ? match.rule.range.lower : null;
+    const upper = typeof match.rule?.range?.upper === "number" ? match.rule.range.upper : null;
     return {
       ...doc,
       refRange: {
-        high: typeof match.upper === "number" ? match.upper : null,
-        low: typeof match.lower === "number" ? match.lower : null,
+        high: upper,
+        low: lower,
         text:
-          typeof match.lower === "number" || typeof match.upper === "number"
+          typeof lower === "number" || typeof upper === "number"
             ? null
             : null,
       },

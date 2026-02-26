@@ -10,8 +10,10 @@ import { ROLES } from "@ckd/core";
 
 type ReferenceRangeDoc = {
   _id: ObjectId;
-  loincCode: string;
-  testName: string;
+  code: string;
+  kind: "lab_range";
+  label?: string;
+  status: "active" | "deprecated" | "disabled";
   unit: string;
 };
 
@@ -28,35 +30,37 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const docs = await db
-      .collection<ReferenceRangeDoc>("labs_reference_ranges")
+      .collection<ReferenceRangeDoc>("clinical_reference_rules")
       .find(
-        {},
+        { kind: "lab_range", status: "active" },
         {
           projection: {
             _id: 0,
-            loincCode: 1,
-            testName: 1,
+            code: 1,
+            kind: 1,
+            label: 1,
+            status: 1,
             unit: 1,
           },
         },
       )
-      .sort({ testName: 1, unit: 1 })
+      .sort({ label: 1, code: 1, unit: 1 })
       .limit(1500)
       .toArray();
 
     const seen = new Set<string>();
     const items = docs
       .filter((doc) => {
-        const key = `${doc.loincCode}::${doc.unit}`;
-        if (!doc.loincCode || !doc.testName || !doc.unit || seen.has(key)) {
+        const key = `${doc.code}::${doc.unit}`;
+        if (!doc.code || !doc.unit || seen.has(key)) {
           return false;
         }
         seen.add(key);
         return true;
       })
       .map((doc) => ({
-        code: doc.loincCode,
-        name: doc.testName,
+        code: doc.code,
+        name: doc.label ?? doc.code,
         unit: doc.unit,
       }));
 
@@ -66,4 +70,3 @@ export async function GET(req: NextRequest) {
     return bad(err?.message || "Server error", undefined, status);
   }
 }
-

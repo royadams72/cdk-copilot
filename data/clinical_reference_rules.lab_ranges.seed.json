@@ -1,0 +1,277 @@
+[
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:2951-2",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": 133,
+        "upper": 146,
+        "criticalLow": 120,
+        "criticalHigh": 160
+      }
+    },
+    "ruleId": "loinc-2951-2-any-18-150-mmol_L-uk_default",
+    "source": {
+      "publisher": "South Tees Hospitals NHS Foundation Trust",
+      "title": "Sodium – Clinical Biochemistry Test Directory",
+      "year": 2024,
+      "url": "https://www.southtees.nhs.uk/services/pathology/tests/sodium-and-urine/",
+      "note": "Adult serum reference interval 133–146 mmol/L."
+    },
+    "status": "active",
+    "unit": "mmol/L",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:2823-3",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": 3.5,
+        "upper": 5.3,
+        "criticalLow": 2.5,
+        "criticalHigh": 6.5
+      }
+    },
+    "ruleId": "loinc-2823-3-any-18-150-mmol_L-uk_default",
+    "source": {
+      "publisher": "South Tees Hospitals NHS Foundation Trust",
+      "title": "Potassium – Clinical Biochemistry Test Directory",
+      "year": 2024,
+      "url": "https://www.southtees.nhs.uk/services/pathology/tests/potassium/",
+      "note": "Adult serum reference interval 3.5–5.3 mmol/L."
+    },
+    "status": "active",
+    "unit": "mmol/L",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:2777-1",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": 0.8,
+        "upper": 1.5,
+        "criticalLow": 0.3,
+        "criticalHigh": 2.0
+      }
+    },
+    "ruleId": "loinc-2777-1-any-18-150-mmol_L-uk_default",
+    "source": {
+      "publisher": "NHS Grampian",
+      "title": "Management of Hypophosphataemia Guidance",
+      "year": 2022,
+      "url": "https://www.nhsgrampian.org/globalassets/services/medicines-management/policies/guide_hypophosphataemia.pdf",
+      "note": "Adult reference range over 16 years: 0.8–1.5 mmol/L."
+    },
+    "status": "active",
+    "unit": "mmol/L",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:17861-6",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": 2.2,
+        "upper": 2.6,
+        "criticalLow": 1.8,
+        "criticalHigh": 3.0
+      }
+    },
+    "ruleId": "loinc-17861-6-any-18-150-mmol_L-uk_default",
+    "source": {
+      "publisher": "GGC Medicines",
+      "title": "Management of Hypocalcaemia Guideline",
+      "year": 2023,
+      "url": "https://handbook.ggcmedicines.org.uk/guidelines/electrolyte-disturbances/management-of-hypocalcaemia/",
+      "note": "Adjusted calcium reference range 2.2–2.6 mmol/L."
+    },
+    "status": "active",
+    "unit": "mmol/L",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "male",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:718-7",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": 130,
+        "upper": 170,
+        "criticalLow": 70,
+        "criticalHigh": null
+      }
+    },
+    "ruleId": "loinc-718-7-male-18-150-g_L-uk_default",
+    "source": {
+      "publisher": "North Bristol NHS Trust",
+      "title": "Haemoglobin – Severn Pathology Test Information",
+      "year": 2024,
+      "url": "https://www.nbt.nhs.uk/severn-pathology/requesting/test-information/haemoglobin",
+      "note": "Adult male reference interval 130–170 g/L."
+    },
+    "status": "active",
+    "unit": "g/L",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "female",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:718-7",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": 120,
+        "upper": 150,
+        "criticalLow": 70,
+        "criticalHigh": null
+      }
+    },
+    "ruleId": "loinc-718-7-female-18-150-g_L-uk_default",
+    "source": {
+      "publisher": "North Bristol NHS Trust",
+      "title": "Haemoglobin – Severn Pathology Test Information",
+      "year": 2024,
+      "url": "https://www.nbt.nhs.uk/severn-pathology/requesting/test-information/haemoglobin",
+      "note": "Adult female reference interval 120–150 g/L."
+    },
+    "status": "active",
+    "unit": "g/L",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:4548-4",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": null,
+        "upper": null,
+        "criticalLow": null,
+        "criticalHigh": null
+      }
+    },
+    "ruleId": "loinc-4548-4-any-18-150-mmol_mol-uk_default",
+    "source": {
+      "publisher": "NICE",
+      "title": "Type 2 diabetes in adults – Diagnosis",
+      "year": 2023,
+      "url": "https://cks.nice.org.uk/topics/diabetes-type-2/diagnosis/diagnosis-in-adults/",
+      "note": "HbA1c ≥48 mmol/mol diagnostic threshold; 42–47 mmol/mol prediabetes band."
+    },
+    "status": "active",
+    "unit": "mmol/mol",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  },
+
+  {
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "code": "loinc:14959-1",
+    "createdAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "kind": "lab_range",
+    "orgId": null,
+    "priority": 50,
+    "rule": {
+      "range": {
+        "lower": null,
+        "upper": null,
+        "criticalLow": null,
+        "criticalHigh": null
+      }
+    },
+    "ruleId": "loinc-14959-1-any-18-150-mg_mmol-uk_default",
+    "source": {
+      "publisher": "NICE",
+      "title": "Chronic kidney disease in adults (NG203)",
+      "year": 2021,
+      "url": "https://www.nice.org.uk/guidance/ng203/chapter/recommendations",
+      "note": "Albuminuria categories A1 <3, A2 3–30, A3 >30 mg/mmol."
+    },
+    "status": "active",
+    "unit": "mg/mmol",
+    "updatedAt": { "$date": "2026-02-26T00:00:00.000Z" },
+    "version": 1
+  }
+]
