@@ -76,23 +76,6 @@
           "items": { "bsonType": "string" }
         },
 
-        "targets": {
-          "bsonType": "object",
-          "properties": {
-            "caloriesKcal": {
-              "bsonType": ["double", "int", "long", "decimal"]
-            },
-            "proteinG": { "bsonType": ["double", "int", "long", "decimal"] },
-            "phosphorusMg": {
-              "bsonType": ["double", "int", "long", "decimal"]
-            },
-            "potassiumMg": { "bsonType": ["double", "int", "long", "decimal"] },
-            "sodiumMg": { "bsonType": ["double", "int", "long", "decimal"] },
-            "fluidMl": { "bsonType": ["double", "int", "long", "decimal"] }
-          },
-          "additionalProperties": true
-        },
-
         "careTeam": {
           "bsonType": "array",
           "items": {

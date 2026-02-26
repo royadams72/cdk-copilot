@@ -2,25 +2,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { ObjectId } from "mongodb";
+import { COLLECTIONS } from "@ckd/core/server";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const caller = await requireUser(req, ["measurements:read"]);
-  const userId =
-    new URL(req.url).searchParams.get("userId") ||
-    caller.patientId ||
-    caller.authId;
+  const patientIdParam =
+    new URL(req.url).searchParams.get("patientId") || caller.patientId || null;
+
+  if (!patientIdParam || !ObjectId.isValid(patientIdParam)) {
+    return NextResponse.json(
+      { ok: false, error: "Patient context missing" },
+      { status: 403 },
+    );
+  }
+
+  const patientId = new ObjectId(patientIdParam);
 
   const db = await getDb();
+
+  const currentDocs = await db
+    .collection(COLLECTIONS.MeasurementsCurrent)
+    .find({ patientId }, { projection: { _id: 0 } })
+    .sort({ kind: 1 })
+    .toArray();
+
+  if (currentDocs.length > 0) {
+    return NextResponse.json({ ok: true, data: currentDocs });
+  }
+
   const docs = await db
-    .collection("measurement_ledger")
+    .collection(COLLECTIONS.MeasurementsLedger)
     .aggregate([
-      { $match: { userId, superseded: { $ne: true } } },
-      { $sort: { measuredAt: 1, createdAt: 1 } },
-      { $group: { _id: { type: "$type" }, latest: { $last: "$$ROOT" } } },
+      { $match: { patientId } },
+      { $sort: { measuredAt: 1, receivedAt: 1, _id: 1 } },
+      { $group: { _id: "$kind", latest: { $last: "$$ROOT" } } },
       { $replaceRoot: { newRoot: "$latest" } },
-      { $sort: { type: 1 } },
+      { $project: { _id: 0 } },
+      { $sort: { kind: 1 } },
     ])
     .toArray();
 

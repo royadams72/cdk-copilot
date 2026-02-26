@@ -327,7 +327,7 @@ function formatLab(
 
 export function summarizeNutrition(
   entries: NutritionEntryDoc[],
-  clinicalDoc: any,
+  nutritionTargets: Partial<Record<NutrientKey, number>>,
   from: Date,
   to: Date,
   rangeDays: number,
@@ -353,7 +353,7 @@ export function summarizeNutrition(
 
   const radials = RADIAL_METRICS.map((metric) => {
     const actual = round(totals[metric.key], metric.precision);
-    const targetValue = normaliseNumber(clinicalDoc?.targets?.[metric.key]) as
+    const targetValue = normaliseNumber(nutritionTargets?.[metric.key]) as
       | number
       | null;
     const percent =
@@ -369,7 +369,7 @@ export function summarizeNutrition(
     };
   });
 
-  const ratio = buildRatio(totals, clinicalDoc?.targets);
+  const ratio = buildRatio(totals, nutritionTargets);
   const dailySeries = buildDailySeries(entriesInRange, to, rangeDays);
   const foodHighlights = buildFoodHighlights(entriesInRange);
   const mealsByDate = buildMealsByDate(entriesInRange);
@@ -618,7 +618,7 @@ function dayKey(date: Date) {
 
 function buildRatio(
   totals: Record<NutrientKey, number>,
-  targets?: Record<string, number>,
+  targets?: Partial<Record<NutrientKey, number>>,
 ) {
   const actual =
     totals.proteinG > 0
@@ -642,6 +642,84 @@ function buildRatio(
     unit: "mg phosphorus per g protein",
     value: actual,
   };
+}
+
+type TargetStateLike = {
+  metric?: string;
+  recommended?: {
+    type?: "range" | "max" | "min" | "exact";
+    low?: number | null;
+    high?: number | null;
+    value?: number | null;
+  } | null;
+  override?: {
+    type?: "range" | "max" | "min" | "exact";
+    low?: number | null;
+    high?: number | null;
+    value?: number | null;
+  } | null;
+  effective?: {
+    type?: "range" | "max" | "min" | "exact";
+    low?: number | null;
+    high?: number | null;
+    value?: number | null;
+  } | null;
+};
+
+function resolveTargetValue(state?: TargetStateLike | null): number | null {
+  const target = state?.effective ?? state?.override ?? state?.recommended;
+  if (!target) return null;
+  const direct = normaliseNumber(target.value);
+  if (direct !== null) return direct;
+
+  if (target.type === "range") {
+    return normaliseNumber(target.high ?? target.low);
+  }
+  if (target.type === "max") return normaliseNumber(target.high ?? target.value);
+  if (target.type === "min") return normaliseNumber(target.low ?? target.value);
+  return null;
+}
+
+const TARGET_ALIASES: Record<NutrientKey, string[]> = {
+  caloriesKcal: ["caloriesKcal", "calories_kcal_day", "energy_kcal_day"],
+  phosphorusMg: ["phosphorusMg", "phosphorus_mg_day"],
+  potassiumMg: ["potassiumMg", "potassium_mg_day"],
+  proteinG: ["proteinG", "protein_g_day", "protein_g_kg_day"],
+  sodiumMg: ["sodiumMg", "sodium_mg_day"],
+};
+
+export function mapNutritionTargets(
+  targetsCurrent:
+    | Record<string, TargetStateLike>
+    | null
+    | undefined,
+  legacyTargets:
+    | Partial<Record<NutrientKey, number>>
+    | null
+    | undefined,
+): Partial<Record<NutrientKey, number>> {
+  const mapped: Partial<Record<NutrientKey, number>> = {};
+  const entries = Object.entries(targetsCurrent ?? {});
+
+  for (const nutrientKey of Object.keys(TARGET_ALIASES) as NutrientKey[]) {
+    const aliases = TARGET_ALIASES[nutrientKey];
+    const match = entries.find(([key, state]) => {
+      if (aliases.includes(key)) return true;
+      if (state?.metric && aliases.includes(state.metric)) return true;
+      return false;
+    });
+    if (!match) continue;
+    const value = resolveTargetValue(match[1]);
+    if (value !== null) mapped[nutrientKey] = value;
+  }
+
+  for (const nutrientKey of Object.keys(TARGET_ALIASES) as NutrientKey[]) {
+    if (mapped[nutrientKey] !== undefined) continue;
+    const fallback = normaliseNumber(legacyTargets?.[nutrientKey]);
+    if (fallback !== null) mapped[nutrientKey] = fallback;
+  }
+
+  return mapped;
 }
 
 function clamp(value: number, min: number, max: number) {

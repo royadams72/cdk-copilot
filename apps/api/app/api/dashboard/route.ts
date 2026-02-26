@@ -1,16 +1,17 @@
 import { NextRequest } from "next/server";
-import { type Db, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
-import { ROLES, TUserClinicalSummary } from "@ckd/core";
+import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import {
   fetchRecentMedications,
   fetchNutritionEntries,
   fetchRecentLabs,
+  mapNutritionTargets,
   normaliseNumber,
   summarizeMedications,
   summarizeLabs,
@@ -78,6 +79,41 @@ export const ZERO_TOTALS: Record<NutrientKey, number> = {
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const FOOD_HIGHLIGHT_LIMIT = 5;
 
+type UserClinicalSummaryDoc = {
+  ckdStage?: string | null;
+  dialysisStatus?: string | null;
+  egfrCurrent?: number | null;
+  lastClinicalUpdateAt?: Date | null;
+  targets?: Partial<Record<NutrientKey, number>> | null;
+};
+
+type TargetsCurrentDoc = {
+  targets?: Record<
+    string,
+    {
+      metric?: string;
+      recommended?: {
+        type?: "range" | "max" | "min" | "exact";
+        low?: number | null;
+        high?: number | null;
+        value?: number | null;
+      } | null;
+      override?: {
+        type?: "range" | "max" | "min" | "exact";
+        low?: number | null;
+        high?: number | null;
+        value?: number | null;
+      } | null;
+      effective?: {
+        type?: "range" | "max" | "min" | "exact";
+        low?: number | null;
+        high?: number | null;
+        value?: number | null;
+      } | null;
+    }
+  >;
+};
+
 export async function GET(req: NextRequest) {
   try {
     // Patients only have the default auth scopes, so rely on role + patient context.
@@ -90,29 +126,31 @@ export async function GET(req: NextRequest) {
     ) {
       return bad("Patient context missing", undefined, 403);
     }
-    console.log("caller.patientId::", caller.patientId);
-
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
 
-    const [clinicalDoc, labDocs, nutritionDocs, medicationDocs] =
+    const [clinicalDoc, targetsCurrentDoc, labDocs, nutritionDocs, medicationDocs] =
       await Promise.all([
-      db.collection<TUserClinicalSummary>(COLLECTIONS.UsersClinical).findOne(
-        { patientId: patientObjectId },
-        {
-          projection: {
-            ckdStage: 1,
-            dialysisStatus: 1,
-            egfrCurrent: 1,
-            lastClinicalUpdateAt: 1,
-            targets: 1,
+        db.collection<UserClinicalSummaryDoc>(COLLECTIONS.UsersClinical).findOne(
+          { patientId: patientObjectId },
+          {
+            projection: {
+              ckdStage: 1,
+              dialysisStatus: 1,
+              egfrCurrent: 1,
+              lastClinicalUpdateAt: 1,
+              targets: 1,
+            },
           },
-        },
-      ),
-      fetchRecentLabs(db, patientObjectId),
-      fetchNutritionEntries(db, patientObjectId),
-      fetchRecentMedications(db, patientObjectId),
-    ]);
+        ),
+        db.collection<TargetsCurrentDoc>(COLLECTIONS.TargetsCurrent).findOne(
+          { patientId: patientObjectId },
+          { projection: { targets: 1 } },
+        ),
+        fetchRecentLabs(db, patientObjectId),
+        fetchNutritionEntries(db, patientObjectId),
+        fetchRecentMedications(db, patientObjectId),
+      ]);
 
     const scope = req.nextUrl.searchParams.get("scope");
     const normalizedScope = scope === "all" ? "all" : "today";
@@ -137,10 +175,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const nutritionTargets = mapNutritionTargets(
+      targetsCurrentDoc?.targets ?? null,
+      clinicalDoc?.targets ?? null,
+    );
+
     const labs = summarizeLabs(labDocs);
     const nutrition = summarizeNutrition(
       nutritionDocs,
-      clinicalDoc,
+      nutritionTargets,
       rangeStart,
       rangeEnd,
       rangeDays,

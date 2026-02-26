@@ -1,0 +1,86 @@
+{
+  "collMod": "measurements_current",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "kind",
+        "patientId",
+        "orgId",
+        "measuredAt",
+        "receivedAt",
+        "source",
+        "ledgerId",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "kind": {
+          "enum": [
+            "weight",
+            "blood_pressure",
+            "heart_rate",
+            "steps",
+            "exercise",
+            "sleep"
+          ]
+        },
+        "patientId": { "bsonType": "objectId" },
+        "orgId": { "bsonType": "string" },
+        "measuredAt": { "bsonType": "date" },
+        "receivedAt": { "bsonType": "date" },
+        "source": { "enum": ["patient", "device", "api", "provider"] },
+        "device": {
+          "bsonType": "object",
+          "properties": {
+            "name": { "bsonType": "string" },
+            "platform": { "bsonType": "string" },
+            "externalId": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+        "notes": { "bsonType": "string" },
+        "ledgerId": { "bsonType": "objectId" },
+        "prevLedgerId": { "bsonType": ["objectId", "null"] },
+        "updatedReason": { "bsonType": ["string", "null"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" },
+
+        "valueKg": { "bsonType": ["double", "int", "long", "decimal"] },
+        "systolicMmHg": { "bsonType": ["int", "long", "double", "decimal"] },
+        "diastolicMmHg": { "bsonType": ["int", "long", "double", "decimal"] },
+        "pulseBpm": { "bsonType": ["int", "long", "double", "decimal"] },
+        "bpm": { "bsonType": ["int", "long", "double", "decimal"] },
+        "count": { "bsonType": ["int", "long", "double", "decimal"] },
+        "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
+        "quality": { "enum": ["poor", "fair", "good", "excellent"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "orgId": 1, "patientId": 1, "kind": 1 },
+      "options": { "name": "uniq_byOrgPatientKind", "unique": true }
+    },
+    {
+      "key": { "patientId": 1, "kind": 1, "measuredAt": -1 },
+      "options": { "name": "byPatientKind_latest" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "measuredAt": -1 },
+      "options": { "name": "byOrgPatient_time" }
+    },
+    {
+      "key": { "ledgerId": 1 },
+      "options": { "name": "byLedgerId" }
+    }
+  ]
+}
