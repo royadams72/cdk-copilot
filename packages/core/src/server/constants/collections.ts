@@ -30,7 +30,6 @@ export const COLLECTIONS = {
   // Deprecated alias kept for compatibility while callers migrate.
   LabsReferenceRanges: "clinical_reference_rules",
   MeasurementsLedger: "measurements_ledger",
-  MeasurementsCurrent: "measurements_current",
   MedicationsCurrent: "medications_current",
   MedicationsLedger: "medications_ledger",
   NutritionLedger: "nutrition_ledger",

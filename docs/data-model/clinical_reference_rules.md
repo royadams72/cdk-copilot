@@ -231,5 +231,5 @@ db.clinical_reference_rules.createIndex({
 ## Boundaries
 
 - `labs_ledger`/`labs_current` store observed lab data.
-- `measurements_ledger`/`measurements_current` store observed activity/vitals data.
+- `measurements_ledger` stores observed activity/vitals data.
 - `targets_ledger`/`targets_current` store goal state and target changes.

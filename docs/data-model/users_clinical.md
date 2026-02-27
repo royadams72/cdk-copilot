@@ -76,6 +76,5 @@ db.users_clinical.updateOne(
 ## Related collections
 
 - `labs_ledger` / `labs_current` for observed lab results
-- `measurements_ledger` / `measurements_current` (optional) for observed
-  activity/vitals
+- `measurements_ledger` for observed activity/vitals
 - `targets_ledger` / `targets_current` for goal state and changes

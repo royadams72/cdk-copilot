@@ -3,7 +3,6 @@ erDiagram
   patients ||--o{ labs_ledger : "patientId"
   patients ||--o{ labs_current : "patientId"
   patients ||--o{ measurements_ledger : "patientId"
-  patients ||--o{ measurements_current : "patientId (optional)"
   patients ||--o{ targets_ledger : "patientId"
   patients ||--o{ targets_current : "patientId"
   clinical_reference_rules ||--o{ targets_current : "derivedFrom.ruleId/version"
@@ -44,13 +43,6 @@ erDiagram
     ObjectId patientId FK
     string kind
     date measuredAt
-  }
-
-  measurements_current {
-    ObjectId _id PK
-    ObjectId patientId FK
-    string kind
-    ObjectId ledgerId
   }
 
   targets_ledger {

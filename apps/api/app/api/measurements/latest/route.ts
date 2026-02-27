@@ -23,16 +23,6 @@ export async function GET(req: NextRequest) {
 
   const db = await getDb();
 
-  const currentDocs = await db
-    .collection(COLLECTIONS.MeasurementsCurrent)
-    .find({ patientId }, { projection: { _id: 0 } })
-    .sort({ kind: 1 })
-    .toArray();
-
-  if (currentDocs.length > 0) {
-    return NextResponse.json({ ok: true, data: currentDocs });
-  }
-
   const docs = await db
     .collection(COLLECTIONS.MeasurementsLedger)
     .aggregate([

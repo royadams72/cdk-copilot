@@ -23,6 +23,8 @@ import {
 import type { MedicationCurrentDoc } from "../types/dashboard";
 
 type ReferenceRangeDoc = {
+  ageMax?: number;
+  ageMin?: number;
   code?: string;
   kind?: "lab_range";
   label?: string;
@@ -36,18 +38,13 @@ type ReferenceRangeDoc = {
       upper?: number | null;
     };
   };
-  status?: "active" | "deprecated" | "disabled";
-  ageMax?: number;
-  ageMin?: number;
   sex?: "male" | "female" | "any";
+  status?: "active" | "deprecated" | "disabled";
   unit?: string;
 };
 
 function normalizeUnit(value?: string) {
-  return (value ?? "")
-    .toLowerCase()
-    .replace(/µ/g, "u")
-    .replace(/\s+/g, "");
+  return (value ?? "").toLowerCase().replace(/µ/g, "u").replace(/\s+/g, "");
 }
 
 function hasRefRange(doc: LabDoc) {
@@ -72,7 +69,7 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
   const refs = await db
     .collection<ReferenceRangeDoc>("clinical_reference_rules")
     .find(
-      { kind: "lab_range", status: "active", code: { $in: codes } },
+      { code: { $in: codes }, kind: "lab_range", status: "active" },
       {
         projection: {
           _id: 0,
@@ -113,21 +110,24 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
         const ageMin = typeof ref.ageMin === "number" ? ref.ageMin : 0;
         const ageMax = typeof ref.ageMax === "number" ? ref.ageMax : 200;
         return sexOk && assumedAge >= ageMin && assumedAge <= ageMax;
-      }) ??
-      candidates.find((ref) => normalizeUnit(ref.unit) === unitNorm);
+      }) ?? candidates.find((ref) => normalizeUnit(ref.unit) === unitNorm);
 
     if (!match) return doc;
-    const lower = typeof match.rule?.range?.lower === "number" ? match.rule.range.lower : null;
-    const upper = typeof match.rule?.range?.upper === "number" ? match.rule.range.upper : null;
+    const lower =
+      typeof match.rule?.range?.lower === "number"
+        ? match.rule.range.lower
+        : null;
+    const upper =
+      typeof match.rule?.range?.upper === "number"
+        ? match.rule.range.upper
+        : null;
     return {
       ...doc,
       refRange: {
         high: upper,
         low: lower,
         text:
-          typeof lower === "number" || typeof upper === "number"
-            ? null
-            : null,
+          typeof lower === "number" || typeof upper === "number" ? null : null,
       },
     };
   });
@@ -154,7 +154,7 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
         },
       },
     )
-    .sort({ takenAt: -1, reportedAt: -1, updatedAt: -1 })
+    .sort({ reportedAt: -1, takenAt: -1, updatedAt: -1 })
     .limit(200)
     .toArray();
   if (current.length > 0) {
@@ -217,10 +217,10 @@ export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
       {
         projection: {
           _id: 1,
-          medicationId: 1,
           dose: 1,
           form: 1,
           frequency: 1,
+          medicationId: 1,
           name: 1,
           route: 1,
           startAt: 1,
@@ -229,7 +229,7 @@ export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
         },
       },
     )
-    .sort({ updatedAt: -1, startAt: -1 })
+    .sort({ startAt: -1, updatedAt: -1 })
     .limit(200)
     .toArray();
 }
@@ -294,9 +294,9 @@ function formatLab(
   doc: LabDoc,
   config?: (typeof TRACKED_LABS)[number],
 ): {
-  code: string;
   id: string;
   abnormalFlag: string | null;
+  code: string;
   label: string;
   refRange: { low: number | null; high: number | null; text: string | null };
   takenAt: string | null;
@@ -310,9 +310,9 @@ function formatLab(
     doc.derivedAbnormalFlag ??
     null;
   return {
-    code: doc.code ?? "",
-    id: config?.id ?? (doc.code ?? doc.name ?? "lab"),
+    id: config?.id ?? doc.code ?? doc.name ?? "lab",
     abnormalFlag: effectiveFlag,
+    code: doc.code ?? "",
     label: doc.name ?? config?.label ?? "Lab",
     refRange: {
       low: normaliseNumber(doc.refRange?.low),
@@ -645,23 +645,23 @@ function buildRatio(
 }
 
 type TargetStateLike = {
-  metric?: string;
-  recommended?: {
-    type?: "range" | "max" | "min" | "exact";
-    low?: number | null;
-    high?: number | null;
-    value?: number | null;
-  } | null;
-  override?: {
-    type?: "range" | "max" | "min" | "exact";
-    low?: number | null;
-    high?: number | null;
-    value?: number | null;
-  } | null;
   effective?: {
     type?: "range" | "max" | "min" | "exact";
-    low?: number | null;
     high?: number | null;
+    low?: number | null;
+    value?: number | null;
+  } | null;
+  metric?: string;
+  override?: {
+    type?: "range" | "max" | "min" | "exact";
+    high?: number | null;
+    low?: number | null;
+    value?: number | null;
+  } | null;
+  recommended?: {
+    type?: "range" | "max" | "min" | "exact";
+    high?: number | null;
+    low?: number | null;
     value?: number | null;
   } | null;
 };
@@ -675,7 +675,8 @@ function resolveTargetValue(state?: TargetStateLike | null): number | null {
   if (target.type === "range") {
     return normaliseNumber(target.high ?? target.low);
   }
-  if (target.type === "max") return normaliseNumber(target.high ?? target.value);
+  if (target.type === "max")
+    return normaliseNumber(target.high ?? target.value);
   if (target.type === "min") return normaliseNumber(target.low ?? target.value);
   return null;
 }
@@ -685,7 +686,10 @@ const TARGET_ALIASES: Record<NutrientKey, string[]> = {
   phosphorusMg: ["phosphorusMg", "phosphorus_mg_day"],
   potassiumMg: ["potassiumMg", "potassium_mg_day"],
   proteinG: ["proteinG", "protein_g_day", "protein_g_kg_day"],
+  sleep_duration_min_day: [],
   sodiumMg: ["sodiumMg", "sodium_mg_day"],
+  steps_per_day: [],
+  weight_kg: [],
 };
 
 function normaliseMetricKey(value: string) {
@@ -693,10 +697,7 @@ function normaliseMetricKey(value: string) {
 }
 
 export function mapNutritionTargets(
-  targetsCurrent:
-    | Record<string, TargetStateLike>
-    | null
-    | undefined,
+  targetsCurrent: Record<string, TargetStateLike> | null | undefined,
 ): Partial<Record<NutrientKey, number>> {
   const mapped: Partial<Record<NutrientKey, number>> = {};
   const entries = Object.entries(targetsCurrent ?? {});

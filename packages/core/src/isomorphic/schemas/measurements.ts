@@ -85,32 +85,3 @@ const BaseCreate = Base.omit({
   updatedBy: true,
 });
 export const MeasurementCreate = BaseCreate.and(KindUnion);
-
-const MeasurementCurrentBase = z.object({
-  _id: objectIdHex,
-  createdAt: z.date(),
-  createdBy: PrincipalId,
-  device: DeviceMeta.optional(),
-  kind: Base.shape.kind,
-  ledgerId: objectIdHex,
-  measuredAt: z.date(),
-  notes: z.string().min(1).optional(),
-  orgId: z.string().min(1),
-  patientId: objectIdHex,
-  prevLedgerId: objectIdHex.nullable().optional(),
-  receivedAt: z.date(),
-  source: Source,
-  updatedAt: z.date(),
-  updatedBy: PrincipalId,
-  updatedReason: z.string().min(1).nullable().optional(),
-});
-
-export const MeasurementCurrent = MeasurementCurrentBase.and(KindUnion);
-
-export const MeasurementCurrentUpsert = MeasurementCurrentBase.omit({
-  _id: true,
-  createdAt: true,
-  createdBy: true,
-  updatedAt: true,
-  updatedBy: true,
-}).and(KindUnion);
