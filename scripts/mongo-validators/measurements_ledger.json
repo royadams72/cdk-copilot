@@ -14,6 +14,7 @@
         "updatedBy"
       ],
       "properties": {
+        "_id": { "bsonType": "objectId" },
         "kind": {
           "enum": [
             "weight",

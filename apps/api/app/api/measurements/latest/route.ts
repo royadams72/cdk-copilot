@@ -8,7 +8,7 @@ import { COLLECTIONS } from "@ckd/core/server";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const caller = await requireUser(req, ["measurements:read"]);
+  const caller = await requireUser(req);
   const patientIdParam =
     new URL(req.url).searchParams.get("patientId") || caller.patientId || null;
 
