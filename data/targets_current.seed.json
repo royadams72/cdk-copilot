@@ -1,0 +1,132 @@
+[
+  {
+    "patientId": { "$oid": "69724a127dabc8ebca7aa3af" },
+    "orgId": "org_demo",
+    "updatedAt": { "$date": "2026-02-27T09:00:00.000Z" },
+    "updatedBy": {
+      "principalId": "pr_69724a127dabc8ebca7aa3af",
+      "actorType": "system",
+      "displayName": "Seed"
+    },
+    "engine": {
+      "ruleset": "clinical_reference_rules",
+      "runId": "seed-targets-20260227-090000",
+      "computedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+    },
+    "flags": ["seeded"],
+    "targets": {
+      "steps_per_day": {
+        "domain": "lifestyle",
+        "metric": "steps_per_day",
+        "unit": "steps/day",
+        "recommended": { "type": "min", "low": null, "high": null, "value": 8000, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "min", "low": null, "high": null, "value": 8000, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "steps-per-day-adults-under-60",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "sleep_duration_min_day": {
+        "domain": "lifestyle",
+        "metric": "sleep_duration_min_day",
+        "unit": "min/day",
+        "recommended": { "type": "range", "low": 420, "high": 540, "value": null, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "range", "low": 420, "high": 540, "value": null, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "sleep-duration-adults-18-64",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "weight_kg": {
+        "domain": "lifestyle",
+        "metric": "weight_kg",
+        "unit": "kg",
+        "recommended": { "type": "range", "low": 68, "high": 74, "value": null, "basis": null },
+        "override": null,
+        "effective": { "type": "range", "low": 68, "high": 74, "value": null, "basis": null },
+        "derivedFrom": {
+          "ruleId": "weight-maintenance-adult-default",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "proteinG": {
+        "domain": "renal",
+        "metric": "proteinG",
+        "unit": "g/day",
+        "recommended": { "type": "max", "low": null, "high": null, "value": 60, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "max", "low": null, "high": null, "value": 60, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "renal-protein-default-nondialysis",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "phosphorusMg": {
+        "domain": "renal",
+        "metric": "phosphorusMg",
+        "unit": "mg/day",
+        "recommended": { "type": "max", "low": null, "high": null, "value": 800, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "max", "low": null, "high": null, "value": 800, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "renal-phosphorus-default",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "potassiumMg": {
+        "domain": "renal",
+        "metric": "potassiumMg",
+        "unit": "mg/day",
+        "recommended": { "type": "max", "low": null, "high": null, "value": 2000, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "max", "low": null, "high": null, "value": 2000, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "renal-potassium-default",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "sodiumMg": {
+        "domain": "renal",
+        "metric": "sodiumMg",
+        "unit": "mg/day",
+        "recommended": { "type": "max", "low": null, "high": null, "value": 2000, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "max", "low": null, "high": null, "value": 2000, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "renal-sodium-default",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      },
+      "caloriesKcal": {
+        "domain": "renal",
+        "metric": "caloriesKcal",
+        "unit": "kcal/day",
+        "recommended": { "type": "range", "low": 1800, "high": 2200, "value": null, "basis": "perDay" },
+        "override": null,
+        "effective": { "type": "range", "low": 1800, "high": 2200, "value": null, "basis": "perDay" },
+        "derivedFrom": {
+          "ruleId": "renal-energy-default",
+          "version": 1,
+          "matchedAt": { "$date": "2026-02-27T09:00:00.000Z" }
+        },
+        "overrideMeta": null
+      }
+    }
+  }
+]

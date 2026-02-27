@@ -688,13 +688,13 @@ const TARGET_ALIASES: Record<NutrientKey, string[]> = {
   sodiumMg: ["sodiumMg", "sodium_mg_day"],
 };
 
+function normaliseMetricKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export function mapNutritionTargets(
   targetsCurrent:
     | Record<string, TargetStateLike>
-    | null
-    | undefined,
-  legacyTargets:
-    | Partial<Record<NutrientKey, number>>
     | null
     | undefined,
 ): Partial<Record<NutrientKey, number>> {
@@ -702,21 +702,17 @@ export function mapNutritionTargets(
   const entries = Object.entries(targetsCurrent ?? {});
 
   for (const nutrientKey of Object.keys(TARGET_ALIASES) as NutrientKey[]) {
-    const aliases = TARGET_ALIASES[nutrientKey];
+    const aliases = TARGET_ALIASES[nutrientKey].map(normaliseMetricKey);
     const match = entries.find(([key, state]) => {
-      if (aliases.includes(key)) return true;
-      if (state?.metric && aliases.includes(state.metric)) return true;
+      const entryKey = normaliseMetricKey(key);
+      if (aliases.includes(entryKey)) return true;
+      if (state?.metric && aliases.includes(normaliseMetricKey(state.metric)))
+        return true;
       return false;
     });
     if (!match) continue;
     const value = resolveTargetValue(match[1]);
     if (value !== null) mapped[nutrientKey] = value;
-  }
-
-  for (const nutrientKey of Object.keys(TARGET_ALIASES) as NutrientKey[]) {
-    if (mapped[nutrientKey] !== undefined) continue;
-    const fallback = normaliseNumber(legacyTargets?.[nutrientKey]);
-    if (fallback !== null) mapped[nutrientKey] = fallback;
   }
 
   return mapped;

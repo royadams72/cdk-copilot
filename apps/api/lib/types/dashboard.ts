@@ -1,49 +1,53 @@
-import { TFoodItemEntry, TMealType, TNutritionEntry } from "@/packages/core/dist/isomorphic";
+import {
+  TFoodItemEntry,
+  TMealType,
+  TNutritionEntry,
+} from "@/packages/core/dist/isomorphic";
 import { ObjectId } from "mongodb";
 import { RADIAL_METRICS } from "../../app/api/dashboard/route";
 
 export type LabDoc = {
   _id: ObjectId;
-  ledgerId?: ObjectId;
+  abnormalFlag?: string;
   code?: string;
-  name?: string;
-  value?: number | string;
-  unit?: string;
-  refRange?: {
-    low?: number | null;
-    high?: number | null;
-    text?: string | null;
-  } | null;
-  takenAt?: Date;
-  reportedAt?: Date;
   createdAt?: Date;
-  updatedAt?: Date;
-  sourceAbnormalFlag?: string | null;
   derivedAbnormalFlag?: string | null;
   effectiveAbnormalFlag?: string | null;
-  abnormalFlag?: string;
+  ledgerId?: ObjectId;
+  name?: string;
+  refRange?: {
+    high?: number | null;
+    low?: number | null;
+    text?: string | null;
+  } | null;
+  reportedAt?: Date;
+  sourceAbnormalFlag?: string | null;
+  takenAt?: Date;
+  unit?: string;
+  updatedAt?: Date;
+  value?: number | string;
 };
 
 export type MedicationCurrentDoc = {
   _id: ObjectId;
-  medicationId?: ObjectId;
-  patientId: ObjectId;
-  name?: string;
+  createdAt?: Date;
   dose?: string;
-  frequency?: string;
-  route?: string;
-  form?: string;
-  startAt?: Date;
-  status?: "active" | "paused" | "stopped" | "completed";
   editHistory?: Array<{
+    type: "edited" | "status_change";
     at: Date;
     by: string;
-    reason?: string;
-    type: "edited" | "status_change";
     changes?: string[];
+    reason?: string;
     toStatus?: "active" | "paused" | "stopped" | "completed";
   }>;
-  createdAt?: Date;
+  form?: string;
+  frequency?: string;
+  medicationId?: ObjectId;
+  name?: string;
+  patientId: ObjectId;
+  route?: string;
+  startAt?: Date;
+  status?: "active" | "paused" | "stopped" | "completed";
   updatedAt?: Date;
 };
 
@@ -54,7 +58,9 @@ export type NutritionEntryDoc = Omit<TNutritionEntry, "patientId"> & {
 
 export type ChartMetric = (typeof RADIAL_METRICS)[number];
 export type ChartMetricKey = ChartMetric["key"];
-export type FoodHighlightMetricKey = ChartMetricKey | "phosphorus_protein_ratio";
+export type FoodHighlightMetricKey =
+  | ChartMetricKey
+  | "phosphorus_protein_ratio";
 export type NutritionDailyPoint = {
   date: string;
   label: string;
@@ -62,23 +68,23 @@ export type NutritionDailyPoint = {
 };
 
 export type FoodHighlight = {
-  name: string;
   amount: number;
-  unit: string;
-  mealType: string | null;
   eatenAt: string | null;
+  mealType: string | null;
+  name: string;
+  unit: string;
 };
 
 export type FoodHighlightResult = {
-  latestDate: string | null;
   itemsByDate: Record<string, Record<FoodHighlightMetricKey, FoodHighlight[]>>;
+  latestDate: string | null;
 };
 
 export type NutritionMealEntry = {
   id: string;
-  mealType: TMealType;
   eatenAt: string | null;
   items: TFoodItemEntry[];
+  mealType: TMealType;
 };
 
 export type NutrientKey =
@@ -86,4 +92,7 @@ export type NutrientKey =
   | "proteinG"
   | "phosphorusMg"
   | "potassiumMg"
-  | "sodiumMg";
+  | "sodiumMg"
+  | "steps_per_day"
+  | "sleep_duration_min_day"
+  | "weight_kg";

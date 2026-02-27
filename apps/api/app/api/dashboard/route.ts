@@ -8,13 +8,13 @@ import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import {
-  fetchRecentMedications,
   fetchNutritionEntries,
   fetchRecentLabs,
+  fetchRecentMedications,
   mapNutritionTargets,
   normaliseNumber,
-  summarizeMedications,
   summarizeLabs,
+  summarizeMedications,
   summarizeNutrition,
 } from "@/apps/api/lib/utils/dashboard";
 export const runtime = "nodejs";
@@ -74,7 +74,10 @@ export const ZERO_TOTALS: Record<NutrientKey, number> = {
   phosphorusMg: 0,
   potassiumMg: 0,
   proteinG: 0,
+  sleep_duration_min_day: 0,
   sodiumMg: 0,
+  steps_per_day: 0,
+  weight_kg: 0,
 };
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const FOOD_HIGHLIGHT_LIMIT = 5;
@@ -84,34 +87,34 @@ type UserClinicalSummaryDoc = {
   dialysisStatus?: string | null;
   egfrCurrent?: number | null;
   lastClinicalUpdateAt?: Date | null;
-  targets?: Partial<Record<NutrientKey, number>> | null;
 };
 
 type TargetsCurrentDoc = {
   targets?: Record<
     string,
     {
-      metric?: string;
-      recommended?: {
-        type?: "range" | "max" | "min" | "exact";
-        low?: number | null;
-        high?: number | null;
-        value?: number | null;
-      } | null;
-      override?: {
-        type?: "range" | "max" | "min" | "exact";
-        low?: number | null;
-        high?: number | null;
-        value?: number | null;
-      } | null;
       effective?: {
         type?: "range" | "max" | "min" | "exact";
-        low?: number | null;
         high?: number | null;
+        low?: number | null;
+        value?: number | null;
+      } | null;
+      metric?: string;
+      override?: {
+        type?: "range" | "max" | "min" | "exact";
+        high?: number | null;
+        low?: number | null;
+        value?: number | null;
+      } | null;
+      recommended?: {
+        type?: "range" | "max" | "min" | "exact";
+        high?: number | null;
+        low?: number | null;
         value?: number | null;
       } | null;
     }
   >;
+  updatedAt?: Date | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -129,28 +132,41 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
 
-    const [clinicalDoc, targetsCurrentDoc, labDocs, nutritionDocs, medicationDocs] =
-      await Promise.all([
-        db.collection<UserClinicalSummaryDoc>(COLLECTIONS.UsersClinical).findOne(
-          { patientId: patientObjectId },
-          {
-            projection: {
-              ckdStage: 1,
-              dialysisStatus: 1,
-              egfrCurrent: 1,
-              lastClinicalUpdateAt: 1,
-              targets: 1,
-            },
+    const [
+      clinicalDoc,
+      targetsCurrentDoc,
+      labDocs,
+      nutritionDocs,
+      medicationDocs,
+    ] = await Promise.all([
+      db.collection<UserClinicalSummaryDoc>(COLLECTIONS.UsersClinical).findOne(
+        { patientId: patientObjectId },
+        {
+          projection: {
+            ckdStage: 1,
+            dialysisStatus: 1,
+            egfrCurrent: 1,
+            lastClinicalUpdateAt: 1,
           },
-        ),
-        db.collection<TargetsCurrentDoc>(COLLECTIONS.TargetsCurrent).findOne(
-          { patientId: patientObjectId },
-          { projection: { targets: 1 } },
-        ),
-        fetchRecentLabs(db, patientObjectId),
-        fetchNutritionEntries(db, patientObjectId),
-        fetchRecentMedications(db, patientObjectId),
-      ]);
+        },
+      ),
+      db.collection<TargetsCurrentDoc>(COLLECTIONS.TargetsCurrent).findOne(
+        {
+          patientId: patientObjectId,
+          targets: { $exists: true, $type: "object" },
+        },
+        {
+          projection: {
+            targets: 1,
+            updatedAt: 1,
+          },
+          sort: { updatedAt: -1, _id: -1 },
+        },
+      ),
+      fetchRecentLabs(db, patientObjectId),
+      fetchNutritionEntries(db, patientObjectId),
+      fetchRecentMedications(db, patientObjectId),
+    ]);
 
     const scope = req.nextUrl.searchParams.get("scope");
     const normalizedScope = scope === "all" ? "all" : "today";
@@ -177,8 +193,8 @@ export async function GET(req: NextRequest) {
 
     const nutritionTargets = mapNutritionTargets(
       targetsCurrentDoc?.targets ?? null,
-      clinicalDoc?.targets ?? null,
     );
+    const debugMode = req.nextUrl.searchParams.get("debug") === "1";
 
     const labs = summarizeLabs(labDocs);
     const nutrition = summarizeNutrition(
