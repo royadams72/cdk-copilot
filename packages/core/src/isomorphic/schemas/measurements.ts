@@ -57,14 +57,27 @@ const Steps = z.object({
   count: z.number().int().min(0),
   kind: z.literal("steps"),
 });
-const Exercise = z.object({
-  durationMin: z.number().int().min(0),
-  kind: z.literal("exercise"),
-});
 const Sleep = z.object({
   durationMin: z.number().int().min(0),
   kind: z.literal("sleep"),
   quality: SleepQuality.optional(),
+});
+
+const ExerciseIntensity = z.enum(["light", "moderate", "vigorous"]);
+const ExerciseDetail = z
+  .object({
+    caloriesKcal: z.number().nonnegative(),
+    category: z.string().min(1),
+    durationMin: z.number().int().min(0),
+    exerciseId: z.string().min(1),
+    intensity: ExerciseIntensity,
+    met: z.number().positive(),
+    name: z.string().min(1),
+  })
+  .strict();
+const Exercise = z.object({
+  exercise: ExerciseDetail,
+  kind: z.literal("exercise"),
 });
 
 const KindUnion = z.discriminatedUnion("kind", [
@@ -84,4 +97,17 @@ const BaseCreate = Base.omit({
   receivedAt: true,
   updatedBy: true,
 });
-export const MeasurementCreate = BaseCreate.and(KindUnion);
+const ExerciseCreate = z.object({
+  durationMin: z.number().int().min(0),
+  exerciseId: z.string().min(1),
+  kind: z.literal("exercise"),
+});
+const KindCreateUnion = z.discriminatedUnion("kind", [
+  Weight,
+  BloodPressure,
+  HeartRate,
+  Steps,
+  ExerciseCreate,
+  Sleep,
+]);
+export const MeasurementCreate = BaseCreate.and(KindCreateUnion);

@@ -880,5 +880,117 @@
       "met": "MET (Metabolic Equivalent of Task)"
     },
     "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15110",
+    "exerciseId": "boxing_punching_bag",
+    "intensity": "moderate",
+    "met": 5.8,
+    "name": "Boxing, punching bag",
+    "notes": "Heavy bag work (general).",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15110"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15113",
+    "exerciseId": "boxing_punching_bag_60bpm",
+    "intensity": "vigorous",
+    "met": 7.0,
+    "name": "Boxing, punching bag, 60 b/min",
+    "notes": "Heavy bag work at lower cadence.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15113"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15115",
+    "exerciseId": "boxing_punching_bag_120bpm",
+    "intensity": "vigorous",
+    "met": 8.5,
+    "name": "Boxing, punching bag, 120 b/min",
+    "notes": "Heavy bag work at moderate-high cadence.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15115"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15118",
+    "exerciseId": "boxing_punching_bag_180bpm",
+    "intensity": "vigorous",
+    "met": 10.8,
+    "name": "Boxing, punching bag, 180 b/min",
+    "notes": "Heavy bag work at high cadence.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15118"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15120",
+    "exerciseId": "boxing_sparring",
+    "intensity": "vigorous",
+    "met": 7.8,
+    "name": "Boxing, sparring",
+    "notes": "Partner sparring.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15120"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15125",
+    "exerciseId": "boxing_simulated_round",
+    "intensity": "vigorous",
+    "met": 9.3,
+    "name": "Boxing, simulated boxing round, exercise",
+    "notes": "Good proxy for high-intensity shadow boxing / pad-work style rounds.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15125"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "boxing",
+    "compendiumCode": "15125",
+    "exerciseId": "boxing_shadowboxing",
+    "intensity": "vigorous",
+    "met": 9.3,
+    "name": "Boxing, shadow boxing",
+    "notes": "Not listed as a separate line item in the 2024 Adult Compendium; this uses the Compendium 'simulated boxing round' entry as the closest match.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15125"
+    },
+    "units": { "met": "MET (Metabolic Equivalent of Task)" },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
   }
 ]

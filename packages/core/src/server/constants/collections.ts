@@ -25,6 +25,7 @@ export const COLLECTIONS = {
   FitPlans: "fit_plans",
 
   ClinicalReferenceRules: "clinical_reference_rules",
+  ExerciseReference: "exercise_reference",
   LabsLedger: "labs_ledger",
   LabsCurrent: "labs_current",
   // Deprecated alias kept for compatibility while callers migrate.

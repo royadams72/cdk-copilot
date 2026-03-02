@@ -24,6 +24,10 @@ type MeasurementDoc = {
   bpm?: number;
   count?: number;
   durationMin?: number;
+  exercise?: {
+    caloriesKcal?: number;
+    durationMin?: number;
+  };
 };
 
 function dayKey(date: Date) {
@@ -68,6 +72,7 @@ export async function GET(req: NextRequest) {
             count: 1,
             diastolicMmHg: 1,
             durationMin: 1,
+            exercise: 1,
             kind: 1,
             measuredAt: 1,
             systolicMmHg: 1,
@@ -91,7 +96,11 @@ export async function GET(req: NextRequest) {
       let value: number | null = null;
       let value2: number | null = null;
       if (kind === "steps") value = asNumber(doc.count);
-      if (kind === "exercise" || kind === "sleep") value = asNumber(doc.durationMin);
+      if (kind === "sleep") value = asNumber(doc.durationMin);
+      if (kind === "exercise") {
+        value = asNumber(doc.exercise?.caloriesKcal);
+        value2 = asNumber(doc.exercise?.durationMin);
+      }
       if (kind === "blood_pressure") {
         value = asNumber(doc.systolicMmHg);
         value2 = asNumber(doc.diastolicMmHg);
@@ -119,4 +128,3 @@ export async function GET(req: NextRequest) {
     return bad(err?.message || "Server error", undefined, status);
   }
 }
-

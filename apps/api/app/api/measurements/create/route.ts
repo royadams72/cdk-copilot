@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { ObjectId } from "mongodb";
+import { Db, ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
@@ -10,6 +10,13 @@ import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
 type Kind = "steps" | "exercise" | "sleep" | "blood_pressure";
+type ExerciseReferenceDoc = {
+  category: string;
+  exerciseId: string;
+  intensity: "light" | "moderate" | "vigorous";
+  met: number;
+  name: string;
+};
 
 function asNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -41,6 +48,26 @@ function formatMongoValidationMessage(err: any) {
   }
 }
 
+async function resolveWeightKg(db: Db, patientId: ObjectId): Promise<number | null> {
+  const latestWeight = await db.collection(COLLECTIONS.MeasurementsLedger).findOne(
+    { kind: "weight", patientId },
+    { projection: { _id: 0, valueKg: 1 }, sort: { measuredAt: -1, receivedAt: -1 } },
+  );
+  if (typeof latestWeight?.valueKg === "number" && latestWeight.valueKg > 0) {
+    return latestWeight.valueKg;
+  }
+
+  const clinical = await db.collection(COLLECTIONS.UsersClinical).findOne(
+    { patientId },
+    { projection: { _id: 0, weightKg: 1 }, sort: { updatedAt: -1 } },
+  );
+  if (typeof clinical?.weightKg === "number" && clinical.weightKg > 0) {
+    return clinical.weightKg;
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const caller = await requireUser(req);
@@ -69,6 +96,7 @@ export async function POST(req: NextRequest) {
       return bad("Invalid measuredAt", undefined, 400);
     }
 
+    const db = await getDb();
     const now = new Date();
     const payload: Record<string, unknown> = {
       kind,
@@ -88,12 +116,64 @@ export async function POST(req: NextRequest) {
       if (count === null || count < 0) return bad("Invalid count", undefined, 400);
       payload.count = Math.round(count);
     }
-    if (kind === "exercise" || kind === "sleep") {
+    if (kind === "sleep") {
       const durationMin = asNumber(body.durationMin);
       if (durationMin === null || durationMin < 0) {
         return bad("Invalid durationMin", undefined, 400);
       }
       payload.durationMin = Math.round(durationMin);
+    }
+    if (kind === "exercise") {
+      const durationMin = asNumber(body.durationMin);
+      const exerciseId =
+        typeof body.exerciseId === "string" ? body.exerciseId.trim() : "";
+      if (!exerciseId) return bad("exerciseId is required", undefined, 400);
+      if (durationMin === null || durationMin <= 0) {
+        return bad("Invalid durationMin", undefined, 400);
+      }
+
+      const exerciseRef = await db
+        .collection<ExerciseReferenceDoc>(COLLECTIONS.ExerciseReference)
+        .findOne(
+          { exerciseId },
+          {
+            projection: {
+              _id: 0,
+              category: 1,
+              exerciseId: 1,
+              intensity: 1,
+              met: 1,
+              name: 1,
+            },
+          },
+        );
+      if (!exerciseRef) {
+        return bad("Unknown exerciseId", undefined, 400);
+      }
+
+      const weightKg = await resolveWeightKg(
+        db,
+        new ObjectId(caller.patientId),
+      );
+      if (!weightKg) {
+        return bad(
+          "Weight is required to calculate calories. Please add your weight first.",
+          undefined,
+          400,
+        );
+      }
+
+      const caloriesKcal =
+        exerciseRef.met * weightKg * (Math.round(durationMin) / 60);
+      payload.exercise = {
+        exerciseId: exerciseRef.exerciseId,
+        name: exerciseRef.name,
+        category: exerciseRef.category,
+        intensity: exerciseRef.intensity,
+        met: exerciseRef.met,
+        durationMin: Math.round(durationMin),
+        caloriesKcal: Math.round(caloriesKcal),
+      };
     }
     if (kind === "blood_pressure") {
       const systolicMmHg = asNumber(body.systolicMmHg);
@@ -111,18 +191,43 @@ export async function POST(req: NextRequest) {
       if (pulseBpm !== null) payload.pulseBpm = Math.round(pulseBpm);
     }
 
-    const db = await getDb();
-    let result;
-    try {
-      result = await db.collection(COLLECTIONS.MeasurementsLedger).insertOne(payload);
-    } catch (err: any) {
-      if (err?.code !== 121) throw err;
-      // Compatibility retry for environments where validator disallows createdAt/updatedAt.
-      const fallback = { ...payload };
+    const candidates: Array<Record<string, unknown>> = [payload];
+
+    // Backward-compatibility: some environments still validate exercise as
+    // { durationMin, caloriesKcal } only.
+    if (kind === "exercise" && payload.exercise && typeof payload.exercise === "object") {
+      const legacyExercise = payload.exercise as Record<string, unknown>;
+      candidates.push({
+        ...payload,
+        exercise: {
+          durationMin: legacyExercise.durationMin,
+          caloriesKcal: legacyExercise.caloriesKcal,
+        },
+      });
+    }
+
+    // Compatibility retry for environments where validator disallows createdAt/updatedAt.
+    const auditStripped = candidates.map((candidate) => {
+      const fallback = { ...candidate };
       delete fallback.createdAt;
       delete fallback.updatedAt;
-      result = await db.collection(COLLECTIONS.MeasurementsLedger).insertOne(fallback);
+      return fallback;
+    });
+    candidates.push(...auditStripped);
+
+    let result: any = null;
+    let lastErr: any = null;
+    for (const candidate of candidates) {
+      try {
+        result = await db.collection(COLLECTIONS.MeasurementsLedger).insertOne(candidate);
+        break;
+      } catch (err: any) {
+        lastErr = err;
+        if (err?.code !== 121) throw err;
+      }
     }
+    if (!result) throw lastErr ?? new Error("Failed to save measurement");
+
     return ok({ id: result.insertedId.toString() }, 201);
   } catch (err: any) {
     const status = err?.status || 500;

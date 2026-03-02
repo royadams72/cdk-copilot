@@ -87,8 +87,21 @@
         "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
         "exercise": {
           "bsonType": "object",
-          "required": ["durationMin", "caloriesKcal"],
+          "required": [
+            "exerciseId",
+            "name",
+            "category",
+            "intensity",
+            "met",
+            "durationMin",
+            "caloriesKcal"
+          ],
           "properties": {
+            "exerciseId": { "bsonType": "string" },
+            "name": { "bsonType": "string" },
+            "category": { "bsonType": "string" },
+            "intensity": { "enum": ["light", "moderate", "vigorous"] },
+            "met": { "bsonType": ["double", "int", "long", "decimal"] },
             "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
             "caloriesKcal": { "bsonType": ["int", "long", "double", "decimal"] }
           },

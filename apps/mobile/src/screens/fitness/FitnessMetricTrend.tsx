@@ -35,6 +35,19 @@ type ChartPoint = {
   y2?: number;
 };
 
+type ExerciseRefItem = {
+  category: string;
+  exerciseId: string;
+  intensity: "light" | "moderate" | "vigorous";
+  met: number;
+  name: string;
+};
+
+type ExerciseRefCategory = {
+  category: string;
+  items: ExerciseRefItem[];
+};
+
 const CHART_WIDTH = 330;
 const CHART_HEIGHT = 210;
 const CHART_PAD = 28;
@@ -60,6 +73,7 @@ function formatDateLabel(date: Date) {
 function metricUnit(kind: MeasurementKind) {
   if (kind === "steps") return "steps";
   if (kind === "blood_pressure") return "mmHg";
+  if (kind === "exercise") return "kcal";
   return "min";
 }
 
@@ -101,6 +115,18 @@ export default function FitnessMetricTrend() {
   const [measuredDate, setMeasuredDate] = useState(new Date());
 
   const [exerciseMinutes, setExerciseMinutes] = useState("");
+  const [exerciseCatalog, setExerciseCatalog] = useState<ExerciseRefCategory[]>(
+    [],
+  );
+  const [exerciseCatalogLoading, setExerciseCatalogLoading] = useState(false);
+  const [exerciseCatalogError, setExerciseCatalogError] = useState<
+    string | null
+  >(null);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
+
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
   const [sleepHours, setSleepHours] = useState(8);
@@ -110,6 +136,16 @@ export default function FitnessMetricTrend() {
   const hourOptions = useMemo(() => numberRange(0, 16), []);
   const systolicOptions = useMemo(() => numberRange(90, 220), []);
   const diastolicOptions = useMemo(() => numberRange(50, 140), []);
+
+  const selectedExercise = useMemo(() => {
+    for (const category of exerciseCatalog) {
+      const match = category.items.find(
+        (item) => item.exerciseId === selectedExerciseId,
+      );
+      if (match) return match;
+    }
+    return null;
+  }, [exerciseCatalog, selectedExerciseId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,9 +167,55 @@ export default function FitnessMetricTrend() {
     }
   }, [kind]);
 
+  const loadExerciseCatalog = useCallback(async () => {
+    if (kind !== "exercise") return;
+    setExerciseCatalogLoading(true);
+    setExerciseCatalogError(null);
+    try {
+      const res = await authFetch(
+        `${API}/api/measurements/exercise-reference`,
+        {
+          method: "GET",
+        },
+      );
+      const body: any = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.message ?? "Failed to load exercise reference");
+      }
+
+      const categories = Array.isArray(body.data?.categories)
+        ? (body.data.categories as ExerciseRefCategory[])
+        : [];
+      setExerciseCatalog(categories);
+
+      if (categories.length) {
+        const firstCategory = categories[0];
+        const firstExercise = firstCategory.items?.[0];
+        if (firstCategory) {
+          setOpenCategories({ [firstCategory.category]: true });
+        }
+        if (firstExercise && !selectedExerciseId) {
+          setSelectedExerciseId(firstExercise.exerciseId);
+        }
+      }
+    } catch (err: any) {
+      setExerciseCatalogError(
+        err?.message ?? "Failed to load exercise reference",
+      );
+    } finally {
+      setExerciseCatalogLoading(false);
+    }
+  }, [kind, selectedExerciseId]);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (kind === "exercise") {
+      loadExerciseCatalog();
+    }
+  }, [kind, loadExerciseCatalog]);
 
   const chart = useMemo(() => {
     const numeric = points.filter(
@@ -142,10 +224,10 @@ export default function FitnessMetricTrend() {
     if (numeric.length === 0) {
       return {
         hasSecondary: false,
+        points: [] as ChartPoint[],
         polyline: "",
         polyline2: "",
-        points: [] as ChartPoint[],
-        targetLines: [] as Array<{ label: string; y: number; color: string }>,
+        targetLines: [] as Array<{ color: string; label: string; y: number }>,
         yMax: 0,
         yMin: 0,
       };
@@ -167,14 +249,26 @@ export default function FitnessMetricTrend() {
       targetValues.push(SLEEP_TARGET_MIN);
     }
 
-    const yMin = Math.min(...values, ...(values2.length ? values2 : []), ...targetValues);
-    const yMax = Math.max(...values, ...(values2.length ? values2 : []), ...targetValues);
+    const yMin = Math.min(
+      ...values,
+      ...(values2.length ? values2 : []),
+      ...targetValues,
+    );
+    const yMax = Math.max(
+      ...values,
+      ...(values2.length ? values2 : []),
+      ...targetValues,
+    );
     const span = Math.max(1, yMax - yMin);
     const xStep =
-      numeric.length > 1 ? (CHART_WIDTH - CHART_PAD * 2) / (numeric.length - 1) : 0;
+      numeric.length > 1
+        ? (CHART_WIDTH - CHART_PAD * 2) / (numeric.length - 1)
+        : 0;
 
     const toY = (value: number) =>
-      CHART_HEIGHT - CHART_PAD - ((value - yMin) / span) * (CHART_HEIGHT - CHART_PAD * 2);
+      CHART_HEIGHT -
+      CHART_PAD -
+      ((value - yMin) / span) * (CHART_HEIGHT - CHART_PAD * 2);
 
     const chartPoints = numeric.map((point, index) => {
       const x = CHART_PAD + xStep * index;
@@ -186,24 +280,24 @@ export default function FitnessMetricTrend() {
       return { label: formatDate(point.date), x, y, y2 };
     });
 
-    const targetLines: Array<{ label: string; y: number; color: string }> = [];
+    const targetLines: Array<{ color: string; label: string; y: number }> = [];
     if (kind === "blood_pressure") {
       targetLines.push({
+        color: "#2563EB",
         label: `Target systolic ${BP_TARGET_SYSTOLIC}`,
         y: toY(BP_TARGET_SYSTOLIC),
-        color: "#2563EB",
       });
       targetLines.push({
+        color: "#F97316",
         label: `Target diastolic ${BP_TARGET_DIASTOLIC}`,
         y: toY(BP_TARGET_DIASTOLIC),
-        color: "#F97316",
       });
     }
     if (kind === "sleep") {
       targetLines.push({
+        color: "#0F766E",
         label: `Target ${formatMinutes(SLEEP_TARGET_MIN)}`,
         y: toY(SLEEP_TARGET_MIN),
-        color: "#0F766E",
       });
     }
 
@@ -221,6 +315,13 @@ export default function FitnessMetricTrend() {
     };
   }, [points, kind]);
 
+  const latestPoint = useMemo(() => {
+    const numeric = points.filter(
+      (p) => typeof p.value === "number" && Number.isFinite(p.value),
+    );
+    return numeric.length ? numeric[numeric.length - 1] : null;
+  }, [points]);
+
   useEffect(() => {
     setMeasuredDate(new Date());
   }, [kind, modalOpen]);
@@ -233,11 +334,15 @@ export default function FitnessMetricTrend() {
       const payload: Record<string, unknown> = { kind };
 
       if (kind === "exercise") {
+        if (!selectedExercise) {
+          throw new Error("Select an exercise type");
+        }
         const value = Number(exerciseMinutes);
-        if (!Number.isFinite(value) || value < 0) {
+        if (!Number.isFinite(value) || value <= 0) {
           throw new Error("Enter valid exercise minutes");
         }
         payload.durationMin = Math.round(value);
+        payload.exerciseId = selectedExercise.exerciseId;
       }
 
       if (kind === "sleep") {
@@ -256,8 +361,8 @@ export default function FitnessMetricTrend() {
       }
 
       const res = await authFetch(`${API}/api/measurements/create`, {
-        method: "POST",
         body: JSON.stringify(payload),
+        method: "POST",
       });
       const body: any = await res.json().catch(() => null);
       if (!res.ok || !body?.ok) {
@@ -278,7 +383,9 @@ export default function FitnessMetricTrend() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 28 }}>
+      <ScrollView
+        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 28 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
@@ -288,6 +395,17 @@ export default function FitnessMetricTrend() {
           <ThemedText style={{ opacity: 0.72 }}>
             Daily readings trend ({metricUnit(kind)})
           </ThemedText>
+          {kind === "exercise" &&
+          latestPoint &&
+          typeof latestPoint.value === "number" &&
+          Number.isFinite(latestPoint.value) ? (
+            <ThemedText style={{ opacity: 0.7 }}>
+              Latest burn: {Math.round(latestPoint.value)} kcal
+              {typeof latestPoint?.value2 === "number"
+                ? ` in ${Math.round(latestPoint.value2)} min`
+                : ""}
+            </ThemedText>
+          ) : null}
         </View>
 
         {showAdd ? (
@@ -331,7 +449,9 @@ export default function FitnessMetricTrend() {
         {!loading && !error ? (
           <Card>
             {chart.points.length === 0 ? (
-              <ThemedText style={{ opacity: 0.72 }}>No readings yet.</ThemedText>
+              <ThemedText style={{ opacity: 0.72 }}>
+                No readings yet.
+              </ThemedText>
             ) : (
               <>
                 <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
@@ -365,13 +485,29 @@ export default function FitnessMetricTrend() {
                     />
                   ))}
 
-                  <Polyline points={chart.polyline} fill="none" stroke="#2563EB" strokeWidth={2.5} />
+                  <Polyline
+                    points={chart.polyline}
+                    fill="none"
+                    stroke="#2563EB"
+                    strokeWidth={2.5}
+                  />
                   {chart.hasSecondary && chart.polyline2 ? (
-                    <Polyline points={chart.polyline2} fill="none" stroke="#F97316" strokeWidth={2.5} />
+                    <Polyline
+                      points={chart.polyline2}
+                      fill="none"
+                      stroke="#F97316"
+                      strokeWidth={2.5}
+                    />
                   ) : null}
 
                   {chart.points.map((point, idx) => (
-                    <Circle key={`${point.x}-${idx}`} cx={point.x} cy={point.y} r={3.5} fill="#2563EB" />
+                    <Circle
+                      key={`${point.x}-${idx}`}
+                      cx={point.x}
+                      cy={point.y}
+                      r={3.5}
+                      fill="#2563EB"
+                    />
                   ))}
                   {chart.hasSecondary
                     ? chart.points
@@ -390,7 +526,12 @@ export default function FitnessMetricTrend() {
                   <SvgText x={6} y={CHART_PAD + 4} fontSize={11} fill="#475569">
                     {chart.yMax.toFixed(0)}
                   </SvgText>
-                  <SvgText x={6} y={CHART_HEIGHT - CHART_PAD} fontSize={11} fill="#475569">
+                  <SvgText
+                    x={6}
+                    y={CHART_HEIGHT - CHART_PAD}
+                    fontSize={11}
+                    fill="#475569"
+                  >
                     {chart.yMin.toFixed(0)}
                   </SvgText>
                   {chart.points.map((point, idx) => (
@@ -410,7 +551,14 @@ export default function FitnessMetricTrend() {
                 {chart.targetLines.length ? (
                   <View style={{ gap: 4, marginTop: 8 }}>
                     {chart.targetLines.map((line) => (
-                      <View key={`legend-${line.label}`} style={{ alignItems: "center", flexDirection: "row", gap: 8 }}>
+                      <View
+                        key={`legend-${line.label}`}
+                        style={{
+                          alignItems: "center",
+                          flexDirection: "row",
+                          gap: 8,
+                        }}
+                      >
                         <View
                           style={{
                             backgroundColor: line.color,
@@ -418,7 +566,9 @@ export default function FitnessMetricTrend() {
                             width: 18,
                           }}
                         />
-                        <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>{line.label}</ThemedText>
+                        <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
+                          {line.label}
+                        </ThemedText>
                       </View>
                     ))}
                   </View>
@@ -429,7 +579,12 @@ export default function FitnessMetricTrend() {
         ) : null}
       </ScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
+      <Modal
+        visible={modalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalOpen(false)}
+      >
         <View
           style={{
             alignItems: "center",
@@ -453,9 +608,94 @@ export default function FitnessMetricTrend() {
 
             {kind === "exercise" ? (
               <>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Exercise type
+                </ThemedText>
+                {exerciseCatalogLoading ? (
+                  <View style={{ alignItems: "center", paddingVertical: 10 }}>
+                    <ActivityIndicator />
+                  </View>
+                ) : null}
+                {exerciseCatalogError ? (
+                  <ThemedText style={{ color: "#b91c1c", fontSize: 12 }}>
+                    {exerciseCatalogError}
+                  </ThemedText>
+                ) : null}
+
+                <ScrollView style={{ maxHeight: 220 }}>
+                  {exerciseCatalog.map((category) => {
+                    const isOpen = !!openCategories[category.category];
+                    return (
+                      <View key={category.category} style={{ marginBottom: 8 }}>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setOpenCategories((prev) => ({
+                              ...prev,
+                              [category.category]: !isOpen,
+                            }))
+                          }
+                          style={{
+                            backgroundColor: "#F1F5F9",
+                            borderRadius: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                          }}
+                        >
+                          <ThemedText style={{ fontWeight: "700" }}>
+                            {isOpen ? "▾" : "▸"} {category.category}
+                          </ThemedText>
+                        </TouchableOpacity>
+                        {isOpen ? (
+                          <View style={{ gap: 6, marginTop: 6 }}>
+                            {category.items.map((item) => {
+                              const isSelected =
+                                selectedExerciseId === item.exerciseId;
+                              return (
+                                <TouchableOpacity
+                                  key={item.exerciseId}
+                                  onPress={() =>
+                                    setSelectedExerciseId(item.exerciseId)
+                                  }
+                                  style={{
+                                    borderColor: isSelected
+                                      ? "#2563EB"
+                                      : "#CBD5E1",
+                                    borderRadius: 8,
+                                    borderWidth: 1,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 8,
+                                  }}
+                                >
+                                  <ThemedText style={{ fontWeight: "600" }}>
+                                    {item.name}
+                                  </ThemedText>
+                                  <ThemedText
+                                    style={{ fontSize: 12, opacity: 0.7 }}
+                                  >
+                                    {item.met.toFixed(1)} MET • {item.intensity}
+                                  </ThemedText>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+
+                {selectedExercise ? (
+                  <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                    Selected: {selectedExercise.name} (
+                    {selectedExercise.met.toFixed(1)} MET)
+                  </ThemedText>
+                ) : null}
+
                 <TextInput
                   value={exerciseMinutes}
-                  onChangeText={(text) => setExerciseMinutes(text.replace(/[^0-9]/g, ""))}
+                  onChangeText={(text) =>
+                    setExerciseMinutes(text.replace(/[^0-9]/g, ""))
+                  }
                   placeholder="Duration (minutes)"
                   keyboardType="number-pad"
                   style={{
@@ -471,26 +711,50 @@ export default function FitnessMetricTrend() {
 
             {kind === "blood_pressure" ? (
               <>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>Systolic (mmHg)</ThemedText>
-                <View style={{ borderColor: "#CBD5E1", borderRadius: 8, borderWidth: 1 }}>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Systolic (mmHg)
+                </ThemedText>
+                <View
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                  }}
+                >
                   <Picker
                     selectedValue={bpSystolic}
                     onValueChange={(value) => setBpSystolic(Number(value))}
                   >
                     {systolicOptions.map((value) => (
-                      <Picker.Item key={`sys-${value}`} label={`${value}`} value={value} />
+                      <Picker.Item
+                        key={`sys-${value}`}
+                        label={`${value}`}
+                        value={value}
+                      />
                     ))}
                   </Picker>
                 </View>
 
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>Diastolic (mmHg)</ThemedText>
-                <View style={{ borderColor: "#CBD5E1", borderRadius: 8, borderWidth: 1 }}>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Diastolic (mmHg)
+                </ThemedText>
+                <View
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                  }}
+                >
                   <Picker
                     selectedValue={bpDiastolic}
                     onValueChange={(value) => setBpDiastolic(Number(value))}
                   >
                     {diastolicOptions.map((value) => (
-                      <Picker.Item key={`dia-${value}`} label={`${value}`} value={value} />
+                      <Picker.Item
+                        key={`dia-${value}`}
+                        label={`${value}`}
+                        value={value}
+                      />
                     ))}
                   </Picker>
                 </View>
@@ -499,19 +763,39 @@ export default function FitnessMetricTrend() {
 
             {kind === "sleep" ? (
               <>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>Sleep duration</ThemedText>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Sleep duration
+                </ThemedText>
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  <View style={{ borderColor: "#CBD5E1", borderRadius: 8, borderWidth: 1, flex: 1 }}>
+                  <View
+                    style={{
+                      borderColor: "#CBD5E1",
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      flex: 1,
+                    }}
+                  >
                     <Picker
                       selectedValue={sleepHours}
                       onValueChange={(value) => setSleepHours(Number(value))}
                     >
                       {hourOptions.map((value) => (
-                        <Picker.Item key={`h-${value}`} label={`${value} h`} value={value} />
+                        <Picker.Item
+                          key={`h-${value}`}
+                          label={`${value} h`}
+                          value={value}
+                        />
                       ))}
                     </Picker>
                   </View>
-                  <View style={{ borderColor: "#CBD5E1", borderRadius: 8, borderWidth: 1, flex: 1 }}>
+                  <View
+                    style={{
+                      borderColor: "#CBD5E1",
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      flex: 1,
+                    }}
+                  >
                     <Picker
                       selectedValue={sleepMinutes}
                       onValueChange={(value) => setSleepMinutes(Number(value))}
@@ -529,7 +813,7 @@ export default function FitnessMetricTrend() {
               </>
             ) : null}
 
-            {(kind === "blood_pressure" || kind === "sleep") ? (
+            {kind === "blood_pressure" || kind === "sleep" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
                   Date (defaults to today)
@@ -549,8 +833,17 @@ export default function FitnessMetricTrend() {
               </>
             ) : null}
 
-            <View style={{ flexDirection: "row", gap: 8, justifyContent: "flex-end" }}>
-              <TouchableOpacity onPress={() => setModalOpen(false)} style={{ padding: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 8,
+                justifyContent: "flex-end",
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => setModalOpen(false)}
+                style={{ padding: 8 }}
+              >
                 <ThemedText style={{ fontWeight: "600" }}>Cancel</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity

@@ -14,6 +14,11 @@ type MeasurementLatest = {
   measuredAt?: string;
   count?: number;
   durationMin?: number;
+  exercise?: {
+    caloriesKcal?: number;
+    durationMin?: number;
+    name?: string;
+  };
   systolicMmHg?: number;
   diastolicMmHg?: number;
 };
@@ -74,7 +79,15 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
   }
   if (doc.kind === "exercise") {
     const mins =
-      typeof doc.durationMin === "number" ? Math.max(0, Math.round(doc.durationMin)) : null;
+      typeof doc.exercise?.durationMin === "number"
+        ? Math.max(0, Math.round(doc.exercise.durationMin))
+        : typeof doc.durationMin === "number"
+          ? Math.max(0, Math.round(doc.durationMin))
+        : null;
+    const kcal =
+      typeof doc.exercise?.caloriesKcal === "number"
+        ? Math.max(0, Math.round(doc.exercise.caloriesKcal))
+        : null;
     const percent =
       mins === null
         ? undefined
@@ -82,7 +95,12 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
     return {
       kind: "exercise",
       label: "Exercise",
-      value: mins !== null ? `${mins} min` : "No data",
+      value:
+        mins !== null && kcal !== null
+          ? `${mins} min • ${kcal} kcal`
+          : mins !== null
+            ? `${mins} min`
+            : "No data",
       subtext: formatDateTime(doc.measuredAt),
       progressPercent: percent,
       progressLabel:
