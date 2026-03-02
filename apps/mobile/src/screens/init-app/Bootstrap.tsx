@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { authFetch } from "@/lib/authFetch";
@@ -13,10 +13,44 @@ async function loadSessionToken() {
   return { jwt, refreshToken };
 }
 
+async function tryRefreshSession() {
+  const latestRefreshToken = await SecureStore.getItemAsync("ckd_refresh");
+  if (!latestRefreshToken) {
+    return { ok: false as const, message: "Session expired, please sign in again." };
+  }
+
+  const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
+    body: JSON.stringify({ refreshToken: latestRefreshToken }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const refreshBody = await refreshRes.json().catch(() => ({ ok: false }));
+
+  if (refreshBody?.ok && refreshBody.data?.jwt) {
+    await SecureStore.setItemAsync("ckd_jwt", refreshBody.data.jwt as string);
+    if (refreshBody.data?.refreshToken) {
+      await SecureStore.setItemAsync(
+        "ckd_refresh",
+        refreshBody.data.refreshToken as string,
+      );
+    }
+    return { ok: true as const };
+  }
+
+  return {
+    ok: false as const,
+    message: refreshBody?.message ?? "Session expired, please sign in again.",
+  };
+}
+
 const Bootstrap = () => {
   const router = useRouter();
   const [error, setError] = useState("");
+  const didRunRef = useRef(false);
   useEffect(() => {
+    if (didRunRef.current) return;
+    didRunRef.current = true;
+
     (async () => {
       try {
         const token = await loadSessionToken();
@@ -29,31 +63,12 @@ const Bootstrap = () => {
         }
 
         if (!token.jwt && token.refreshToken) {
-          const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
-            body: JSON.stringify({ refreshToken: token.refreshToken }),
-            headers: { "content-type": "application/json" },
-            method: "POST",
-          });
-          const refreshBody = await refreshRes
-            .json()
-            .catch(() => ({ ok: false }));
-          if (refreshBody?.ok && refreshBody.data?.jwt) {
-            await SecureStore.setItemAsync(
-              "ckd_jwt",
-              refreshBody.data.jwt as string,
-            );
-            if (refreshBody.data?.refreshToken) {
-              await SecureStore.setItemAsync(
-                "ckd_refresh",
-                refreshBody.data.refreshToken as string,
-              );
-            }
+          const refreshed = await tryRefreshSession();
+          if (refreshed.ok) {
             router.replace("/(dashboard)/dashboard");
             return;
           }
-          setError(
-            refreshBody?.message ?? "Session expired, please sign in again.",
-          );
+          setError(refreshed.message);
           router.replace("/(init-app)/welcome");
           return;
         }
@@ -63,36 +78,12 @@ const Bootstrap = () => {
 
         if (data.ok) {
           router.replace("/(dashboard)/dashboard");
-        } else if (data.message === '"exp" claim timestamp check failed') {
-          if (!token.refreshToken) {
-            setError("Session expired, please sign in again.");
-            router.replace("/(init-app)/welcome");
-            return;
-          }
-          const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
-            body: JSON.stringify({ refreshToken: token.refreshToken }),
-            headers: { "content-type": "application/json" },
-            method: "POST",
-          });
-          const refreshBody = await refreshRes
-            .json()
-            .catch(() => ({ ok: false }));
-          if (refreshBody?.ok && refreshBody.data?.jwt) {
-            await SecureStore.setItemAsync(
-              "ckd_jwt",
-              refreshBody.data.jwt as string,
-            );
-            if (refreshBody.data?.refreshToken) {
-              await SecureStore.setItemAsync(
-                "ckd_refresh",
-                refreshBody.data.refreshToken as string,
-              );
-            }
+        } else if (res.status === 401) {
+          const refreshed = await tryRefreshSession();
+          if (refreshed.ok) {
             router.replace("/(dashboard)/dashboard");
           } else {
-            setError(
-              refreshBody?.message ?? "Session expired, please sign in again.",
-            );
+            setError(refreshed.message);
             router.replace("/(init-app)/welcome");
           }
         }
