@@ -3,7 +3,7 @@
 **Purpose:** Single, append-only timeline of observed measurements (vitals, activity) per patient.
 **Contains PII (Personally Identifiable Information):** No direct PII; linked via `patientId`.
 **Access:** Patient (self), app server; clinicians if assigned. All access audited (who/when/which id).
-**Model:** Ledger-only. There is no `measurements_current` collection.
+**Model:** Ledger-only. A `measurements_current` collection may be added later as a read-optimized projection, but `measurements_ledger` remains the source of truth.
 
 ## Shape (summary)
 
@@ -15,6 +15,7 @@
 - `source` · `patient|device|api|provider`
 - `device?` · { `name?`, `platform?`, `externalId?` }
 - `notes?` · string
+- `exercise?` · { `durationMin`: number, `caloriesKcal`: number } (only when `kind="exercise"`)
 - `createdBy` / `updatedBy` · string ref: `principalId`
 
 Payload fields by `kind`:
@@ -23,7 +24,7 @@ Payload fields by `kind`:
 - `blood_pressure` → `systolicMmHg`, `diastolicMmHg`, `pulseBpm?`
 - `heart_rate` → `bpm`
 - `steps` → `count`
-- `exercise` → `durationMin`
+- `exercise` → `exercise.durationMin`, `exercise.caloriesKcal`
 - `sleep` → `durationMin`, `quality?` (`poor|fair|good|excellent`)
 
 ## Example
@@ -43,14 +44,36 @@ Payload fields by `kind`:
 }
 ```
 
+### Example: exercise
+
+```json
+{
+  "kind": "exercise",
+  "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+  "orgId": "org_rf_london",
+  "measuredAt": "2025-09-25T18:10:00Z",
+  "receivedAt": "2025-09-25T18:10:10Z",
+  "source": "patient",
+  "exercise": {
+    "durationMin": 35,
+    "caloriesKcal": 320
+  },
+  "createdBy": "pr_66f1b7e9c2ab4a0c9f3a1e21",
+  "updatedBy": "pr_66f1b7e9c2ab4a0c9f3a1e21"
+}
+```
+
 ## Indexes (MongoDB shell)
 
 ```js
 db.measurements_ledger.createIndex({ patientId: 1, kind: 1, measuredAt: -1 });
 db.measurements_ledger.createIndex({ patientId: 1, measuredAt: -1 });
-db.measurements_ledger.createIndex(
-  { orgId: 1, patientId: 1, kind: 1, measuredAt: -1 },
-);
+db.measurements_ledger.createIndex({
+  orgId: 1,
+  patientId: 1,
+  kind: 1,
+  measuredAt: -1,
+});
 db.measurements_ledger.createIndex(
   { "device.externalId": 1, kind: 1, measuredAt: 1 },
   {
@@ -64,3 +87,4 @@ db.measurements_ledger.createIndex(
 
 - `measurements_ledger` is the source of truth for observed activity/vitals.
 - “Latest” views should be derived at read time using aggregation (`$sort` + `$group` by `kind`).
+- For `kind="exercise"`, store a computed `exercise.caloriesKcal` (derived from MET (Metabolic Equivalent of Task), duration, and weight) so historical values remain stable even if reference tables change.

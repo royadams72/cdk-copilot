@@ -1,0 +1,884 @@
+[
+  {
+    "category": "walking",
+    "compendiumCode": "17150",
+    "exerciseId": "walking_household",
+    "intensity": "light",
+    "met": 2.3,
+    "name": "Walking, household",
+    "notes": "Typical around the home.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17150"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "walking",
+    "compendiumCode": "17151",
+    "exerciseId": "walking_strolling_lt2mph",
+    "intensity": "light",
+    "met": 2.3,
+    "name": "Walking, <2.0 mph (very slow stroll)",
+    "notes": "Level, very slow.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17151"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "walking",
+    "compendiumCode": "17152",
+    "exerciseId": "walking_2_0_2_4_mph",
+    "intensity": "light",
+    "met": 2.8,
+    "name": "Walking, 2.0–2.4 mph (slow pace)",
+    "notes": "Level, firm surface.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17152"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "walking",
+    "compendiumCode": "17160",
+    "exerciseId": "walking_for_pleasure",
+    "intensity": "moderate",
+    "met": 3.5,
+    "name": "Walking for pleasure",
+    "notes": "Self-selected pleasant pace.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17160"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "walking",
+    "compendiumCode": "17270",
+    "exerciseId": "walking_to_work_or_class",
+    "intensity": "moderate",
+    "met": 4.0,
+    "name": "Walking, to work or class",
+    "notes": "Commuting walking.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17270"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "walking",
+    "compendiumCode": "17100",
+    "exerciseId": "walking_with_stroller_or_children",
+    "intensity": "moderate",
+    "met": 3.8,
+    "name": "Walking with stroller/children, 2.5–3.1 mph",
+    "notes": "Pushing/pulling stroller or walking with children.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17100"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "walking",
+    "compendiumCode": "17110",
+    "exerciseId": "race_walking",
+    "intensity": "vigorous",
+    "met": 6.5,
+    "name": "Race walking",
+    "notes": "Race walking technique.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17110"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "stairs",
+    "compendiumCode": "17133",
+    "exerciseId": "stair_climbing_slow",
+    "intensity": "moderate",
+    "met": 4.5,
+    "name": "Stair climbing, slow pace",
+    "notes": "Ascending stairs slowly.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17133"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "stairs",
+    "compendiumCode": "17131",
+    "exerciseId": "stair_climbing_general",
+    "intensity": "vigorous",
+    "met": 6.8,
+    "name": "Stair climbing, general",
+    "notes": "General stair climbing.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17131"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "stairs",
+    "compendiumCode": "17134",
+    "exerciseId": "stair_climbing_fast",
+    "intensity": "vigorous",
+    "met": 9.3,
+    "name": "Stair climbing, fast pace (one step at a time)",
+    "notes": "Fast pace, one step at a time.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17134"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "stairs",
+    "compendiumCode": "17136",
+    "exerciseId": "stair_climbing_two_steps",
+    "intensity": "vigorous",
+    "met": 7.5,
+    "name": "Stair climbing, two steps at a time",
+    "notes": "Two steps at a time.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17136"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "stairs",
+    "compendiumCode": "17138",
+    "exerciseId": "stair_climbing_up_down",
+    "intensity": "vigorous",
+    "met": 7.5,
+    "name": "Stair climbing, ascending and descending",
+    "notes": "Up and down stairs.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "17138"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "running",
+    "compendiumCode": "12025",
+    "exerciseId": "jogging_in_place",
+    "intensity": "moderate",
+    "met": 4.8,
+    "name": "Jogging, in place",
+    "notes": "Jogging in place.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "12025"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "running",
+    "compendiumCode": "12026",
+    "exerciseId": "jogging_2_6_3_7_mph",
+    "intensity": "moderate",
+    "met": 3.3,
+    "name": "Jogging, 2.6–3.7 mph",
+    "notes": "Slow jog.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "12026"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "running",
+    "compendiumCode": "12020",
+    "exerciseId": "jogging_general",
+    "intensity": "vigorous",
+    "met": 7.5,
+    "name": "Jogging, general (self-selected pace)",
+    "notes": "General jogging pace.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "12020"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "running",
+    "compendiumCode": "12028",
+    "exerciseId": "running_4_0_4_2_mph",
+    "intensity": "vigorous",
+    "met": 6.5,
+    "name": "Running, 4.0–4.2 mph (13 min/mile)",
+    "notes": "Easy run.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "12028"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "running",
+    "compendiumCode": "12030",
+    "exerciseId": "running_5_0_5_2_mph",
+    "intensity": "vigorous",
+    "met": 8.5,
+    "name": "Running, 5.0–5.2 mph (12 min/mile)",
+    "notes": "Steady run.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "12030"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "running",
+    "compendiumCode": "12040",
+    "exerciseId": "running_6_mph",
+    "intensity": "vigorous",
+    "met": 9.8,
+    "name": "Running, 6 mph (10 min/mile)",
+    "notes": "Common reference pace; exact code may vary by table version.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "12040"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "cycling",
+    "compendiumCode": "01010",
+    "exerciseId": "cycling_lt10mph_leisure",
+    "intensity": "moderate",
+    "met": 4.0,
+    "name": "Cycling, <10 mph (leisure)",
+    "notes": "Leisure cycling under 10 mph.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "01010"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "cycling",
+    "compendiumCode": "01020",
+    "exerciseId": "cycling_10_11_9_mph",
+    "intensity": "moderate",
+    "met": 6.8,
+    "name": "Cycling, 10–11.9 mph (light effort)",
+    "notes": "Leisure, slow/light effort.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "01020"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "cycling",
+    "compendiumCode": "01030",
+    "exerciseId": "cycling_12_13_9_mph",
+    "intensity": "vigorous",
+    "met": 8.0,
+    "name": "Cycling, 12–13.9 mph (moderate effort)",
+    "notes": "Leisure, moderate effort.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "01030"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "cycling",
+    "compendiumCode": "01040",
+    "exerciseId": "cycling_14_15_9_mph",
+    "intensity": "vigorous",
+    "met": 10.0,
+    "name": "Cycling, 14–15.9 mph (vigorous effort)",
+    "notes": "Fast cycling, vigorous effort.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "01040"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "cycling",
+    "compendiumCode": "01011",
+    "exerciseId": "cycling_to_from_work_self_selected",
+    "intensity": "vigorous",
+    "met": 6.8,
+    "name": "Cycling, to/from work (self-selected pace)",
+    "notes": "Commuting cycling.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "01011"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02048",
+    "exerciseId": "elliptical_moderate",
+    "intensity": "vigorous",
+    "met": 5.0,
+    "name": "Elliptical trainer, moderate effort",
+    "notes": "Machine-based cardio.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02048"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02049",
+    "exerciseId": "elliptical_vigorous",
+    "intensity": "vigorous",
+    "met": 9.0,
+    "name": "Elliptical trainer, vigorous effort",
+    "notes": "High effort elliptical.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02049"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02065",
+    "exerciseId": "stair_treadmill_ergometer",
+    "intensity": "vigorous",
+    "met": 9.3,
+    "name": "Stair treadmill ergometer, general",
+    "notes": "Stair step machine.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02065"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02071",
+    "exerciseId": "rowing_ergometer_lt100w",
+    "intensity": "moderate",
+    "met": 5.0,
+    "name": "Rowing machine (ergometer), <100 watts (moderate)",
+    "notes": "Stationary rowing machine.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02071"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02070",
+    "exerciseId": "rowing_ergometer_general_vigorous",
+    "intensity": "vigorous",
+    "met": 7.3,
+    "name": "Rowing machine (ergometer), general (vigorous)",
+    "notes": "General vigorous effort.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02070"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02072",
+    "exerciseId": "rowing_100_149w",
+    "intensity": "vigorous",
+    "met": 7.5,
+    "name": "Rowing machine, 100–149 watts (vigorous)",
+    "notes": "Stationary rowing.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02072"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "conditioning",
+    "compendiumCode": "02068",
+    "exerciseId": "jump_rope_general",
+    "intensity": "vigorous",
+    "met": 11.0,
+    "name": "Rope skipping exercise, general",
+    "notes": "Jump rope (general).",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02068"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "strength",
+    "compendiumCode": "02054",
+    "exerciseId": "resistance_multiple_8_15reps",
+    "intensity": "moderate",
+    "met": 3.5,
+    "name": "Resistance training, multiple exercises, 8–15 reps (varied resistance)",
+    "notes": "General weight training session.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02054"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "strength",
+    "compendiumCode": "02052",
+    "exerciseId": "resistance_squats_deadlift",
+    "intensity": "moderate",
+    "met": 5.0,
+    "name": "Resistance training, squats/deadlift (slow or explosive)",
+    "notes": "Focused compound lifts.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02052"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "strength",
+    "compendiumCode": "02050",
+    "exerciseId": "weight_lifting_vigorous",
+    "intensity": "vigorous",
+    "met": 6.0,
+    "name": "Weight lifting / power lifting / body building, vigorous effort",
+    "notes": "Vigorous lifting session.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02050"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "strength",
+    "compendiumCode": "02055",
+    "exerciseId": "resistance_circuit",
+    "intensity": "vigorous",
+    "met": 5.8,
+    "name": "Resistance training circuit (reciprocal supersets)",
+    "notes": "Circuit-style strength training.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02055"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "swimming",
+    "compendiumCode": "18292",
+    "exerciseId": "swimming_crawl_slow",
+    "intensity": "moderate",
+    "met": 5.8,
+    "name": "Swimming, crawl, slow speed (30–45 yards/min)",
+    "notes": "Lap swim at moderate effort.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "18292"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "swimming",
+    "compendiumCode": "18290",
+    "exerciseId": "swimming_crawl_medium",
+    "intensity": "vigorous",
+    "met": 8.0,
+    "name": "Swimming, crawl, medium speed (~50 yards/min)",
+    "notes": "Lap swim vigorous.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "18290"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "swimming",
+    "compendiumCode": "18310",
+    "exerciseId": "swimming_leisure_general",
+    "intensity": "vigorous",
+    "met": 6.0,
+    "name": "Swimming, leisurely (not lap swimming), general",
+    "notes": "General leisurely swim.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "18310"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "swimming",
+    "compendiumCode": "18355",
+    "exerciseId": "water_aerobics_general",
+    "intensity": "moderate",
+    "met": 5.5,
+    "name": "Water aerobics / water calisthenics, general",
+    "notes": "Water aerobics class.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "18355"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "swimming",
+    "compendiumCode": "18368",
+    "exerciseId": "water_walking_moderate",
+    "intensity": "moderate",
+    "met": 4.8,
+    "name": "Water walking, moderate effort",
+    "notes": "Walking in water.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "18368"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15040",
+    "exerciseId": "basketball_game",
+    "intensity": "vigorous",
+    "met": 8.0,
+    "name": "Basketball, game",
+    "notes": "Full-court game.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15040"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15050",
+    "exerciseId": "basketball_non_game_general",
+    "intensity": "vigorous",
+    "met": 6.0,
+    "name": "Basketball, non-game, general",
+    "notes": "Shooting/drills.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15050"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15030",
+    "exerciseId": "badminton_social",
+    "intensity": "moderate",
+    "met": 5.5,
+    "name": "Badminton, social singles/doubles, general",
+    "notes": "Social play.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15030"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15560",
+    "exerciseId": "rugby_union_competitive",
+    "intensity": "vigorous",
+    "met": 8.3,
+    "name": "Rugby union, team, competitive",
+    "notes": "Competitive match.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15560"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15580",
+    "exerciseId": "skateboarding_moderate",
+    "intensity": "moderate",
+    "met": 5.0,
+    "name": "Skateboarding, general, moderate effort",
+    "notes": "General skateboarding.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15580"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15590",
+    "exerciseId": "roller_skating",
+    "intensity": "vigorous",
+    "met": 7.0,
+    "name": "Roller skating",
+    "notes": "General roller skating.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15590"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "sports",
+    "compendiumCode": "15551",
+    "exerciseId": "rope_jumping_100_120",
+    "intensity": "vigorous",
+    "met": 11.8,
+    "name": "Rope jumping, 100–120 skips/min (moderate pace)",
+    "notes": "Plain bounce, 2-foot skip.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "15551"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "flexibility",
+    "compendiumCode": "02101",
+    "exerciseId": "stretching_mild",
+    "intensity": "light",
+    "met": 2.3,
+    "name": "Stretching, mild",
+    "notes": "Mild stretching.",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02101"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "flexibility",
+    "compendiumCode": "02150",
+    "exerciseId": "yoga_hatha",
+    "intensity": "light",
+    "met": 2.5,
+    "name": "Yoga, Hatha",
+    "notes": "Hatha yoga (older compendium table).",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02150"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  },
+  {
+    "category": "flexibility",
+    "compendiumCode": "02160",
+    "exerciseId": "yoga_power",
+    "intensity": "moderate",
+    "met": 4.0,
+    "name": "Yoga, power yoga",
+    "notes": "Power yoga (older compendium table).",
+    "source": {
+      "compendium": "Compendium of Physical Activities",
+      "url": "https://pacompendium.com/",
+      "activityCode": "02160"
+    },
+    "units": {
+      "met": "MET (Metabolic Equivalent of Task)"
+    },
+    "updatedAt": { "$date": "2026-03-02T00:00:00.000Z" }
+  }
+]

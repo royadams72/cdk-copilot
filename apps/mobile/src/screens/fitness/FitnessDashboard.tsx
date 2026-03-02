@@ -23,7 +23,12 @@ type MetricCard = {
   label: string;
   value: string;
   subtext: string;
+  progressPercent?: number;
+  progressLabel?: string;
 };
+
+const STEPS_DAILY_TARGET = 10000;
+const EXERCISE_DAILY_TARGET_MIN = 30;
 
 function formatDateTime(value?: string) {
   if (!value) return "No reading yet";
@@ -54,23 +59,34 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
     };
   }
   if (doc.kind === "steps") {
+    const steps = typeof doc.count === "number" ? Math.max(0, Math.round(doc.count)) : null;
+    const percent =
+      steps === null ? undefined : Math.min(100, Math.round((steps / STEPS_DAILY_TARGET) * 100));
     return {
       kind: "steps",
       label: "Steps",
-      value:
-        typeof doc.count === "number" ? `${Math.round(doc.count)} steps` : "No data",
+      value: steps !== null ? `${steps.toLocaleString()} steps` : "No data",
       subtext: formatDateTime(doc.measuredAt),
+      progressPercent: percent,
+      progressLabel:
+        steps !== null ? `${percent}% of ${STEPS_DAILY_TARGET.toLocaleString()} daily target` : undefined,
     };
   }
   if (doc.kind === "exercise") {
+    const mins =
+      typeof doc.durationMin === "number" ? Math.max(0, Math.round(doc.durationMin)) : null;
+    const percent =
+      mins === null
+        ? undefined
+        : Math.min(100, Math.round((mins / EXERCISE_DAILY_TARGET_MIN) * 100));
     return {
       kind: "exercise",
       label: "Exercise",
-      value:
-        typeof doc.durationMin === "number"
-          ? `${Math.round(doc.durationMin)} min`
-          : "No data",
+      value: mins !== null ? `${mins} min` : "No data",
       subtext: formatDateTime(doc.measuredAt),
+      progressPercent: percent,
+      progressLabel:
+        mins !== null ? `${percent}% of ${EXERCISE_DAILY_TARGET_MIN} min daily target` : undefined,
     };
   }
   if (doc.kind === "sleep") {
@@ -187,8 +203,33 @@ export default function FitnessDashboard() {
               <ThemedText type="defaultSemiBold">{card.label}</ThemedText>
               <ThemedText style={{ fontSize: 22, fontWeight: "700" }}>{card.value}</ThemedText>
               <ThemedText style={{ opacity: 0.7 }}>{card.subtext}</ThemedText>
+              {typeof card.progressPercent === "number" ? (
+                <View style={{ gap: 6, marginTop: 8 }}>
+                  <View
+                    style={{
+                      backgroundColor: "#E2E8F0",
+                      borderRadius: 999,
+                      height: 8,
+                      overflow: "hidden",
+                      width: "100%",
+                    }}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: "#38BDF8",
+                        borderRadius: 999,
+                        height: "100%",
+                        width: `${card.progressPercent}%`,
+                      }}
+                    />
+                  </View>
+                  <ThemedText style={{ fontSize: 12, opacity: 0.75 }}>
+                    {card.progressLabel}
+                  </ThemedText>
+                </View>
+              ) : null}
               <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                View trend and add reading
+                {card.kind === "steps" ? "View trend" : "View trend and add reading"}
               </ThemedText>
             </Card>
           </TouchableOpacity>
