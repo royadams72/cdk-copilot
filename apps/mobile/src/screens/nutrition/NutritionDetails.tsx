@@ -12,11 +12,11 @@ import {
 import type { ScrollView as ScrollViewType } from "react-native";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
-import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import type { TMealType } from "@ckd/core";
 
 import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
+import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
 import { formatDateShort, formatDecimal } from "../dashboard/utils";
@@ -314,103 +314,44 @@ export default function NutritionDetails() {
                       { height: CHART_HEIGHT, width: chartContentWidth },
                     ]}
                   >
-                    <Svg width={chartContentWidth} height={CHART_HEIGHT}>
-                      <Line
-                        x1={CHART_PADDING.left}
-                        y1={CHART_HEIGHT - CHART_PADDING.bottom}
-                        x2={chartContentWidth - CHART_PADDING.right}
-                        y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                        stroke={theme === "light" ? "#CBD5F5" : "#475569"}
-                        strokeWidth={1}
-                      />
-                      <Line
-                        x1={CHART_PADDING.left}
-                        y1={CHART_PADDING.top}
-                        x2={CHART_PADDING.left}
-                        y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                        stroke={theme === "light" ? "#CBD5F5" : "#475569"}
-                        strokeWidth={1}
-                      />
-                      {[0.25, 0.5, 0.75].map((ratio) => {
-                        const y =
-                          CHART_PADDING.top +
-                          (CHART_HEIGHT -
-                            CHART_PADDING.top -
-                            CHART_PADDING.bottom) *
-                            ratio;
-                        return (
-                          <Line
-                            key={`grid-${ratio}`}
-                            x1={CHART_PADDING.left}
-                            x2={chartContentWidth - CHART_PADDING.right}
-                            y1={y}
-                            y2={y}
-                            stroke={
-                              theme === "light"
-                                ? "rgba(148,163,184,0.35)"
-                                : "rgba(148,163,184,0.2)"
-                            }
-                            strokeWidth={1}
-                          />
-                        );
-                      })}
-                      {targetLineOffset !== null ? (
-                        <Line
-                          x1={CHART_PADDING.left}
-                          x2={chartContentWidth - CHART_PADDING.right}
-                          y1={targetLineOffset}
-                          y2={targetLineOffset}
-                          stroke="rgba(99,102,241,0.85)"
-                          strokeWidth={2}
-                          strokeDasharray="6,4"
-                        />
-                      ) : null}
-                      {chartPoints.length > 1 ? (
-                        <Polyline
-                          points={chartPoints
-                            .map((point) => `${point.chartX},${point.chartY}`)
-                            .join(" ")}
-                          fill="none"
-                          stroke={metricConfig.color}
-                          strokeWidth={3}
-                          strokeLinejoin="round"
-                          strokeLinecap="round"
-                        />
-                      ) : null}
-                      {chartPoints.map((point) => (
-                        <Circle
-                          key={`dot-${point.chartX}`}
-                          cx={point.chartX}
-                          cy={point.chartY}
-                          r={4}
-                          fill={
-                            point.index === selectedPointIndex
-                              ? metricConfig.color
-                              : "#fff"
-                          }
-                          stroke={
-                            point.index === selectedPointIndex
-                              ? "#fff"
-                              : metricConfig.color
-                          }
-                          strokeWidth={2}
-                          onPress={() => setSelectedPointIndex(point.index)}
-                        />
-                      ))}
-                      {chartPoints.map((point) => (
-                        <SvgText
-                          key={`label-${point.chartX}`}
-                          x={point.chartX}
-                          y={CHART_HEIGHT - CHART_PADDING.bottom + 16}
-                          fontSize={12}
-                          fill={theme === "light" ? "#1F2937" : "#E2E8F0"}
-                          alignmentBaseline="hanging"
-                          textAnchor="middle"
-                        >
-                          {point.label}
-                        </SvgText>
-                      ))}
-                    </Svg>
+                    <TrendLineChart
+                      width={chartContentWidth}
+                      height={CHART_HEIGHT}
+                      padding={CHART_PADDING}
+                      lineColor={theme === "light" ? "#CBD5F5" : "#475569"}
+                      labelColor={theme === "light" ? "#1F2937" : "#E2E8F0"}
+                      gridRatios={[0.25, 0.5, 0.75]}
+                      selectedIndex={selectedPointIndex}
+                      onSelectIndex={setSelectedPointIndex}
+                      targets={
+                        targetLineOffset !== null
+                          ? [
+                              {
+                                color: "rgba(99,102,241,0.85)",
+                                id: "nutrition-target",
+                                y: targetLineOffset,
+                              },
+                            ]
+                          : []
+                      }
+                      series={[
+                        {
+                          color: metricConfig.color,
+                          id: metricConfig.id,
+                          points: chartPoints.map((point) => ({
+                            index: point.index,
+                            visible: true,
+                            x: point.chartX,
+                            y: point.chartY,
+                          })),
+                        },
+                      ]}
+                      xLabels={chartPoints.map((point) => ({
+                        index: point.index,
+                        label: point.label,
+                        x: point.chartX,
+                      }))}
+                    />
                   </View>
                 </ScrollView>
               </View>

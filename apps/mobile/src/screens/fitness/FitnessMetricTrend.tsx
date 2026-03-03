@@ -14,6 +14,7 @@ import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
+import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
@@ -39,12 +40,10 @@ type DayEntry = {
 
 type ChartPoint = {
   barX: number;
-  barX2?: number;
   date: string;
   hasValue: boolean;
   label: string;
   value: number | null;
-  value2Value?: number;
   x: number;
   y: number;
   y2?: number;
@@ -255,7 +254,9 @@ export default function FitnessMetricTrend() {
         const firstExercise = firstCategory.items?.[0];
         if (firstCategory) {
           setOpenCategories((prev) =>
-            Object.keys(prev).length ? prev : { [firstCategory.category]: true },
+            Object.keys(prev).length
+              ? prev
+              : { [firstCategory.category]: true },
           );
         }
         if (firstExercise) {
@@ -290,7 +291,6 @@ export default function FitnessMetricTrend() {
     if (numeric.length === 0) {
       return {
         chartWidth: CHART_WIDTH,
-        hasSecondary: false,
         points: [] as ChartPoint[],
         targetLines: [] as Array<{ color: string; label: string; y: number }>,
         yMax: 0,
@@ -368,8 +368,7 @@ export default function FitnessMetricTrend() {
       ((value - yMin) / span) * (CHART_HEIGHT - CHART_PAD * 2);
 
     const chartPoints = dailyPoints.map((point, index) => {
-      const primaryValueRaw =
-        kind === "exercise" ? point.value2 : point.value;
+      const primaryValueRaw = kind === "exercise" ? point.value2 : point.value;
       const primaryValue =
         typeof primaryValueRaw === "number" && Number.isFinite(primaryValueRaw)
           ? primaryValueRaw
@@ -384,16 +383,12 @@ export default function FitnessMetricTrend() {
         kind === "blood_pressure"
           ? x - GROUP_GAP / 2 - BAR_WIDTH
           : x - BAR_WIDTH / 2;
-      const barX2 = kind === "blood_pressure" ? x + GROUP_GAP / 2 : undefined;
       return {
         barX,
-        barX2,
         date: point.date,
         hasValue: primaryValue !== null,
         label: formatDayLabel(point.date),
         value: primaryValue,
-        value2Value:
-          typeof point.value2 === "number" ? point.value2 : undefined,
         x,
         y,
         y2,
@@ -430,7 +425,6 @@ export default function FitnessMetricTrend() {
 
     return {
       chartWidth,
-      hasSecondary: kind === "blood_pressure",
       points: chartPoints,
       targetLines,
       yMax,
@@ -644,96 +638,121 @@ export default function FitnessMetricTrend() {
                     nestedScrollEnabled
                     showsHorizontalScrollIndicator={false}
                   >
-                    <Svg width={chart.chartWidth} height={CHART_HEIGHT}>
-                    <Line
-                      x1={CHART_PAD}
-                      x2={chart.chartWidth - CHART_PAD}
-                      y1={CHART_HEIGHT - CHART_PAD}
-                      y2={CHART_HEIGHT - CHART_PAD}
-                      stroke="rgba(100,116,139,0.6)"
-                      strokeWidth={1}
-                    />
-
-                    {chart.targetLines.map((line) => (
-                      <Line
-                        key={line.label}
-                        x1={CHART_PAD}
-                        x2={chart.chartWidth - CHART_PAD}
-                        y1={line.y}
-                        y2={line.y}
-                        stroke={line.color}
-                        strokeDasharray="6 4"
-                        strokeWidth={1.5}
+                    {kind === "blood_pressure" ? (
+                      <TrendLineChart
+                        width={chart.chartWidth}
+                        height={CHART_HEIGHT}
+                        padding={{
+                          bottom: CHART_PAD,
+                          left: CHART_PAD,
+                          right: CHART_PAD,
+                          top: CHART_PAD,
+                        }}
+                        selectedIndex={selectedBarIndex}
+                        onSelectIndex={setSelectedBarIndex}
+                        lineColor="rgba(100,116,139,0.6)"
+                        labelColor="#475569"
+                        gridRatios={[0.25, 0.5, 0.75]}
+                        targets={chart.targetLines.map((line) => ({
+                          id: line.label,
+                          color: line.color,
+                          y: line.y,
+                        }))}
+                        series={[
+                          {
+                            id: "systolic",
+                            color: "#2563EB",
+                            points: chart.points.map((point, idx) => ({
+                              index: idx,
+                              visible: point.hasValue,
+                              x: point.x,
+                              y: point.y,
+                            })),
+                          },
+                          {
+                            id: "diastolic",
+                            color: "#F97316",
+                            points: chart.points.map((point, idx) => ({
+                              index: idx,
+                              visible: typeof point.y2 === "number",
+                              x: point.x,
+                              y: typeof point.y2 === "number" ? point.y2 : 0,
+                            })),
+                          },
+                        ]}
+                        xLabels={chart.points.map((point, idx) => ({
+                          index: idx,
+                          label: point.label,
+                          x: point.x,
+                        }))}
                       />
-                    ))}
+                    ) : (
+                      <Svg width={chart.chartWidth} height={CHART_HEIGHT}>
+                        <Line
+                          x1={CHART_PAD}
+                          x2={chart.chartWidth - CHART_PAD}
+                          y1={CHART_HEIGHT - CHART_PAD}
+                          y2={CHART_HEIGHT - CHART_PAD}
+                          stroke="rgba(100,116,139,0.6)"
+                          strokeWidth={1}
+                        />
 
-                    {chart.points.map((point, idx) => (
-                      <Rect
-                        key={`${point.x}-bar-${idx}`}
-                        x={point.barX}
-                        y={point.y}
-                        width={BAR_WIDTH}
-                        height={
-                          point.hasValue
-                            ? Math.max(1, CHART_HEIGHT - CHART_PAD - point.y)
-                            : 0
-                        }
-                        fill="#2563EB"
-                        opacity={
-                          point.hasValue &&
-                          (selectedBarIndex === null || selectedBarIndex === idx)
-                            ? 1
-                            : point.hasValue
-                              ? 0.55
-                              : 0
-                        }
-                        onPress={() => setSelectedBarIndex(idx)}
-                        rx={3}
-                      />
-                    ))}
-                    {chart.hasSecondary
-                      ? chart.points
-                          .filter(
-                            (point) =>
-                              typeof point.y2 === "number" &&
-                              typeof point.barX2 === "number",
-                          )
-                          .map((point, idx) => (
-                            <Rect
-                              key={`${point.x}-bar2-${idx}`}
-                              x={point.barX2 as number}
-                              y={point.y2 as number}
-                              width={BAR_WIDTH}
-                              height={Math.max(
-                                1,
-                                CHART_HEIGHT - CHART_PAD - (point.y2 as number),
-                              )}
-                              fill="#F97316"
-                              opacity={
-                                selectedBarIndex === null ||
-                                selectedBarIndex === idx
-                                  ? 1
-                                  : 0.55
-                              }
-                              onPress={() => setSelectedBarIndex(idx)}
-                              rx={3}
-                            />
-                          ))
-                      : null}
+                        {chart.targetLines.map((line) => (
+                          <Line
+                            key={line.label}
+                            x1={CHART_PAD}
+                            x2={chart.chartWidth - CHART_PAD}
+                            y1={line.y}
+                            y2={line.y}
+                            stroke={line.color}
+                            strokeDasharray="6 4"
+                            strokeWidth={1.5}
+                          />
+                        ))}
 
-                    {chart.points.map((point, idx) => (
-                      <SvgText
-                        key={`t-${point.x}-${idx}`}
-                        x={point.x}
-                        y={CHART_HEIGHT - 8}
-                        textAnchor="middle"
-                        fontSize={10}
-                        fill="#475569"
-                      >
-                        {point.label}
-                      </SvgText>
-                    ))}
-                    </Svg>
+                        {chart.points.map((point, idx) => (
+                          <Rect
+                            key={`${point.x}-bar-${idx}`}
+                            x={point.barX}
+                            y={point.y}
+                            width={BAR_WIDTH}
+                            height={
+                              point.hasValue
+                                ? Math.max(
+                                    1,
+                                    CHART_HEIGHT - CHART_PAD - point.y,
+                                  )
+                                : 0
+                            }
+                            fill="#2563EB"
+                            opacity={
+                              point.hasValue &&
+                              (selectedBarIndex === null ||
+                                selectedBarIndex === idx)
+                                ? 1
+                                : point.hasValue
+                                  ? 0.55
+                                  : 0
+                            }
+                            onPress={() => setSelectedBarIndex(idx)}
+                            rx={3}
+                          />
+                        ))}
+
+                        {chart.points.map((point, idx) => (
+                          <SvgText
+                            key={`t-${point.x}-${idx}`}
+                            x={point.x}
+                            y={CHART_HEIGHT - 8}
+                            textAnchor="middle"
+                            fontSize={10}
+                            fill="#475569"
+                          >
+                            {point.label}
+                          </SvgText>
+                        ))}
+                      </Svg>
+                    )}
                   </ScrollView>
                 </View>
 
@@ -783,16 +802,16 @@ export default function FitnessMetricTrend() {
                                   padding: 10,
                                 }}
                               >
-                                <ThemedText type="defaultSemiBold">
-                                  Blood pressure
+                                <ThemedText
+                                  type="defaultSemiBold"
+                                  style={{ fontSize: 18 }}
+                                >
+                                  {sys ?? "--"}/{dia ?? "--"} mmHg
                                 </ThemedText>
                                 <ThemedText
                                   style={{ fontSize: 12, opacity: 0.72 }}
                                 >
                                   {time}
-                                </ThemedText>
-                                <ThemedText style={{ fontSize: 13 }}>
-                                  {sys ?? "--"}/{dia ?? "--"} mmHg
                                 </ThemedText>
                               </Card>
                             );
