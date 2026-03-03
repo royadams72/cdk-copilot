@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
@@ -10,26 +16,26 @@ import { authFetch } from "@/lib/authFetch";
 type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
 
 type MeasurementLatest = {
-  kind: MeasurementKind;
-  measuredAt?: string;
   count?: number;
+  diastolicMmHg?: number;
   durationMin?: number;
   exercise?: {
     caloriesKcal?: number;
     durationMin?: number;
     name?: string;
   };
+  kind: MeasurementKind;
+  measuredAt?: string;
   systolicMmHg?: number;
-  diastolicMmHg?: number;
 };
 
 type MetricCard = {
   kind: MeasurementKind;
   label: string;
-  value: string;
-  subtext: string;
-  progressPercent?: number;
   progressLabel?: string;
+  progressPercent?: number;
+  subtext: string;
+  value: string;
 };
 
 const STEPS_DAILY_TARGET = 10000;
@@ -59,22 +65,27 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
             : kind === "sleep"
               ? "Sleep"
               : "Steps",
-      value: "No data",
       subtext: "No reading yet",
+      value: "No data",
     };
   }
   if (doc.kind === "steps") {
-    const steps = typeof doc.count === "number" ? Math.max(0, Math.round(doc.count)) : null;
+    const steps =
+      typeof doc.count === "number" ? Math.max(0, Math.round(doc.count)) : null;
     const percent =
-      steps === null ? undefined : Math.min(100, Math.round((steps / STEPS_DAILY_TARGET) * 100));
+      steps === null
+        ? undefined
+        : Math.min(100, Math.round((steps / STEPS_DAILY_TARGET) * 100));
     return {
       kind: "steps",
       label: "Steps",
-      value: steps !== null ? `${steps.toLocaleString()} steps` : "No data",
-      subtext: formatDateTime(doc.measuredAt),
-      progressPercent: percent,
       progressLabel:
-        steps !== null ? `${percent}% of ${STEPS_DAILY_TARGET.toLocaleString()} daily target` : undefined,
+        steps !== null
+          ? `${percent}% of ${STEPS_DAILY_TARGET.toLocaleString()} daily target`
+          : undefined,
+      progressPercent: percent,
+      subtext: formatDateTime(doc.measuredAt),
+      value: steps !== null ? `${steps.toLocaleString()} steps` : "No data",
     };
   }
   if (doc.kind === "exercise") {
@@ -83,7 +94,7 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
         ? Math.max(0, Math.round(doc.exercise.durationMin))
         : typeof doc.durationMin === "number"
           ? Math.max(0, Math.round(doc.durationMin))
-        : null;
+          : null;
     const kcal =
       typeof doc.exercise?.caloriesKcal === "number"
         ? Math.max(0, Math.round(doc.exercise.caloriesKcal))
@@ -95,38 +106,40 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
     return {
       kind: "exercise",
       label: "Exercise",
+      progressLabel:
+        mins !== null
+          ? `${percent}% of ${EXERCISE_DAILY_TARGET_MIN} min daily target`
+          : undefined,
+      progressPercent: percent,
+      subtext: formatDateTime(doc.measuredAt),
       value:
         mins !== null && kcal !== null
           ? `${mins} min • ${kcal} kcal`
           : mins !== null
             ? `${mins} min`
             : "No data",
-      subtext: formatDateTime(doc.measuredAt),
-      progressPercent: percent,
-      progressLabel:
-        mins !== null ? `${percent}% of ${EXERCISE_DAILY_TARGET_MIN} min daily target` : undefined,
     };
   }
   if (doc.kind === "sleep") {
     return {
       kind: "sleep",
       label: "Sleep",
+      subtext: formatDateTime(doc.measuredAt),
       value:
         typeof doc.durationMin === "number"
           ? `${Math.round(doc.durationMin)} min`
           : "No data",
-      subtext: formatDateTime(doc.measuredAt),
     };
   }
   return {
     kind: "blood_pressure",
     label: "Blood pressure",
+    subtext: formatDateTime(doc.measuredAt),
     value:
       typeof doc.systolicMmHg === "number" &&
       typeof doc.diastolicMmHg === "number"
         ? `${Math.round(doc.systolicMmHg)}/${Math.round(doc.diastolicMmHg)} mmHg`
         : "No data",
-    subtext: formatDateTime(doc.measuredAt),
   };
 }
 
@@ -176,7 +189,9 @@ export default function FitnessDashboard() {
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />
+      }
     >
       <TouchableOpacity onPress={() => router.back()}>
         <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
@@ -198,7 +213,9 @@ export default function FitnessDashboard() {
 
       {error ? (
         <Card>
-          <ThemedText type="defaultSemiBold">Could not load readings</ThemedText>
+          <ThemedText type="defaultSemiBold">
+            Could not load readings
+          </ThemedText>
           <ThemedText style={{ opacity: 0.7 }}>{error}</ThemedText>
           <TouchableOpacity onPress={() => load()} style={{ marginTop: 6 }}>
             <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
@@ -212,14 +229,16 @@ export default function FitnessDashboard() {
             key={card.kind}
             onPress={() =>
               router.push({
-                pathname: "/(fitness)/metric-trend",
                 params: { kind: card.kind, label: card.label },
+                pathname: "/(fitness)/metric-trend",
               })
             }
           >
             <Card>
               <ThemedText type="defaultSemiBold">{card.label}</ThemedText>
-              <ThemedText style={{ fontSize: 22, fontWeight: "700" }}>{card.value}</ThemedText>
+              <ThemedText style={{ fontSize: 22, fontWeight: "700" }}>
+                {card.value}
+              </ThemedText>
               <ThemedText style={{ opacity: 0.7 }}>{card.subtext}</ThemedText>
               {typeof card.progressPercent === "number" ? (
                 <View style={{ gap: 6, marginTop: 8 }}>
@@ -247,7 +266,9 @@ export default function FitnessDashboard() {
                 </View>
               ) : null}
               <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                {card.kind === "steps" ? "View trend" : "View trend and add reading"}
+                {card.kind === "steps"
+                  ? "View trend"
+                  : "View trend and add reading"}
               </ThemedText>
             </Card>
           </TouchableOpacity>
