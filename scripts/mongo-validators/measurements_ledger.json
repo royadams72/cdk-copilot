@@ -89,6 +89,7 @@
           "bsonType": "object",
           "required": [
             "exerciseId",
+            "title",
             "name",
             "category",
             "intensity",
@@ -98,6 +99,7 @@
           ],
           "properties": {
             "exerciseId": { "bsonType": "string" },
+            "title": { "bsonType": "string" },
             "name": { "bsonType": "string" },
             "category": { "bsonType": "string" },
             "intensity": { "enum": ["light", "moderate", "vigorous"] },

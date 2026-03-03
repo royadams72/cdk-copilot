@@ -26,6 +26,7 @@ type MeasurementDoc = {
   durationMin?: number;
   exercise?: {
     exerciseId?: string;
+    title?: string;
     name?: string;
     category?: string;
     caloriesKcal?: number;
@@ -96,6 +97,7 @@ export async function GET(req: NextRequest) {
         value: number | null;
         value2: number | null;
         exerciseId?: string;
+        exerciseTitle?: string;
         exerciseName?: string;
       }>
     >();
@@ -126,8 +128,14 @@ export async function GET(req: NextRequest) {
             ? doc.exercise.exerciseId
             : undefined,
         exerciseName:
-          kind === "exercise" && typeof doc.exercise?.name === "string"
-            ? doc.exercise.name
+          kind === "exercise" &&
+          (typeof doc.exercise?.title === "string" ||
+            typeof doc.exercise?.name === "string")
+            ? (doc.exercise?.title ?? doc.exercise?.name)
+            : undefined,
+        exerciseTitle:
+          kind === "exercise" && typeof doc.exercise?.title === "string"
+            ? doc.exercise.title
             : undefined,
       });
       entriesByDay.set(key, dayEntries);
@@ -141,6 +149,7 @@ export async function GET(req: NextRequest) {
           value: number | null;
           value2: number | null;
           exerciseId?: string;
+          exerciseTitle?: string;
           exerciseName?: string;
         }>
       >

@@ -72,6 +72,7 @@ const ExerciseDetail = z
     exerciseId: z.string().min(1),
     intensity: ExerciseIntensity,
     met: z.number().positive(),
+    title: z.string().min(1).optional(),
     name: z.string().min(1),
   })
   .strict();

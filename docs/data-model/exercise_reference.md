@@ -76,4 +76,4 @@ db.exercise_reference.createIndex({ name: "text", notes: "text" });
 - Recommended pattern:
 - exercise_reference supplies met
 - app computes caloriesKcal at write time
-- measurements_ledger stores { durationMin, caloriesKcal } (and optionally exerciseId)
+- measurements_ledger stores { exerciseId, title, name, category, intensity, met, durationMin, caloriesKcal }
