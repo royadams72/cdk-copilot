@@ -24,13 +24,18 @@ export const COLLECTIONS = {
 
   FitPlans: "fit_plans",
 
+  ClinicalReferenceRules: "clinical_reference_rules",
+  ExerciseReference: "exercise_reference",
   LabsLedger: "labs_ledger",
   LabsCurrent: "labs_current",
-  LabsReferenceRanges: "labs_reference_ranges",
+  // Deprecated alias kept for compatibility while callers migrate.
+  LabsReferenceRanges: "clinical_reference_rules",
   MeasurementsLedger: "measurements_ledger",
   MedicationsCurrent: "medications_current",
   MedicationsLedger: "medications_ledger",
   NutritionLedger: "nutrition_ledger",
+  TargetsCurrent: "targets_current",
+  TargetsLedger: "targets_ledger",
 
   Orgs: "orgs",
   Patients: "patients",

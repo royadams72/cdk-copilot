@@ -37,7 +37,7 @@
 | `refRange.low`            |           number \| null |    ⛔️    | Lower bound                                                                                  |
 | `refRange.high`           |           number \| null |    ⛔️    | Upper bound                                                                                  |
 | `refRange.text`           |           string \| null |    ⛔️    | Human text (e.g., `A2: 3–30 mg/mmol`)                                                        |
-| `derivedFromRangeId`      |         ObjectId \| null |    ⛔️    | Reference to `labs_reference_ranges` record used to derive flags (if applicable)             |
+| `derivedFromRangeId`      |         ObjectId \| null |    ⛔️    | Reference to `clinical_reference_rules` (`kind="lab_range"`) used to derive flags (if applicable) |
 | `derivedFromRangeVersion` | string \| number \| null |    ⛔️    | Optional range version (fallback: range `updatedAt` ISO string)                                |
 | `takenAt`                 |                     Date |    ✅    | Sample collection timestamp                                                                  |
 | `reportedAt`              |             Date \| null |    ⛔️    | Reported/authorised timestamp                                                                |
@@ -46,7 +46,7 @@
 | `latestReason`            |           string \| null |    ⛔️    | Reason for edit/correction                                                                   |
 | `correctionOf`            |         ObjectId \| null |    ⛔️    | Points to the prior ledger row this corrects                                                 |
 | `sourceAbnormalFlag`      |             enum \| null |    ⛔️    | `L` \| `LL` \| `H` \| `HH` \| `A` \| `N` as supplied by lab or entered as “source”           |
-| `derivedAbnormalFlag`     |             enum \| null |    ⛔️    | Computed by CKD Copilot using `refRange` or `labs_reference_ranges`                          |
+| `derivedAbnormalFlag`     |             enum \| null |    ⛔️    | Computed by CKD Copilot using `refRange` or `clinical_reference_rules` (`kind="lab_range"`) |
 | `overrideAbnormalFlag`    |             enum \| null |    ⛔️    | Clinician override for this specific reading                                                 |
 | `effectiveAbnormalFlag`   |             enum \| null |    ⛔️    | Stored effective flag used by UI/alerts: override ?? source ?? derived                       |
 | `note`                    |           string \| null |    ⛔️    | Operational note (non-PII)                                                                   |
@@ -120,4 +120,4 @@ db.labs_ledger.createIndex({ orgId: 1, correctionOf: 1 });
 ## Notes
 
 - Keep units consistent per `code`; convert at ingestion if required and store original provenance in integration logs.
-- For UI evaluation, resolve reference ranges from `labs_reference_ranges` when the lab does not supply `refRange`, but persist the resolved `refRange` (snapshot) and optionally `derivedFromRangeId`/`derivedFromRangeVersion` so historical interpretation is auditable.
+- For UI evaluation, resolve reference ranges from `clinical_reference_rules` (`kind="lab_range"`) when the lab does not supply `refRange`, but persist the resolved `refRange` (snapshot) and optionally `derivedFromRangeId`/`derivedFromRangeVersion` so historical interpretation is auditable.

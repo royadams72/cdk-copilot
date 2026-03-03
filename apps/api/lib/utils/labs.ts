@@ -84,14 +84,21 @@ type LabCurrentDoc = {
 
 type ReferenceRangeDoc = {
   _id?: ObjectId;
-  criticalHigh?: number | null;
-  criticalLow?: number | null;
-  loincCode?: string;
-  lower?: number | null;
+  code?: string;
+  kind?: "lab_range";
   orgId?: string | null;
+  priority?: number;
+  rule?: {
+    range?: {
+      criticalHigh?: number | null;
+      criticalLow?: number | null;
+      lower?: number | null;
+      upper?: number | null;
+    };
+  };
+  status?: "active" | "deprecated" | "disabled";
   unit?: string | null;
   updatedAt?: Date | string;
-  upper?: number | null;
   version?: number;
 };
 
@@ -141,47 +148,63 @@ function pickBestReferenceRange(
 
 async function resolveReferenceRangeSnapshot(
   db: Db,
-  args: { loincCode: string; orgId?: string | null; unit?: string | null },
+  args: { code: string; orgId?: string | null; unit?: string | null },
 ): Promise<ResolvedRange | null> {
-  const { loincCode, orgId, unit } = args;
-  if (!loincCode) return null;
+  const { code, orgId, unit } = args;
+  if (!code) return null;
 
   const projection = {
     _id: 1,
-    criticalHigh: 1,
-    criticalLow: 1,
-    loincCode: 1,
-    lower: 1,
+    code: 1,
+    kind: 1,
     orgId: 1,
+    priority: 1,
+    rule: 1,
+    status: 1,
     updatedAt: 1,
     unit: 1,
-    upper: 1,
     version: 1,
   } as const;
 
   let match: ReferenceRangeDoc | null = null;
   if (orgId) {
     const orgCandidates = await db
-      .collection<ReferenceRangeDoc>(COLLECTIONS.LabsReferenceRanges)
-      .find({ loincCode, orgId }, { projection })
+      .collection<ReferenceRangeDoc>("clinical_reference_rules")
+      .find(
+        { kind: "lab_range", status: "active", code, orgId },
+        { projection },
+      )
       .toArray();
     match = pickBestReferenceRange(orgCandidates, unit);
   }
   if (!match) {
+    const orgScope = orgId ? [orgId, null] : [null];
     const fallbackCandidates = await db
-      .collection<ReferenceRangeDoc>(COLLECTIONS.LabsReferenceRanges)
-      .find({ loincCode }, { projection })
+      .collection<ReferenceRangeDoc>("clinical_reference_rules")
+      .find(
+        {
+          kind: "lab_range",
+          status: "active",
+          code,
+          orgId: { $in: orgScope },
+        },
+        { projection },
+      )
       .toArray();
     match = pickBestReferenceRange(fallbackCandidates, unit);
   }
   if (!match) return null;
 
-  const low = typeof match.lower === "number" ? match.lower : null;
-  const high = typeof match.upper === "number" ? match.upper : null;
+  const low = typeof match.rule?.range?.lower === "number" ? match.rule.range.lower : null;
+  const high = typeof match.rule?.range?.upper === "number" ? match.rule.range.upper : null;
   const criticalLow =
-    typeof match.criticalLow === "number" ? match.criticalLow : null;
+    typeof match.rule?.range?.criticalLow === "number"
+      ? match.rule.range.criticalLow
+      : null;
   const criticalHigh =
-    typeof match.criticalHigh === "number" ? match.criticalHigh : null;
+    typeof match.rule?.range?.criticalHigh === "number"
+      ? match.rule.range.criticalHigh
+      : null;
   const rangeId = match._id ?? null;
   const rangeVersion =
     typeof match.version === "number"
@@ -254,7 +277,7 @@ export async function writeLabLedgerAndCurrent(
   const { orgId, patientId, principalId, input } = args;
   const now = new Date();
   const resolvedRange = await resolveReferenceRangeSnapshot(db, {
-    loincCode: input.code,
+    code: input.code,
     orgId,
     unit: input.unit ?? null,
   });

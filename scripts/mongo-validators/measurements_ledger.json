@@ -1,5 +1,40 @@
 {
   "collMod": "measurements_ledger",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "kind": 1, "measuredAt": -1 },
+      "options": { "name": "byPatientKind_latest" }
+    },
+    {
+      "key": { "patientId": 1, "measuredAt": -1 },
+      "options": { "name": "byPatient_time" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "kind": 1, "measuredAt": -1 },
+      "options": { "name": "byOrgPatientKind_time" }
+    },
+    {
+      "key": {
+        "orgId": 1,
+        "patientId": 1,
+        "kind": 1,
+        "device.externalId": 1,
+        "measuredAt": 1
+      },
+      "options": {
+        "name": "dedupe_byDevice_ext_measuredAt",
+        "unique": true,
+        "partialFilterExpression": { "device.externalId": { "$exists": true } }
+      }
+    },
+    { "key": { "receivedAt": -1 }, "options": { "name": "byReceived_desc" } },
+    {
+      "key": { "createdBy": 1, "measuredAt": -1 },
+      "options": { "name": "byCreatedBy_time" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
   "validator": {
     "$jsonSchema": {
       "bsonType": "object",
@@ -14,6 +49,7 @@
         "updatedBy"
       ],
       "properties": {
+        "_id": { "bsonType": "objectId" },
         "kind": {
           "enum": [
             "weight",
@@ -49,44 +85,31 @@
         "bpm": { "bsonType": ["int", "long", "double", "decimal"] },
         "count": { "bsonType": ["int", "long", "double", "decimal"] },
         "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
+        "exercise": {
+          "bsonType": "object",
+          "required": [
+            "exerciseId",
+            "name",
+            "category",
+            "intensity",
+            "met",
+            "durationMin",
+            "caloriesKcal"
+          ],
+          "properties": {
+            "exerciseId": { "bsonType": "string" },
+            "name": { "bsonType": "string" },
+            "category": { "bsonType": "string" },
+            "intensity": { "enum": ["light", "moderate", "vigorous"] },
+            "met": { "bsonType": ["double", "int", "long", "decimal"] },
+            "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
+            "caloriesKcal": { "bsonType": ["int", "long", "double", "decimal"] }
+          },
+          "additionalProperties": false
+        },
         "quality": { "enum": ["poor", "fair", "good", "excellent"] }
       },
       "additionalProperties": false
     }
-  },
-  "validationLevel": "moderate",
-  "validationAction": "error",
-  "indexes": [
-    {
-      "key": { "patientId": 1, "kind": 1, "measuredAt": -1 },
-      "options": { "name": "byPatientKind_latest" }
-    },
-    {
-      "key": { "patientId": 1, "measuredAt": -1 },
-      "options": { "name": "byPatient_time" }
-    },
-    {
-      "key": { "orgId": 1, "patientId": 1, "kind": 1, "measuredAt": -1 },
-      "options": { "name": "byOrgPatientKind_time" }
-    },
-    {
-      "key": {
-        "orgId": 1,
-        "patientId": 1,
-        "kind": 1,
-        "device.externalId": 1,
-        "measuredAt": 1
-      },
-      "options": {
-        "name": "dedupe_byDevice_ext_measuredAt",
-        "unique": true,
-        "partialFilterExpression": { "device.externalId": { "$exists": true } }
-      }
-    },
-    { "key": { "receivedAt": -1 }, "options": { "name": "byReceived_desc" } },
-    {
-      "key": { "createdBy": 1, "measuredAt": -1 },
-      "options": { "name": "byCreatedBy_time" }
-    }
-  ]
+  }
 }

@@ -1,0 +1,156 @@
+{
+  "collMod": "targets_current",
+  "indexes": [
+    {
+      "key": { "orgId": 1, "patientId": 1 },
+      "options": { "name": "uniq_byOrgPatient", "unique": true }
+    },
+    {
+      "key": { "orgId": 1, "updatedAt": -1 },
+      "options": { "name": "byOrgUpdatedAt" }
+    },
+    {
+      "key": { "patientId": 1 },
+      "options": { "name": "byPatient" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "orgId",
+        "patientId",
+        "updatedAt",
+        "updatedBy",
+        "engine",
+        "targets"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "updatedAt": { "bsonType": "date" },
+        "updatedBy": {
+          "bsonType": "object",
+          "required": ["principalId", "actorType"],
+          "properties": {
+            "principalId": { "bsonType": "string" },
+            "actorType": {
+              "bsonType": "string",
+              "enum": ["user", "clinician", "system"]
+            },
+            "displayName": { "bsonType": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "engine": {
+          "bsonType": "object",
+          "required": ["ruleset", "runId", "computedAt"],
+          "properties": {
+            "ruleset": { "bsonType": "string", "enum": ["clinical_reference_rules"] },
+            "runId": { "bsonType": "string" },
+            "computedAt": { "bsonType": "date" }
+          },
+          "additionalProperties": false
+        },
+        "flags": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "targets": {
+          "bsonType": "object",
+          "additionalProperties": {
+            "bsonType": "object",
+            "required": ["domain", "metric", "unit", "recommended", "effective"],
+            "properties": {
+              "domain": { "bsonType": "string", "enum": ["renal", "lifestyle"] },
+              "metric": { "bsonType": "string" },
+              "unit": { "bsonType": "string" },
+              "recommended": {
+                "bsonType": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },
+                  "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "high": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "value": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "basis": {
+                    "bsonType": ["string", "null"],
+                    "enum": ["perDay", "perKgPerDay", null]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "override": {
+                "bsonType": ["object", "null"],
+                "required": ["type"],
+                "properties": {
+                  "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },
+                  "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "high": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "value": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "basis": {
+                    "bsonType": ["string", "null"],
+                    "enum": ["perDay", "perKgPerDay", null]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "effective": {
+                "bsonType": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },
+                  "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "high": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "value": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "basis": {
+                    "bsonType": ["string", "null"],
+                    "enum": ["perDay", "perKgPerDay", null]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "derivedFrom": {
+                "bsonType": ["object", "null"],
+                "required": ["ruleId", "version"],
+                "properties": {
+                  "ruleId": { "bsonType": "string" },
+                  "version": { "bsonType": ["int", "long", "double", "decimal"] },
+                  "matchedAt": { "bsonType": "date" }
+                },
+                "additionalProperties": false
+              },
+              "overrideMeta": {
+                "bsonType": ["object", "null"],
+                "required": ["setAt", "setBy"],
+                "properties": {
+                  "setAt": { "bsonType": "date" },
+                  "setBy": {
+                    "bsonType": "object",
+                    "required": ["principalId", "actorType"],
+                    "properties": {
+                      "principalId": { "bsonType": "string" },
+                      "actorType": {
+                        "bsonType": "string",
+                        "enum": ["user", "clinician", "system"]
+                      },
+                      "displayName": { "bsonType": ["string", "null"] }
+                    },
+                    "additionalProperties": false
+                  },
+                  "reason": { "bsonType": ["string", "null"] }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

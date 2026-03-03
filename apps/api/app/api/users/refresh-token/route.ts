@@ -24,30 +24,59 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret";
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
   const body = await req.json().catch(() => null);
-  const refreshToken = body?.refreshToken as string | undefined;
+  const refreshToken = (body?.refreshToken as string | undefined)?.trim();
 
   if (!refreshToken) {
-    return bad("Unauthorized1", { requestId }, 401);
+    console.warn("refresh-token: missing refresh token");
+    return bad("Missing refresh token", { requestId, code: "missing_token" }, 401);
   }
 
   try {
     const db = await getDb();
     const parsed = parseToken(refreshToken);
-    if (!parsed) return bad("Unauthorized2", { requestId }, 401);
+    if (!parsed) {
+      console.warn("refresh-token: invalid format");
+      return bad("Invalid refresh token format", { requestId, code: "invalid_format" }, 401);
+    }
 
     const authTokens = db.collection<AuthTokenDoc>(COLLECTIONS.AuthTokens);
     const res = await validateAuth(authTokens, COLLECTION_TYPE.Refresh, parsed);
-    if (!res.ok) return bad("Unauthorized3", { requestId }, 401);
+    if (!res.ok) {
+      console.warn("refresh-token: validate failed", { reason: res.error });
+      return bad(
+        "Refresh token invalid or expired",
+        { requestId, code: "refresh_invalid", reason: res.error },
+        401,
+      );
+    }
 
     const tokenDoc = res.doc;
-    if (tokenDoc.revokedAt || tokenDoc.rotatedAt) {
-      return bad("Unauthorized4", { requestId }, 401);
+    if (tokenDoc.revokedAt) {
+      console.warn("refresh-token: token revoked");
+      return bad(
+        "Refresh token revoked",
+        { requestId, code: "refresh_revoked" },
+        401,
+      );
+    }
+    if (tokenDoc.rotatedAt) {
+      // Allow stale rotated tokens to recover a session (mobile can miss
+      // persisted rotation updates if app/process exits at the wrong time).
+      console.warn("refresh-token: using previously rotated token");
     }
 
     const principalId = tokenDoc.principalId;
     const credentialId = tokenDoc.credentialId;
     if (!principalId || !credentialId) {
-      return bad("Unauthorized5", { requestId }, 401);
+      console.warn("refresh-token: subject missing", {
+        hasPrincipalId: !!principalId,
+        hasCredentialId: !!credentialId,
+      });
+      return bad(
+        "Refresh token missing principal or credential",
+        { requestId, code: "refresh_subject_missing" },
+        401,
+      );
     }
 
     // Check if account is active
@@ -67,7 +96,8 @@ export async function POST(req: NextRequest) {
       );
 
     if (!account) {
-      return bad("Unauthorized6", { requestId }, 401);
+      console.warn("refresh-token: inactive account", { principalId });
+      return bad("Account is inactive", { requestId, code: "account_inactive" }, 401);
     }
 
     const roleScopes = ROLE_SCOPES[account.role] ?? [];

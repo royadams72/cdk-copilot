@@ -1,0 +1,67 @@
+{
+  "collMod": "exercise_reference",
+  "indexes": [
+    {
+      "key": { "exerciseId": 1 },
+      "options": { "name": "byExerciseId", "unique": true }
+    },
+    {
+      "key": { "category": 1, "intensity": 1, "met": 1 },
+      "options": { "name": "byCategoryIntensityMet" }
+    },
+    {
+      "key": { "name": "text", "notes": "text" },
+      "options": { "name": "text_name_notes" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "exerciseId",
+        "name",
+        "category",
+        "intensity",
+        "met",
+        "source",
+        "updatedAt"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+
+        "exerciseId": { "bsonType": "string" },
+        "name": { "bsonType": "string" },
+        "category": { "bsonType": "string" },
+        "intensity": { "enum": ["light", "moderate", "vigorous"] },
+
+        "met": { "bsonType": ["double", "int", "long", "decimal"] },
+        "compendiumCode": { "bsonType": "string" },
+        "notes": { "bsonType": "string" },
+
+        "source": {
+          "bsonType": "object",
+          "required": ["compendium", "url"],
+          "properties": {
+            "compendium": { "bsonType": "string" },
+            "url": { "bsonType": "string" },
+            "activityCode": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+
+        "units": {
+          "bsonType": "object",
+          "properties": {
+            "met": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

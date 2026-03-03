@@ -25,19 +25,26 @@ import type { MedicationCurrentDoc } from "../types/dashboard";
 type ReferenceRangeDoc = {
   ageMax?: number;
   ageMin?: number;
-  loincCode?: string;
-  lower?: number | null;
+  code?: string;
+  kind?: "lab_range";
+  label?: string;
+  orgId?: string | null;
+  priority?: number;
+  rule?: {
+    range?: {
+      criticalHigh?: number | null;
+      criticalLow?: number | null;
+      lower?: number | null;
+      upper?: number | null;
+    };
+  };
   sex?: "male" | "female" | "any";
-  testName?: string;
+  status?: "active" | "deprecated" | "disabled";
   unit?: string;
-  upper?: number | null;
 };
 
 function normalizeUnit(value?: string) {
-  return (value ?? "")
-    .toLowerCase()
-    .replace(/µ/g, "u")
-    .replace(/\s+/g, "");
+  return (value ?? "").toLowerCase().replace(/µ/g, "u").replace(/\s+/g, "");
 }
 
 function hasRefRange(doc: LabDoc) {
@@ -60,20 +67,20 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
   if (codes.length === 0) return docs;
 
   const refs = await db
-    .collection<ReferenceRangeDoc>("labs_reference_ranges")
+    .collection<ReferenceRangeDoc>("clinical_reference_rules")
     .find(
-      { loincCode: { $in: codes } },
+      { code: { $in: codes }, kind: "lab_range", status: "active" },
       {
         projection: {
           _id: 0,
           ageMax: 1,
           ageMin: 1,
-          loincCode: 1,
-          lower: 1,
+          code: 1,
+          orgId: 1,
+          priority: 1,
+          rule: 1,
           sex: 1,
-          testName: 1,
           unit: 1,
-          upper: 1,
         },
       },
     )
@@ -81,7 +88,7 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
 
   const byCode = new Map<string, ReferenceRangeDoc[]>();
   for (const ref of refs) {
-    const code = ref.loincCode;
+    const code = ref.code;
     if (!code) continue;
     const list = byCode.get(code) ?? [];
     list.push(ref);
@@ -103,19 +110,24 @@ async function hydrateRefRanges(db: Db, docs: LabDoc[]) {
         const ageMin = typeof ref.ageMin === "number" ? ref.ageMin : 0;
         const ageMax = typeof ref.ageMax === "number" ? ref.ageMax : 200;
         return sexOk && assumedAge >= ageMin && assumedAge <= ageMax;
-      }) ??
-      candidates.find((ref) => normalizeUnit(ref.unit) === unitNorm);
+      }) ?? candidates.find((ref) => normalizeUnit(ref.unit) === unitNorm);
 
     if (!match) return doc;
+    const lower =
+      typeof match.rule?.range?.lower === "number"
+        ? match.rule.range.lower
+        : null;
+    const upper =
+      typeof match.rule?.range?.upper === "number"
+        ? match.rule.range.upper
+        : null;
     return {
       ...doc,
       refRange: {
-        high: typeof match.upper === "number" ? match.upper : null,
-        low: typeof match.lower === "number" ? match.lower : null,
+        high: upper,
+        low: lower,
         text:
-          typeof match.lower === "number" || typeof match.upper === "number"
-            ? null
-            : null,
+          typeof lower === "number" || typeof upper === "number" ? null : null,
       },
     };
   });
@@ -142,7 +154,7 @@ export async function fetchRecentLabs(db: Db, patientId: ObjectId) {
         },
       },
     )
-    .sort({ takenAt: -1, reportedAt: -1, updatedAt: -1 })
+    .sort({ reportedAt: -1, takenAt: -1, updatedAt: -1 })
     .limit(200)
     .toArray();
   if (current.length > 0) {
@@ -205,10 +217,10 @@ export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
       {
         projection: {
           _id: 1,
-          medicationId: 1,
           dose: 1,
           form: 1,
           frequency: 1,
+          medicationId: 1,
           name: 1,
           route: 1,
           startAt: 1,
@@ -217,7 +229,7 @@ export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
         },
       },
     )
-    .sort({ updatedAt: -1, startAt: -1 })
+    .sort({ startAt: -1, updatedAt: -1 })
     .limit(200)
     .toArray();
 }
@@ -282,9 +294,9 @@ function formatLab(
   doc: LabDoc,
   config?: (typeof TRACKED_LABS)[number],
 ): {
-  code: string;
   id: string;
   abnormalFlag: string | null;
+  code: string;
   label: string;
   refRange: { low: number | null; high: number | null; text: string | null };
   takenAt: string | null;
@@ -298,9 +310,9 @@ function formatLab(
     doc.derivedAbnormalFlag ??
     null;
   return {
-    code: doc.code ?? "",
-    id: config?.id ?? (doc.code ?? doc.name ?? "lab"),
+    id: config?.id ?? doc.code ?? doc.name ?? "lab",
     abnormalFlag: effectiveFlag,
+    code: doc.code ?? "",
     label: doc.name ?? config?.label ?? "Lab",
     refRange: {
       low: normaliseNumber(doc.refRange?.low),
@@ -315,7 +327,7 @@ function formatLab(
 
 export function summarizeNutrition(
   entries: NutritionEntryDoc[],
-  clinicalDoc: any,
+  nutritionTargets: Partial<Record<NutrientKey, number>>,
   from: Date,
   to: Date,
   rangeDays: number,
@@ -341,7 +353,7 @@ export function summarizeNutrition(
 
   const radials = RADIAL_METRICS.map((metric) => {
     const actual = round(totals[metric.key], metric.precision);
-    const targetValue = normaliseNumber(clinicalDoc?.targets?.[metric.key]) as
+    const targetValue = normaliseNumber(nutritionTargets?.[metric.key]) as
       | number
       | null;
     const percent =
@@ -357,7 +369,7 @@ export function summarizeNutrition(
     };
   });
 
-  const ratio = buildRatio(totals, clinicalDoc?.targets);
+  const ratio = buildRatio(totals, nutritionTargets);
   const dailySeries = buildDailySeries(entriesInRange, to, rangeDays);
   const foodHighlights = buildFoodHighlights(entriesInRange);
   const mealsByDate = buildMealsByDate(entriesInRange);
@@ -606,7 +618,7 @@ function dayKey(date: Date) {
 
 function buildRatio(
   totals: Record<NutrientKey, number>,
-  targets?: Record<string, number>,
+  targets?: Partial<Record<NutrientKey, number>>,
 ) {
   const actual =
     totals.proteinG > 0
@@ -630,6 +642,81 @@ function buildRatio(
     unit: "mg phosphorus per g protein",
     value: actual,
   };
+}
+
+type TargetStateLike = {
+  effective?: {
+    type?: "range" | "max" | "min" | "exact";
+    high?: number | null;
+    low?: number | null;
+    value?: number | null;
+  } | null;
+  metric?: string;
+  override?: {
+    type?: "range" | "max" | "min" | "exact";
+    high?: number | null;
+    low?: number | null;
+    value?: number | null;
+  } | null;
+  recommended?: {
+    type?: "range" | "max" | "min" | "exact";
+    high?: number | null;
+    low?: number | null;
+    value?: number | null;
+  } | null;
+};
+
+function resolveTargetValue(state?: TargetStateLike | null): number | null {
+  const target = state?.effective ?? state?.override ?? state?.recommended;
+  if (!target) return null;
+  const direct = normaliseNumber(target.value);
+  if (direct !== null) return direct;
+
+  if (target.type === "range") {
+    return normaliseNumber(target.high ?? target.low);
+  }
+  if (target.type === "max")
+    return normaliseNumber(target.high ?? target.value);
+  if (target.type === "min") return normaliseNumber(target.low ?? target.value);
+  return null;
+}
+
+const TARGET_ALIASES: Record<NutrientKey, string[]> = {
+  caloriesKcal: ["caloriesKcal", "calories_kcal_day", "energy_kcal_day"],
+  phosphorusMg: ["phosphorusMg", "phosphorus_mg_day"],
+  potassiumMg: ["potassiumMg", "potassium_mg_day"],
+  proteinG: ["proteinG", "protein_g_day", "protein_g_kg_day"],
+  sleep_duration_min_day: [],
+  sodiumMg: ["sodiumMg", "sodium_mg_day"],
+  steps_per_day: [],
+  weight_kg: [],
+};
+
+function normaliseMetricKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function mapNutritionTargets(
+  targetsCurrent: Record<string, TargetStateLike> | null | undefined,
+): Partial<Record<NutrientKey, number>> {
+  const mapped: Partial<Record<NutrientKey, number>> = {};
+  const entries = Object.entries(targetsCurrent ?? {});
+
+  for (const nutrientKey of Object.keys(TARGET_ALIASES) as NutrientKey[]) {
+    const aliases = TARGET_ALIASES[nutrientKey].map(normaliseMetricKey);
+    const match = entries.find(([key, state]) => {
+      const entryKey = normaliseMetricKey(key);
+      if (aliases.includes(entryKey)) return true;
+      if (state?.metric && aliases.includes(normaliseMetricKey(state.metric)))
+        return true;
+      return false;
+    });
+    if (!match) continue;
+    const value = resolveTargetValue(match[1]);
+    if (value !== null) mapped[nutrientKey] = value;
+  }
+
+  return mapped;
 }
 
 function clamp(value: number, min: number, max: number) {

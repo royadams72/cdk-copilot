@@ -20,7 +20,7 @@
 - `heightCm` . number
 - `weightKg` . number
 - `contraindications` · string[]
-- `targets` · optional object of: caloriesKcal, proteinG, phosphorusMg, potassiumMg, sodiumMg, fluidMl
+- `targets` · deprecated inline snapshot; target state now lives in `targets_current`
 - `careTeam` · array of { role, name?, org?, contact? }
 - `lastClinicalUpdateAt` · Date|null
 - `createdAt` / `updatedAt`
@@ -72,3 +72,9 @@ db.users_clinical.updateOne(
 - Keep users_clinical separate from users_pii to minimise PII exposure.
 - Use API scopes like users:clinical:read/:write.
 - For exports, use pseudonymId and strip any free text if required by policy.
+
+## Related collections
+
+- `labs_ledger` / `labs_current` for observed lab results
+- `measurements_ledger` for observed activity/vitals
+- `targets_ledger` / `targets_current` for goal state and changes

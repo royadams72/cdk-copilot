@@ -23,15 +23,6 @@ const Med = z.object({
   stoppedAt: z.coerce.date().nullable().optional(),
 });
 
-export const Targets = z.object({
-  caloriesKcal: z.number().int().positive().max(8000).optional(),
-  fluidMl: z.number().positive().max(8000).optional(),
-  phosphorusMg: z.number().positive().max(5000).optional(),
-  potassiumMg: z.number().positive().max(10000).optional(),
-  proteinG: z.number().positive().max(400).optional(),
-  sodiumMg: z.number().positive().max(20000).optional(),
-});
-
 export const CareTeamMember = z.object({
   contact: z.string().optional(),
   name: z.string().optional(),
@@ -54,7 +45,6 @@ export const UserClinical_Base = z.object({
   dietaryPreferences: z.array(z.string()).default([]),
   contraindications: z.array(z.string()).default([]),
 
-  targets: Targets.optional(),
   careTeam: z.array(CareTeamMember).default([]),
 
   weightKg: z.number().positive().max(400).nullable().optional(),
@@ -82,15 +72,6 @@ const numberLike = z
     (val) => !val || val.trim() === "" || !Number.isNaN(Number(val)),
     "Enter a number",
   );
-
-const TargetsForm = z.object({
-  caloriesKcal: numberLike,
-  fluidMl: numberLike,
-  phosphorusMg: numberLike,
-  potassiumMg: numberLike,
-  proteinG: numberLike,
-  sodiumMg: numberLike,
-});
 
 const LabeledString = z.object({
   value: z.string().min(1),
@@ -130,7 +111,6 @@ export const UserClinicalSummary = UserClinical_Base.pick({
   dialysisStatus: true,
   egfrCurrent: true,
   lastClinicalUpdateAt: true,
-  targets: true,
 });
 
 export type TUserClinicalSummary = z.infer<typeof UserClinicalSummary>;

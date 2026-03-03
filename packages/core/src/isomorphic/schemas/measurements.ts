@@ -6,13 +6,15 @@ const SleepQuality = z.enum(["poor", "fair", "good", "excellent"]);
 
 const DeviceMeta = z
   .object({
+    externalId: z.string().min(1).optional(),
     name: z.string().min(1).optional(),
     platform: z.string().min(1).optional(),
-    externalId: z.string().min(1).optional(),
   })
   .strict();
 
 const Base = z.object({
+  createdBy: PrincipalId,
+  device: DeviceMeta.optional(),
   kind: z.enum([
     "weight",
     "blood_pressure",
@@ -21,14 +23,12 @@ const Base = z.object({
     "exercise",
     "sleep",
   ]),
-  patientId: objectIdHex,
-  orgId: z.string().min(1),
   measuredAt: z.date(),
+  notes: z.string().min(1).optional(),
+  orgId: z.string().min(1),
+  patientId: objectIdHex,
   receivedAt: z.date(),
   source: Source,
-  device: DeviceMeta.optional(),
-  notes: z.string().min(1).optional(),
-  createdBy: PrincipalId,
   updatedBy: PrincipalId,
 });
 
@@ -40,31 +40,44 @@ const Weight = z.object({
 
 const BloodPressure = z
   .object({
-    kind: z.literal("blood_pressure"),
-    systolicMmHg: z.number().int().min(40).max(300),
     diastolicMmHg: z.number().int().min(20).max(200),
+    kind: z.literal("blood_pressure"),
     pulseBpm: z.number().int().min(20).max(240).optional(),
+    systolicMmHg: z.number().int().min(40).max(300),
   })
   .refine((o) => o.systolicMmHg > o.diastolicMmHg, {
     message: "systolicMmHg must be greater than diastolicMmHg",
   });
 
 const HeartRate = z.object({
-  kind: z.literal("heart_rate"),
   bpm: z.number().int().min(10).max(250),
+  kind: z.literal("heart_rate"),
 });
 const Steps = z.object({
-  kind: z.literal("steps"),
   count: z.number().int().min(0),
-});
-const Exercise = z.object({
-  kind: z.literal("exercise"),
-  durationMin: z.number().int().min(0),
+  kind: z.literal("steps"),
 });
 const Sleep = z.object({
-  kind: z.literal("sleep"),
   durationMin: z.number().int().min(0),
+  kind: z.literal("sleep"),
   quality: SleepQuality.optional(),
+});
+
+const ExerciseIntensity = z.enum(["light", "moderate", "vigorous"]);
+const ExerciseDetail = z
+  .object({
+    caloriesKcal: z.number().nonnegative(),
+    category: z.string().min(1),
+    durationMin: z.number().int().min(0),
+    exerciseId: z.string().min(1),
+    intensity: ExerciseIntensity,
+    met: z.number().positive(),
+    name: z.string().min(1),
+  })
+  .strict();
+const Exercise = z.object({
+  exercise: ExerciseDetail,
+  kind: z.literal("exercise"),
 });
 
 const KindUnion = z.discriminatedUnion("kind", [
@@ -80,8 +93,21 @@ export const Measurement = Base.and(KindUnion);
 
 // Create schema: drop server-set fields BEFORE intersecting
 const BaseCreate = Base.omit({
-  receivedAt: true,
   createdBy: true,
+  receivedAt: true,
   updatedBy: true,
 });
-export const MeasurementCreate = BaseCreate.and(KindUnion);
+const ExerciseCreate = z.object({
+  durationMin: z.number().int().min(0),
+  exerciseId: z.string().min(1),
+  kind: z.literal("exercise"),
+});
+const KindCreateUnion = z.discriminatedUnion("kind", [
+  Weight,
+  BloodPressure,
+  HeartRate,
+  Steps,
+  ExerciseCreate,
+  Sleep,
+]);
+export const MeasurementCreate = BaseCreate.and(KindCreateUnion);

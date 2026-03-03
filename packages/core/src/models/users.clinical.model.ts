@@ -16,18 +16,6 @@ const MedSchema = new Schema(
   { _id: false }
 );
 
-const TargetsSchema = new Schema(
-  {
-    caloriesKcal: Number,
-    proteinG: Number,
-    phosphorusMg: Number,
-    potassiumMg: Number,
-    sodiumMg: Number,
-    fluidMl: Number,
-  },
-  { _id: false }
-);
-
 const CareTeamSchema = new Schema(
   {
     role: { type: String, required: true },
@@ -62,7 +50,6 @@ const UserClinicalSchema = new Schema(
     dietaryPreferences: { type: [String], default: [] },
     contraindications: { type: [String], default: [] },
 
-    targets: { type: TargetsSchema },
     careTeam: { type: [CareTeamSchema], default: [] },
 
     lastClinicalUpdateAt: Date,

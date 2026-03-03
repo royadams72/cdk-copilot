@@ -1,0 +1,665 @@
+[
+  {
+    "ruleId": "bp-systolic-adult-ckd-non-dialysis",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_systolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "none",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 64
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "range",
+        "low": 120,
+        "high": 129,
+        "value": null,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "UK Kidney Association",
+      "title": "Commentary on NICE guideline (NG136) \u2018Hypertension in adults: diagnosis and management\u2019",
+      "year": 2020,
+      "url": "https://www.ukkidney.org/sites/default/files/Commentary%20NG136%20Hypertension_0.pdf",
+      "note": "Practical CKD BP target often <130/80 if tolerated."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-diastolic-adult-ckd-non-dialysis",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_diastolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "none",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 64
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 79,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "UK Kidney Association",
+      "title": "Commentary on NICE guideline (NG136) \u2018Hypertension in adults: diagnosis and management\u2019",
+      "year": 2020,
+      "url": "https://www.ukkidney.org/sites/default/files/Commentary%20NG136%20Hypertension_0.pdf",
+      "note": "Practical CKD BP target often <130/80 if tolerated."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-systolic-older-ckd-non-dialysis",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_systolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "none",
+      "sex": "any",
+      "ageMin": 65,
+      "ageMax": 150
+    },
+    "priority": 49,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 139,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "NICE CKS",
+      "title": "Chronic kidney disease: Management (online resource)",
+      "year": 0,
+      "url": "https://cks.nice.org.uk/topics/chronic-kidney-disease/management/management-of-chronic-kidney-disease/",
+      "note": "Online resource; publication year not provided."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-diastolic-older-ckd-non-dialysis",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_diastolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "none",
+      "sex": "any",
+      "ageMin": 65,
+      "ageMax": 150
+    },
+    "priority": 49,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 89,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "NICE CKS",
+      "title": "Chronic kidney disease: Management (online resource)",
+      "year": 0,
+      "url": "https://cks.nice.org.uk/topics/chronic-kidney-disease/management/management-of-chronic-kidney-disease/",
+      "note": "Online resource; publication year not provided."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-systolic-dialysis-hemo",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_systolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "hemodialysis",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 40,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 140,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "KDIGO",
+      "title": "Executive summary of the KDIGO 2021 BP guideline",
+      "year": 2021,
+      "url": "https://kdigo.org/wp-content/uploads/2016/10/KDIGO_BP_Exec_Summary_final.pdf",
+      "note": "KDIGO SBP <120 recommendation excludes dialysis; use pragmatic default pending dialysis-specific guidance."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-diastolic-dialysis-hemo",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_diastolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "hemodialysis",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 40,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 90,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "KDIGO",
+      "title": "Executive summary of the KDIGO 2021 BP guideline",
+      "year": 2021,
+      "url": "https://kdigo.org/wp-content/uploads/2016/10/KDIGO_BP_Exec_Summary_final.pdf",
+      "note": "KDIGO SBP <120 recommendation excludes dialysis; use pragmatic default pending dialysis-specific guidance."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-systolic-dialysis-peri",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_systolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "peritoneal",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 40,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 140,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "KDIGO",
+      "title": "Executive summary of the KDIGO 2021 BP guideline",
+      "year": 2021,
+      "url": "https://kdigo.org/wp-content/uploads/2016/10/KDIGO_BP_Exec_Summary_final.pdf",
+      "note": "KDIGO SBP <120 recommendation excludes dialysis; use pragmatic default pending dialysis-specific guidance."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-diastolic-dialysis-peri",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_diastolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "peritoneal",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 40,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 90,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "KDIGO",
+      "title": "Executive summary of the KDIGO 2021 BP guideline",
+      "year": 2021,
+      "url": "https://kdigo.org/wp-content/uploads/2016/10/KDIGO_BP_Exec_Summary_final.pdf",
+      "note": "KDIGO SBP <120 recommendation excludes dialysis; use pragmatic default pending dialysis-specific guidance."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-systolic-dialysis-any",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_systolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 30,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 140,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "KDIGO",
+      "title": "Executive summary of the KDIGO 2021 BP guideline",
+      "year": 2021,
+      "url": "https://kdigo.org/wp-content/uploads/2016/10/KDIGO_BP_Exec_Summary_final.pdf",
+      "note": "KDIGO SBP <120 recommendation excludes dialysis; use pragmatic default pending dialysis-specific guidance."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bp-diastolic-dialysis-any",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "blood_pressure_diastolic_mmHg",
+    "unit": "mmHg",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 30,
+    "rule": {
+      "target": {
+        "type": "max",
+        "low": null,
+        "high": null,
+        "value": 90,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "KDIGO",
+      "title": "Executive summary of the KDIGO 2021 BP guideline",
+      "year": 2021,
+      "url": "https://kdigo.org/wp-content/uploads/2016/10/KDIGO_BP_Exec_Summary_final.pdf",
+      "note": "KDIGO SBP <120 recommendation excludes dialysis; use pragmatic default pending dialysis-specific guidance."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "resting-heart-rate-adults",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "heart_rate_bpm",
+    "unit": "bpm",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "range",
+        "low": 60,
+        "high": 100,
+        "value": null,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "American Heart Association",
+      "title": "All About Heart Rate (Pulse) (online resource)",
+      "year": 0,
+      "url": "https://www.heart.org/en/health-topics/high-blood-pressure/the-facts-about-high-blood-pressure/all-about-heart-rate-pulse",
+      "note": "Online resource; year not reliably available."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "steps-per-day-adults-under-60",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "steps_day",
+    "unit": "steps/day",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 59
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "min",
+        "low": null,
+        "high": null,
+        "value": 8000,
+        "basis": "perDay"
+      }
+    },
+    "source": {
+      "publisher": "CDC",
+      "title": "Benefits of Physical Activity (online resource)",
+      "year": 0,
+      "url": "https://www.cdc.gov/physical-activity-basics/benefits/index.html",
+      "note": "Online resource; year not reliably available."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "steps-per-day-adults-60-plus",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "steps_day",
+    "unit": "steps/day",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 60,
+      "ageMax": 150
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "min",
+        "low": null,
+        "high": null,
+        "value": 6000,
+        "basis": "perDay"
+      }
+    },
+    "source": {
+      "publisher": "CDC",
+      "title": "Benefits of Physical Activity (online resource)",
+      "year": 0,
+      "url": "https://www.cdc.gov/physical-activity-basics/benefits/index.html",
+      "note": "Online resource; year not reliably available."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "exercise-moderate-minutes-per-day-adults",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "exercise_duration_min_day",
+    "unit": "min/day",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "min",
+        "low": null,
+        "high": null,
+        "value": 21.4,
+        "basis": "perDay"
+      }
+    },
+    "source": {
+      "publisher": "WHO",
+      "title": "Physical activity recommendations (online resource)",
+      "year": 2020,
+      "url": "https://www.who.int/initiatives/behealthy/physical-activity",
+      "note": "Encode minimum aerobic activity recommendation. WHO minimum 150 min/week encoded as 21.4 min/day for validator compatibility."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "sleep-duration-adults-18-64",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "sleep_duration_min_day",
+    "unit": "min/day",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 64
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "range",
+        "low": 420,
+        "high": 540,
+        "value": null,
+        "basis": "perDay"
+      }
+    },
+    "source": {
+      "publisher": "National Sleep Foundation",
+      "title": "Sleep Duration Recommendations: Methodology and Results Summary",
+      "year": 2015,
+      "url": "https://www.sleephealthjournal.org/article/S2352-7218(15)00015-7/fulltext",
+      "note": "Consensus sleep duration by age group."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "sleep-duration-older-65-plus",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "sleep_duration_min_day",
+    "unit": "min/day",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 65,
+      "ageMax": 150
+    },
+    "priority": 50,
+    "rule": {
+      "target": {
+        "type": "range",
+        "low": 420,
+        "high": 480,
+        "value": null,
+        "basis": "perDay"
+      }
+    },
+    "source": {
+      "publisher": "National Sleep Foundation",
+      "title": "Sleep Duration Recommendations: Methodology and Results Summary",
+      "year": 2015,
+      "url": "https://www.sleephealthjournal.org/article/S2352-7218(15)00015-7/fulltext",
+      "note": "Consensus sleep duration by age group."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  },
+  {
+    "ruleId": "bmi-healthy-range-adults",
+    "version": 1,
+    "status": "active",
+    "kind": "health_target",
+    "code": "bmi",
+    "unit": "kg/m2",
+    "orgId": null,
+    "appliesWhen": {
+      "ckdStage": "any",
+      "dialysis": "any",
+      "sex": "any",
+      "ageMin": 18,
+      "ageMax": 150
+    },
+    "priority": 30,
+    "rule": {
+      "target": {
+        "type": "range",
+        "low": 18.5,
+        "high": 24.9,
+        "value": null,
+        "basis": null
+      }
+    },
+    "source": {
+      "publisher": "NHS",
+      "title": "Obesity: diagnosis (BMI categories) (online resource)",
+      "year": 0,
+      "url": "https://www.nhs.uk/conditions/obesity/diagnosis/",
+      "note": "Online resource; year not reliably available."
+    },
+    "createdAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-26T00:00:00.000Z"
+    }
+  }
+]
