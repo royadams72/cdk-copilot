@@ -85,6 +85,8 @@
         "bpm": { "bsonType": ["int", "long", "double", "decimal"] },
         "count": { "bsonType": ["int", "long", "double", "decimal"] },
         "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
+        "sleepFromAt": { "bsonType": "date" },
+        "sleepToAt": { "bsonType": "date" },
         "exercise": {
           "bsonType": "object",
           "required": [
@@ -111,6 +113,16 @@
         },
         "quality": { "enum": ["poor", "fair", "good", "excellent"] }
       },
+      "anyOf": [
+        {
+          "properties": {
+            "kind": {
+              "enum": ["weight", "blood_pressure", "heart_rate", "steps", "exercise"]
+            }
+          }
+        },
+        { "required": ["durationMin", "sleepFromAt", "sleepToAt"] }
+      ],
       "additionalProperties": false
     }
   }

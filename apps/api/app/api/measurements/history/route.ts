@@ -24,6 +24,8 @@ type MeasurementDoc = {
   bpm?: number;
   count?: number;
   durationMin?: number;
+  sleepFromAt?: Date;
+  sleepToAt?: Date;
   exercise?: {
     exerciseId?: string;
     title?: string;
@@ -81,6 +83,8 @@ export async function GET(req: NextRequest) {
             exercise: 1,
             kind: 1,
             measuredAt: 1,
+            sleepFromAt: 1,
+            sleepToAt: 1,
             systolicMmHg: 1,
             valueKg: 1,
           },
@@ -96,6 +100,8 @@ export async function GET(req: NextRequest) {
         measuredAt: string;
         value: number | null;
         value2: number | null;
+        sleepFromAt?: string;
+        sleepToAt?: string;
         exerciseId?: string;
         exerciseTitle?: string;
         exerciseName?: string;
@@ -108,7 +114,19 @@ export async function GET(req: NextRequest) {
       let value: number | null = null;
       let value2: number | null = null;
       if (kind === "steps") value = asNumber(doc.count);
-      if (kind === "sleep") value = asNumber(doc.durationMin);
+      if (kind === "sleep") {
+        const durationFromField = asNumber(doc.durationMin);
+        if (durationFromField !== null) {
+          value = durationFromField;
+        } else if (doc.sleepFromAt && doc.sleepToAt) {
+          value = Math.max(
+            0,
+            Math.round(
+              (doc.sleepToAt.getTime() - doc.sleepFromAt.getTime()) / 60000,
+            ),
+          );
+        }
+      }
       if (kind === "exercise") {
         value = asNumber(doc.exercise?.caloriesKcal);
         value2 = asNumber(doc.exercise?.durationMin);
@@ -123,6 +141,14 @@ export async function GET(req: NextRequest) {
         measuredAt: doc.measuredAt.toISOString(),
         value,
         value2,
+        sleepFromAt:
+          kind === "sleep" && doc.sleepFromAt
+            ? doc.sleepFromAt.toISOString()
+            : undefined,
+        sleepToAt:
+          kind === "sleep" && doc.sleepToAt
+            ? doc.sleepToAt.toISOString()
+            : undefined,
         exerciseId:
           kind === "exercise" && typeof doc.exercise?.exerciseId === "string"
             ? doc.exercise.exerciseId
@@ -148,6 +174,8 @@ export async function GET(req: NextRequest) {
           measuredAt: string;
           value: number | null;
           value2: number | null;
+          sleepFromAt?: string;
+          sleepToAt?: string;
           exerciseId?: string;
           exerciseTitle?: string;
           exerciseName?: string;

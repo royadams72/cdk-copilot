@@ -25,6 +25,8 @@
   `durationMin`: number,
   `caloriesKcal`: number
   } (only when `kind="exercise"`)
+- `sleepFromAt?` · Date (sleep start timestamp; required for `kind="sleep"`)
+- `sleepToAt?` · Date (sleep end timestamp; required for `kind="sleep"`)
 - `createdBy` / `updatedBy` · string ref: `principalId`
 
 Payload fields by `kind`:
@@ -34,7 +36,7 @@ Payload fields by `kind`:
 - `heart_rate` → `bpm`
 - `steps` → `count`
 - `exercise` → `exercise.exerciseId`, `exercise.title`, `exercise.name`, `exercise.category`, `exercise.intensity`, `exercise.met`, `exercise.durationMin`, `exercise.caloriesKcal`
-- `sleep` → `durationMin`, `quality?` (`poor|fair|good|excellent`)
+- `sleep` → `sleepFromAt`, `sleepToAt`, `durationMin`, `quality?` (`poor|fair|good|excellent`)
 
 ## Example
 
@@ -73,6 +75,24 @@ Payload fields by `kind`:
     "durationMin": 35,
     "caloriesKcal": 320
   },
+  "createdBy": "pr_66f1b7e9c2ab4a0c9f3a1e21",
+  "updatedBy": "pr_66f1b7e9c2ab4a0c9f3a1e21"
+}
+```
+
+### Example: sleep
+
+```json
+{
+  "kind": "sleep",
+  "patientId": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
+  "orgId": "org_rf_london",
+  "measuredAt": "2025-09-26T07:10:00Z",
+  "receivedAt": "2025-09-26T07:10:12Z",
+  "source": "patient",
+  "sleepFromAt": "2025-09-25T23:15:00Z",
+  "sleepToAt": "2025-09-26T07:10:00Z",
+  "durationMin": 475,
   "createdBy": "pr_66f1b7e9c2ab4a0c9f3a1e21",
   "updatedBy": "pr_66f1b7e9c2ab4a0c9f3a1e21"
 }
