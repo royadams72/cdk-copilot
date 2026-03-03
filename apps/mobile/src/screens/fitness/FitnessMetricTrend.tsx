@@ -29,19 +29,21 @@ type TrendPoint = {
 };
 
 type DayEntry = {
+  exerciseId?: string;
+  exerciseName?: string;
+  exerciseTitle?: string;
   measuredAt: string;
   value: number | null;
   value2: number | null;
-  exerciseId?: string;
-  exerciseName?: string;
 };
 
 type ChartPoint = {
-  date: string;
-  label: string;
   barX: number;
   barX2?: number;
-  value: number;
+  date: string;
+  hasValue: boolean;
+  label: string;
+  value: number | null;
   value2Value?: number;
   x: number;
   y: number;
@@ -71,11 +73,22 @@ const SLOT_GAP = 16;
 const BP_TARGET_SYSTOLIC = 120;
 const BP_TARGET_DIASTOLIC = 80;
 const SLEEP_TARGET_MIN = 8 * 60;
+const EXERCISE_TARGET_MIN = 30;
 
 function formatDayLabel(value: string) {
   const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, { weekday: "short" });
+  return `${date.getDate()}/${date.getMonth() + 1}`;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function dateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
 
 function formatDateLabel(date: Date) {
@@ -98,7 +111,7 @@ function formatTimeLabel(value: string) {
 function metricUnit(kind: MeasurementKind) {
   if (kind === "steps") return "steps";
   if (kind === "blood_pressure") return "mmHg";
-  if (kind === "exercise") return "kcal";
+  if (kind === "exercise") return "min";
   return "min";
 }
 
@@ -114,9 +127,24 @@ function formatMinutes(total: number) {
   return `${h}h ${m}m`;
 }
 
-function dateToLocalNoonIso(date: Date) {
+function dateToMeasuredAtIso(date: Date) {
   const value = new Date(date);
-  value.setHours(12, 0, 0, 0);
+  const hasExplicitTime =
+    value.getHours() !== 0 ||
+    value.getMinutes() !== 0 ||
+    value.getSeconds() !== 0 ||
+    value.getMilliseconds() !== 0;
+
+  if (!hasExplicitTime) {
+    const now = new Date();
+    value.setHours(
+      now.getHours(),
+      now.getMinutes(),
+      now.getSeconds(),
+      now.getMilliseconds(),
+    );
+  }
+
   return value.toISOString();
 }
 
@@ -133,9 +161,9 @@ export default function FitnessMetricTrend() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [points, setPoints] = useState<TrendPoint[]>([]);
-  const [entriesByDate, setEntriesByDate] = useState<Record<string, DayEntry[]>>(
-    {},
-  );
+  const [entriesByDate, setEntriesByDate] = useState<
+    Record<string, DayEntry[]>
+  >({});
   const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -226,10 +254,12 @@ export default function FitnessMetricTrend() {
         const firstCategory = categories[0];
         const firstExercise = firstCategory.items?.[0];
         if (firstCategory) {
-          setOpenCategories({ [firstCategory.category]: true });
+          setOpenCategories((prev) =>
+            Object.keys(prev).length ? prev : { [firstCategory.category]: true },
+          );
         }
-        if (firstExercise && !selectedExerciseId) {
-          setSelectedExerciseId(firstExercise.exerciseId);
+        if (firstExercise) {
+          setSelectedExerciseId((prev) => prev || firstExercise.exerciseId);
         }
       }
     } catch (err: any) {
@@ -239,7 +269,7 @@ export default function FitnessMetricTrend() {
     } finally {
       setExerciseCatalogLoading(false);
     }
-  }, [kind, selectedExerciseId]);
+  }, [kind]);
 
   useEffect(() => {
     load();
@@ -253,12 +283,14 @@ export default function FitnessMetricTrend() {
 
   const chart = useMemo(() => {
     const numeric = points.filter(
-      (p) => typeof p.value === "number" && Number.isFinite(p.value),
-    ) as Array<TrendPoint & { value: number }>;
+      (p) =>
+        typeof (kind === "exercise" ? p.value2 : p.value) === "number" &&
+        Number.isFinite(kind === "exercise" ? p.value2 : p.value),
+    );
     if (numeric.length === 0) {
       return {
-        hasSecondary: false,
         chartWidth: CHART_WIDTH,
+        hasSecondary: false,
         points: [] as ChartPoint[],
         targetLines: [] as Array<{ color: string; label: string; y: number }>,
         yMax: 0,
@@ -266,7 +298,9 @@ export default function FitnessMetricTrend() {
       };
     }
 
-    const values = numeric.map((p) => p.value);
+    const values = numeric
+      .map((p) => (kind === "exercise" ? (p.value2 as number) : p.value))
+      .filter((v): v is number => v !== null);
     const values2 =
       kind === "blood_pressure"
         ? numeric
@@ -280,6 +314,9 @@ export default function FitnessMetricTrend() {
     }
     if (kind === "sleep") {
       targetValues.push(SLEEP_TARGET_MIN);
+    }
+    if (kind === "exercise") {
+      targetValues.push(EXERCISE_TARGET_MIN);
     }
 
     const yMin =
@@ -299,9 +336,29 @@ export default function FitnessMetricTrend() {
     const groupWidth =
       kind === "blood_pressure" ? BAR_WIDTH * 2 + GROUP_GAP : BAR_WIDTH;
     const slotWidth = groupWidth + SLOT_GAP;
+    const firstDate = new Date(`${numeric[0].date}T12:00:00`);
+    const lastDate = new Date(`${numeric[numeric.length - 1].date}T12:00:00`);
+    const dailyPoints: TrendPoint[] = [];
+    const byDate = new Map(points.map((p) => [p.date, p]));
+    for (
+      let cursor = firstDate;
+      cursor.getTime() <= lastDate.getTime();
+      cursor = addDays(cursor, 1)
+    ) {
+      const key = dateKey(cursor);
+      const found = byDate.get(key);
+      dailyPoints.push(
+        found ?? {
+          date: key,
+          measuredAt: `${key}T12:00:00.000Z`,
+          value: null,
+          value2: null,
+        },
+      );
+    }
     const chartWidth = Math.max(
       CHART_WIDTH,
-      CHART_PAD * 2 + slotWidth * numeric.length,
+      CHART_PAD * 2 + slotWidth * dailyPoints.length,
     );
     const firstX = CHART_PAD + slotWidth / 2;
 
@@ -310,9 +367,15 @@ export default function FitnessMetricTrend() {
       CHART_PAD -
       ((value - yMin) / span) * (CHART_HEIGHT - CHART_PAD * 2);
 
-    const chartPoints = numeric.map((point, index) => {
+    const chartPoints = dailyPoints.map((point, index) => {
+      const primaryValueRaw =
+        kind === "exercise" ? point.value2 : point.value;
+      const primaryValue =
+        typeof primaryValueRaw === "number" && Number.isFinite(primaryValueRaw)
+          ? primaryValueRaw
+          : null;
       const x = firstX + slotWidth * index;
-      const y = toY(point.value);
+      const y = toY(primaryValue ?? 0);
       const y2 =
         kind === "blood_pressure" && typeof point.value2 === "number"
           ? toY(point.value2)
@@ -326,9 +389,11 @@ export default function FitnessMetricTrend() {
         barX,
         barX2,
         date: point.date,
+        hasValue: primaryValue !== null,
         label: formatDayLabel(point.date),
-        value: point.value,
-        value2Value: typeof point.value2 === "number" ? point.value2 : undefined,
+        value: primaryValue,
+        value2Value:
+          typeof point.value2 === "number" ? point.value2 : undefined,
         x,
         y,
         y2,
@@ -355,6 +420,13 @@ export default function FitnessMetricTrend() {
         y: toY(SLEEP_TARGET_MIN),
       });
     }
+    if (kind === "exercise") {
+      targetLines.push({
+        color: "#0F766E",
+        label: `Target ${EXERCISE_TARGET_MIN} min`,
+        y: toY(EXERCISE_TARGET_MIN),
+      });
+    }
 
     return {
       chartWidth,
@@ -375,14 +447,27 @@ export default function FitnessMetricTrend() {
 
   const selectedChartPoint = useMemo(() => {
     if (selectedBarIndex === null) return null;
-    if (selectedBarIndex < 0 || selectedBarIndex >= chart.points.length) return null;
+    if (selectedBarIndex < 0 || selectedBarIndex >= chart.points.length)
+      return null;
     return chart.points[selectedBarIndex];
   }, [chart.points, selectedBarIndex]);
 
   const selectedDateKey = selectedChartPoint
     ? selectedChartPoint.date
-    : chart.points[chart.points.length - 1]?.date ?? null;
-  const selectedDayEntries = selectedDateKey ? (entriesByDate[selectedDateKey] ?? []) : [];
+    : (chart.points[chart.points.length - 1]?.date ?? null);
+  const selectedDayEntries = useMemo(() => {
+    if (!selectedDateKey) return [];
+    const entries = entriesByDate[selectedDateKey] ?? [];
+    return entries
+      .slice()
+      .sort((a, b) =>
+        a.measuredAt === b.measuredAt
+          ? 0
+          : a.measuredAt < b.measuredAt
+            ? 1
+            : -1,
+      );
+  }, [entriesByDate, selectedDateKey]);
 
   useEffect(() => {
     setMeasuredDate(new Date());
@@ -409,13 +494,13 @@ export default function FitnessMetricTrend() {
         }
         payload.durationMin = Math.round(value);
         payload.exerciseId = selectedExercise.exerciseId;
-        payload.measuredAt = dateToLocalNoonIso(measuredDate);
+        payload.measuredAt = dateToMeasuredAtIso(measuredDate);
       }
 
       if (kind === "sleep") {
         const durationMin = sleepHours * 60 + sleepMinutes;
         payload.durationMin = durationMin;
-        payload.measuredAt = dateToLocalNoonIso(measuredDate);
+        payload.measuredAt = dateToMeasuredAtIso(measuredDate);
       }
 
       if (kind === "blood_pressure") {
@@ -424,7 +509,7 @@ export default function FitnessMetricTrend() {
         }
         payload.systolicMmHg = bpSystolic;
         payload.diastolicMmHg = bpDiastolic;
-        payload.measuredAt = dateToLocalNoonIso(measuredDate);
+        payload.measuredAt = dateToMeasuredAtIso(measuredDate);
       }
 
       const res = await authFetch(`${API}/api/measurements/create`, {
@@ -521,24 +606,49 @@ export default function FitnessMetricTrend() {
               </ThemedText>
             ) : (
               <>
-                <ScrollView
-                  horizontal
-                  nestedScrollEnabled
-                  showsHorizontalScrollIndicator={false}
-                >
-                  <Svg width={chart.chartWidth} height={CHART_HEIGHT}>
+                <View style={{ position: "relative" }}>
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      backgroundColor: "white",
+                      bottom: 0,
+                      justifyContent: "space-between",
+                      left: 0,
+                      paddingBottom: CHART_PAD - 2,
+                      paddingTop: CHART_PAD + 4,
+                      position: "absolute",
+                      top: 0,
+                      width: CHART_PAD,
+                      zIndex: 1,
+                    }}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: "rgba(100,116,139,0.6)",
+                        bottom: CHART_PAD,
+                        left: CHART_PAD - 1,
+                        position: "absolute",
+                        top: CHART_PAD,
+                        width: 1,
+                      }}
+                    />
+                    <ThemedText style={{ color: "#475569", fontSize: 11 }}>
+                      {chart.yMax.toFixed(0)}
+                    </ThemedText>
+                    <ThemedText style={{ color: "#475569", fontSize: 11 }}>
+                      {chart.yMin.toFixed(0)}
+                    </ThemedText>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    nestedScrollEnabled
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    <Svg width={chart.chartWidth} height={CHART_HEIGHT}>
                     <Line
                       x1={CHART_PAD}
                       x2={chart.chartWidth - CHART_PAD}
                       y1={CHART_HEIGHT - CHART_PAD}
-                      y2={CHART_HEIGHT - CHART_PAD}
-                      stroke="rgba(100,116,139,0.6)"
-                      strokeWidth={1}
-                    />
-                    <Line
-                      x1={CHART_PAD}
-                      x2={CHART_PAD}
-                      y1={CHART_PAD}
                       y2={CHART_HEIGHT - CHART_PAD}
                       stroke="rgba(100,116,139,0.6)"
                       strokeWidth={1}
@@ -563,9 +673,20 @@ export default function FitnessMetricTrend() {
                         x={point.barX}
                         y={point.y}
                         width={BAR_WIDTH}
-                        height={Math.max(1, CHART_HEIGHT - CHART_PAD - point.y)}
+                        height={
+                          point.hasValue
+                            ? Math.max(1, CHART_HEIGHT - CHART_PAD - point.y)
+                            : 0
+                        }
                         fill="#2563EB"
-                        opacity={selectedBarIndex === null || selectedBarIndex === idx ? 1 : 0.55}
+                        opacity={
+                          point.hasValue &&
+                          (selectedBarIndex === null || selectedBarIndex === idx)
+                            ? 1
+                            : point.hasValue
+                              ? 0.55
+                              : 0
+                        }
                         onPress={() => setSelectedBarIndex(idx)}
                         rx={3}
                       />
@@ -588,24 +709,18 @@ export default function FitnessMetricTrend() {
                                 CHART_HEIGHT - CHART_PAD - (point.y2 as number),
                               )}
                               fill="#F97316"
-                              opacity={selectedBarIndex === null || selectedBarIndex === idx ? 1 : 0.55}
+                              opacity={
+                                selectedBarIndex === null ||
+                                selectedBarIndex === idx
+                                  ? 1
+                                  : 0.55
+                              }
                               onPress={() => setSelectedBarIndex(idx)}
                               rx={3}
                             />
                           ))
                       : null}
 
-                    <SvgText x={6} y={CHART_PAD + 4} fontSize={11} fill="#475569">
-                      {chart.yMax.toFixed(0)}
-                    </SvgText>
-                    <SvgText
-                      x={6}
-                      y={CHART_HEIGHT - CHART_PAD}
-                      fontSize={11}
-                      fill="#475569"
-                    >
-                      {chart.yMin.toFixed(0)}
-                    </SvgText>
                     {chart.points.map((point, idx) => (
                       <SvgText
                         key={`t-${point.x}-${idx}`}
@@ -618,8 +733,9 @@ export default function FitnessMetricTrend() {
                         {point.label}
                       </SvgText>
                     ))}
-                  </Svg>
-                </ScrollView>
+                    </Svg>
+                  </ScrollView>
+                </View>
 
                 {selectedDateKey ? (
                   <View
@@ -630,7 +746,9 @@ export default function FitnessMetricTrend() {
                   >
                     <View>
                       <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
-                        {formatDateLabel(new Date(`${selectedDateKey}T12:00:00`))}
+                        {formatDateLabel(
+                          new Date(`${selectedDateKey}T12:00:00`),
+                        )}
                       </ThemedText>
                       <ThemedText type="defaultSemiBold">
                         {selectedDayEntries.length} reading
@@ -659,10 +777,18 @@ export default function FitnessMetricTrend() {
                             return (
                               <Card
                                 key={`${entry.measuredAt}-${idx}`}
-                                style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                                style={{
+                                  borderRadius: 10,
+                                  gap: 3,
+                                  padding: 10,
+                                }}
                               >
-                                <ThemedText type="defaultSemiBold">Blood pressure</ThemedText>
-                                <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                <ThemedText type="defaultSemiBold">
+                                  Blood pressure
+                                </ThemedText>
+                                <ThemedText
+                                  style={{ fontSize: 12, opacity: 0.72 }}
+                                >
                                   {time}
                                 </ThemedText>
                                 <ThemedText style={{ fontSize: 13 }}>
@@ -681,14 +807,25 @@ export default function FitnessMetricTrend() {
                               typeof entry.value2 === "number"
                                 ? Math.round(entry.value2)
                                 : null;
-                            const name = entry.exerciseName?.trim() || "Exercise";
+                            const name =
+                              entry.exerciseTitle?.trim() ||
+                              entry.exerciseName?.trim() ||
+                              "Exercise";
                             return (
                               <Card
                                 key={`${entry.measuredAt}-${idx}`}
-                                style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                                style={{
+                                  borderRadius: 10,
+                                  gap: 3,
+                                  padding: 10,
+                                }}
                               >
-                                <ThemedText type="defaultSemiBold">{name}</ThemedText>
-                                <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                <ThemedText type="defaultSemiBold">
+                                  {name}
+                                </ThemedText>
+                                <ThemedText
+                                  style={{ fontSize: 12, opacity: 0.72 }}
+                                >
                                   {time}
                                 </ThemedText>
                                 <ThemedText style={{ fontSize: 13 }}>
@@ -707,10 +844,18 @@ export default function FitnessMetricTrend() {
                             return (
                               <Card
                                 key={`${entry.measuredAt}-${idx}`}
-                                style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                                style={{
+                                  borderRadius: 10,
+                                  gap: 3,
+                                  padding: 10,
+                                }}
                               >
-                                <ThemedText type="defaultSemiBold">Sleep</ThemedText>
-                                <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                <ThemedText type="defaultSemiBold">
+                                  Sleep
+                                </ThemedText>
+                                <ThemedText
+                                  style={{ fontSize: 12, opacity: 0.72 }}
+                                >
                                   {time}
                                 </ThemedText>
                                 <ThemedText style={{ fontSize: 13 }}>
@@ -729,11 +874,17 @@ export default function FitnessMetricTrend() {
                               key={`${entry.measuredAt}-${idx}`}
                               style={{ borderRadius: 10, gap: 3, padding: 10 }}
                             >
-                              <ThemedText type="defaultSemiBold">Steps</ThemedText>
-                              <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                              <ThemedText type="defaultSemiBold">
+                                Steps
+                              </ThemedText>
+                              <ThemedText
+                                style={{ fontSize: 12, opacity: 0.72 }}
+                              >
                                 {time}
                               </ThemedText>
-                              <ThemedText style={{ fontSize: 13 }}>{steps} steps</ThemedText>
+                              <ThemedText style={{ fontSize: 13 }}>
+                                {steps} steps
+                              </ThemedText>
                             </Card>
                           );
                         })
@@ -1009,7 +1160,9 @@ export default function FitnessMetricTrend() {
               </>
             ) : null}
 
-            {kind === "blood_pressure" || kind === "sleep" || kind === "exercise" ? (
+            {kind === "blood_pressure" ||
+            kind === "sleep" ||
+            kind === "exercise" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
                   Date (defaults to today)

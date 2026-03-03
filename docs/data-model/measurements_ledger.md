@@ -15,7 +15,16 @@
 - `source` · `patient|device|api|provider`
 - `device?` · { `name?`, `platform?`, `externalId?` }
 - `notes?` · string
-- `exercise?` · { `durationMin`: number, `caloriesKcal`: number } (only when `kind="exercise"`)
+- `exercise?` · {
+  `exerciseId`: string,
+  `title`: string,
+  `name`: string (legacy alias),
+  `category`: string,
+  `intensity`: `light|moderate|vigorous`,
+  `met`: number,
+  `durationMin`: number,
+  `caloriesKcal`: number
+  } (only when `kind="exercise"`)
 - `createdBy` / `updatedBy` · string ref: `principalId`
 
 Payload fields by `kind`:
@@ -24,7 +33,7 @@ Payload fields by `kind`:
 - `blood_pressure` → `systolicMmHg`, `diastolicMmHg`, `pulseBpm?`
 - `heart_rate` → `bpm`
 - `steps` → `count`
-- `exercise` → `exercise.durationMin`, `exercise.caloriesKcal`
+- `exercise` → `exercise.exerciseId`, `exercise.title`, `exercise.name`, `exercise.category`, `exercise.intensity`, `exercise.met`, `exercise.durationMin`, `exercise.caloriesKcal`
 - `sleep` → `durationMin`, `quality?` (`poor|fair|good|excellent`)
 
 ## Example
@@ -55,6 +64,12 @@ Payload fields by `kind`:
   "receivedAt": "2025-09-25T18:10:10Z",
   "source": "patient",
   "exercise": {
+    "exerciseId": "cycling_12_13_9_mph",
+    "title": "Cycling, 12–13.9 mph (moderate effort)",
+    "name": "Cycling, 12–13.9 mph (moderate effort)",
+    "category": "cycling",
+    "intensity": "vigorous",
+    "met": 8,
     "durationMin": 35,
     "caloriesKcal": 320
   },
@@ -88,3 +103,4 @@ db.measurements_ledger.createIndex(
 - `measurements_ledger` is the source of truth for observed activity/vitals.
 - “Latest” views should be derived at read time using aggregation (`$sort` + `$group` by `kind`).
 - For `kind="exercise"`, store a computed `exercise.caloriesKcal` (derived from MET (Metabolic Equivalent of Task), duration, and weight) so historical values remain stable even if reference tables change.
+- For `kind="exercise"`, persist `exercise.title` so display labels remain stable even if exercise reference names are updated later.

@@ -167,6 +167,7 @@ export async function POST(req: NextRequest) {
         exerciseRef.met * weightKg * (Math.round(durationMin) / 60);
       payload.exercise = {
         exerciseId: exerciseRef.exerciseId,
+        title: exerciseRef.name,
         name: exerciseRef.name,
         category: exerciseRef.category,
         intensity: exerciseRef.intensity,
