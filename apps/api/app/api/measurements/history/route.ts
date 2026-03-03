@@ -25,10 +25,15 @@ type MeasurementDoc = {
   count?: number;
   durationMin?: number;
   exercise?: {
+    exerciseId?: string;
+    name?: string;
+    category?: string;
     caloriesKcal?: number;
     durationMin?: number;
   };
 };
+
+const MAX_DOCS = 5000;
 
 function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -81,17 +86,22 @@ export async function GET(req: NextRequest) {
         },
       )
       .sort({ measuredAt: -1 })
-      .limit(365)
+      .limit(MAX_DOCS)
       .toArray();
 
-    const byDay = new Map<
+    const entriesByDay = new Map<
       string,
-      { measuredAt: Date; value: number | null; value2: number | null }
+      Array<{
+        measuredAt: string;
+        value: number | null;
+        value2: number | null;
+        exerciseId?: string;
+        exerciseName?: string;
+      }>
     >();
 
     for (const doc of docs) {
       const key = dayKey(doc.measuredAt);
-      if (byDay.has(key)) continue;
 
       let value: number | null = null;
       let value2: number | null = null;
@@ -106,23 +116,82 @@ export async function GET(req: NextRequest) {
         value2 = asNumber(doc.diastolicMmHg);
       }
 
-      byDay.set(key, {
-        measuredAt: doc.measuredAt,
+      const dayEntries = entriesByDay.get(key) ?? [];
+      dayEntries.push({
+        measuredAt: doc.measuredAt.toISOString(),
         value,
         value2,
+        exerciseId:
+          kind === "exercise" && typeof doc.exercise?.exerciseId === "string"
+            ? doc.exercise.exerciseId
+            : undefined,
+        exerciseName:
+          kind === "exercise" && typeof doc.exercise?.name === "string"
+            ? doc.exercise.name
+            : undefined,
       });
+      entriesByDay.set(key, dayEntries);
     }
 
-    const points = Array.from(byDay.entries())
-      .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([date, item]) => ({
-        date,
-        measuredAt: item.measuredAt.toISOString(),
-        value: item.value,
-        value2: item.value2,
-      }));
+    const entriesByDate = Array.from(entriesByDay.entries()).reduce<
+      Record<
+        string,
+        Array<{
+          measuredAt: string;
+          value: number | null;
+          value2: number | null;
+          exerciseId?: string;
+          exerciseName?: string;
+        }>
+      >
+    >((acc, [date, entries]) => {
+      acc[date] = entries
+        .slice()
+        .sort((a, b) => (a.measuredAt < b.measuredAt ? -1 : 1));
+      return acc;
+    }, {});
 
-    return ok({ points });
+    const points = Object.entries(entriesByDate)
+      .map(([date, entries]) => {
+        const numericValue = entries
+          .map((entry) => entry.value)
+          .filter((value): value is number => typeof value === "number");
+        const numericValue2 = entries
+          .map((entry) => entry.value2)
+          .filter((value): value is number => typeof value === "number");
+        const latestEntry = entries[entries.length - 1];
+
+        let value: number | null = null;
+        let value2: number | null = null;
+
+        if (kind === "exercise") {
+          value = numericValue.length
+            ? numericValue.reduce((sum, item) => sum + item, 0)
+            : null;
+          value2 = numericValue2.length
+            ? numericValue2.reduce((sum, item) => sum + item, 0)
+            : null;
+        } else if (kind === "sleep") {
+          value = numericValue.length
+            ? numericValue.reduce((sum, item) => sum + item, 0)
+            : null;
+        } else if (kind === "steps") {
+          value = numericValue.length ? Math.max(...numericValue) : null;
+        } else {
+          value = latestEntry?.value ?? null;
+          value2 = latestEntry?.value2 ?? null;
+        }
+
+        return {
+          date,
+          measuredAt: latestEntry?.measuredAt ?? `${date}T00:00:00.000Z`,
+          value,
+          value2,
+        };
+      })
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+    return ok({ entriesByDate, points });
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

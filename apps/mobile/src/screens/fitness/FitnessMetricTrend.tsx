@@ -12,7 +12,7 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
+import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
@@ -28,8 +28,21 @@ type TrendPoint = {
   value2: number | null;
 };
 
+type DayEntry = {
+  measuredAt: string;
+  value: number | null;
+  value2: number | null;
+  exerciseId?: string;
+  exerciseName?: string;
+};
+
 type ChartPoint = {
+  date: string;
   label: string;
+  barX: number;
+  barX2?: number;
+  value: number;
+  value2Value?: number;
   x: number;
   y: number;
   y2?: number;
@@ -51,15 +64,18 @@ type ExerciseRefCategory = {
 const CHART_WIDTH = 330;
 const CHART_HEIGHT = 210;
 const CHART_PAD = 28;
+const BAR_WIDTH = 12;
+const GROUP_GAP = 4;
+const SLOT_GAP = 16;
 
 const BP_TARGET_SYSTOLIC = 120;
 const BP_TARGET_DIASTOLIC = 80;
 const SLEEP_TARGET_MIN = 8 * 60;
 
-function formatDate(value: string) {
-  const date = new Date(value);
+function formatDayLabel(value: string) {
+  const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  return date.toLocaleDateString(undefined, { weekday: "short" });
 }
 
 function formatDateLabel(date: Date) {
@@ -67,6 +83,15 @@ function formatDateLabel(date: Date) {
     day: "2-digit",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatTimeLabel(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -108,6 +133,10 @@ export default function FitnessMetricTrend() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [points, setPoints] = useState<TrendPoint[]>([]);
+  const [entriesByDate, setEntriesByDate] = useState<Record<string, DayEntry[]>>(
+    {},
+  );
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -160,6 +189,11 @@ export default function FitnessMetricTrend() {
         throw new Error(body?.message ?? "Failed to load trend");
       }
       setPoints(Array.isArray(body.data?.points) ? body.data.points : []);
+      setEntriesByDate(
+        body.data?.entriesByDate && typeof body.data.entriesByDate === "object"
+          ? (body.data.entriesByDate as Record<string, DayEntry[]>)
+          : {},
+      );
     } catch (err: any) {
       setError(err?.message ?? "Failed to load trend");
     } finally {
@@ -224,9 +258,8 @@ export default function FitnessMetricTrend() {
     if (numeric.length === 0) {
       return {
         hasSecondary: false,
+        chartWidth: CHART_WIDTH,
         points: [] as ChartPoint[],
-        polyline: "",
-        polyline2: "",
         targetLines: [] as Array<{ color: string; label: string; y: number }>,
         yMax: 0,
         yMin: 0,
@@ -249,21 +282,28 @@ export default function FitnessMetricTrend() {
       targetValues.push(SLEEP_TARGET_MIN);
     }
 
-    const yMin = Math.min(
-      ...values,
-      ...(values2.length ? values2 : []),
-      ...targetValues,
-    );
+    const yMin =
+      kind === "blood_pressure"
+        ? Math.min(
+            ...values,
+            ...(values2.length ? values2 : []),
+            ...targetValues,
+          )
+        : 0;
     const yMax = Math.max(
       ...values,
       ...(values2.length ? values2 : []),
       ...targetValues,
     );
     const span = Math.max(1, yMax - yMin);
-    const xStep =
-      numeric.length > 1
-        ? (CHART_WIDTH - CHART_PAD * 2) / (numeric.length - 1)
-        : 0;
+    const groupWidth =
+      kind === "blood_pressure" ? BAR_WIDTH * 2 + GROUP_GAP : BAR_WIDTH;
+    const slotWidth = groupWidth + SLOT_GAP;
+    const chartWidth = Math.max(
+      CHART_WIDTH,
+      CHART_PAD * 2 + slotWidth * numeric.length,
+    );
+    const firstX = CHART_PAD + slotWidth / 2;
 
     const toY = (value: number) =>
       CHART_HEIGHT -
@@ -271,13 +311,28 @@ export default function FitnessMetricTrend() {
       ((value - yMin) / span) * (CHART_HEIGHT - CHART_PAD * 2);
 
     const chartPoints = numeric.map((point, index) => {
-      const x = CHART_PAD + xStep * index;
+      const x = firstX + slotWidth * index;
       const y = toY(point.value);
       const y2 =
         kind === "blood_pressure" && typeof point.value2 === "number"
           ? toY(point.value2)
           : undefined;
-      return { label: formatDate(point.date), x, y, y2 };
+      const barX =
+        kind === "blood_pressure"
+          ? x - GROUP_GAP / 2 - BAR_WIDTH
+          : x - BAR_WIDTH / 2;
+      const barX2 = kind === "blood_pressure" ? x + GROUP_GAP / 2 : undefined;
+      return {
+        barX,
+        barX2,
+        date: point.date,
+        label: formatDayLabel(point.date),
+        value: point.value,
+        value2Value: typeof point.value2 === "number" ? point.value2 : undefined,
+        x,
+        y,
+        y2,
+      };
     });
 
     const targetLines: Array<{ color: string; label: string; y: number }> = [];
@@ -302,13 +357,9 @@ export default function FitnessMetricTrend() {
     }
 
     return {
+      chartWidth,
       hasSecondary: kind === "blood_pressure",
       points: chartPoints,
-      polyline: chartPoints.map((p) => `${p.x},${p.y}`).join(" "),
-      polyline2: chartPoints
-        .filter((p) => typeof p.y2 === "number")
-        .map((p) => `${p.x},${p.y2}`)
-        .join(" "),
       targetLines,
       yMax,
       yMin,
@@ -322,9 +373,24 @@ export default function FitnessMetricTrend() {
     return numeric.length ? numeric[numeric.length - 1] : null;
   }, [points]);
 
+  const selectedChartPoint = useMemo(() => {
+    if (selectedBarIndex === null) return null;
+    if (selectedBarIndex < 0 || selectedBarIndex >= chart.points.length) return null;
+    return chart.points[selectedBarIndex];
+  }, [chart.points, selectedBarIndex]);
+
+  const selectedDateKey = selectedChartPoint
+    ? selectedChartPoint.date
+    : chart.points[chart.points.length - 1]?.date ?? null;
+  const selectedDayEntries = selectedDateKey ? (entriesByDate[selectedDateKey] ?? []) : [];
+
   useEffect(() => {
     setMeasuredDate(new Date());
   }, [kind, modalOpen]);
+
+  useEffect(() => {
+    setSelectedBarIndex(null);
+  }, [kind, points, entriesByDate]);
 
   async function onSave() {
     if (kind === "steps") return;
@@ -343,6 +409,7 @@ export default function FitnessMetricTrend() {
         }
         payload.durationMin = Math.round(value);
         payload.exerciseId = selectedExercise.exerciseId;
+        payload.measuredAt = dateToLocalNoonIso(measuredDate);
       }
 
       if (kind === "sleep") {
@@ -454,99 +521,226 @@ export default function FitnessMetricTrend() {
               </ThemedText>
             ) : (
               <>
-                <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
-                  <Line
-                    x1={CHART_PAD}
-                    x2={CHART_WIDTH - CHART_PAD}
-                    y1={CHART_HEIGHT - CHART_PAD}
-                    y2={CHART_HEIGHT - CHART_PAD}
-                    stroke="rgba(100,116,139,0.6)"
-                    strokeWidth={1}
-                  />
-                  <Line
-                    x1={CHART_PAD}
-                    x2={CHART_PAD}
-                    y1={CHART_PAD}
-                    y2={CHART_HEIGHT - CHART_PAD}
-                    stroke="rgba(100,116,139,0.6)"
-                    strokeWidth={1}
-                  />
-
-                  {chart.targetLines.map((line) => (
+                <ScrollView
+                  horizontal
+                  nestedScrollEnabled
+                  showsHorizontalScrollIndicator={false}
+                >
+                  <Svg width={chart.chartWidth} height={CHART_HEIGHT}>
                     <Line
-                      key={line.label}
                       x1={CHART_PAD}
-                      x2={CHART_WIDTH - CHART_PAD}
-                      y1={line.y}
-                      y2={line.y}
-                      stroke={line.color}
-                      strokeDasharray="6 4"
-                      strokeWidth={1.5}
+                      x2={chart.chartWidth - CHART_PAD}
+                      y1={CHART_HEIGHT - CHART_PAD}
+                      y2={CHART_HEIGHT - CHART_PAD}
+                      stroke="rgba(100,116,139,0.6)"
+                      strokeWidth={1}
                     />
-                  ))}
-
-                  <Polyline
-                    points={chart.polyline}
-                    fill="none"
-                    stroke="#2563EB"
-                    strokeWidth={2.5}
-                  />
-                  {chart.hasSecondary && chart.polyline2 ? (
-                    <Polyline
-                      points={chart.polyline2}
-                      fill="none"
-                      stroke="#F97316"
-                      strokeWidth={2.5}
+                    <Line
+                      x1={CHART_PAD}
+                      x2={CHART_PAD}
+                      y1={CHART_PAD}
+                      y2={CHART_HEIGHT - CHART_PAD}
+                      stroke="rgba(100,116,139,0.6)"
+                      strokeWidth={1}
                     />
-                  ) : null}
 
-                  {chart.points.map((point, idx) => (
-                    <Circle
-                      key={`${point.x}-${idx}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r={3.5}
-                      fill="#2563EB"
-                    />
-                  ))}
-                  {chart.hasSecondary
-                    ? chart.points
-                        .filter((point) => typeof point.y2 === "number")
-                        .map((point, idx) => (
-                          <Circle
-                            key={`${point.x}-s-${idx}`}
-                            cx={point.x}
-                            cy={point.y2 as number}
-                            r={3.5}
-                            fill="#F97316"
-                          />
-                        ))
-                    : null}
+                    {chart.targetLines.map((line) => (
+                      <Line
+                        key={line.label}
+                        x1={CHART_PAD}
+                        x2={chart.chartWidth - CHART_PAD}
+                        y1={line.y}
+                        y2={line.y}
+                        stroke={line.color}
+                        strokeDasharray="6 4"
+                        strokeWidth={1.5}
+                      />
+                    ))}
 
-                  <SvgText x={6} y={CHART_PAD + 4} fontSize={11} fill="#475569">
-                    {chart.yMax.toFixed(0)}
-                  </SvgText>
-                  <SvgText
-                    x={6}
-                    y={CHART_HEIGHT - CHART_PAD}
-                    fontSize={11}
-                    fill="#475569"
-                  >
-                    {chart.yMin.toFixed(0)}
-                  </SvgText>
-                  {chart.points.map((point, idx) => (
+                    {chart.points.map((point, idx) => (
+                      <Rect
+                        key={`${point.x}-bar-${idx}`}
+                        x={point.barX}
+                        y={point.y}
+                        width={BAR_WIDTH}
+                        height={Math.max(1, CHART_HEIGHT - CHART_PAD - point.y)}
+                        fill="#2563EB"
+                        opacity={selectedBarIndex === null || selectedBarIndex === idx ? 1 : 0.55}
+                        onPress={() => setSelectedBarIndex(idx)}
+                        rx={3}
+                      />
+                    ))}
+                    {chart.hasSecondary
+                      ? chart.points
+                          .filter(
+                            (point) =>
+                              typeof point.y2 === "number" &&
+                              typeof point.barX2 === "number",
+                          )
+                          .map((point, idx) => (
+                            <Rect
+                              key={`${point.x}-bar2-${idx}`}
+                              x={point.barX2 as number}
+                              y={point.y2 as number}
+                              width={BAR_WIDTH}
+                              height={Math.max(
+                                1,
+                                CHART_HEIGHT - CHART_PAD - (point.y2 as number),
+                              )}
+                              fill="#F97316"
+                              opacity={selectedBarIndex === null || selectedBarIndex === idx ? 1 : 0.55}
+                              onPress={() => setSelectedBarIndex(idx)}
+                              rx={3}
+                            />
+                          ))
+                      : null}
+
+                    <SvgText x={6} y={CHART_PAD + 4} fontSize={11} fill="#475569">
+                      {chart.yMax.toFixed(0)}
+                    </SvgText>
                     <SvgText
-                      key={`t-${point.x}-${idx}`}
-                      x={point.x}
-                      y={CHART_HEIGHT - 8}
-                      textAnchor="middle"
-                      fontSize={10}
+                      x={6}
+                      y={CHART_HEIGHT - CHART_PAD}
+                      fontSize={11}
                       fill="#475569"
                     >
-                      {point.label}
+                      {chart.yMin.toFixed(0)}
                     </SvgText>
-                  ))}
-                </Svg>
+                    {chart.points.map((point, idx) => (
+                      <SvgText
+                        key={`t-${point.x}-${idx}`}
+                        x={point.x}
+                        y={CHART_HEIGHT - 8}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fill="#475569"
+                      >
+                        {point.label}
+                      </SvgText>
+                    ))}
+                  </Svg>
+                </ScrollView>
+
+                {selectedDateKey ? (
+                  <View
+                    style={{
+                      gap: 8,
+                      marginTop: 10,
+                    }}
+                  >
+                    <View>
+                      <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                        {formatDateLabel(new Date(`${selectedDateKey}T12:00:00`))}
+                      </ThemedText>
+                      <ThemedText type="defaultSemiBold">
+                        {selectedDayEntries.length} reading
+                        {selectedDayEntries.length === 1 ? "" : "s"}
+                      </ThemedText>
+                    </View>
+                    <View style={{ gap: 8 }}>
+                      {selectedDayEntries.length === 0 ? (
+                        <Card style={{ borderRadius: 10, padding: 10 }}>
+                          <ThemedText style={{ fontSize: 13, opacity: 0.72 }}>
+                            No readings for this day.
+                          </ThemedText>
+                        </Card>
+                      ) : (
+                        selectedDayEntries.map((entry, idx) => {
+                          const time = formatTimeLabel(entry.measuredAt);
+                          if (kind === "blood_pressure") {
+                            const sys =
+                              typeof entry.value === "number"
+                                ? Math.round(entry.value)
+                                : null;
+                            const dia =
+                              typeof entry.value2 === "number"
+                                ? Math.round(entry.value2)
+                                : null;
+                            return (
+                              <Card
+                                key={`${entry.measuredAt}-${idx}`}
+                                style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                              >
+                                <ThemedText type="defaultSemiBold">Blood pressure</ThemedText>
+                                <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                  {time}
+                                </ThemedText>
+                                <ThemedText style={{ fontSize: 13 }}>
+                                  {sys ?? "--"}/{dia ?? "--"} mmHg
+                                </ThemedText>
+                              </Card>
+                            );
+                          }
+
+                          if (kind === "exercise") {
+                            const kcal =
+                              typeof entry.value === "number"
+                                ? Math.round(entry.value)
+                                : null;
+                            const mins =
+                              typeof entry.value2 === "number"
+                                ? Math.round(entry.value2)
+                                : null;
+                            const name = entry.exerciseName?.trim() || "Exercise";
+                            return (
+                              <Card
+                                key={`${entry.measuredAt}-${idx}`}
+                                style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                              >
+                                <ThemedText type="defaultSemiBold">{name}</ThemedText>
+                                <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                  {time}
+                                </ThemedText>
+                                <ThemedText style={{ fontSize: 13 }}>
+                                  {kcal ?? "--"} kcal
+                                  {mins !== null ? ` in ${mins} min` : ""}
+                                </ThemedText>
+                              </Card>
+                            );
+                          }
+
+                          if (kind === "sleep") {
+                            const mins =
+                              typeof entry.value === "number"
+                                ? Math.round(entry.value)
+                                : null;
+                            return (
+                              <Card
+                                key={`${entry.measuredAt}-${idx}`}
+                                style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                              >
+                                <ThemedText type="defaultSemiBold">Sleep</ThemedText>
+                                <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                  {time}
+                                </ThemedText>
+                                <ThemedText style={{ fontSize: 13 }}>
+                                  {mins !== null ? formatMinutes(mins) : "--"}
+                                </ThemedText>
+                              </Card>
+                            );
+                          }
+
+                          const steps =
+                            typeof entry.value === "number"
+                              ? Math.round(entry.value).toLocaleString()
+                              : "--";
+                          return (
+                            <Card
+                              key={`${entry.measuredAt}-${idx}`}
+                              style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                            >
+                              <ThemedText type="defaultSemiBold">Steps</ThemedText>
+                              <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                                {time}
+                              </ThemedText>
+                              <ThemedText style={{ fontSize: 13 }}>{steps} steps</ThemedText>
+                            </Card>
+                          );
+                        })
+                      )}
+                    </View>
+                  </View>
+                ) : null}
 
                 {chart.targetLines.length ? (
                   <View style={{ gap: 4, marginTop: 8 }}>
@@ -599,7 +793,9 @@ export default function FitnessMetricTrend() {
               backgroundColor: "white",
               borderRadius: 12,
               gap: 10,
+              maxHeight: kind === "exercise" ? "88%" : undefined,
               maxWidth: 360,
+              minHeight: kind === "exercise" ? 520 : undefined,
               padding: 16,
               width: "100%",
             }}
@@ -813,7 +1009,7 @@ export default function FitnessMetricTrend() {
               </>
             ) : null}
 
-            {kind === "blood_pressure" || kind === "sleep" ? (
+            {kind === "blood_pressure" || kind === "sleep" || kind === "exercise" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
                   Date (defaults to today)
