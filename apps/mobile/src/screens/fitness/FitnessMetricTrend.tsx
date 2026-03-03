@@ -34,6 +34,8 @@ type DayEntry = {
   exerciseName?: string;
   exerciseTitle?: string;
   measuredAt: string;
+  sleepFromAt?: string;
+  sleepToAt?: string;
   value: number | null;
   value2: number | null;
 };
@@ -107,11 +109,22 @@ function formatTimeLabel(value: string) {
   });
 }
 
+function combineDateAndTime(date: Date, time: Date) {
+  const value = new Date(date);
+  value.setHours(
+    time.getHours(),
+    time.getMinutes(),
+    time.getSeconds(),
+    time.getMilliseconds(),
+  );
+  return value;
+}
+
 function metricUnit(kind: MeasurementKind) {
   if (kind === "steps") return "steps";
   if (kind === "blood_pressure") return "mmHg";
   if (kind === "exercise") return "min";
-  return "min";
+  return "hours";
 }
 
 function addLabel(kind: MeasurementKind) {
@@ -124,6 +137,13 @@ function formatMinutes(total: number) {
   const h = Math.floor(total / 60);
   const m = total % 60;
   return `${h}h ${m}m`;
+}
+
+function formatYAxisValue(kind: MeasurementKind, value: number) {
+  if (kind !== "sleep") return value.toFixed(0);
+  const hours = value / 60;
+  if (Number.isInteger(hours)) return `${hours}`;
+  return hours.toFixed(1);
 }
 
 function dateToMeasuredAtIso(date: Date) {
@@ -168,6 +188,8 @@ export default function FitnessMetricTrend() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showSleepFromPicker, setShowSleepFromPicker] = useState(false);
+  const [showSleepToPicker, setShowSleepToPicker] = useState(false);
   const [measuredDate, setMeasuredDate] = useState(new Date());
 
   const [exerciseMinutes, setExerciseMinutes] = useState("");
@@ -185,11 +207,17 @@ export default function FitnessMetricTrend() {
 
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
-  const [sleepHours, setSleepHours] = useState(8);
-  const [sleepMinutes, setSleepMinutes] = useState(0);
+  const [sleepFromTime, setSleepFromTime] = useState(() => {
+    const value = new Date();
+    value.setHours(23, 0, 0, 0);
+    return value;
+  });
+  const [sleepToTime, setSleepToTime] = useState(() => {
+    const value = new Date();
+    value.setHours(7, 0, 0, 0);
+    return value;
+  });
 
-  const minuteOptions = useMemo(() => numberRange(0, 11).map((n) => n * 5), []);
-  const hourOptions = useMemo(() => numberRange(0, 16), []);
   const systolicOptions = useMemo(() => numberRange(90, 220), []);
   const diastolicOptions = useMemo(() => numberRange(50, 140), []);
 
@@ -465,6 +493,8 @@ export default function FitnessMetricTrend() {
 
   useEffect(() => {
     setMeasuredDate(new Date());
+    setShowSleepFromPicker(false);
+    setShowSleepToPicker(false);
   }, [kind, modalOpen]);
 
   useEffect(() => {
@@ -492,9 +522,21 @@ export default function FitnessMetricTrend() {
       }
 
       if (kind === "sleep") {
-        const durationMin = sleepHours * 60 + sleepMinutes;
+        const sleepToAt = combineDateAndTime(measuredDate, sleepToTime);
+        let sleepFromAt = combineDateAndTime(measuredDate, sleepFromTime);
+        if (sleepFromAt.getTime() >= sleepToAt.getTime()) {
+          sleepFromAt = addDays(sleepFromAt, -1);
+        }
+        const durationMin = Math.round(
+          (sleepToAt.getTime() - sleepFromAt.getTime()) / 60000,
+        );
+        if (durationMin <= 0) {
+          throw new Error("Sleep 'to' time must be after 'from' time");
+        }
         payload.durationMin = durationMin;
-        payload.measuredAt = dateToMeasuredAtIso(measuredDate);
+        payload.sleepFromAt = sleepFromAt.toISOString();
+        payload.sleepToAt = sleepToAt.toISOString();
+        payload.measuredAt = sleepToAt.toISOString();
       }
 
       if (kind === "blood_pressure") {
@@ -627,10 +669,10 @@ export default function FitnessMetricTrend() {
                       }}
                     />
                     <ThemedText style={{ color: "#475569", fontSize: 11 }}>
-                      {chart.yMax.toFixed(0)}
+                      {formatYAxisValue(kind, chart.yMax)}
                     </ThemedText>
                     <ThemedText style={{ color: "#475569", fontSize: 11 }}>
-                      {chart.yMin.toFixed(0)}
+                      {formatYAxisValue(kind, chart.yMin)}
                     </ThemedText>
                   </View>
                   <ScrollView
@@ -769,10 +811,6 @@ export default function FitnessMetricTrend() {
                           new Date(`${selectedDateKey}T12:00:00`),
                         )}
                       </ThemedText>
-                      <ThemedText type="defaultSemiBold">
-                        {selectedDayEntries.length} reading
-                        {selectedDayEntries.length === 1 ? "" : "s"}
-                      </ThemedText>
                     </View>
                     <View style={{ gap: 8 }}>
                       {selectedDayEntries.length === 0 ? (
@@ -860,6 +898,12 @@ export default function FitnessMetricTrend() {
                               typeof entry.value === "number"
                                 ? Math.round(entry.value)
                                 : null;
+                            const fromTime = entry.sleepFromAt
+                              ? formatTimeLabel(entry.sleepFromAt)
+                              : "--:--";
+                            const toTime = entry.sleepToAt
+                              ? formatTimeLabel(entry.sleepToAt)
+                              : "--:--";
                             return (
                               <Card
                                 key={`${entry.measuredAt}-${idx}`}
@@ -870,14 +914,19 @@ export default function FitnessMetricTrend() {
                                 }}
                               >
                                 <ThemedText type="defaultSemiBold">
-                                  Sleep
+                                  {time}
                                 </ThemedText>
                                 <ThemedText
                                   style={{ fontSize: 12, opacity: 0.72 }}
                                 >
-                                  {time}
+                                  From {fromTime}
                                 </ThemedText>
                                 <ThemedText style={{ fontSize: 13 }}>
+                                  To {toTime}
+                                </ThemedText>
+                                <ThemedText
+                                  style={{ fontSize: 12, opacity: 0.72 }}
+                                >
                                   {mins !== null ? formatMinutes(mins) : "--"}
                                 </ThemedText>
                               </Card>
@@ -1130,51 +1179,53 @@ export default function FitnessMetricTrend() {
             {kind === "sleep" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Sleep duration
+                  Sleep from
                 </ThemedText>
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <View
-                    style={{
-                      borderColor: "#CBD5E1",
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      flex: 1,
-                    }}
-                  >
-                    <Picker
-                      selectedValue={sleepHours}
-                      onValueChange={(value) => setSleepHours(Number(value))}
-                    >
-                      {hourOptions.map((value) => (
-                        <Picker.Item
-                          key={`h-${value}`}
-                          label={`${value} h`}
-                          value={value}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                  <View
-                    style={{
-                      borderColor: "#CBD5E1",
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      flex: 1,
-                    }}
-                  >
-                    <Picker
-                      selectedValue={sleepMinutes}
-                      onValueChange={(value) => setSleepMinutes(Number(value))}
-                    >
-                      {minuteOptions.map((value) => (
-                        <Picker.Item
-                          key={`m-${value}`}
-                          label={`${String(value).padStart(2, "0")} min`}
-                          value={value}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                <TouchableOpacity
+                  onPress={() => setShowSleepFromPicker(true)}
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <ThemedText>
+                    {formatTimeLabel(sleepFromTime.toISOString())}
+                  </ThemedText>
+                </TouchableOpacity>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Sleep to
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={() => setShowSleepToPicker(true)}
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <ThemedText>
+                    {formatTimeLabel(sleepToTime.toISOString())}
+                  </ThemedText>
+                </TouchableOpacity>
+                <View
+                  style={{
+                    backgroundColor: "#F8FAFC",
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
+                    If "from" is later than "to", it will be saved as overnight
+                    sleep.
+                  </ThemedText>
                 </View>
               </>
             ) : null}
@@ -1246,6 +1297,36 @@ export default function FitnessMetricTrend() {
             }
             if (event.type === "set" && selectedDate) {
               setMeasuredDate(selectedDate);
+            }
+          }}
+        />
+      ) : null}
+      {showSleepFromPicker ? (
+        <DateTimePicker
+          value={sleepFromTime}
+          mode="time"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, selectedDate) => {
+            if (Platform.OS !== "ios") {
+              setShowSleepFromPicker(false);
+            }
+            if (event.type === "set" && selectedDate) {
+              setSleepFromTime(selectedDate);
+            }
+          }}
+        />
+      ) : null}
+      {showSleepToPicker ? (
+        <DateTimePicker
+          value={sleepToTime}
+          mode="time"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, selectedDate) => {
+            if (Platform.OS !== "ios") {
+              setShowSleepToPicker(false);
+            }
+            if (event.type === "set" && selectedDate) {
+              setSleepToTime(selectedDate);
             }
           }}
         />

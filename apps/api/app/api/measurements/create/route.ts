@@ -25,6 +25,13 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function asDate(value: unknown): Date | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value !== "string") return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function formatMongoValidationMessage(err: any) {
   if (!err || err?.code !== 121) return err?.message || "Server error";
   const details = err?.errInfo?.details;
@@ -117,11 +124,24 @@ export async function POST(req: NextRequest) {
       payload.count = Math.round(count);
     }
     if (kind === "sleep") {
-      const durationMin = asNumber(body.durationMin);
-      if (durationMin === null || durationMin < 0) {
-        return bad("Invalid durationMin", undefined, 400);
+      const sleepFromAt = asDate(body.sleepFromAt);
+      const sleepToAt = asDate(body.sleepToAt);
+
+      if (!sleepFromAt || !sleepToAt) {
+        return bad(
+          "sleepFromAt and sleepToAt are required",
+          undefined,
+          400,
+        );
       }
-      payload.durationMin = Math.round(durationMin);
+      const msDiff = sleepToAt.getTime() - sleepFromAt.getTime();
+      if (msDiff <= 0) {
+        return bad("sleepToAt must be after sleepFromAt", undefined, 400);
+      }
+      payload.sleepFromAt = sleepFromAt;
+      payload.sleepToAt = sleepToAt;
+      payload.durationMin = Math.round(msDiff / 60000);
+      payload.measuredAt = sleepToAt;
     }
     if (kind === "exercise") {
       const durationMin = asNumber(body.durationMin);

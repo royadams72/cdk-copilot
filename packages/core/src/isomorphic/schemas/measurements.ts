@@ -61,6 +61,10 @@ const Sleep = z.object({
   durationMin: z.number().int().min(0),
   kind: z.literal("sleep"),
   quality: SleepQuality.optional(),
+  sleepFromAt: z.date(),
+  sleepToAt: z.date(),
+}).refine((o) => o.sleepToAt.getTime() > o.sleepFromAt.getTime(), {
+  message: "sleepToAt must be later than sleepFromAt",
 });
 
 const ExerciseIntensity = z.enum(["light", "moderate", "vigorous"]);

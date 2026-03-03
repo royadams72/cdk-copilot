@@ -15,7 +15,7 @@
     },
     {
       "key": { "orgId": 1, "effectiveAbnormalFlag": 1, "takenAt": -1 },
-      "options": { "name": "abnormal_review" }
+      "options": { "name": "abnormal_review_effective" }
     },
     {
       "key": { "orgId": 1, "status": 1, "takenAt": -1 },
