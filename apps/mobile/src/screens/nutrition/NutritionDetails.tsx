@@ -21,14 +21,11 @@ import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
 import { formatDateShort, formatDecimal } from "../dashboard/utils";
 import { styles } from "./styles";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch } from "@/store/hooks";
 import {
-  fetchDashboard,
-  selectDashboardData,
-  selectDashboardError,
-  selectDashboardScope,
-  selectDashboardStatus,
-} from "@/store/slices/dashboardSlice";
+  toQueryErrorMessage,
+  useGetDashboardQuery,
+} from "@/store/services/dashboardApi";
 
 import {
   deleteMealData,
@@ -49,16 +46,21 @@ export default function NutritionDetails() {
   const router = useRouter();
   const theme = useColorScheme() ?? "light";
   const dispatch = useAppDispatch();
-  const data = useAppSelector(selectDashboardData);
-  const status = useAppSelector(selectDashboardStatus);
-  const error = useAppSelector(selectDashboardError);
-  const scope = useAppSelector(selectDashboardScope);
+  const { data, error, isFetching, isLoading, refetch } =
+    useGetDashboardQuery("all", {
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    });
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't refresh your nutrition data",
+  );
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
   );
-  const refreshing = status === "loading" && !!data;
-  const loading = status === "loading" && !data;
+  const refreshing = isFetching && !!data;
+  const loading = isLoading && !data;
   const chartScrollRef = useRef<ScrollViewType | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
     null,
@@ -205,15 +207,9 @@ export default function NutritionDetails() {
     }
   }, [mealsForDay.length]);
 
-  useEffect(() => {
-    if ((status === "idle" && !data) || scope !== "all") {
-      dispatch(fetchDashboard({ scope: "all" }));
-    }
-  }, [data, dispatch, scope, status]);
-
   const handleRefresh = useCallback(() => {
-    dispatch(fetchDashboard({ scope: "all" }));
-  }, [dispatch]);
+    refetch();
+  }, [refetch]);
 
   if (loading) {
     return (
@@ -259,12 +255,12 @@ export default function NutritionDetails() {
           </ThemedText>
         </View>
 
-        {error && status === "failed" && (
+        {error && (
           <Card>
             <ThemedText type="defaultSemiBold">
               We couldn't refresh your nutrition data
             </ThemedText>
-            <ThemedText style={styles.helperText}>{error}</ThemedText>
+            <ThemedText style={styles.helperText}>{errorMessage}</ThemedText>
             <TouchableOpacity
               style={styles.retryButton}
               onPress={handleRefresh}
@@ -563,9 +559,7 @@ export default function NutritionDetails() {
                               onPress: () => {
                                 dispatch(deleteMealData({ entryId: meal.id }))
                                   .unwrap()
-                                  .then(() =>
-                                    dispatch(fetchDashboard({ scope: "all" })),
-                                  );
+                                  .then(() => refetch());
                               },
                               style: "destructive",
                               text: "Delete",

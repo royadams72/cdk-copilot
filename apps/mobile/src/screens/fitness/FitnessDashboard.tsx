@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -10,24 +10,12 @@ import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
-
-type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
-
-type MeasurementLatest = {
-  count?: number;
-  diastolicMmHg?: number;
-  durationMin?: number;
-  exercise?: {
-    caloriesKcal?: number;
-    durationMin?: number;
-    name?: string;
-  };
-  kind: MeasurementKind;
-  measuredAt?: string;
-  systolicMmHg?: number;
-};
+import {
+  type MeasurementKind,
+  type MeasurementLatest,
+  toQueryErrorMessage,
+  useGetLatestMeasurementsQuery,
+} from "@/store/services/dashboardApi";
 
 type MetricCard = {
   kind: MeasurementKind;
@@ -145,35 +133,18 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
 
 export default function FitnessDashboard() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<MeasurementLatest[]>([]);
-
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const res = await authFetch(`${API}/api/measurements/latest`, {
-        method: "GET",
-      });
-      const body: any = await res.json().catch(() => null);
-      if (!res.ok || !body?.ok) {
-        throw new Error(body?.message ?? "Failed to load fitness readings");
-      }
-      setItems(Array.isArray(body.data) ? body.data : []);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to load fitness readings");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, error, isFetching, isLoading, refetch } =
+    useGetLatestMeasurementsQuery(undefined, {
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    });
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "Failed to load fitness readings",
+  );
+  const items = data ?? [];
+  const loading = isLoading && items.length === 0;
+  const refreshing = isFetching && items.length > 0;
 
   const cards = useMemo(() => {
     const byKind = new Map(items.map((item) => [item.kind, item]));
@@ -190,7 +161,7 @@ export default function FitnessDashboard() {
       style={{ flex: 1 }}
       contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 32 }}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />
+        <RefreshControl refreshing={refreshing} onRefresh={refetch} />
       }
     >
       <TouchableOpacity onPress={() => router.back()}>
@@ -216,8 +187,8 @@ export default function FitnessDashboard() {
           <ThemedText type="defaultSemiBold">
             Could not load readings
           </ThemedText>
-          <ThemedText style={{ opacity: 0.7 }}>{error}</ThemedText>
-          <TouchableOpacity onPress={() => load()} style={{ marginTop: 6 }}>
+          <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
+          <TouchableOpacity onPress={refetch} style={{ marginTop: 6 }}>
             <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
           </TouchableOpacity>
         </Card>
