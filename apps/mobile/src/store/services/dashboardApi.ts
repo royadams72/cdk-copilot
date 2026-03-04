@@ -1,33 +1,12 @@
-import type {
-  BaseQueryFn,
-  FetchArgs,
-  FetchBaseQueryError,
-} from "@reduxjs/toolkit/query";
-import {
-  createApi,
-  fetchBaseQuery,
-} from "@reduxjs/toolkit/query/react";
-import type { SerializedError } from "@reduxjs/toolkit";
-import * as SecureStore from "expo-secure-store";
-
-import { API } from "@/constants/api";
-import { formatApiError } from "@/lib/formatApiError";
 import type { DashboardData } from "@/screens/dashboard/types";
 
+import { appApi } from "./appApi";
+export { toQueryErrorMessage } from "./appApi";
+
 export type DashboardScope = "today" | "all";
+export type DashboardQueryData = Omit<DashboardData, "patientId">;
 
-type ApiEnvelope<T> = {
-  data?: T;
-  errors?: unknown;
-  message?: string;
-  ok?: boolean;
-};
-
-export type MeasurementKind =
-  | "steps"
-  | "exercise"
-  | "sleep"
-  | "blood_pressure";
+export type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
 
 export type MeasurementLatest = {
   count?: number;
@@ -43,91 +22,25 @@ export type MeasurementLatest = {
   systolicMmHg?: number;
 };
 
-const rawBaseQuery = fetchBaseQuery({
-  baseUrl: API,
-  prepareHeaders: async (headers) => {
-    const jwt = await SecureStore.getItemAsync("ckd_jwt");
-    if (jwt) {
-      headers.set("Authorization", `Bearer ${jwt}`);
-    }
-    headers.set("Content-Type", "application/json");
-    return headers;
-  },
-});
-
-const baseQueryWithEnvelope: BaseQueryFn<
-  string | FetchArgs,
-  unknown,
-  FetchBaseQueryError
-> = async (args, api, extraOptions) => {
-  const result = await rawBaseQuery(args, api, extraOptions);
-  if (result.error) return result;
-
-  const body = result.data as ApiEnvelope<unknown> | undefined;
-  if (
-    body &&
-    typeof body === "object" &&
-    "ok" in body &&
-    "data" in body
-  ) {
-    if (!body.ok) {
-      return {
-        error: {
-          data: {
-            message: formatApiError(200, {
-              errors: body.errors,
-              message: body.message,
-            }),
-          },
-          status: 200,
-        },
-      };
-    }
-    return { data: body.data };
-  }
-
-  return result;
-};
-
-export const dashboardApi = createApi({
-  baseQuery: baseQueryWithEnvelope,
+export const dashboardApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
-    getDashboard: builder.query<DashboardData, DashboardScope | void>({
-      query: (scope) => `/api/dashboard?scope=${scope ?? "today"}`,
+    getDashboard: builder.query<DashboardQueryData, DashboardScope | void>({
       providesTags: (_result, _error, scope) => [
         { id: scope ?? "today", type: "Dashboard" as const },
       ],
+      query: (scope) => `/api/dashboard?scope=${scope ?? "today"}`,
+      transformResponse: (response: DashboardData) => {
+        const { patientId: _patientId, ...safeResponse } = response;
+        return safeResponse;
+      },
     }),
     getLatestMeasurements: builder.query<MeasurementLatest[], void>({
-      query: () => "/api/measurements/latest",
       providesTags: [{ id: "latest", type: "Fitness" as const }],
+      query: () => "/api/measurements/latest",
     }),
   }),
-  reducerPath: "dashboardApi",
-  tagTypes: ["Dashboard", "Fitness"],
+  overrideExisting: false,
 });
-
-export function toQueryErrorMessage(error: unknown, fallback: string) {
-  if (!error) return fallback;
-
-  const fetchError = error as FetchBaseQueryError;
-  if ("status" in fetchError) {
-    const payload = fetchError.data as { message?: string } | undefined;
-    if (payload?.message) {
-      return payload.message;
-    }
-    if (typeof fetchError.status === "number") {
-      return formatApiError(fetchError.status);
-    }
-  }
-
-  const serialized = error as SerializedError;
-  if (serialized?.message) {
-    return serialized.message;
-  }
-
-  return fallback;
-}
 
 export const { useGetDashboardQuery, useGetLatestMeasurementsQuery } =
   dashboardApi;

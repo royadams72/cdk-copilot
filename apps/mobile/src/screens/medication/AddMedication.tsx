@@ -17,33 +17,11 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { useAppDispatch } from "@/store/hooks";
 import { fetchDashboard } from "@/store/slices/dashboardSlice";
-
-type DrugSuggestion = {
-  id: string;
-  name: string;
-  displayName: string;
-  dmplusdCode: string | null;
-  snomedCode: string | null;
-  form: string | null;
-  route: string | null;
-};
-
-type MedicationStatus = "active" | "paused" | "stopped" | "completed";
-
-type MedicationDetailsResponse = {
-  id: string;
-  name: string;
-  dose: string;
-  frequency: string;
-  route: string;
-  form: string;
-  startAt: string | null;
-  status: MedicationStatus;
-  drugRefId: string | null;
-  dmplusdCode: string | null;
-  snomedCode: string | null;
-  instructions: string;
-};
+import type {
+  DrugSuggestion,
+  MedicationDetail,
+  MedicationStatus,
+} from "./types";
 
 const ROUTE_OPTIONS = ["", "oral", "iv", "subcutaneous", "topical", "inhaled"];
 const FORM_OPTIONS = [
@@ -186,7 +164,7 @@ export default function AddMedication() {
 
         if (cancelled) return;
 
-        const med = body.data as MedicationDetailsResponse;
+        const med = body.data as MedicationDetail;
         const parsedDose = parseDose(med.dose ?? "");
         const nextStartAt = med.startAt ? new Date(med.startAt) : new Date();
 

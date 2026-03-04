@@ -6,29 +6,7 @@ import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-
-type EditEvent = {
-  at: string | null;
-  by: string;
-  reason: string;
-  type: "edited" | "status_change";
-  changes: string[];
-  toStatus: "active" | "paused" | "stopped" | "completed" | null;
-};
-
-type MedicationDetail = {
-  id: string;
-  name: string;
-  dose: string;
-  frequency: string;
-  route: string;
-  form: string;
-  startAt: string | null;
-  endAt: string | null;
-  status: "active" | "paused" | "stopped" | "completed";
-  updatedAt: string | null;
-  editHistory: EditEvent[];
-};
+import type { MedicationDetail } from "./types";
 
 function formatDate(value: string | null) {
   if (!value) return "Unknown";

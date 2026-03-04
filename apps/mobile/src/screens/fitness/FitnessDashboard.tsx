@@ -134,10 +134,7 @@ function toCard(kind: MeasurementKind, doc?: MeasurementLatest): MetricCard {
 export default function FitnessDashboard() {
   const router = useRouter();
   const { data, error, isFetching, isLoading, refetch } =
-    useGetLatestMeasurementsQuery(undefined, {
-      refetchOnFocus: true,
-      refetchOnMountOrArgChange: true,
-    });
+    useGetLatestMeasurementsQuery(undefined);
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",

@@ -10,17 +10,17 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchNutritionData,
+  saveActiveItemToMeal,
   selectAcitveGroupSummaries,
   selectActiveItem,
   selectEditingEntryId,
   selectGroupInfoById,
-  saveActiveItemToMeal,
   setActiveItem,
   setQuantity,
 } from "@/store/slices/logMealSlice";
 
 import { logMealStyles } from "./styles";
-import { styles } from "../nutrition/styles";
+import { NutritionStyles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
 import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
@@ -88,7 +88,7 @@ export default function FoodDetails() {
       .replace(/^./, (char) => char.toUpperCase());
 
   return (
-    <View style={styles.container}>
+    <View style={NutritionStyles.container}>
       {selectedFood && (
         <View>
           <Text style={typeStyles.title}>{selectedFood.name}</Text>
@@ -129,13 +129,16 @@ export default function FoodDetails() {
               ))}
           </View>
           <TouchableOpacity
-            style={[styles.modalButton, styles.modalButtonPrimary]}
+            style={[
+              NutritionStyles.modalButton,
+              NutritionStyles.modalButtonPrimary,
+            ]}
             onPress={() => {
               dispatch(saveActiveItemToMeal());
               router.push("/(log-meal)/log-meal");
             }}
           >
-            <ThemedText style={styles.modalButtonTextPrimary}>
+            <ThemedText style={NutritionStyles.modalButtonTextPrimary}>
               {editingEntryId ? `Update food` : `Add food`}
             </ThemedText>
           </TouchableOpacity>

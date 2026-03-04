@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useCallback } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   TouchableOpacity,
   View,
@@ -8,34 +9,35 @@ import {
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchDashboard,
-  selectDashboardData,
-  selectDashboardScope,
-  selectDashboardStatus,
-} from "@/store/slices/dashboardSlice";
 
-import { Card } from "./components/Card";
-import { formatDateShort } from "./utils";
 import { styles } from "./styles";
 import { LabsCard } from "../labs/components/LabsCard";
 import { MedicationCard } from "./components/MedicationCard";
+import {
+  toQueryErrorMessage,
+  useGetDashboardQuery,
+} from "@/store/services/dashboardApi";
+import { Card } from "./components/Card";
+import { NutritionStyles } from "../nutrition/styles";
 
 export default function MedsLabsDashboard() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const data = useAppSelector(selectDashboardData);
-  const status = useAppSelector(selectDashboardStatus);
-  const scope = useAppSelector(selectDashboardScope);
 
-  useEffect(() => {
-    if ((status === "idle" && !data) || scope !== "today") {
-      dispatch(fetchDashboard({ scope: "today" }));
-    }
-  }, [data, dispatch, scope, status]);
+  const { data, error, isFetching, isLoading, refetch } =
+    useGetDashboardQuery("all");
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't refresh your nutrition data",
+  );
 
-  if (status === "loading" && !data) {
+  const refreshing = isFetching && !!data;
+  const loading = isLoading && !data;
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  if (loading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
@@ -45,12 +47,32 @@ export default function MedsLabsDashboard() {
       </View>
     );
   }
-
-  const latestMedication = data?.medications.recent[0] ?? null;
-  const latestLab = data?.labs.recent[0] ?? null;
+  {
+    if (error)
+      return (
+        <Card>
+          <ThemedText type="defaultSemiBold">
+            We couldn't refresh your nutrition data
+          </ThemedText>
+          <ThemedText style={styles.helperText}>{errorMessage}</ThemedText>
+          <TouchableOpacity
+            style={NutritionStyles.retryButton}
+            onPress={handleRefresh}
+          >
+            <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
+          </TouchableOpacity>
+        </Card>
+      );
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
+    >
       <TouchableOpacity onPress={() => router.back()}>
         <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
       </TouchableOpacity>

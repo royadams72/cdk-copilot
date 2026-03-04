@@ -6,21 +6,7 @@ import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-
-type HistoryItem = {
-  id: string;
-  name: string;
-  dose: string | null;
-  frequency: string | null;
-  startAt: string | null;
-  status: "active" | "paused" | "stopped" | "completed";
-  updatedAt: string | null;
-  latestReason: string | null;
-};
-
-type HistoryResponse = {
-  items: HistoryItem[];
-};
+import type { MedicationHistoryItem, MedicationHistoryResponse } from "./types";
 
 function formatDate(value: string | null) {
   if (!value) return "Unknown date";
@@ -33,7 +19,7 @@ function MedicationList({
   items,
   onSelect,
 }: {
-  items: HistoryItem[];
+  items: MedicationHistoryItem[];
   onSelect: (id: string) => void;
 }) {
   return (
@@ -86,7 +72,7 @@ function MedicationList({
 export default function MedicationHistory() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<HistoryResponse>({ items: [] });
+  const [data, setData] = useState<MedicationHistoryResponse>({ items: [] });
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
