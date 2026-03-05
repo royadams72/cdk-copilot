@@ -52,18 +52,19 @@ export default function NutritionDetails() {
     error,
     "We couldn't refresh your nutrition data",
   );
+  const refreshing = isFetching && !!data;
+  const loading = isLoading && !data;
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
   );
-  const refreshing = isFetching && !!data;
-  const loading = isLoading && !data;
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const chartScrollRef = useRef<ScrollViewType | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
     null,
   );
-  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const metricConfig =
     NUTRITION_METRICS.find((metric) => metric.id === selectedMetricId) ??
     NUTRITION_METRICS[0];
