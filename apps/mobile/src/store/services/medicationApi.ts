@@ -8,23 +8,24 @@ import type {
 
 export const medicationApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
-    createMedication: builder.mutation<
-      MedicationDetail,
-      SaveMedicationPayload
-    >({
-      invalidatesTags: [
-        { type: "Dashboard", id: "today" },
-        { type: "Dashboard", id: "all" },
-        { type: "MedicationHistory", id: "LIST" },
-      ],
-      query: (body) => ({
-        body,
-        method: "POST",
-        url: "/api/medications/create",
-      }),
-    }),
+    createMedication: builder.mutation<MedicationDetail, SaveMedicationPayload>(
+      {
+        invalidatesTags: [
+          { id: "today", type: "Dashboard" },
+          { id: "all", type: "Dashboard" },
+          { id: "LIST", type: "MedicationHistory" },
+        ],
+        query: (body) => ({
+          body,
+          method: "POST",
+          url: "/api/medications/create",
+        }),
+      },
+    ),
     getMedicationById: builder.query<MedicationDetail, string>({
-      providesTags: (_result, _error, id) => [{ id, type: "Medication" as const }],
+      providesTags: (_result, _error, id) => [
+        { id, type: "Medication" as const },
+      ],
       query: (id) => `/api/medications/${id}`,
     }),
     getMedicationHistory: builder.query<MedicationHistoryResponse, void>({
@@ -50,9 +51,9 @@ export const medicationApi = appApi.injectEndpoints({
     >({
       invalidatesTags: (_result, _error, arg) => [
         { id: arg.id, type: "Medication" },
-        { type: "Dashboard", id: "today" },
-        { type: "Dashboard", id: "all" },
-        { type: "MedicationHistory", id: "LIST" },
+        { id: "today", type: "Dashboard" },
+        { id: "all", type: "Dashboard" },
+        { id: "LIST", type: "MedicationHistory" },
       ],
       query: ({ id, payload }) => ({
         body: payload,

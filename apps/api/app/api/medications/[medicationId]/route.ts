@@ -20,6 +20,8 @@ import type {
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
+type MedicationRouteContext = { params: { medicationId: string } };
+
 function cleanText(value: unknown) {
   if (typeof value !== "string") return "";
   return value.trim().replace(/\s+/g, " ");
@@ -146,12 +148,37 @@ function mapHistoryEvent(event: MedicationEventDoc) {
   };
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { medicationId: string } },
-) {
+function toErrorResponse(err: any) {
+  const status =
+    typeof err?.status === "number" && err.status >= 100 && err.status <= 599
+      ? err.status
+      : 500;
+  const isServerError = status >= 500;
+  const message = isServerError
+    ? "Server error"
+    : err?.message || "Request failed";
+
+  if (isServerError) {
+    console.error("[medications/:medicationId] request failed", err);
+  }
+
+  const errors =
+    process.env.NODE_ENV !== "production"
+      ? {
+          code: err?.code,
+          details: err?.errInfo?.details,
+          message: err?.message,
+          name: err?.name,
+        }
+      : undefined;
+
+  return bad(message, errors, status);
+}
+
+export async function GET(req: NextRequest, { params }: MedicationRouteContext) {
   try {
     const caller = await requireUser(req);
+    const { medicationId } = params;
     if (
       caller.role !== ROLES.Patient ||
       !caller.patientId ||
@@ -159,17 +186,19 @@ export async function GET(
     ) {
       return bad("Patient context missing", undefined, 403);
     }
-    if (!ObjectId.isValid(params.medicationId)) {
+
+    if (!ObjectId.isValid(medicationId)) {
       return bad("Invalid medicationId", undefined, 400);
     }
 
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
-    const medicationId = new ObjectId(params.medicationId);
+    const medicationObjectId = new ObjectId(medicationId);
+
     const events = await db
       .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
       .find({
-        medicationId,
+        medicationId: medicationObjectId,
         patientId,
       })
       .sort({ _id: 1, at: 1 })
@@ -177,7 +206,7 @@ export async function GET(
     if (!events || events.length === 0)
       return bad("Medication not found", undefined, 404);
     let state = emptyMedicationState(
-      medicationId,
+      medicationObjectId,
       patientId,
       caller.orgId ?? "org_demo",
     );
@@ -190,17 +219,17 @@ export async function GET(
       editHistory: events.map(mapHistoryEvent),
     });
   } catch (err: any) {
-    const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return toErrorResponse(err);
   }
 }
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { medicationId: string } },
+  { params }: MedicationRouteContext,
 ) {
   try {
     const caller = await requireUser(req);
+    const { medicationId } = params;
     if (
       caller.role !== ROLES.Patient ||
       !caller.patientId ||
@@ -208,7 +237,7 @@ export async function PATCH(
     ) {
       return bad("Patient context missing", undefined, 403);
     }
-    if (!ObjectId.isValid(params.medicationId)) {
+    if (!ObjectId.isValid(medicationId)) {
       return bad("Invalid medicationId", undefined, 400);
     }
 
@@ -218,17 +247,18 @@ export async function PATCH(
     >;
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
-    const medicationId = new ObjectId(params.medicationId);
+    const medicationObjectId = new ObjectId(medicationId);
+
     // Query all events for this {patientId, medicationId}
     const events = await db
       .collection<MedicationEventDoc>(COLLECTIONS.MedicationsLedger)
-      .find({ medicationId, patientId })
+      .find({ medicationId: medicationObjectId, patientId })
       .sort({ _id: 1, at: 1 })
       .toArray();
     if (!events || events.length === 0)
       return bad("Medication not found", undefined, 404);
     let state = emptyMedicationState(
-      medicationId,
+      medicationObjectId,
       patientId,
       caller.orgId ?? "org_demo",
     );
@@ -443,7 +473,7 @@ export async function PATCH(
         by: caller.principalId,
         data: evData,
         eventType: change.eventType,
-        medicationId,
+        medicationId: medicationObjectId,
         orgId: caller.orgId ?? "org_demo",
         patientId,
         reason: editReason || undefined,
@@ -457,7 +487,7 @@ export async function PATCH(
         by: caller.principalId,
         data: { from: state.status, to: nextStatus },
         eventType: "status_changed",
-        medicationId,
+        medicationId: medicationObjectId,
         orgId: caller.orgId ?? "org_demo",
         patientId,
         reason: editReason || undefined,
@@ -472,12 +502,11 @@ export async function PATCH(
     const replay = await rebuildAndUpsertMedicationCurrent(
       db,
       patientId,
-      medicationId,
+      medicationObjectId,
     );
     if (!replay) return bad("Medication not found", undefined, 404);
     return ok(mapOut(replay.state));
   } catch (err: any) {
-    const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return toErrorResponse(err);
   }
 }

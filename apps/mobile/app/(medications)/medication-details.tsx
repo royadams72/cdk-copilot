@@ -1,1 +1,1 @@
-export { default } from "@/screens/medication/MedicationHistoryDetail";
+export { default } from "@/screens/medication/MedicationDetail";

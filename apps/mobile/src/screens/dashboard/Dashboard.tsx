@@ -23,11 +23,12 @@ import { useStepCount } from "@/hooks/useStepCount";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { data, error, isFetching, isLoading, refetch } =
-    useGetDashboardQuery("today", {
-      refetchOnFocus: true,
+  const { data, error, isFetching, isLoading, refetch } = useGetDashboardQuery(
+    "today",
+    {
       refetchOnMountOrArgChange: true,
-    });
+    },
+  );
   const { percentOfGoal, stepsToday } = useStepCount(10000);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
@@ -112,9 +113,7 @@ export default function Dashboard() {
             ) : null}
           </View>
 
-          {error && data && (
-            <InlineError message={errorMessage} />
-          )}
+          {error && data && <InlineError message={errorMessage} />}
 
           {data?.nutrition.radials?.length ? (
             <>

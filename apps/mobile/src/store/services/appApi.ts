@@ -62,7 +62,7 @@ export const appApi = createApi({
   baseQuery: baseQueryWithEnvelope,
   endpoints: () => ({}),
   reducerPath: "appApi",
-  refetchOnMountOrArgChange: 60,
+  refetchOnMountOrArgChange: false,
   refetchOnReconnect: true,
   tagTypes: ["Dashboard", "Fitness", "Medication", "MedicationHistory"],
 });

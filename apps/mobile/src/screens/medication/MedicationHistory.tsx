@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
@@ -7,6 +13,9 @@ import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import type { MedicationHistoryItem, MedicationHistoryResponse } from "./types";
+import { useGetMedicationHistoryQuery } from "@/store/services/medicationApi";
+import { toQueryErrorMessage } from "@/store/services/appApi";
+import { NutritionStyles } from "../nutrition/styles";
 
 function formatDate(value: string | null) {
   if (!value) return "Unknown date";
@@ -25,45 +34,50 @@ function MedicationList({
   return (
     <View
       style={{
-        borderWidth: 1,
         borderColor: "rgba(148,163,184,0.35)",
         borderRadius: 12,
-        padding: 12,
+        borderWidth: 1,
         gap: 8,
+        padding: 12,
       }}
     >
-      <ThemedText type="defaultSemiBold">All medications ({items.length})</ThemedText>
+      <ThemedText type="defaultSemiBold">
+        All medications ({items.length})
+      </ThemedText>
       {items.length ? (
         items.map((item) => (
           <TouchableOpacity
             key={item.id}
             onPress={() => onSelect(item.id)}
             style={{
-              borderTopWidth: 1,
               borderTopColor: "rgba(148,163,184,0.25)",
-              paddingTop: 8,
+              borderTopWidth: 1,
               gap: 2,
+              paddingTop: 8,
             }}
           >
             <ThemedText style={{ fontWeight: "700" }}>{item.name}</ThemedText>
-            <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
-              {[item.dose, item.frequency].filter(Boolean).join(" · ") || "Dose/frequency not set"}
+            <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
+              {[item.dose, item.frequency].filter(Boolean).join(" · ") ||
+                "Dose/frequency not set"}
             </ThemedText>
-            <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
+            <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
               Current status: {item.status}
             </ThemedText>
-            <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
+            <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
               Updated {formatDate(item.updatedAt)}
             </ThemedText>
             {item.latestReason ? (
-              <ThemedText style={{ opacity: 0.78, fontSize: 13 }}>
+              <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
                 Reason: {item.latestReason}
               </ThemedText>
             ) : null}
           </TouchableOpacity>
         ))
       ) : (
-        <ThemedText style={{ opacity: 0.7 }}>No records in this section.</ThemedText>
+        <ThemedText style={{ opacity: 0.7 }}>
+          No records in this section.
+        </ThemedText>
       )}
     </View>
   );
@@ -71,44 +85,40 @@ function MedicationList({
 
 export default function MedicationHistory() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<MedicationHistoryResponse>({ items: [] });
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      try {
-        setLoading(true);
-        const res = await authFetch(`${API}/api/medications/history`, { method: "GET" });
-        const body: any = await res.json().catch(() => null);
-        if (!res.ok || !body?.ok) {
-          throw new Error(body?.message ?? "Failed to load medication history");
-        }
-        if (cancelled) return;
-        setData(
-          body.data ?? {
-            items: [],
-          },
-        );
-      } catch (err: any) {
-        if (cancelled) return;
-        setErrorMessage(err?.message ?? "Failed to load medication history");
-        setShowErrorModal(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
+  const { data, error, isFetching, isLoading, refetch } =
+    useGetMedicationHistoryQuery();
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't refresh your medication data",
+  );
+  const refreshing = isFetching && !!data;
+  const loading = isLoading && !data;
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+  if (loading) {
+    return (
+      <View style={NutritionStyles.loading}>
+        <ActivityIndicator size="large" />
+        <ThemedText style={NutritionStyles.helperText}>
+          Loading your medication data...
+        </ThemedText>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 24 }}>
+      <ScrollView
+        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
@@ -117,15 +127,12 @@ export default function MedicationHistory() {
           Select a medication to view full status and edit history.
         </ThemedText>
 
-        {loading ? (
-          <View style={{ paddingVertical: 24, alignItems: "center", gap: 8 }}>
-            <ActivityIndicator size="large" />
-            <ThemedText>Loading history...</ThemedText>
-          </View>
-        ) : (
+        {data && (
           <MedicationList
             items={data.items}
-            onSelect={(id) => router.push(`/(medications)/medication-details?id=${id}`)}
+            onSelect={(id) =>
+              router.push(`/(medications)/medication-details?id=${id}`)
+            }
           />
         )}
       </ScrollView>
