@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,14 +9,10 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { useRouter } from "expo-router";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  fetchDashboard,
-  selectDashboardData,
-  selectDashboardError,
-  selectDashboardScope,
-  selectDashboardStatus,
-} from "@/store/slices/dashboardSlice";
+  toQueryErrorMessage,
+  useGetDashboardQuery,
+} from "@/store/services/dashboardApi";
 
 import { styles } from "./styles";
 import { Card } from "./components/Card";
@@ -27,24 +23,23 @@ import { useStepCount } from "@/hooks/useStepCount";
 
 export default function Dashboard() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const data = useAppSelector(selectDashboardData);
-  const status = useAppSelector(selectDashboardStatus);
-  const error = useAppSelector(selectDashboardError);
-  const scope = useAppSelector(selectDashboardScope);
+  const { data, error, isFetching, isLoading, refetch } = useGetDashboardQuery(
+    "today",
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
   const { percentOfGoal, stepsToday } = useStepCount(10000);
-  const loading = status === "loading" && !data;
-  const refreshing = status === "loading" && !!data;
-
-  useEffect(() => {
-    if ((status === "idle" && !data) || scope !== "today") {
-      dispatch(fetchDashboard({ scope: "today" }));
-    }
-  }, [data, dispatch, scope, status]);
+  const loading = isLoading && !data;
+  const refreshing = isFetching && !!data;
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't refresh your dashboard.",
+  );
 
   const handleRefresh = useCallback(() => {
-    dispatch(fetchDashboard({ scope: "today" }));
-  }, [dispatch]);
+    refetch();
+  }, [refetch]);
 
   const rangeSummary = useMemo(() => {
     if (!data) return "";
@@ -92,7 +87,7 @@ export default function Dashboard() {
     );
   }
 
-  const showBlockingError = status === "failed" && !data && !!error;
+  const showBlockingError = !!error && !data;
 
   return (
     <ScrollView
@@ -102,8 +97,8 @@ export default function Dashboard() {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      {showBlockingError && error ? (
-        <ErrorState message={error} />
+      {showBlockingError ? (
+        <ErrorState message={errorMessage} />
       ) : (
         <>
           <View style={styles.header}>
@@ -118,9 +113,7 @@ export default function Dashboard() {
             ) : null}
           </View>
 
-          {status === "failed" && error && data && (
-            <InlineError message={error} />
-          )}
+          {error && data && <InlineError message={errorMessage} />}
 
           {data?.nutrition.radials?.length ? (
             <>

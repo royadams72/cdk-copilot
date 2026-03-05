@@ -15,7 +15,7 @@ import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { useAppDispatch } from "@/store/hooks";
-import { fetchDashboard } from "@/store/slices/dashboardSlice";
+// import { fetchDashboard } from "@/store/slices/dashboardSlice";
 import { LAB_DEFINITIONS } from "./labDefs";
 
 type LabFormItem = {
@@ -94,9 +94,11 @@ export default function AddLabs() {
           ? `${API}/api/labs/history?takenDate=${encodeURIComponent(editTakenAt)}`
           : `${API}/api/labs/current`;
         const res = await authFetch(endpoint, { method: "GET" });
-        const body = (await res.json().catch(() => null)) as
-          | { ok?: boolean; data?: CurrentLabResponse; message?: string }
-          | null;
+        const body = (await res.json().catch(() => null)) as {
+          data?: CurrentLabResponse;
+          message?: string;
+          ok?: boolean;
+        } | null;
         if (!res.ok || !body?.ok) {
           throw new Error(body?.message ?? "Failed to load labs");
         }
@@ -106,26 +108,30 @@ export default function AddLabs() {
           (body.data?.items ?? []).map((item) => [item.code, item] as const),
         );
         setLabs((prev) =>
-          prev.map((item) => {
-            const current = byCode.get(item.code);
-            if (!current) return item;
-            const takenAt = current.takenAt ? new Date(current.takenAt) : today;
-            return {
-              ...item,
-              hasCustomDate: !!editTakenAt,
-              takenAt: Number.isNaN(takenAt.getTime()) ? today : takenAt,
-              unit: current.unit ?? item.unit,
-              value: String(current.value ?? ""),
-            };
-          }).map((item, idx, arr) => {
-            if (idx === 0) return item;
-            const firstDateIso = arr[0].takenAt.toISOString();
-            return {
-              ...item,
-              hasCustomDate:
-                !!editTakenAt || item.takenAt.toISOString() !== firstDateIso,
-            };
-          }),
+          prev
+            .map((item) => {
+              const current = byCode.get(item.code);
+              if (!current) return item;
+              const takenAt = current.takenAt
+                ? new Date(current.takenAt)
+                : today;
+              return {
+                ...item,
+                hasCustomDate: !!editTakenAt,
+                takenAt: Number.isNaN(takenAt.getTime()) ? today : takenAt,
+                unit: current.unit ?? item.unit,
+                value: String(current.value ?? ""),
+              };
+            })
+            .map((item, idx, arr) => {
+              if (idx === 0) return item;
+              const firstDateIso = arr[0].takenAt.toISOString();
+              return {
+                ...item,
+                hasCustomDate:
+                  !!editTakenAt || item.takenAt.toISOString() !== firstDateIso,
+              };
+            }),
         );
       } catch (err: any) {
         if (cancelled) return;
@@ -144,7 +150,9 @@ export default function AddLabs() {
 
   function updateLab(index: number, updates: Partial<LabFormItem>) {
     setLabs((prev) => {
-      const next = prev.map((item, i) => (i === index ? { ...item, ...updates } : item));
+      const next = prev.map((item, i) =>
+        i === index ? { ...item, ...updates } : item,
+      );
       if (index === 0 && updates.takenAt) {
         const firstDate = updates.takenAt;
         return next.map((item, i) => {
@@ -179,7 +187,9 @@ export default function AddLabs() {
 
     setSaving(true);
     try {
-      const endpoint = isEdit ? `${API}/api/labs/update` : `${API}/api/labs/create`;
+      const endpoint = isEdit
+        ? `${API}/api/labs/update`
+        : `${API}/api/labs/create`;
       const method = isEdit ? "PATCH" : "POST";
       const payload = {
         labs: filledLabs.map((item) => ({
@@ -200,7 +210,7 @@ export default function AddLabs() {
         throw new Error(body?.message ?? "Failed to save labs");
       }
 
-      dispatch(fetchDashboard({ scope: "today" }));
+      // dispatch(fetchDashboard({ scope: "today" }));
       router.replace("/(dashboard)/dashboard");
     } catch (err: any) {
       setErrorMessage(err?.message ?? "Failed to save labs");
@@ -212,11 +222,15 @@ export default function AddLabs() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 24 }}>
+      <ScrollView
+        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
-        <ThemedText type="title">{isEdit ? "Edit labs" : "Add lab results"}</ThemedText>
+        <ThemedText type="title">
+          {isEdit ? "Edit labs" : "Add lab results"}
+        </ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
           {isEdit && editTakenAt
             ? `Editing labs for ${formatDateUk(new Date(editTakenAt))}.`
@@ -224,7 +238,7 @@ export default function AddLabs() {
         </ThemedText>
 
         {loading ? (
-          <View style={{ paddingVertical: 24, alignItems: "center", gap: 8 }}>
+          <View style={{ alignItems: "center", gap: 8, paddingVertical: 24 }}>
             <ActivityIndicator size="large" />
             <ThemedText>Loading labs...</ThemedText>
           </View>
@@ -234,59 +248,72 @@ export default function AddLabs() {
               <View
                 key={lab.code}
                 style={{
+                  borderColor: "rgba(148,163,184,0.35)",
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: "rgba(148,163,184,0.35)",
                   gap: 8,
                   padding: 12,
                 }}
               >
-                <ThemedText style={{ fontWeight: "700" }}>{lab.name}</ThemedText>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <ThemedText style={{ opacity: 0.8 }}>Taken: {formatDateUk(lab.takenAt)}</ThemedText>
+                <ThemedText style={{ fontWeight: "700" }}>
+                  {lab.name}
+                </ThemedText>
+                <View
+                  style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
+                >
+                  <ThemedText style={{ opacity: 0.8 }}>
+                    Taken: {formatDateUk(lab.takenAt)}
+                  </ThemedText>
                   <TouchableOpacity
                     onPress={() => setShowDateIndex(index)}
                     style={{
+                      borderColor: "rgba(30,58,138,0.35)",
                       borderRadius: 999,
                       borderWidth: 1,
-                      borderColor: "rgba(30,58,138,0.35)",
                       paddingHorizontal: 10,
                       paddingVertical: 6,
                     }}
                   >
-                    <ThemedText style={{ fontWeight: "700", color: "#1E3A8A" }}>
+                    <ThemedText style={{ color: "#1E3A8A", fontWeight: "700" }}>
                       Set date
                     </ThemedText>
                   </TouchableOpacity>
                 </View>
                 <TextInput
-                  keyboardType={Platform.select({ android: "numeric", ios: "numbers-and-punctuation" })}
+                  keyboardType={Platform.select({
+                    android: "numeric",
+                    ios: "numbers-and-punctuation",
+                  })}
                   onChangeText={(value) => updateLab(index, { value })}
                   placeholder={`Enter ${lab.name} value`}
                   style={{
+                    borderColor: "rgba(148,163,184,0.45)",
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: "rgba(148,163,184,0.45)",
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                   }}
                   value={lab.value}
                 />
-                <ThemedText style={{ opacity: 0.7, fontSize: 12 }}>{lab.unit}</ThemedText>
+                <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
+                  {lab.unit}
+                </ThemedText>
               </View>
             ))}
 
             {isEdit ? (
               <View style={{ gap: 6 }}>
-                <ThemedText style={{ fontWeight: "700" }}>Reason for edit</ThemedText>
+                <ThemedText style={{ fontWeight: "700" }}>
+                  Reason for edit
+                </ThemedText>
                 <TextInput
                   multiline
                   onChangeText={setReason}
                   placeholder="Required"
                   style={{
+                    borderColor: "rgba(148,163,184,0.45)",
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: "rgba(148,163,184,0.45)",
                     minHeight: 84,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -301,14 +328,14 @@ export default function AddLabs() {
               disabled={saving}
               onPress={submit}
               style={{
-                borderRadius: 10,
+                alignItems: "center",
                 backgroundColor: "rgba(16,185,129,0.18)",
+                borderRadius: 10,
                 paddingHorizontal: 12,
                 paddingVertical: 12,
-                alignItems: "center",
               }}
             >
-              <ThemedText style={{ fontWeight: "700", color: "#065F46" }}>
+              <ThemedText style={{ color: "#065F46", fontWeight: "700" }}>
                 {saving ? "Saving..." : isEdit ? "Save labs" : "Add labs"}
               </ThemedText>
             </TouchableOpacity>
@@ -324,7 +351,10 @@ export default function AddLabs() {
             const index = showDateIndex;
             setShowDateIndex(null);
             if (index !== null && nextDate) {
-              updateLab(index, { hasCustomDate: index === 0 ? false : true, takenAt: nextDate });
+              updateLab(index, {
+                hasCustomDate: index === 0 ? false : true,
+                takenAt: nextDate,
+              });
             }
           }}
           value={labs[showDateIndex]?.takenAt ?? today}

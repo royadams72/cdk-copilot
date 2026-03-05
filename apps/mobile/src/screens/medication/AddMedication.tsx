@@ -15,35 +15,17 @@ import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-import { useAppDispatch } from "@/store/hooks";
-import { fetchDashboard } from "@/store/slices/dashboardSlice";
 
-type DrugSuggestion = {
-  id: string;
-  name: string;
-  displayName: string;
-  dmplusdCode: string | null;
-  snomedCode: string | null;
-  form: string | null;
-  route: string | null;
-};
-
-type MedicationStatus = "active" | "paused" | "stopped" | "completed";
-
-type MedicationDetailsResponse = {
-  id: string;
-  name: string;
-  dose: string;
-  frequency: string;
-  route: string;
-  form: string;
-  startAt: string | null;
-  status: MedicationStatus;
-  drugRefId: string | null;
-  dmplusdCode: string | null;
-  snomedCode: string | null;
-  instructions: string;
-};
+import type {
+  DrugSuggestion,
+  MedicationDetail,
+  MedicationStatus,
+} from "./types";
+import {
+  useCreateMedicationMutation,
+  useLazySearchMedicationQuery,
+  useUpdateMedicationMutation,
+} from "@/store/services/medicationApi";
 
 const ROUTE_OPTIONS = ["", "oral", "iv", "subcutaneous", "topical", "inhaled"];
 const FORM_OPTIONS = [
@@ -86,7 +68,10 @@ function toUtcDateIso(value: Date) {
   ).toISOString();
 }
 
-function parseDose(value: string): { amount: string; unit: (typeof DOSE_UNIT_OPTIONS)[number] } {
+function parseDose(value: string): {
+  amount: string;
+  unit: (typeof DOSE_UNIT_OPTIONS)[number];
+} {
   const cleaned = cleanText(value).toLowerCase();
   const match = cleaned.match(
     /^(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml|units?|tablet(?:s)?|capsule(?:s)?|puff(?:s)?|drop(?:s)?)$/i,
@@ -119,25 +104,29 @@ function normaliseFrequency(value: string) {
   if (!cleaned) return "";
   const map: Record<string, string> = {
     bid: "twice daily",
-    tid: "three times daily",
-    qd: "once daily",
     od: "once daily",
-    qid: "four times daily",
     prn: "as needed",
+    qd: "once daily",
+    qid: "four times daily",
+    tid: "three times daily",
   };
   return map[cleaned] ?? cleaned;
 }
 
 export default function AddMedication() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const params = useLocalSearchParams<{ id?: string }>();
+  const [
+    searchMedication,
+    { isFetching: isSearchFetching, error: searchError },
+  ] = useLazySearchMedicationQuery();
   const medicationId = typeof params.id === "string" ? params.id : "";
   const isEditMode = !!medicationId;
 
   const [name, setName] = useState("");
   const [doseAmount, setDoseAmount] = useState("");
-  const [doseUnit, setDoseUnit] = useState<(typeof DOSE_UNIT_OPTIONS)[number]>("mg");
+  const [doseUnit, setDoseUnit] =
+    useState<(typeof DOSE_UNIT_OPTIONS)[number]>("mg");
   const [frequency, setFrequency] = useState("");
   const [route, setRoute] = useState("");
   const [form, setForm] = useState("");
@@ -147,19 +136,20 @@ export default function AddMedication() {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState<DrugSuggestion | null>(null);
   const [suggestions, setSuggestions] = useState<DrugSuggestion[]>([]);
-  const [searching, setSearching] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [loadingMedication, setLoadingMedication] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showStatusInfoModal, setShowStatusInfoModal] = useState(false);
-
+  const [updateMedication] = useUpdateMedicationMutation();
+  const [createMedication] = useCreateMedicationMutation();
   const [originalSnapshot, setOriginalSnapshot] = useState<{
-    name: string;
     dose: string;
-    frequency: string;
-    route: string;
     form: string;
+    frequency: string;
+    name: string;
+    route: string;
     startAtIso: string;
     status: MedicationStatus;
   } | null>(null);
@@ -186,7 +176,7 @@ export default function AddMedication() {
 
         if (cancelled) return;
 
-        const med = body.data as MedicationDetailsResponse;
+        const med = body.data as MedicationDetail;
         const parsedDose = parseDose(med.dose ?? "");
         const nextStartAt = med.startAt ? new Date(med.startAt) : new Date();
 
@@ -197,14 +187,16 @@ export default function AddMedication() {
         setRoute(med.route ?? "");
         setForm(med.form ?? "");
         setStatus(med.status ?? "active");
-        setStartAt(Number.isNaN(nextStartAt.getTime()) ? new Date() : nextStartAt);
+        setStartAt(
+          Number.isNaN(nextStartAt.getTime()) ? new Date() : nextStartAt,
+        );
 
         setOriginalSnapshot({
-          name: cleanText(med.name ?? ""),
           dose: cleanText(med.dose ?? "").toLowerCase(),
-          frequency: cleanText(med.frequency ?? "").toLowerCase(),
-          route: cleanText(med.route ?? "").toLowerCase(),
           form: cleanText(med.form ?? "").toLowerCase(),
+          frequency: cleanText(med.frequency ?? "").toLowerCase(),
+          name: cleanText(med.name ?? ""),
+          route: cleanText(med.route ?? "").toLowerCase(),
           startAtIso: med.startAt ? new Date(med.startAt).toISOString() : "",
           status: med.status ?? "active",
         });
@@ -232,26 +224,20 @@ export default function AddMedication() {
 
     const handle = setTimeout(async () => {
       try {
-        setSearching(true);
-        const res = await authFetch(
-          `${API}/api/medications/search?query=${encodeURIComponent(query)}&limit=8`,
-          { method: "GET" },
-        );
-        const body: any = await res.json().catch(() => null);
-        if (!res.ok || !body?.ok) {
-          setSuggestions([]);
-          return;
-        }
-        setSuggestions(body.data?.items ?? []);
-      } finally {
-        setSearching(false);
+        const res = await searchMedication({ limit: 8, query }).unwrap();
+        setSuggestions(res.items ?? []);
+      } catch (err) {
+        setSuggestions([]);
       }
     }, 280);
 
     return () => clearTimeout(handle);
   }, [name]);
 
-  function isDetailEditComparedToOriginal(nextDose: string, nextFrequency: string) {
+  function isDetailEditComparedToOriginal(
+    nextDose: string,
+    nextFrequency: string,
+  ) {
     if (!originalSnapshot) return false;
 
     return (
@@ -296,8 +282,15 @@ export default function AddMedication() {
       ? status !== (originalSnapshot?.status ?? "active")
       : false;
 
-    if (isEditMode && hasDetailsEdited && status === "active" && !cleanText(editReason)) {
-      setErrorMessage("Reason for edit is required when changing medication details.");
+    if (
+      isEditMode &&
+      hasDetailsEdited &&
+      status === "active" &&
+      !cleanText(editReason)
+    ) {
+      setErrorMessage(
+        "Reason for edit is required when changing medication details.",
+      );
       setShowErrorModal(true);
       return;
     }
@@ -306,56 +299,48 @@ export default function AddMedication() {
     try {
       if (!isEditMode) {
         const payload = {
-          name: cleanedName,
-          dose: cleanedDose,
-          frequency: cleanedFrequency,
-          route: cleanText(route),
-          form: cleanText(form),
-          instructions: "",
-          startAt: toUtcDateIso(startAt),
-          drugRefId: selectedDrug?.id,
           dmplusdCode: selectedDrug?.dmplusdCode ?? undefined,
+          dose: cleanedDose,
+          drugRefId: selectedDrug?.id,
+          form: cleanText(form),
+          frequency: cleanedFrequency,
+          instructions: "",
+          name: cleanedName,
+          route: cleanText(route),
           snomedCode: selectedDrug?.snomedCode ?? undefined,
+          startAt: toUtcDateIso(startAt),
         };
-
-        const res = await authFetch(`${API}/api/medications/create`, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        const body: any = await res.json().catch(() => null);
-        if (!res.ok || !body?.ok) {
-          throw new Error(body?.message ?? "Failed to save medication");
-        }
+        createMedication(payload);
+        // const res = await authFetch(`${API}/api/medications/create`, {
+        //   body: JSON.stringify(payload),
+        //   method: "POST",
+        // });
+        // const body: any = await res.json().catch(() => null);
+        // if (!res.ok || !body?.ok) {
+        //   throw new Error(body?.message ?? "Failed to save medication");
+        // }
       } else {
         const payload = {
-          name: cleanedName,
+          dmplusdCode: selectedDrug?.dmplusdCode ?? undefined,
           dose: cleanedDose,
-          frequency: cleanedFrequency,
-          route: cleanText(route),
+          drugRefId: selectedDrug?.id ?? undefined,
+          editReason: cleanText(editReason),
           form: cleanText(form),
+          frequency: cleanedFrequency,
+          name: cleanedName,
+          route: cleanText(route),
+          snomedCode: selectedDrug?.snomedCode ?? undefined,
           startAt: toUtcDateIso(startAt),
           status,
-          editReason: cleanText(editReason),
-          drugRefId: selectedDrug?.id ?? undefined,
-          dmplusdCode: selectedDrug?.dmplusdCode ?? undefined,
-          snomedCode: selectedDrug?.snomedCode ?? undefined,
         };
 
-        const res = await authFetch(`${API}/api/medications/${medicationId}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        });
-        const body: any = await res.json().catch(() => null);
-        if (!res.ok || !body?.ok) {
-          throw new Error(body?.message ?? "Failed to update medication");
-        }
+        updateMedication({ id: medicationId, payload });
 
         if (statusChanged || hasDetailsEdited) {
           setEditReason("");
         }
       }
 
-      dispatch(fetchDashboard({ scope: "today" }));
       router.replace("/(dashboard)/dashboard");
     } catch (err: any) {
       setErrorMessage(err?.message ?? "Failed to save medication");
@@ -367,7 +352,14 @@ export default function AddMedication() {
 
   if (loadingMedication) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+      <View
+        style={{
+          alignItems: "center",
+          flex: 1,
+          gap: 12,
+          justifyContent: "center",
+        }}
+      >
         <ActivityIndicator size="large" />
         <ThemedText>Loading medication...</ThemedText>
       </View>
@@ -376,7 +368,9 @@ export default function AddMedication() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 28 }}>
+      <ScrollView
+        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 28 }}
+      >
         <View style={{ gap: 4 }}>
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
@@ -384,7 +378,8 @@ export default function AddMedication() {
           <ThemedText type="title">Medications</ThemedText>
           {isEditMode ? (
             <ThemedText style={{ opacity: 0.7 }}>
-              Edit the medication below, or set it to paused, stopped, or completed.
+              Edit the medication below, or set it to paused, stopped, or
+              completed.
             </ThemedText>
           ) : (
             <ThemedText style={{ opacity: 0.7 }}>
@@ -396,7 +391,14 @@ export default function AddMedication() {
         {isEditMode ? (
           <View>
             <ThemedText>Status actions</ThemedText>
-            <View style={{ marginTop: 6, flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 6,
+              }}
+            >
               {["active", "paused", "stopped", "completed"].map((option) => {
                 const optionStatus = option as MedicationStatus;
                 const selected = status === optionStatus;
@@ -405,12 +407,12 @@ export default function AddMedication() {
                     key={optionStatus}
                     onPress={() => handleStatusPick(optionStatus)}
                     style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      borderRadius: 999,
                       backgroundColor: selected
                         ? "rgba(15,23,42,0.88)"
                         : "rgba(148,163,184,0.2)",
+                      borderRadius: 999,
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
                     }}
                   >
                     <ThemedText
@@ -440,26 +442,35 @@ export default function AddMedication() {
             placeholder="Start typing medication name"
             autoCapitalize="words"
             style={{
-              borderWidth: 1,
               borderColor: "rgba(148,163,184,0.5)",
               borderRadius: 10,
-              padding: 10,
+              borderWidth: 1,
               marginTop: 6,
+              padding: 10,
             }}
           />
-          {searching ? (
-            <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {isSearchFetching ? (
+            <View
+              style={{
+                alignItems: "center",
+                flexDirection: "row",
+                gap: 8,
+                marginTop: 8,
+              }}
+            >
               <ActivityIndicator size="small" />
-              <ThemedText style={{ opacity: 0.7 }}>Searching drugs...</ThemedText>
+              <ThemedText style={{ opacity: 0.7 }}>
+                Searching drugs...
+              </ThemedText>
             </View>
           ) : null}
           {canShowSuggestions ? (
             <View
               style={{
-                marginTop: 8,
-                borderWidth: 1,
                 borderColor: "rgba(148,163,184,0.35)",
                 borderRadius: 10,
+                borderWidth: 1,
+                marginTop: 8,
               }}
             >
               {suggestions.map((item) => (
@@ -473,15 +484,18 @@ export default function AddMedication() {
                     setSuggestions([]);
                   }}
                   style={{
+                    borderBottomColor: "rgba(148,163,184,0.22)",
+                    borderBottomWidth: 1,
                     paddingHorizontal: 10,
                     paddingVertical: 9,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "rgba(148,163,184,0.22)",
                   }}
                 >
-                  <ThemedText style={{ fontWeight: "600" }}>{item.displayName}</ThemedText>
-                  <ThemedText style={{ opacity: 0.7, fontSize: 12 }}>
-                    {[item.form, item.route].filter(Boolean).join(" · ") || "No form/route"}
+                  <ThemedText style={{ fontWeight: "600" }}>
+                    {item.displayName}
+                  </ThemedText>
+                  <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
+                    {[item.form, item.route].filter(Boolean).join(" · ") ||
+                      "No form/route"}
                   </ThemedText>
                 </TouchableOpacity>
               ))}
@@ -493,10 +507,10 @@ export default function AddMedication() {
           <ThemedText>Route</ThemedText>
           <View
             style={{
-              marginTop: 6,
-              borderWidth: 1,
               borderColor: "rgba(148,163,184,0.5)",
               borderRadius: 10,
+              borderWidth: 1,
+              marginTop: 6,
             }}
           >
             <Picker selectedValue={route} onValueChange={setRoute}>
@@ -515,10 +529,10 @@ export default function AddMedication() {
           <ThemedText>Form</ThemedText>
           <View
             style={{
-              marginTop: 6,
-              borderWidth: 1,
               borderColor: "rgba(148,163,184,0.5)",
               borderRadius: 10,
+              borderWidth: 1,
+              marginTop: 6,
             }}
           >
             <Picker selectedValue={form} onValueChange={setForm}>
@@ -535,26 +549,28 @@ export default function AddMedication() {
 
         <View>
           <ThemedText>Dose</ThemedText>
-          <View style={{ marginTop: 6, flexDirection: "row", gap: 10 }}>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
             <TextInput
               value={doseAmount}
-              onChangeText={(value) => setDoseAmount(value.replace(/[^0-9.]/g, ""))}
+              onChangeText={(value) =>
+                setDoseAmount(value.replace(/[^0-9.]/g, ""))
+              }
               placeholder="e.g. 50"
               keyboardType="decimal-pad"
               style={{
-                flex: 1,
-                borderWidth: 1,
                 borderColor: "rgba(148,163,184,0.5)",
                 borderRadius: 10,
+                borderWidth: 1,
+                flex: 1,
                 padding: 10,
               }}
             />
             <View
               style={{
-                flex: 1,
-                borderWidth: 1,
                 borderColor: "rgba(148,163,184,0.5)",
                 borderRadius: 10,
+                borderWidth: 1,
+                flex: 1,
               }}
             >
               <Picker selectedValue={doseUnit} onValueChange={setDoseUnit}>
@@ -574,11 +590,11 @@ export default function AddMedication() {
             onBlur={() => setFrequency(normaliseFrequency(frequency))}
             placeholder="e.g. three times daily"
             style={{
-              borderWidth: 1,
               borderColor: "rgba(148,163,184,0.5)",
               borderRadius: 10,
-              padding: 10,
+              borderWidth: 1,
               marginTop: 6,
+              padding: 10,
             }}
           />
         </View>
@@ -588,11 +604,11 @@ export default function AddMedication() {
           <TouchableOpacity
             onPress={() => setShowStartDatePicker(true)}
             style={{
-              borderWidth: 1,
               borderColor: "rgba(148,163,184,0.5)",
               borderRadius: 10,
-              padding: 10,
+              borderWidth: 1,
               marginTop: 6,
+              padding: 10,
             }}
           >
             <ThemedText>{formatDateUk(startAt)}</ThemedText>
@@ -616,11 +632,11 @@ export default function AddMedication() {
                 <TouchableOpacity
                   onPress={() => setShowStartDatePicker(false)}
                   style={{
-                    marginTop: 8,
-                    paddingVertical: 10,
-                    borderRadius: 10,
                     alignItems: "center",
                     backgroundColor: "rgba(148,163,184,0.2)",
+                    borderRadius: 10,
+                    marginTop: 8,
+                    paddingVertical: 10,
                   }}
                 >
                   <ThemedText style={{ fontWeight: "600" }}>Done</ThemedText>
@@ -640,12 +656,12 @@ export default function AddMedication() {
               multiline
               numberOfLines={3}
               style={{
-                borderWidth: 1,
                 borderColor: "rgba(148,163,184,0.5)",
                 borderRadius: 10,
-                padding: 10,
+                borderWidth: 1,
                 marginTop: 6,
                 minHeight: 86,
+                padding: 10,
                 textAlignVertical: "top",
               }}
             />
@@ -656,14 +672,20 @@ export default function AddMedication() {
           onPress={handleSubmit}
           disabled={submitting}
           style={{
-            paddingVertical: 12,
-            borderRadius: 12,
             alignItems: "center",
-            backgroundColor: submitting ? "rgba(15,23,42,0.3)" : "rgba(15,23,42,0.9)",
+            backgroundColor: submitting
+              ? "rgba(15,23,42,0.3)"
+              : "rgba(15,23,42,0.9)",
+            borderRadius: 12,
+            paddingVertical: 12,
           }}
         >
           <ThemedText style={{ color: "#fff", fontWeight: "700" }}>
-            {submitting ? "Saving..." : isEditMode ? "Save changes" : "Save medication"}
+            {submitting
+              ? "Saving..."
+              : isEditMode
+                ? "Save changes"
+                : "Save medication"}
           </ThemedText>
         </TouchableOpacity>
       </ScrollView>

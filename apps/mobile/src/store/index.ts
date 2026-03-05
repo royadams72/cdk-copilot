@@ -1,11 +1,14 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { setupListeners } from "@reduxjs/toolkit/query";
 import { persistReducer, persistStore } from "redux-persist";
 import { secureStorage } from "../lib/secureStorage";
 import dashboardReducer from "./slices/dashboardSlice";
 import logMealReducer from "./slices/logMealSlice";
+import { appApi } from "./services/appApi";
 import devToolsEnhancer from "redux-devtools-expo-dev-plugin";
 export const rootReducer = combineReducers({
   dashboard: dashboardReducer,
+  [appApi.reducerPath]: appApi.reducer,
   logMeal: logMealReducer,
 });
 
@@ -24,11 +27,12 @@ export const store = configureStore({
     getDefaultMiddleware({
       immutableCheck: false,
       serializableCheck: false, // required for redux-persist
-    }),
+    }).concat(appApi.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(devToolsEnhancer()),
 });
 
 export const persistor = persistStore(store);
+setupListeners(store.dispatch);
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

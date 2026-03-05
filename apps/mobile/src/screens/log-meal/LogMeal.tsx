@@ -40,7 +40,7 @@ import {
 import { fetchDashboard } from "@/store/slices/dashboardSlice";
 
 import { logMealStyles } from "./styles";
-import { styles } from "../nutrition/styles";
+import { NutritionStyles as styles } from "../nutrition/styles";
 import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
 import { DateTimeModal } from "@/components/date-time-modal";
@@ -58,6 +58,7 @@ export default function LogMeal() {
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const mealCandidate = useAppSelector(selectMealCandidate);
+
   const isLeavingRef = useRef(false);
   const [dateTime, setDateTime] = useState(
     () => new Date(eatenAtIso ?? Date.now()),

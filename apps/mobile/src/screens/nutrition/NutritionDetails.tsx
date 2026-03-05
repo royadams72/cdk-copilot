@@ -20,15 +20,12 @@ import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
 import { formatDateShort, formatDecimal } from "../dashboard/utils";
-import { styles } from "./styles";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { NutritionStyles } from "./styles";
+import { useAppDispatch } from "@/store/hooks";
 import {
-  fetchDashboard,
-  selectDashboardData,
-  selectDashboardError,
-  selectDashboardScope,
-  selectDashboardStatus,
-} from "@/store/slices/dashboardSlice";
+  toQueryErrorMessage,
+  useGetDashboardQuery,
+} from "@/store/services/dashboardApi";
 
 import {
   deleteMealData,
@@ -49,22 +46,25 @@ export default function NutritionDetails() {
   const router = useRouter();
   const theme = useColorScheme() ?? "light";
   const dispatch = useAppDispatch();
-  const data = useAppSelector(selectDashboardData);
-  const status = useAppSelector(selectDashboardStatus);
-  const error = useAppSelector(selectDashboardError);
-  const scope = useAppSelector(selectDashboardScope);
+  const { data, error, isFetching, isLoading, refetch } =
+    useGetDashboardQuery("all");
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't refresh your nutrition data",
+  );
+  const refreshing = isFetching && !!data;
+  const loading = isLoading && !data;
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
   );
-  const refreshing = status === "loading" && !!data;
-  const loading = status === "loading" && !data;
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const chartScrollRef = useRef<ScrollViewType | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
     null,
   );
-  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const metricConfig =
     NUTRITION_METRICS.find((metric) => metric.id === selectedMetricId) ??
     NUTRITION_METRICS[0];
@@ -205,21 +205,15 @@ export default function NutritionDetails() {
     }
   }, [mealsForDay.length]);
 
-  useEffect(() => {
-    if ((status === "idle" && !data) || scope !== "all") {
-      dispatch(fetchDashboard({ scope: "all" }));
-    }
-  }, [data, dispatch, scope, status]);
-
   const handleRefresh = useCallback(() => {
-    dispatch(fetchDashboard({ scope: "all" }));
-  }, [dispatch]);
+    refetch();
+  }, [refetch]);
 
   if (loading) {
     return (
-      <View style={styles.loading}>
+      <View style={NutritionStyles.loading}>
         <ActivityIndicator size="large" />
-        <ThemedText style={styles.helperText}>
+        <ThemedText style={NutritionStyles.helperText}>
           Loading your nutrition data...
         </ThemedText>
       </View>
@@ -229,47 +223,53 @@ export default function NutritionDetails() {
   const canRender = Boolean(data?.nutrition.dailySeries?.length);
 
   return (
-    <View style={styles.screen}>
+    <View style={NutritionStyles.screen}>
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
+        style={NutritionStyles.container}
+        contentContainerStyle={NutritionStyles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.navRow}>
+        <View style={NutritionStyles.header}>
+          <View style={NutritionStyles.navRow}>
             <TouchableOpacity
               accessibilityRole="button"
               onPress={() => router.back()}
-              style={styles.navButton}
+              style={NutritionStyles.navButton}
             >
-              <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
+              <ThemedText style={NutritionStyles.navButtonText}>
+                ‹ Back
+              </ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.logButton}
+              style={NutritionStyles.logButton}
               onPress={() => setIsLogModalOpen(true)}
             >
-              <ThemedText style={styles.logButtonText}>Log meal</ThemedText>
+              <ThemedText style={NutritionStyles.logButtonText}>
+                Log meal
+              </ThemedText>
             </TouchableOpacity>
           </View>
           <ThemedText type="title">Nutrition</ThemedText>
-          <ThemedText style={styles.helperText}>
+          <ThemedText style={NutritionStyles.helperText}>
             Track how your meals contribute to renal targets.
           </ThemedText>
         </View>
 
-        {error && status === "failed" && (
+        {error && (
           <Card>
             <ThemedText type="defaultSemiBold">
               We couldn't refresh your nutrition data
             </ThemedText>
-            <ThemedText style={styles.helperText}>{error}</ThemedText>
+            <ThemedText style={NutritionStyles.helperText}>
+              {errorMessage}
+            </ThemedText>
             <TouchableOpacity
-              style={styles.retryButton}
+              style={NutritionStyles.retryButton}
               onPress={handleRefresh}
             >
-              <ThemedText style={styles.retryText}>Retry</ThemedText>
+              <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
             </TouchableOpacity>
           </Card>
         )}
@@ -277,9 +277,9 @@ export default function NutritionDetails() {
         {canRender ? (
           <>
             <Card>
-              <View style={styles.cardHeader}>
+              <View style={NutritionStyles.cardHeader}>
                 <ThemedText type="defaultSemiBold">Nutrition intake</ThemedText>
-                <ThemedText style={styles.helperText}>
+                <ThemedText style={NutritionStyles.helperText}>
                   Since{" "}
                   {new Date(
                     data?.nutrition.range.from ?? Date.now(),
@@ -290,18 +290,18 @@ export default function NutritionDetails() {
                   })}
                 </ThemedText>
               </View>
-              <View style={styles.chartLegend}>
-                <ThemedText style={styles.legendMetric}>
+              <View style={NutritionStyles.chartLegend}>
+                <ThemedText style={NutritionStyles.legendMetric}>
                   {metricConfig.label}
                 </ThemedText>
-                <ThemedText style={styles.legendValue}>
+                <ThemedText style={NutritionStyles.legendValue}>
                   {formatChartValue(
                     data?.nutrition.totals?.[metricConfig.key],
                     metricConfig.unit,
                   )}
                 </ThemedText>
               </View>
-              <View style={styles.chartWrap}>
+              <View style={NutritionStyles.chartWrap}>
                 <ScrollView
                   horizontal
                   ref={chartScrollRef}
@@ -310,7 +310,7 @@ export default function NutritionDetails() {
                 >
                   <View
                     style={[
-                      styles.chartInner,
+                      NutritionStyles.chartInner,
                       { height: CHART_HEIGHT, width: chartContentWidth },
                     ]}
                   >
@@ -327,8 +327,8 @@ export default function NutritionDetails() {
                         targetLineOffset !== null
                           ? [
                               {
-                                color: "rgba(99,102,241,0.85)",
                                 id: "nutrition-target",
+                                color: "rgba(99,102,241,0.85)",
                                 y: targetLineOffset,
                               },
                             ]
@@ -336,8 +336,8 @@ export default function NutritionDetails() {
                       }
                       series={[
                         {
-                          color: metricConfig.color,
                           id: metricConfig.id,
+                          color: metricConfig.color,
                           points: chartPoints.map((point) => ({
                             index: point.index,
                             visible: true,
@@ -356,14 +356,14 @@ export default function NutritionDetails() {
                 </ScrollView>
               </View>
               {chartTarget !== null ? (
-                <View style={styles.targetBadge}>
-                  <ThemedText style={styles.targetBadgeText}>
+                <View style={NutritionStyles.targetBadge}>
+                  <ThemedText style={NutritionStyles.targetBadgeText}>
                     Target {formatChartValue(chartTarget, metricConfig.unit)}
                   </ThemedText>
                 </View>
               ) : null}
               {selectedPoint && (
-                <ThemedText style={styles.helperText}>
+                <ThemedText style={NutritionStyles.helperText}>
                   Showing {formatFullDate(selectedPoint.date)}
                 </ThemedText>
               )}
@@ -374,13 +374,13 @@ export default function NutritionDetails() {
                 title="Daily totals"
                 subtitle={formatFullDate(selectedPoint.date)}
               >
-                <View style={styles.summaryGrid}>
+                <View style={NutritionStyles.summaryGrid}>
                   {NUTRITION_METRICS.map((metric) => (
-                    <View key={metric.id} style={styles.summaryRow}>
-                      <ThemedText style={styles.summaryLabel}>
+                    <View key={metric.id} style={NutritionStyles.summaryRow}>
+                      <ThemedText style={NutritionStyles.summaryLabel}>
                         {metric.label}
                       </ThemedText>
-                      <ThemedText style={styles.summaryValue}>
+                      <ThemedText style={NutritionStyles.summaryValue}>
                         {formatChartValue(
                           metricValue(selectedPoint.totals, metric.key),
                           metric.unit,
@@ -392,7 +392,7 @@ export default function NutritionDetails() {
               </AccordionCard>
             ) : null}
 
-            <View style={styles.metricRow}>
+            <View style={NutritionStyles.metricRow}>
               {NUTRITION_METRICS.map((metric) => {
                 const isActive = metric.id === metricConfig.id;
                 return (
@@ -400,14 +400,14 @@ export default function NutritionDetails() {
                     key={metric.id}
                     onPress={() => setSelectedMetricId(metric.id)}
                     style={[
-                      styles.metricButton,
+                      NutritionStyles.metricButton,
                       isActive && { backgroundColor: metric.color },
                     ]}
                   >
                     <ThemedText
                       style={[
-                        styles.metricButtonText,
-                        isActive && styles.metricButtonTextActive,
+                        NutritionStyles.metricButtonText,
+                        isActive && NutritionStyles.metricButtonTextActive,
                       ]}
                     >
                       {metric.label}
@@ -419,10 +419,10 @@ export default function NutritionDetails() {
 
             {mealsForDay.length ? (
               <TouchableOpacity
-                style={styles.editMealsButton}
+                style={NutritionStyles.editMealsButton}
                 onPress={() => setIsEditModalOpen(true)}
               >
-                <ThemedText style={styles.editMealsButtonText}>
+                <ThemedText style={NutritionStyles.editMealsButtonText}>
                   Edit meals for this day
                 </ThemedText>
               </TouchableOpacity>
@@ -432,7 +432,7 @@ export default function NutritionDetails() {
               subtitle={`Highest ${metricConfig.label.toLowerCase()} sources`}
             >
               {highlights.length ? (
-                <View style={styles.foodList}>
+                <View style={NutritionStyles.foodList}>
                   {highlights.map((item, index) => {
                     return (
                       <FoodRow
@@ -445,7 +445,7 @@ export default function NutritionDetails() {
                   })}
                 </View>
               ) : (
-                <ThemedText style={styles.helperText}>
+                <ThemedText style={NutritionStyles.helperText}>
                   {highlightFallbackMessage}
                 </ThemedText>
               )}
@@ -456,7 +456,7 @@ export default function NutritionDetails() {
             <ThemedText type="defaultSemiBold">
               No meals logged this week
             </ThemedText>
-            <ThemedText style={styles.helperText}>
+            <ThemedText style={NutritionStyles.helperText}>
               Start tracking your meals to unlock protein, phosphorus,
               potassium, and sodium insights.
             </ThemedText>
@@ -470,35 +470,44 @@ export default function NutritionDetails() {
         visible={isLogModalOpen}
         onRequestClose={() => setIsLogModalOpen(false)}
       >
-        <View style={styles.modalBackdrop}>
+        <View style={NutritionStyles.modalBackdrop}>
           <View
-            style={[styles.modalCard, theme === "dark" && styles.modalCardDark]}
+            style={[
+              NutritionStyles.modalCard,
+              theme === "dark" && NutritionStyles.modalCardDark,
+            ]}
           >
             <ThemedText type="defaultSemiBold">Log your meal?</ThemedText>
-            <ThemedText style={styles.helperText}>
+            <ThemedText style={NutritionStyles.helperText}>
               Add foods to your diary to keep your nutrition targets on track.
             </ThemedText>
-            <View style={styles.modalActions}>
+            <View style={NutritionStyles.modalActions}>
               {mealTypes.map((mealType) => (
                 <TouchableOpacity
                   key={mealType.value}
-                  style={[styles.modalButton, styles.modalButtonPrimary]}
+                  style={[
+                    NutritionStyles.modalButton,
+                    NutritionStyles.modalButtonPrimary,
+                  ]}
                   onPress={() => {
                     dispatch(setMealType({ mealType: mealType.value }));
                     setIsLogModalOpen(false);
                     router.push("/(log-meal)/log-meal");
                   }}
                 >
-                  <ThemedText style={styles.modalButtonTextPrimary}>
+                  <ThemedText style={NutritionStyles.modalButtonTextPrimary}>
                     {mealType.label}
                   </ThemedText>
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonGhost]}
+                style={[
+                  NutritionStyles.modalButton,
+                  NutritionStyles.modalButtonGhost,
+                ]}
                 onPress={() => setIsLogModalOpen(false)}
               >
-                <ThemedText style={styles.modalButtonTextGhost}>
+                <ThemedText style={NutritionStyles.modalButtonTextGhost}>
                   Not now
                 </ThemedText>
               </TouchableOpacity>
@@ -512,15 +521,18 @@ export default function NutritionDetails() {
         visible={isEditModalOpen}
         onRequestClose={() => setIsEditModalOpen(false)}
       >
-        <View style={styles.modalBackdrop}>
+        <View style={NutritionStyles.modalBackdrop}>
           <View
-            style={[styles.modalCard, theme === "dark" && styles.modalCardDark]}
+            style={[
+              NutritionStyles.modalCard,
+              theme === "dark" && NutritionStyles.modalCardDark,
+            ]}
           >
             <ThemedText type="defaultSemiBold">Edit meals</ThemedText>
-            <ThemedText style={styles.helperText}>
+            <ThemedText style={NutritionStyles.helperText}>
               Select a meal to edit what you logged.
             </ThemedText>
-            <View style={styles.mealList}>
+            <View style={NutritionStyles.mealList}>
               {mealsForDay.map((meal) => (
                 <FoodCard
                   key={meal.id}
@@ -563,9 +575,7 @@ export default function NutritionDetails() {
                               onPress: () => {
                                 dispatch(deleteMealData({ entryId: meal.id }))
                                   .unwrap()
-                                  .then(() =>
-                                    dispatch(fetchDashboard({ scope: "all" })),
-                                  );
+                                  .then(() => refetch());
                               },
                               style: "destructive",
                               text: "Delete",
@@ -580,10 +590,15 @@ export default function NutritionDetails() {
               ))}
             </View>
             <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonGhost]}
+              style={[
+                NutritionStyles.modalButton,
+                NutritionStyles.modalButtonGhost,
+              ]}
               onPress={() => setIsEditModalOpen(false)}
             >
-              <ThemedText style={styles.modalButtonTextGhost}>Close</ThemedText>
+              <ThemedText style={NutritionStyles.modalButtonTextGhost}>
+                Close
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -681,7 +696,7 @@ function FoodRow({
       subtitle={formatFoodMeta(item)}
       description={`Adds ${formatChartValue(item.amount, metricUnit)} to your day.`}
       rightContent={
-        <ThemedText style={[styles.foodAmount, { color }]}>
+        <ThemedText style={[NutritionStyles.foodAmount, { color }]}>
           {formatChartValue(item.amount, metricUnit)}
         </ThemedText>
       }
