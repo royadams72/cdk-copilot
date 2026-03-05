@@ -64,7 +64,7 @@ export const appApi = createApi({
   reducerPath: "appApi",
   refetchOnMountOrArgChange: false,
   refetchOnReconnect: true,
-  tagTypes: ["Dashboard", "Fitness", "Medication", "MedicationHistory"],
+  tagTypes: ["Dashboard", "Fitness", "Medication", "MedicationHistory", "Food"],
 });
 
 export function toQueryErrorMessage(error: unknown, fallback: string) {

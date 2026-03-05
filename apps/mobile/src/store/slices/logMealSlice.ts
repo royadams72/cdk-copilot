@@ -353,75 +353,13 @@ const logMealSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchNutritionData.fulfilled, (state, action) => {
-        if (!action.payload) return;
-        state.status = "succeeded";
-        console.log("action.payload", action.payload);
-
         const requested = action.meta.arg.foodItems;
-        const requestedItems = Array.isArray(requested)
-          ? requested
-          : [requested];
-        const requestedFoodIds = new Set(
-          requestedItems.map((item) => item.foodId).filter(Boolean),
+        const requestedItems = Array.isArray(requested) ? requested : [requested];
+        applyNutritionResultsToState(
+          state,
+          action.payload,
+          requestedItems.map((item) => item.foodId),
         );
-        const shouldFilterGroups = requestedFoodIds.size > 0;
-
-        if (state.foodItems?.length) {
-          state.foodItems = state.foodItems.map((group) => {
-            if (shouldFilterGroups) {
-              const hasMatch = group.foodItems.some((item) =>
-                requestedFoodIds.has(item.foodId ?? ""),
-              );
-              if (!hasMatch) return group;
-            }
-            const updatedGroupItems = extractNutrition(
-              group.foodItems,
-              action.payload,
-            );
-            return Array.isArray(updatedGroupItems)
-              ? { ...group, foodItems: updatedGroupItems }
-              : group;
-          });
-
-          const itemsByUid = new Map<string, TFoodItem>();
-          for (const group of state.foodItems) {
-            for (const item of group.foodItems) {
-              if (item.uid) itemsByUid.set(item.uid, item);
-            }
-          }
-
-          const resolveUpdated = (item: TFoodItem | null) => {
-            if (!item) return null;
-            const byUid = item.uid ? itemsByUid.get(item.uid) : undefined;
-            return byUid ?? item;
-          };
-
-          if (state.activeItem) {
-            state.activeItem = resolveUpdated(state.activeItem);
-          }
-
-          if (state.activeMealType) {
-            state.meal[state.activeMealType] = state.meal[
-              state.activeMealType
-            ].map((item) => resolveUpdated(item) ?? item);
-          }
-        }
-
-        console.log(
-          "activeItems nutrients snapshot",
-          JSON.stringify(
-            state.activeItems?.map((i) => ({
-              caloriesKcal: i.nutrients?.caloriesKcal,
-              foodId: i.foodId,
-              sodiumMg: i.nutrients?.sodiumMg,
-            })) ?? [],
-            null,
-            2,
-          ),
-        );
-
-        state.error = null;
-        state.lastLoadedAt = new Date().toISOString();
       })
       .addCase(fetchNutritionData.rejected, (state, action) => {
         state.status = "failed";
@@ -623,6 +561,21 @@ const logMealSlice = createSlice({
         state.isDirty = true;
       },
     ),
+    applyNutritionResults: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          requestedFoodIds: string[];
+          results: TEdamamNutritionResponse[];
+        }>,
+      ) => {
+        applyNutritionResultsToState(
+          state,
+          action.payload.results,
+          action.payload.requestedFoodIds,
+        );
+      },
+    ),
     setMeal: create.reducer(
       (state, action: PayloadAction<{ food: TFoodItem }>) => {
         if (!state.activeMealType) return;
@@ -700,6 +653,7 @@ const logMealSlice = createSlice({
 
 export default logMealSlice.reducer;
 export const {
+  applyNutritionResults,
   setQuantity,
   setActiveItem,
   setMealType,
@@ -850,6 +804,57 @@ function setNutrientsBody({
       quantity: foodItem.quantity,
     };
   });
+}
+
+function applyNutritionResultsToState(
+  state: RootState["logMeal"],
+  results: TEdamamNutritionResponse[],
+  requestedFoodIds: string[],
+) {
+  state.status = "succeeded";
+  const requestedSet = new Set(requestedFoodIds.filter(Boolean));
+  const shouldFilterGroups = requestedSet.size > 0;
+
+  if (state.foodItems?.length) {
+    state.foodItems = state.foodItems.map((group) => {
+      if (shouldFilterGroups) {
+        const hasMatch = group.foodItems.some((item) =>
+          requestedSet.has(item.foodId ?? ""),
+        );
+        if (!hasMatch) return group;
+      }
+      const updatedGroupItems = extractNutrition(group.foodItems, results);
+      return Array.isArray(updatedGroupItems)
+        ? { ...group, foodItems: updatedGroupItems }
+        : group;
+    });
+
+    const itemsByUid = new Map<string, TFoodItem>();
+    for (const group of state.foodItems) {
+      for (const item of group.foodItems) {
+        if (item.uid) itemsByUid.set(item.uid, item);
+      }
+    }
+
+    const resolveUpdated = (item: TFoodItem | null) => {
+      if (!item) return null;
+      const byUid = item.uid ? itemsByUid.get(item.uid) : undefined;
+      return byUid ?? item;
+    };
+
+    if (state.activeItem) {
+      state.activeItem = resolveUpdated(state.activeItem);
+    }
+
+    if (state.activeMealType) {
+      state.meal[state.activeMealType] = state.meal[state.activeMealType].map(
+        (item) => resolveUpdated(item) ?? item,
+      );
+    }
+  }
+
+  state.error = null;
+  state.lastLoadedAt = new Date().toISOString();
 }
 
 function getMeasureUri(
@@ -1003,8 +1008,7 @@ function isSameMealItem(a: TFoodItem, b: TFoodItem) {
 
   return (
     a.quantity === b.quantity &&
-    (a.unit ?? "").trim().toLowerCase() ===
-      (b.unit ?? "").trim().toLowerCase()
+    (a.unit ?? "").trim().toLowerCase() === (b.unit ?? "").trim().toLowerCase()
   );
 }
 

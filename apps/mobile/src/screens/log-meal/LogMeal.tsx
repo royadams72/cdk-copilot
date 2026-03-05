@@ -15,13 +15,13 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
+  applyNutritionResults,
   checkMealExists,
   clearMealCandidate,
   clearMealState,
   deleteMealData,
   fetchMealByDate,
   fetchMealData,
-  fetchNutritionData,
   ItemSummary,
   removeMealItem,
   saveMealData,
@@ -44,10 +44,14 @@ import { NutritionStyles as styles } from "../nutrition/styles";
 import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
 import { DateTimeModal } from "@/components/date-time-modal";
+import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
 
 export default function LogMeal() {
   const router = useRouter();
   const navigation = useNavigation();
+
+  const [fetchNutritionData] = useFetchNutritionDataMutation();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
     useState(false);
@@ -127,9 +131,9 @@ export default function LogMeal() {
       } else {
         await dispatch(saveMealData()).unwrap();
       }
-      await dispatch(fetchDashboard({ scope: "all" })).unwrap();
+      // await dispatch(fetchDashboard({ scope: "all" })).unwrap();
       isLeavingRef.current = true;
-      router.replace("/(nutrition)/nutrition-details");
+      router.push("/(nutrition)/nutrition-details");
     } catch (err: any) {
       Alert.alert(
         editingEntryId ? "Update failed" : "Save failed",
@@ -219,22 +223,39 @@ export default function LogMeal() {
     const itemsToCheck =
       meal && meal.length > 0 ? meal : mealItemsFromFoodItems;
     if (!itemsToCheck.length) return;
-    const isAnyNurientsEmpty = itemsToCheck.some((item) =>
-      isAnyFieldEmpty(item.nutrients),
-    );
-
-    if (isAnyNurientsEmpty) {
-      dispatch(
-        fetchNutritionData({
-          foodItems: itemsToCheck,
-        }),
+    (async () => {
+      const isAnyNurientsEmpty = itemsToCheck.some((item) =>
+        isAnyFieldEmpty(item.nutrients),
       );
-    }
-    setShouldLoadInitialNutrition(false);
+
+      if (isAnyNurientsEmpty) {
+        try {
+          const results = await fetchNutritionData({
+            foodItems: itemsToCheck,
+          }).unwrap();
+          dispatch(
+            applyNutritionResults({
+              requestedFoodIds: itemsToCheck.map((item) => item.foodId),
+              results,
+            }),
+          );
+        } catch (error) {
+          console.log("fetchNutritionData failed", error);
+        }
+      }
+      setShouldLoadInitialNutrition(false);
+    })();
+
     // isAnyFieldEmpty(selectedFood?.nutrients
 
     // setShouldLoadInitialNutrition(false);
-  }, [dispatch, meal, mealItemsFromFoodItems, shouldLoadInitialNutrition]);
+  }, [
+    dispatch,
+    fetchNutritionData,
+    meal,
+    mealItemsFromFoodItems,
+    shouldLoadInitialNutrition,
+  ]);
 
   function gotoItemDetails({
     groupId,
