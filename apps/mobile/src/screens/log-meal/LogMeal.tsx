@@ -25,7 +25,7 @@ import {
   fetchMealData,
   ItemSummary,
   removeMealItem,
-  saveMealData,
+  // saveMealData,
   selectActiveMealType,
   selectEatenAt,
   selectEditingEntryId,
@@ -48,7 +48,9 @@ import { DateTimeModal } from "@/components/date-time-modal";
 import {
   useFetchNutritionDataMutation,
   useLazyFetchMealDataQuery,
+  useSaveMealDataMutation,
 } from "@/store/services/logMealApi";
+import { mapPayloadForSaveMeal } from "./utils";
 
 export default function LogMeal() {
   const router = useRouter();
@@ -56,13 +58,14 @@ export default function LogMeal() {
 
   const [fetchNutritionData] = useFetchNutritionDataMutation();
   const [fetchMealData] = useLazyFetchMealDataQuery();
+  const [saveMealData] = useSaveMealDataMutation();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
     useState(false);
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectItemsSummary);
-  const meatlType = useAppSelector(selectActiveMealType);
+  const mealType = useAppSelector(selectActiveMealType);
   const isDirty = useAppSelector(selectIsDirty);
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
@@ -95,25 +98,25 @@ export default function LogMeal() {
   }, [mealCandidate, editingEntryId]);
 
   const meal = useAppSelector((state) => {
-    if (!meatlType) return null;
-    return selectMeal(meatlType)(state);
+    if (!mealType) return null;
+    return selectMeal(mealType)(state);
   });
   const mealItemsFromFoodItems = useAppSelector(selectMealItemsFromFoodItems);
-  // const meal = useAppSelector(selectMeal);
+  // const meal = saveMeal(mealType, meal, eatenAtIso);
 
   useEffect(() => {
-    if (!meatlType) return;
+    if (!mealType) return;
     if (editingEntryId) return;
     if ((meal?.length ?? 0) > 0) return;
 
     const todayIso = new Date().toISOString();
     const dayKey = todayIso.slice(0, 10);
-    const autoKey = `${meatlType}:${dayKey}`;
+    const autoKey = `${mealType}:${dayKey}`;
     if (autoLoadKeyRef.current === autoKey) return;
 
     autoLoadKeyRef.current = autoKey;
-    dispatch(fetchMealByDate({ eatenAt: todayIso, mealType: meatlType }));
-  }, [dispatch, meal, meatlType, editingEntryId]);
+    dispatch(fetchMealByDate({ eatenAt: todayIso, mealType: mealType }));
+  }, [dispatch, meal, mealType, editingEntryId]);
 
   async function submit() {
     const nextQuery = searchTerm.trim();
@@ -137,7 +140,10 @@ export default function LogMeal() {
       if (editingEntryId) {
         await dispatch(updateMealData()).unwrap();
       } else {
-        await dispatch(saveMealData()).unwrap();
+        if (meal && mealType) {
+          const mealData = mapPayloadForSaveMeal(eatenAtIso, meal, mealType);
+          await saveMealData({ mealData }).unwrap();
+        }
       }
       // await dispatch(fetchDashboard({ scope: "all" })).unwrap();
       isLeavingRef.current = true;
@@ -322,7 +328,7 @@ export default function LogMeal() {
           </TouchableOpacity>
         </View>
         <ThemedText type="title">
-          {editingEntryId ? `Update` : `Log`} {capitalize(meatlType)}
+          {editingEntryId ? `Update` : `Log`} {capitalize(mealType)}
         </ThemedText>
         <View style={logMealStyles.dateRow}>
           <ThemedText style={logMealStyles.dateText}>
@@ -438,11 +444,11 @@ export default function LogMeal() {
         onConfirm={(next) => {
           setDateTime(next);
           dispatch(setEatenAt({ eatenAt: next.toISOString() }));
-          if (meatlType && !editingEntryId) {
+          if (mealType && !editingEntryId) {
             dispatch(
               checkMealExists({
                 eatenAt: next.toISOString(),
-                mealType: meatlType,
+                mealType: mealType,
               }),
             );
           }
@@ -464,7 +470,7 @@ export default function LogMeal() {
           <View style={styles.modalCard}>
             <ThemedText type="defaultSemiBold">Meal already exists</ThemedText>
             <ThemedText style={styles.helperText}>
-              A {meatlType ?? "meal"} already exists on this date. Add to that
+              A {mealType ?? "meal"} already exists on this date. Add to that
               meal?
             </ThemedText>
             <View style={styles.modalActions}>

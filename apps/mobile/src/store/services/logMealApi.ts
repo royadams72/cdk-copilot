@@ -3,9 +3,12 @@ import {
   TEdamamNutritionResponse,
   TFoodItem,
   TLogMealEdamamResponse,
+  TMealType,
 } from "@ckd/core";
 
-import { setNutrientsBody } from "@/screens/log-meal/utils";
+import { setNutrientsBody } from "@/store/services/utils";
+import { ApiResponse } from "@/screens/dashboard/types";
+import { MealData } from "@/screens/log-meal/utils";
 
 const logMealApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,8 +31,27 @@ const logMealApi = appApi.injectEndpoints({
         url: "/api/food/nutrients",
       }),
     }),
+    saveMealData: builder.mutation<
+      ApiResponse<any> | null | string | undefined,
+      {
+        mealData: MealData;
+      }
+    >({
+      invalidatesTags: (_result, _error, arg) => [
+        { id: "today", type: "Dashboard" },
+        { id: "all", type: "Dashboard" },
+      ],
+      query: ({ mealData }) => ({
+        body: JSON.stringify(mealData),
+        method: "POST",
+        url: `/api/food/save`,
+      }),
+    }),
   }),
 });
 
-export const { useFetchNutritionDataMutation, useLazyFetchMealDataQuery } =
-  logMealApi;
+export const {
+  useFetchNutritionDataMutation,
+  useLazyFetchMealDataQuery,
+  useSaveMealDataMutation,
+} = logMealApi;

@@ -703,7 +703,7 @@ export const selectGroupInfoById = (groupId: string) => {
       foodItems?.find((group) => group.groupId === groupId)?.groupInfo ?? null,
   );
 };
-
+//
 export const selectMeal = (mealType: TMealType) => {
   return createSelector(mealState, (meal) => meal[mealType]);
 };
