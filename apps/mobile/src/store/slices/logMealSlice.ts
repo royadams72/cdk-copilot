@@ -354,7 +354,9 @@ const logMealSlice = createSlice({
       })
       .addCase(fetchNutritionData.fulfilled, (state, action) => {
         const requested = action.meta.arg.foodItems;
-        const requestedItems = Array.isArray(requested) ? requested : [requested];
+        const requestedItems = Array.isArray(requested)
+          ? requested
+          : [requested];
         applyNutritionResultsToState(
           state,
           action.payload,
@@ -446,6 +448,46 @@ const logMealSlice = createSlice({
   initialState,
   name: "logMeal",
   reducers: (create) => ({
+    applyFetchMealData: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          results: TLogMealEdamamResponse;
+        }>,
+      ) => {
+        state.status = "succeeded";
+        const incomingGroups = mapFoodItems(action.payload.results);
+        state.foodItems = mergeUniqueFoodGroups(
+          state.foodItems,
+          incomingGroups,
+        );
+        if (state.activeMealType) {
+          state.meal[state.activeMealType] = mergeUniqueMealItems(
+            state.meal[state.activeMealType],
+            setMealItems(incomingGroups),
+          );
+        }
+        state.isDirty = true;
+
+        state.error = null;
+        state.lastLoadedAt = new Date().toISOString();
+      },
+    ),
+    applyNutritionResults: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          requestedFoodIds: string[];
+          results: TEdamamNutritionResponse[];
+        }>,
+      ) => {
+        applyNutritionResultsToState(
+          state,
+          action.payload.results,
+          action.payload.requestedFoodIds,
+        );
+      },
+    ),
     clearMealCandidate: create.reducer((state) => {
       state.mealCandidate = null;
     }),
@@ -561,21 +603,6 @@ const logMealSlice = createSlice({
         state.isDirty = true;
       },
     ),
-    applyNutritionResults: create.reducer(
-      (
-        state,
-        action: PayloadAction<{
-          requestedFoodIds: string[];
-          results: TEdamamNutritionResponse[];
-        }>,
-      ) => {
-        applyNutritionResultsToState(
-          state,
-          action.payload.results,
-          action.payload.requestedFoodIds,
-        );
-      },
-    ),
     setMeal: create.reducer(
       (state, action: PayloadAction<{ food: TFoodItem }>) => {
         if (!state.activeMealType) return;
@@ -657,7 +684,7 @@ export const {
   setQuantity,
   setActiveItem,
   setMealType,
-  // setMeal,
+  applyFetchMealData,
   saveActiveItemToMeal,
   removeMealItem,
   clearMealState,

@@ -15,6 +15,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
+  applyFetchMealData,
   applyNutritionResults,
   checkMealExists,
   clearMealCandidate,
@@ -44,13 +45,17 @@ import { NutritionStyles as styles } from "../nutrition/styles";
 import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
 import { DateTimeModal } from "@/components/date-time-modal";
-import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
+import {
+  useFetchNutritionDataMutation,
+  useLazyFetchMealDataQuery,
+} from "@/store/services/logMealApi";
 
 export default function LogMeal() {
   const router = useRouter();
   const navigation = useNavigation();
 
   const [fetchNutritionData] = useFetchNutritionDataMutation();
+  const [fetchMealData] = useLazyFetchMealDataQuery();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
@@ -116,7 +121,10 @@ export default function LogMeal() {
     setIsSearching(true);
     setShouldLoadInitialNutrition(true);
     try {
-      await dispatch(fetchMealData({ searchTerm: nextQuery })).unwrap();
+      const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
+      dispatch(applyFetchMealData({ results }));
+    } catch (error) {
+      console.log("fetchMealData failed", error);
     } finally {
       setIsSearching(false);
     }
@@ -224,6 +232,7 @@ export default function LogMeal() {
       meal && meal.length > 0 ? meal : mealItemsFromFoodItems;
     if (!itemsToCheck.length) return;
     (async () => {
+      setIsSearching(true);
       const isAnyNurientsEmpty = itemsToCheck.some((item) =>
         isAnyFieldEmpty(item.nutrients),
       );
@@ -241,6 +250,8 @@ export default function LogMeal() {
           );
         } catch (error) {
           console.log("fetchNutritionData failed", error);
+        } finally {
+          setIsSearching(false);
         }
       }
       setShouldLoadInitialNutrition(false);
