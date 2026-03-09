@@ -3,7 +3,6 @@ import {
   TEdamamNutritionResponse,
   TFoodItem,
   TLogMealEdamamResponse,
-  TMealType,
 } from "@ckd/core";
 
 import { setNutrientsBody } from "@/store/services/utils";

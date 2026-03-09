@@ -25,7 +25,6 @@ import {
   fetchMealData,
   ItemSummary,
   removeMealItem,
-  // saveMealData,
   selectActiveMealType,
   selectEatenAt,
   selectEditingEntryId,
@@ -143,9 +142,9 @@ export default function LogMeal() {
         if (meal && mealType) {
           const mealData = mapPayloadForSaveMeal(eatenAtIso, meal, mealType);
           await saveMealData({ mealData }).unwrap();
+          dispatch(clearMealState());
         }
       }
-      // await dispatch(fetchDashboard({ scope: "all" })).unwrap();
       isLeavingRef.current = true;
       router.push("/(nutrition)/nutrition-details");
     } catch (err: any) {
