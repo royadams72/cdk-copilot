@@ -41,9 +41,25 @@ const logMealApi = appApi.injectEndpoints({
         { id: "all", type: "Dashboard" },
       ],
       query: ({ mealData }) => ({
-        body: JSON.stringify(mealData),
+        body: mealData,
         method: "POST",
         url: `/api/food/save`,
+      }),
+    }),
+    updateMealData: builder.mutation<
+      ApiResponse<any> | null | string | undefined,
+      {
+        mealData: MealData;
+      }
+    >({
+      invalidatesTags: (_result, _error, arg) => [
+        { id: "today", type: "Dashboard" },
+        { id: "all", type: "Dashboard" },
+      ],
+      query: ({ mealData }) => ({
+        body: mealData,
+        method: "POST",
+        url: `/api/food/update`,
       }),
     }),
   }),
@@ -53,4 +69,5 @@ export const {
   useFetchNutritionDataMutation,
   useLazyFetchMealDataQuery,
   useSaveMealDataMutation,
+  useUpdateMealDataMutation,
 } = logMealApi;

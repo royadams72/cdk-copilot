@@ -88,29 +88,6 @@ const initialState: logMealState = {
   status: "idle",
 };
 
-export const fetchMealData = createAsyncThunk<
-  TLogMealEdamamResponse,
-  { searchTerm: string },
-  { rejectValue: string }
->("logMeal/fetchMealData", async ({ searchTerm }, { rejectWithValue }) => {
-  try {
-    const res = await authFetch(
-      `${API}/api/food/search?query=${encodeURIComponent(searchTerm)}`,
-      { method: "GET" },
-    );
-    const body: unknown = await res.json().catch(() => null);
-    const ok = !!(body as any)?.ok;
-    const data = (body as any)?.data;
-
-    if (!res.ok || !ok) {
-      throw new Error(formatApiError(res.status, (body as any) ?? null));
-    }
-    return data as TLogMealEdamamResponse;
-  } catch (err: any) {
-    return rejectWithValue(err?.message ?? "Failed to load your meal data");
-  }
-});
-
 export const fetchNutritionData = createAsyncThunk<
   TEdamamNutritionResponse[],
   { foodItems: TFoodItem[] | TFoodItem },
@@ -133,86 +110,6 @@ export const fetchNutritionData = createAsyncThunk<
     return data as TEdamamNutritionResponse[];
   } catch (err: any) {
     return rejectWithValue(err?.message ?? "Failed to load your meal data");
-  }
-});
-
-export const saveMealData = createAsyncThunk<
-  ApiResponse<any> | null | string | undefined,
-  void,
-  { rejectValue: string; state: RootState }
->("logMeal/saveMealData", async (_, { getState, rejectWithValue }) => {
-  const state = getState() as RootState;
-  const activeMealType = state.logMeal.activeMealType;
-  if (!activeMealType) {
-    return rejectWithValue("No active meal type");
-  }
-  const meal = state.logMeal.meal[activeMealType] ?? [];
-  const payload = {
-    [activeMealType]: meal,
-    eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
-  } as Record<TMealType, TFoodItem[]> & {
-    eatenAt: string;
-  };
-
-  try {
-    const res = await authFetch(`${API}/api/food/save`, {
-      body: JSON.stringify(payload),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    type Response = ApiResponse<any>;
-    const body: unknown = await res.json().catch(() => null);
-    const ok = !!(body as Response)?.ok;
-    const data = (body as Response)?.data;
-    if (!res.ok || !ok) {
-      throw new Error(formatApiError(res.status, (body as any) ?? null));
-    }
-    return data as Response;
-  } catch (err: any) {
-    return rejectWithValue(err?.message ?? "Failed to save your meal data");
-  }
-});
-
-export const updateMealData = createAsyncThunk<
-  ApiResponse<any> | null | string | undefined,
-  void,
-  { rejectValue: string; state: RootState }
->("logMeal/updateMealData", async (_, { getState, rejectWithValue }) => {
-  const state = getState() as RootState;
-  const activeMealType = state.logMeal.activeMealType;
-  const entryId = state.logMeal.editingEntryId;
-  if (!activeMealType) {
-    return rejectWithValue("No active meal type");
-  }
-  if (!entryId) {
-    return rejectWithValue("No meal to update");
-  }
-  const meal = state.logMeal.meal[activeMealType] ?? [];
-  const payload = {
-    [activeMealType]: meal,
-    eatenAt: state.logMeal.eatenAt ?? new Date().toISOString(),
-    entryId,
-  } as Record<TMealType, TFoodItem[]> & {
-    eatenAt: string;
-    entryId: string;
-  };
-
-  try {
-    const res = await authFetch(`${API}/api/food/update`, {
-      body: JSON.stringify(payload),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    type Response = ApiResponse<any>;
-    const body: unknown = await res.json().catch(() => null);
-    const ok = !!(body as Response)?.ok;
-    const data = (body as Response)?.data;
-    if (!res.ok || !ok) {
-      throw new Error(formatApiError(res.status, (body as any) ?? null));
-    }
-    return data as Response;
-  } catch (err: any) {
-    return rejectWithValue(err?.message ?? "Failed to update your meal data");
   }
 });
 
@@ -315,38 +212,6 @@ export const fetchMealByDate = createAsyncThunk<
 const logMealSlice = createSlice({
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMealData.pending, (state) => {
-        state.status = "loading";
-        state.error = null;
-      })
-      .addCase(fetchMealData.fulfilled, (state, action) => {
-        if (!action.payload) return;
-        state.status = "succeeded";
-        const incomingGroups = mapFoodItems(action.payload);
-        state.foodItems = mergeUniqueFoodGroups(
-          state.foodItems,
-          incomingGroups,
-        );
-        if (state.activeMealType) {
-          state.meal[state.activeMealType] = mergeUniqueMealItems(
-            state.meal[state.activeMealType],
-            setMealItems(incomingGroups),
-          );
-        }
-        state.isDirty = true;
-
-        state.error = null;
-        state.lastLoadedAt = new Date().toISOString();
-
-        // console.log(current(state));
-      })
-      .addCase(fetchMealData.rejected, (state, action) => {
-        state.status = "failed";
-        state.error =
-          action.payload ??
-          action.error.message ??
-          "We couldn't refresh your dashboard.";
-      })
       // Fetch nutrition data
       .addCase(fetchNutritionData.pending, (state) => {
         state.status = "loading";
@@ -369,38 +234,8 @@ const logMealSlice = createSlice({
           action.payload ??
           action.error.message ??
           "We couldn't refresh your dashboard.";
-      })
-      .addCase(saveMealData.pending, (state) => {
-        state.status = "loading";
-        state.error = null;
-      })
-      .addCase(saveMealData.fulfilled, (state, action) => {
-        resetLogMeal(state);
-        state.status = "succeeded";
-      })
-      .addCase(saveMealData.rejected, (state, action) => {
-        state.status = "failed";
-        state.error =
-          action.payload ??
-          action.error.message ??
-          "We couldn't save your meal data.";
       });
-    builder
-      .addCase(updateMealData.pending, (state) => {
-        state.status = "loading";
-        state.error = null;
-      })
-      .addCase(updateMealData.fulfilled, (state) => {
-        resetLogMeal(state);
-        state.status = "succeeded";
-      })
-      .addCase(updateMealData.rejected, (state, action) => {
-        state.status = "failed";
-        state.error =
-          action.payload ??
-          action.error.message ??
-          "We couldn't update your meal data.";
-      });
+
     builder
       .addCase(deleteMealData.pending, (state) => {
         state.status = "loading";

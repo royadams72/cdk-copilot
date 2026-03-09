@@ -22,7 +22,6 @@ import {
   clearMealState,
   deleteMealData,
   fetchMealByDate,
-  fetchMealData,
   ItemSummary,
   removeMealItem,
   selectActiveMealType,
@@ -35,7 +34,6 @@ import {
   selectMealItemsFromFoodItems,
   setActiveItem,
   setEatenAt,
-  updateMealData,
 } from "@/store/slices/logMealSlice";
 import { fetchDashboard } from "@/store/slices/dashboardSlice";
 
@@ -48,27 +46,30 @@ import {
   useFetchNutritionDataMutation,
   useLazyFetchMealDataQuery,
   useSaveMealDataMutation,
+  useUpdateMealDataMutation,
 } from "@/store/services/logMealApi";
-import { mapPayloadForSaveMeal } from "./utils";
+import { mapForSaveOrUpdate } from "./utils";
 
 export default function LogMeal() {
   const router = useRouter();
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
 
   const [fetchNutritionData] = useFetchNutritionDataMutation();
   const [fetchMealData] = useLazyFetchMealDataQuery();
   const [saveMealData] = useSaveMealDataMutation();
+  const [updateMealData] = useUpdateMealDataMutation();
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
-    useState(false);
-  const dispatch = useAppDispatch();
   const items = useAppSelector(selectItemsSummary);
   const mealType = useAppSelector(selectActiveMealType);
   const isDirty = useAppSelector(selectIsDirty);
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const mealCandidate = useAppSelector(selectMealCandidate);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
+    useState(false);
 
   const isLeavingRef = useRef(false);
   const [dateTime, setDateTime] = useState(
@@ -136,15 +137,20 @@ export default function LogMeal() {
     if (isPersistingMeal) return;
     setIsPersistingMeal(true);
     try {
-      if (editingEntryId) {
-        await dispatch(updateMealData()).unwrap();
-      } else {
-        if (meal && mealType) {
-          const mealData = mapPayloadForSaveMeal(eatenAtIso, meal, mealType);
-          await saveMealData({ mealData }).unwrap();
-          dispatch(clearMealState());
-        }
+      if (editingEntryId && meal && mealType) {
+        const mealData = mapForSaveOrUpdate(
+          eatenAtIso,
+          meal,
+          mealType,
+          editingEntryId,
+        );
+        await updateMealData({ mealData }).unwrap();
+      } else if (meal && mealType) {
+        const mealData = mapForSaveOrUpdate(eatenAtIso, meal, mealType);
+        await saveMealData({ mealData }).unwrap();
       }
+
+      dispatch(clearMealState());
       isLeavingRef.current = true;
       router.push("/(nutrition)/nutrition-details");
     } catch (err: any) {

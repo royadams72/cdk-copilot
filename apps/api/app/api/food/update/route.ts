@@ -43,13 +43,17 @@ export async function POST(req: NextRequest) {
     }
 
     const type = Object.keys(meal);
-    if (type.length > 1) {
-      bad("Malformed 100", 500);
+    if (type.length !== 1) {
+      return bad("Malformed meal payload", { requestId }, 400);
     }
     const mealType = type[0] as TMealType;
-    const mealArray: TFoodItemEntry[] = (
-      meal as Record<TMealType, TFoodItem[]>
-    )[mealType].map(({ groupId, measures, ...rest }) => rest);
+    const rawMealItems = (meal as Record<TMealType, TFoodItem[]>)[mealType];
+    if (!Array.isArray(rawMealItems)) {
+      return bad("Malformed meal payload", { requestId }, 400);
+    }
+    const mealArray: TFoodItemEntry[] = rawMealItems.map(
+      ({ groupId, measures, ...rest }) => rest,
+    );
     const now = new Date();
     const eatenAt = eatenAtRaw ? new Date(eatenAtRaw) : now;
     const resolvedEatenAt = Number.isNaN(eatenAt.getTime()) ? now : eatenAt;
