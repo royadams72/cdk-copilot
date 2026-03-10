@@ -4,17 +4,13 @@ import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   ROLES,
-  TBaseFoodSchema,
   TEdamamFoodMeasure,
   TLogMealItem,
   TLogMealNormalised,
   TLogMealResponseItem,
 } from "@ckd/core";
-import { COLLECTIONS, getCollection } from "@ckd/core/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
-import { getDb } from "@/apps/api/lib/db/mongodb";
-import { applyPhraseRules } from "./applyPhraseRules";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
 const foodURI = process.env.EDAMAM_API_FOOD_URI || "";
@@ -22,8 +18,6 @@ const foodAppID = process.env.EDAMAM_API_ID || "";
 
 export async function GET(req: NextRequest) {
   const requestId = makeRandomId();
-  const db = await getDb();
-  const collection = getCollection<TBaseFoodSchema>(db, COLLECTIONS.BaseFoods);
   if (!foodAppID || !foodAppKey || !foodURI) {
     return bad("App vars not found", { requestId }, 403);
   }

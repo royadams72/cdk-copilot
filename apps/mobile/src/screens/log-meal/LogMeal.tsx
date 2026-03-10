@@ -15,16 +15,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
-  checkMealExists,
+  applyFetchMealByDate,
+  applyFetchMealData,
+  applyMealCandidate,
+  applyNutritionResults,
   clearMealCandidate,
   clearMealState,
-  deleteMealData,
-  fetchMealByDate,
-  fetchMealData,
-  fetchNutritionData,
   ItemSummary,
   removeMealItem,
-  saveMealData,
   selectActiveMealType,
   selectEatenAt,
   selectEditingEntryId,
@@ -35,29 +33,48 @@ import {
   selectMealItemsFromFoodItems,
   setActiveItem,
   setEatenAt,
-  updateMealData,
 } from "@/store/slices/logMealSlice";
-import { fetchDashboard } from "@/store/slices/dashboardSlice";
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles as styles } from "../nutrition/styles";
 import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
 import { DateTimeModal } from "@/components/date-time-modal";
+import {
+  useCheckMealExistsMutation,
+  useDeleteMealDataMutation,
+  useFetchMealByDateMutation,
+  useFetchNutritionDataMutation,
+  useLazyFetchMealDataQuery,
+  useSaveMealDataMutation,
+  useUpdateMealDataMutation,
+} from "@/store/services/logMealApi";
+import { toQueryErrorMessage } from "@/store/services/appApi";
+import { mapForSaveOrUpdate } from "./utils";
 
 export default function LogMeal() {
   const router = useRouter();
   const navigation = useNavigation();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
-    useState(false);
   const dispatch = useAppDispatch();
+
+  const [fetchNutritionData] = useFetchNutritionDataMutation();
+  const [fetchMealData] = useLazyFetchMealDataQuery();
+  const [fetchMealByDate] = useFetchMealByDateMutation();
+  const [checkMealExists] = useCheckMealExistsMutation();
+  const [deleteMealData] = useDeleteMealDataMutation();
+  const [saveMealData] = useSaveMealDataMutation();
+  const [updateMealData] = useUpdateMealDataMutation();
+
   const items = useAppSelector(selectItemsSummary);
-  const meatlType = useAppSelector(selectActiveMealType);
+  const mealType = useAppSelector(selectActiveMealType);
   const isDirty = useAppSelector(selectIsDirty);
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const mealCandidate = useAppSelector(selectMealCandidate);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
+    useState(false);
 
   const isLeavingRef = useRef(false);
   const [dateTime, setDateTime] = useState(
@@ -86,25 +103,34 @@ export default function LogMeal() {
   }, [mealCandidate, editingEntryId]);
 
   const meal = useAppSelector((state) => {
-    if (!meatlType) return null;
-    return selectMeal(meatlType)(state);
+    if (!mealType) return null;
+    return selectMeal(mealType)(state);
   });
   const mealItemsFromFoodItems = useAppSelector(selectMealItemsFromFoodItems);
-  // const meal = useAppSelector(selectMeal);
 
   useEffect(() => {
-    if (!meatlType) return;
+    if (!mealType) return;
     if (editingEntryId) return;
     if ((meal?.length ?? 0) > 0) return;
 
     const todayIso = new Date().toISOString();
     const dayKey = todayIso.slice(0, 10);
-    const autoKey = `${meatlType}:${dayKey}`;
+    const autoKey = `${mealType}:${dayKey}`;
     if (autoLoadKeyRef.current === autoKey) return;
 
     autoLoadKeyRef.current = autoKey;
-    dispatch(fetchMealByDate({ eatenAt: todayIso, mealType: meatlType }));
-  }, [dispatch, meal, meatlType, editingEntryId]);
+    void (async () => {
+      try {
+        const entry = await fetchMealByDate({
+          eatenAt: todayIso,
+          mealType: mealType,
+        }).unwrap();
+        dispatch(applyFetchMealByDate({ entry }));
+      } catch (error) {
+        console.log("fetchMealByDate failed", error);
+      }
+    })();
+  }, [dispatch, fetchMealByDate, meal, mealType, editingEntryId]);
 
   async function submit() {
     const nextQuery = searchTerm.trim();
@@ -112,7 +138,10 @@ export default function LogMeal() {
     setIsSearching(true);
     setShouldLoadInitialNutrition(true);
     try {
-      await dispatch(fetchMealData({ searchTerm: nextQuery })).unwrap();
+      const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
+      dispatch(applyFetchMealData({ results }));
+    } catch (error) {
+      console.log("fetchMealData failed", error);
     } finally {
       setIsSearching(false);
     }
@@ -122,18 +151,26 @@ export default function LogMeal() {
     if (isPersistingMeal) return;
     setIsPersistingMeal(true);
     try {
-      if (editingEntryId) {
-        await dispatch(updateMealData()).unwrap();
-      } else {
-        await dispatch(saveMealData()).unwrap();
+      if (editingEntryId && meal && mealType) {
+        const mealData = mapForSaveOrUpdate(
+          eatenAtIso,
+          meal,
+          mealType,
+          editingEntryId,
+        );
+        await updateMealData({ mealData }).unwrap();
+      } else if (meal && mealType) {
+        const mealData = mapForSaveOrUpdate(eatenAtIso, meal, mealType);
+        await saveMealData({ mealData }).unwrap();
       }
-      await dispatch(fetchDashboard({ scope: "all" })).unwrap();
+
+      dispatch(clearMealState());
       isLeavingRef.current = true;
-      router.replace("/(nutrition)/nutrition-details");
+      router.push("/(nutrition)/nutrition-details");
     } catch (err: any) {
       Alert.alert(
         editingEntryId ? "Update failed" : "Save failed",
-        err?.message ?? "Please try again.",
+        toQueryErrorMessage(err, "Please try again."),
       );
     } finally {
       setIsPersistingMeal(false);
@@ -144,8 +181,11 @@ export default function LogMeal() {
     if (isPersistingMeal) return;
     setIsPersistingMeal(true);
     try {
-      await dispatch(deleteMealData()).unwrap();
-      await dispatch(fetchDashboard({ scope: "all" })).unwrap();
+      if (!editingEntryId) {
+        Alert.alert("Delete failed", "No meal to delete.");
+        return;
+      }
+      await deleteMealData({ entryId: editingEntryId }).unwrap();
       isLeavingRef.current = true;
       router.replace("/(nutrition)/nutrition-details");
     } catch (err: any) {
@@ -219,22 +259,38 @@ export default function LogMeal() {
     const itemsToCheck =
       meal && meal.length > 0 ? meal : mealItemsFromFoodItems;
     if (!itemsToCheck.length) return;
-    const isAnyNurientsEmpty = itemsToCheck.some((item) =>
-      isAnyFieldEmpty(item.nutrients),
-    );
-
-    if (isAnyNurientsEmpty) {
-      dispatch(
-        fetchNutritionData({
-          foodItems: itemsToCheck,
-        }),
+    (async () => {
+      setIsSearching(true);
+      const isAnyNurientsEmpty = itemsToCheck.some((item) =>
+        isAnyFieldEmpty(item.nutrients),
       );
-    }
-    setShouldLoadInitialNutrition(false);
-    // isAnyFieldEmpty(selectedFood?.nutrients
 
-    // setShouldLoadInitialNutrition(false);
-  }, [dispatch, meal, mealItemsFromFoodItems, shouldLoadInitialNutrition]);
+      if (isAnyNurientsEmpty) {
+        try {
+          const results = await fetchNutritionData({
+            foodItems: itemsToCheck,
+          }).unwrap();
+          dispatch(
+            applyNutritionResults({
+              requestedFoodIds: itemsToCheck.map((item) => item.foodId),
+              results,
+            }),
+          );
+        } catch (error) {
+          console.log("fetchNutritionData failed", error);
+        } finally {
+          setIsSearching(false);
+        }
+      }
+      setShouldLoadInitialNutrition(false);
+    })();
+  }, [
+    dispatch,
+    fetchNutritionData,
+    meal,
+    mealItemsFromFoodItems,
+    shouldLoadInitialNutrition,
+  ]);
 
   function gotoItemDetails({
     groupId,
@@ -270,7 +326,7 @@ export default function LogMeal() {
     minute: "2-digit",
   });
   const dateLabel = isToday(dateTime) ? "Today" : "Selected";
-  const canSubmitMeal = items.length > 0 && (!editingEntryId || isDirty);
+  const canSubmitMeal = items.length > 0;
 
   const capitalize = (value: string | null | undefined) => {
     if (!value) return "";
@@ -290,7 +346,7 @@ export default function LogMeal() {
           </TouchableOpacity>
         </View>
         <ThemedText type="title">
-          {editingEntryId ? `Update` : `Log`} {capitalize(meatlType)}
+          {editingEntryId ? `Update` : `Log`} {capitalize(mealType)}
         </ThemedText>
         <View style={logMealStyles.dateRow}>
           <ThemedText style={logMealStyles.dateText}>
@@ -406,13 +462,18 @@ export default function LogMeal() {
         onConfirm={(next) => {
           setDateTime(next);
           dispatch(setEatenAt({ eatenAt: next.toISOString() }));
-          if (meatlType && !editingEntryId) {
-            dispatch(
-              checkMealExists({
-                eatenAt: next.toISOString(),
-                mealType: meatlType,
-              }),
-            );
+          if (mealType && !editingEntryId) {
+            void (async () => {
+              try {
+                const candidate = await checkMealExists({
+                  eatenAt: next.toISOString(),
+                  mealType: mealType,
+                }).unwrap();
+                dispatch(applyMealCandidate({ candidate }));
+              } catch (error) {
+                dispatch(applyMealCandidate({ candidate: null }));
+              }
+            })();
           }
           setShowDateTimeModal(false);
         }}
@@ -432,22 +493,26 @@ export default function LogMeal() {
           <View style={styles.modalCard}>
             <ThemedText type="defaultSemiBold">Meal already exists</ThemedText>
             <ThemedText style={styles.helperText}>
-              A {meatlType ?? "meal"} already exists on this date. Add to that
+              A {mealType ?? "meal"} already exists on this date. Add to that
               meal?
             </ThemedText>
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
                 onPress={() => {
-                  if (mealCandidate) {
-                    dispatch(
-                      fetchMealByDate({
-                        eatenAt:
-                          mealCandidate.eatenAt ?? dateTime.toISOString(),
-                        mealType: mealCandidate.mealType,
-                      }),
-                    );
-                  }
+                  if (mealCandidate)
+                    void (async () => {
+                      try {
+                        const entry = await fetchMealByDate({
+                          eatenAt:
+                            mealCandidate.eatenAt ?? dateTime.toISOString(),
+                          mealType: mealCandidate.mealType,
+                        }).unwrap();
+                        dispatch(applyFetchMealByDate({ entry }));
+                      } catch (error) {
+                        console.log("fetchMealByDate failed", error);
+                      }
+                    })();
                   setShowExistingMealModal(false);
                 }}
               >
