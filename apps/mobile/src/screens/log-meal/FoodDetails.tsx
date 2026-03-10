@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  fetchNutritionData,
+  applyNutritionResults,
   saveActiveItemToMeal,
   selectAcitveGroupSummaries,
   selectActiveItem,
@@ -18,6 +18,7 @@ import {
   setActiveItem,
   setQuantity,
 } from "@/store/slices/logMealSlice";
+import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles } from "../nutrition/styles";
@@ -29,6 +30,7 @@ import { FoodCard } from "@/components/food-card";
 export default function FoodDetails() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const [fetchNutritionData] = useFetchNutritionDataMutation();
   const selectedFood = useAppSelector(selectActiveItem);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const foods = useAppSelector(selectAcitveGroupSummaries);
@@ -56,8 +58,22 @@ export default function FoodDetails() {
     if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
 
     requestedNutritionByUidRef.current.add(selectedFood.uid);
-    dispatch(fetchNutritionData({ foodItems: selectedFood }));
-  }, [selectedFood, groupInfo, dispatch]);
+    void (async () => {
+      try {
+        const results = await fetchNutritionData({
+          foodItems: selectedFood,
+        }).unwrap();
+        dispatch(
+          applyNutritionResults({
+            requestedFoodIds: [selectedFood.foodId],
+            results,
+          }),
+        );
+      } catch (error) {
+        console.log("fetchNutritionData failed", error);
+      }
+    })();
+  }, [selectedFood, groupInfo, dispatch, fetchNutritionData]);
 
   const handleSetQuantity = ({
     quantity,

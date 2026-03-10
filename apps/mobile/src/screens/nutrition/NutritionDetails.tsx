@@ -28,11 +28,11 @@ import {
 } from "@/store/services/dashboardApi";
 
 import {
-  deleteMealData,
   hydrateMealFromEntry,
   mealTypes,
   setMealType,
 } from "@/store/slices/logMealSlice";
+import { useDeleteMealDataMutation } from "@/store/services/logMealApi";
 import type { FoodHighlight } from "../dashboard/types";
 import { RatioCard } from "../dashboard/components/RatioCard";
 import { AccordionCard } from "../dashboard/components/AccordionCard";
@@ -46,6 +46,7 @@ export default function NutritionDetails() {
   const router = useRouter();
   const theme = useColorScheme() ?? "light";
   const dispatch = useAppDispatch();
+  const [deleteMealData] = useDeleteMealDataMutation();
   const { data, error, isFetching, isLoading, refetch } =
     useGetDashboardQuery("all");
   const errorMessage = toQueryErrorMessage(
@@ -573,7 +574,7 @@ export default function NutritionDetails() {
                             { style: "cancel", text: "Cancel" },
                             {
                               onPress: () => {
-                                dispatch(deleteMealData({ entryId: meal.id }))
+                                deleteMealData({ entryId: meal.id })
                                   .unwrap()
                                   .then(() => refetch());
                               },

@@ -323,6 +323,38 @@ const logMealSlice = createSlice({
         );
       },
     ),
+    applyMealCandidate: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          candidate: {
+            eatenAt: string | null;
+            entryId: string;
+            mealType: TMealType;
+          } | null;
+        }>,
+      ) => {
+        state.mealCandidate = action.payload.candidate;
+      },
+    ),
+    applyFetchMealByDate: create.reducer(
+      (
+        state,
+        action: PayloadAction<{
+          entry: {
+            eatenAt: string | null;
+            entryId: string;
+            items: TFoodItemEntry[];
+            mealType: TMealType;
+          } | null;
+        }>,
+      ) => {
+        state.status = "succeeded";
+        if (!action.payload.entry) return;
+        mergeEntryIntoState(state, action.payload.entry);
+        state.mealCandidate = null;
+      },
+    ),
     clearMealCandidate: create.reducer((state) => {
       state.mealCandidate = null;
     }),
@@ -516,6 +548,8 @@ const logMealSlice = createSlice({
 export default logMealSlice.reducer;
 export const {
   applyNutritionResults,
+  applyMealCandidate,
+  applyFetchMealByDate,
   setQuantity,
   setActiveItem,
   setMealType,

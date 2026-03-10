@@ -15,13 +15,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
+  applyFetchMealByDate,
   applyFetchMealData,
+  applyMealCandidate,
   applyNutritionResults,
-  checkMealExists,
   clearMealCandidate,
   clearMealState,
-  deleteMealData,
-  fetchMealByDate,
   ItemSummary,
   removeMealItem,
   selectActiveMealType,
@@ -35,7 +34,6 @@ import {
   setActiveItem,
   setEatenAt,
 } from "@/store/slices/logMealSlice";
-import { fetchDashboard } from "@/store/slices/dashboardSlice";
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles as styles } from "../nutrition/styles";
@@ -43,11 +41,15 @@ import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
 import { DateTimeModal } from "@/components/date-time-modal";
 import {
+  useCheckMealExistsMutation,
+  useDeleteMealDataMutation,
+  useFetchMealByDateMutation,
   useFetchNutritionDataMutation,
   useLazyFetchMealDataQuery,
   useSaveMealDataMutation,
   useUpdateMealDataMutation,
 } from "@/store/services/logMealApi";
+import { toQueryErrorMessage } from "@/store/services/appApi";
 import { mapForSaveOrUpdate } from "./utils";
 
 export default function LogMeal() {
@@ -57,6 +59,9 @@ export default function LogMeal() {
 
   const [fetchNutritionData] = useFetchNutritionDataMutation();
   const [fetchMealData] = useLazyFetchMealDataQuery();
+  const [fetchMealByDate] = useFetchMealByDateMutation();
+  const [checkMealExists] = useCheckMealExistsMutation();
+  const [deleteMealData] = useDeleteMealDataMutation();
   const [saveMealData] = useSaveMealDataMutation();
   const [updateMealData] = useUpdateMealDataMutation();
 
@@ -115,8 +120,18 @@ export default function LogMeal() {
     if (autoLoadKeyRef.current === autoKey) return;
 
     autoLoadKeyRef.current = autoKey;
-    dispatch(fetchMealByDate({ eatenAt: todayIso, mealType: mealType }));
-  }, [dispatch, meal, mealType, editingEntryId]);
+    void (async () => {
+      try {
+        const entry = await fetchMealByDate({
+          eatenAt: todayIso,
+          mealType: mealType,
+        }).unwrap();
+        dispatch(applyFetchMealByDate({ entry }));
+      } catch (error) {
+        console.log("fetchMealByDate failed", error);
+      }
+    })();
+  }, [dispatch, fetchMealByDate, meal, mealType, editingEntryId]);
 
   async function submit() {
     const nextQuery = searchTerm.trim();
@@ -156,7 +171,7 @@ export default function LogMeal() {
     } catch (err: any) {
       Alert.alert(
         editingEntryId ? "Update failed" : "Save failed",
-        err?.message ?? "Please try again.",
+        toQueryErrorMessage(err, "Please try again."),
       );
     } finally {
       setIsPersistingMeal(false);
@@ -167,8 +182,11 @@ export default function LogMeal() {
     if (isPersistingMeal) return;
     setIsPersistingMeal(true);
     try {
-      await dispatch(deleteMealData()).unwrap();
-      await dispatch(fetchDashboard({ scope: "all" })).unwrap();
+      if (!editingEntryId) {
+        Alert.alert("Delete failed", "No meal to delete.");
+        return;
+      }
+      await deleteMealData({ entryId: editingEntryId }).unwrap();
       isLeavingRef.current = true;
       router.replace("/(nutrition)/nutrition-details");
     } catch (err: any) {
@@ -313,7 +331,7 @@ export default function LogMeal() {
     minute: "2-digit",
   });
   const dateLabel = isToday(dateTime) ? "Today" : "Selected";
-  const canSubmitMeal = items.length > 0 && (!editingEntryId || isDirty);
+  const canSubmitMeal = items.length > 0;
 
   const capitalize = (value: string | null | undefined) => {
     if (!value) return "";
@@ -450,12 +468,17 @@ export default function LogMeal() {
           setDateTime(next);
           dispatch(setEatenAt({ eatenAt: next.toISOString() }));
           if (mealType && !editingEntryId) {
-            dispatch(
-              checkMealExists({
-                eatenAt: next.toISOString(),
-                mealType: mealType,
-              }),
-            );
+            void (async () => {
+              try {
+                const candidate = await checkMealExists({
+                  eatenAt: next.toISOString(),
+                  mealType: mealType,
+                }).unwrap();
+                dispatch(applyMealCandidate({ candidate }));
+              } catch (error) {
+                dispatch(applyMealCandidate({ candidate: null }));
+              }
+            })();
           }
           setShowDateTimeModal(false);
         }}
@@ -482,15 +505,19 @@ export default function LogMeal() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
                 onPress={() => {
-                  if (mealCandidate) {
-                    dispatch(
-                      fetchMealByDate({
-                        eatenAt:
-                          mealCandidate.eatenAt ?? dateTime.toISOString(),
-                        mealType: mealCandidate.mealType,
-                      }),
-                    );
-                  }
+                  if (mealCandidate)
+                    void (async () => {
+                      try {
+                        const entry = await fetchMealByDate({
+                          eatenAt:
+                            mealCandidate.eatenAt ?? dateTime.toISOString(),
+                          mealType: mealCandidate.mealType,
+                        }).unwrap();
+                        dispatch(applyFetchMealByDate({ entry }));
+                      } catch (error) {
+                        console.log("fetchMealByDate failed", error);
+                      }
+                    })();
                   setShowExistingMealModal(false);
                 }}
               >

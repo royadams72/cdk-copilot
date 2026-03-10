@@ -2,7 +2,9 @@ import { appApi } from "./appApi";
 import {
   TEdamamNutritionResponse,
   TFoodItem,
+  TFoodItemEntry,
   TLogMealEdamamResponse,
+  TMealType,
 } from "@ckd/core";
 
 import { setNutrientsBody } from "@/store/services/utils";
@@ -62,11 +64,78 @@ const logMealApi = appApi.injectEndpoints({
         url: `/api/food/update`,
       }),
     }),
+    deleteMealData: builder.mutation<
+      ApiResponse<any> | null | string | undefined,
+      {
+        entryId: string;
+      }
+    >({
+      invalidatesTags: (_result, _error, _arg) => [
+        { id: "today", type: "Dashboard" },
+        { id: "all", type: "Dashboard" },
+      ],
+      query: ({ entryId }) => ({
+        body: { entryId },
+        method: "POST",
+        url: `/api/food/delete`,
+      }),
+    }),
+    checkMealExists: builder.mutation<
+      { eatenAt: string | null; entryId: string; mealType: TMealType } | null,
+      { eatenAt: string; mealType: TMealType }
+    >({
+      query: ({ eatenAt, mealType }) => ({
+        body: { eatenAt, mealType },
+        method: "POST",
+        url: "/api/food/exists",
+      }),
+      transformResponse: (response: {
+        exists?: boolean;
+        eatenAt?: string | null;
+        entryId?: string;
+        mealType?: TMealType;
+      }) => {
+        if (!response?.exists || !response.entryId || !response.mealType) {
+          return null;
+        }
+        return {
+          eatenAt: response.eatenAt ?? null,
+          entryId: response.entryId,
+          mealType: response.mealType,
+        };
+      },
+    }),
+    fetchMealByDate: builder.mutation<
+      {
+        eatenAt: string | null;
+        entryId: string;
+        items: TFoodItemEntry[];
+        mealType: TMealType;
+      } | null,
+      { eatenAt: string; mealType: TMealType }
+    >({
+      query: ({ eatenAt, mealType }) => ({
+        body: { eatenAt, mealType },
+        method: "POST",
+        url: "/api/food/by-date",
+      }),
+      transformResponse: (response: {
+        entry?: {
+          eatenAt: string | null;
+          entryId: string;
+          items: TFoodItemEntry[];
+          mealType: TMealType;
+        } | null;
+      }) => response?.entry ?? null,
+    }),
   }),
 });
 
 export const {
   useFetchNutritionDataMutation,
+  useFetchMealByDateMutation,
+  useCheckMealExistsMutation,
+  useDeleteMealDataMutation,
   useLazyFetchMealDataQuery,
   useSaveMealDataMutation,
   useUpdateMealDataMutation,
