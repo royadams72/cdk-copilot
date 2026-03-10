@@ -107,7 +107,6 @@ export default function LogMeal() {
     return selectMeal(mealType)(state);
   });
   const mealItemsFromFoodItems = useAppSelector(selectMealItemsFromFoodItems);
-  // const meal = saveMeal(mealType, meal, eatenAtIso);
 
   useEffect(() => {
     if (!mealType) return;
@@ -285,10 +284,6 @@ export default function LogMeal() {
       }
       setShouldLoadInitialNutrition(false);
     })();
-
-    // isAnyFieldEmpty(selectedFood?.nutrients
-
-    // setShouldLoadInitialNutrition(false);
   }, [
     dispatch,
     fetchNutritionData,
