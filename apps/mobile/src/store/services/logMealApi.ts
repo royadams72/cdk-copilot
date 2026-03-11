@@ -1,6 +1,6 @@
 import { appApi } from "./appApi";
 import {
-  TEdamamNutritionResponse,
+  TEdamamNutritionLookupResult,
   TFoodItem,
   TFoodItemEntry,
   TLogMealEdamamResponse,
@@ -23,7 +23,7 @@ const logMealApi = appApi.injectEndpoints({
       }),
     }),
     fetchNutritionData: builder.mutation<
-      TEdamamNutritionResponse[],
+      TEdamamNutritionLookupResult[],
       { foodItems: TFoodItem[] | TFoodItem }
     >({
       query: ({ foodItems }) => ({
@@ -129,6 +129,7 @@ const logMealApi = appApi.injectEndpoints({
       }) => response?.entry ?? null,
     }),
   }),
+  overrideExisting: true,
 });
 
 export const {

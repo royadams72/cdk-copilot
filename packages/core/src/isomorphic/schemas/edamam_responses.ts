@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EdamamMeasureSchema } from "./edamam";
 
 /**
  * Generic nutrient entry: label + quantity + unit
@@ -49,6 +50,37 @@ export const EdamamNutritionResponseSchema = z.object({
   ),
 });
 
+export const EdamamNutritionLookupItemSchema = z.object({
+  foodId: z.string(),
+  foodName: z.string().optional(),
+  measureURI: z.string().optional(),
+  measures: z.array(EdamamMeasureSchema).default([]),
+  originalText: z.string().optional(),
+  quantity: z.number(),
+  unit: z.string().optional(),
+});
+
+export const EdamamResolvedMeasureSchema = z.object({
+  label: z.string(),
+  measureURI: z.string(),
+  qualifiers: z.array(z.string()).optional(),
+});
+
+export const EdamamNutritionLookupResultSchema = z.object({
+  requestedFoodId: z.string(),
+  resolvedMeasure: EdamamResolvedMeasureSchema,
+  response: EdamamNutritionResponseSchema,
+});
+
 export type TEdamamNutritionResponse = z.infer<
   typeof EdamamNutritionResponseSchema
+>;
+export type TEdamamNutritionLookupItem = z.infer<
+  typeof EdamamNutritionLookupItemSchema
+>;
+export type TEdamamResolvedMeasure = z.infer<
+  typeof EdamamResolvedMeasureSchema
+>;
+export type TEdamamNutritionLookupResult = z.infer<
+  typeof EdamamNutritionLookupResultSchema
 >;

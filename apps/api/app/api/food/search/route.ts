@@ -10,6 +10,7 @@ import {
   TLogMealResponseItem,
 } from "@ckd/core";
 import { NextRequest } from "next/server";
+import { applyPhraseRules } from "./applyPhraseRules";
 import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
@@ -43,7 +44,6 @@ export async function GET(req: NextRequest) {
       itemsForEdamam.map(async (item: TLogMealItem) => {
         const tempId = makeRandomId();
         const edamamText = item.normalised;
-        // console.log("edamamText::", edamamText);
 
         const params = new URLSearchParams({
           app_id: foodAppID,
@@ -58,36 +58,15 @@ export async function GET(req: NextRequest) {
         if (!res.ok) {
           throw new Error(`Edamam error (${res.status})`);
         }
+
         const data = await res.json();
+        console.log("data:", data.parsed[0].measure);
+
         const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
           data,
           edamamText,
         );
-        // const token = match.food.label.trim().toLowerCase();
-        // // e.g. "potatoes, boiled, no salt"
-
-        // // split into tokens
-        // const tokens = token
-        //   .replace(/[,.;:()]/g, " ")
-        //   .split(/\s+/)
-        //   .filter(Boolean);
-
-        // // e.g. ["potatoes","boiled","no","salt"]
-
-        // const cofidFoods = await collection
-        //   .find({
-        //     keywords: { $all: tokens }, // all tokens must be in keywords[]
-        //   })
-        //   .limit(20)
-        //   .toArray();
-
-        // console.log("tokens::", tokens);
-        // if (edamamText === "roast chicken thigh with skin") {
-        // for (const food of cofidFoods) {
-        //   console.log(edamamText, food.nutrientsPer100g.energyKcal);
-        //   // }
-        // }
-        // console.log("matches::", matches);
+        console.log("matches:", matches);
 
         return {
           tempId,
@@ -96,20 +75,6 @@ export async function GET(req: NextRequest) {
         } satisfies TLogMealResponseItem;
       }),
     );
-    // console.log("results::", results?.[0]);
-    // console.log("results::", results?.[0].item);
-
-    // console.dir(
-    //   results[0].matches?.[0].measures.map((obj) => obj?.qualified),
-    //   { depth: null }
-    // );
-    // console.dir(results[0].matches?.[0], { depth: null });
-    // console.dir(
-    //   results[0].matches?.[0].measures.map((obj) =>
-    //     obj.qualified?.map((q) => q.qualifiers)
-    //   ),
-    //   { depth: null }
-    // );
 
     return ok({ items: results, requestId });
     // return NextResponse.json({ items: results, requestId });
@@ -132,12 +97,94 @@ export async function pickBestEdamamFood(
   const genericFoods = hints.filter((h) => h.food.categoryLabel === "food");
   const pool = genericFoods.length ? genericFoods : hints;
 
-  // const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
-  // if (phraseMatch) return phraseMatch as any;
-  // console.log("phraseMatch::", phraseMatch);
+  const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
+  console.log("phraseMatch", phraseMatch);
+  return [...pool]
+    .sort(
+      (a, b) =>
+        scoreHint(b as TEdamamFoodMeasure, item, phraseMatch) -
+        scoreHint(a as TEdamamFoodMeasure, item, phraseMatch),
+    )
+    .map((entry) => entry as TEdamamFoodMeasure);
+}
 
-  // console.log(pool);
+function scoreHint(
+  hint: TEdamamFoodMeasure,
+  query: string,
+  phraseMatch: { food?: { foodId?: string; label?: string } } | null,
+) {
+  const label = hint.food.label.trim().toLowerCase();
+  let score = 0;
 
-  // Otherwise, fall back to first generic food
-  return pool;
+  const phraseFoodId = phraseMatch?.food?.foodId;
+  const phraseLabel = phraseMatch?.food?.label?.trim().toLowerCase();
+
+  if (
+    phraseMatch &&
+    ((phraseFoodId && hint.food.foodId === phraseFoodId) ||
+      (phraseLabel && label === phraseLabel))
+  ) {
+    score += 40;
+  }
+
+  for (const token of query.split(/\s+/).filter(Boolean)) {
+    if (label.includes(token)) score += 8;
+  }
+
+  if (query.includes("whole")) {
+    const isWholeEntity =
+      /\bwhole\b/.test(label) &&
+      !/\bwhole\s+(grain|wheat|meal)\b/.test(label);
+    if (isWholeEntity) score += 60;
+    else score -= 25;
+  }
+
+  const junkTerms = [
+    "nugget",
+    "nuggets",
+    "breaded",
+    "school lunch",
+    "patty",
+    "tender",
+    "tenders",
+  ];
+  for (const term of junkTerms) {
+    if (label.includes(term)) score -= 35;
+  }
+
+  if (query.includes("chicken")) {
+    if (label.includes("chicken")) score += 15;
+    else score -= 20;
+  }
+
+  const cookingTerms = [
+    "boiled",
+    "fried",
+    "grilled",
+    "roasted",
+    "baked",
+    "steamed",
+    "broiled",
+    "poached",
+  ];
+
+  for (const term of cookingTerms) {
+    const queryHasTerm = query.includes(term);
+    const labelHasTerm = label.includes(term);
+
+    if (queryHasTerm && labelHasTerm) score += 20;
+    if (!queryHasTerm && labelHasTerm) score -= 12;
+  }
+
+  if (query.includes("with skin")) {
+    if (label.includes("with skin") || label.includes("skin-on")) score += 20;
+    else score -= 10;
+  }
+
+  if (query.includes("skinless")) {
+    if (label.includes("skinless")) score += 20;
+    else score -= 10;
+  }
+
+  return score;
 }

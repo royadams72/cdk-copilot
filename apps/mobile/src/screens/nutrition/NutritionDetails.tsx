@@ -169,6 +169,10 @@ export default function NutritionDetails() {
 
   const selectedPoint =
     selectedPointIndex !== null ? chartSeries[selectedPointIndex] : null;
+  const selectedMetricValue =
+    selectedPoint !== null
+      ? metricValue(selectedPoint.totals, metricConfig.key)
+      : data?.nutrition.totals?.[metricConfig.key];
 
   const highlightDate =
     selectedPoint?.date ?? data?.nutrition.foodHighlights.latestDate ?? null;
@@ -236,7 +240,7 @@ export default function NutritionDetails() {
           <View style={NutritionStyles.navRow}>
             <TouchableOpacity
               accessibilityRole="button"
-              onPress={() => router.back()}
+              onPress={() => router.replace("/(dashboard)/dashboard")}
               style={NutritionStyles.navButton}
             >
               <ThemedText style={NutritionStyles.navButtonText}>
@@ -296,10 +300,7 @@ export default function NutritionDetails() {
                   {metricConfig.label}
                 </ThemedText>
                 <ThemedText style={NutritionStyles.legendValue}>
-                  {formatChartValue(
-                    data?.nutrition.totals?.[metricConfig.key],
-                    metricConfig.unit,
-                  )}
+                  {formatChartValue(selectedMetricValue, metricConfig.unit)}
                 </ThemedText>
               </View>
               <View style={NutritionStyles.chartWrap}>
