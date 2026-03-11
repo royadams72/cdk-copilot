@@ -613,8 +613,7 @@ function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
     return `0 ${unit}`;
   }
-  const decimals = unit === "g" ? 1 : unit === "mg/g" ? 2 : 0;
-  return `${formatDecimal(value ?? 0, decimals)} ${unit}`;
+  return `${String(value ?? 0)} ${unit}`;
 }
 
 function metricValue(

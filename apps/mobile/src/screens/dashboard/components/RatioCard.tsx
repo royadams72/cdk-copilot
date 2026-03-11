@@ -2,7 +2,7 @@ import { ThemedText } from "@/components/themed-text";
 import { useColorScheme, View } from "react-native";
 import { styles } from "../styles";
 import { DashboardRatio } from "../types";
-import { formatDecimal, getStatusStyles, ratioStatusLabel } from "../utils";
+import { getStatusStyles, ratioStatusLabel } from "../utils";
 import { Card } from "./Card";
 
 export function RatioCard({ ratio }: { ratio: DashboardRatio }) {
@@ -17,7 +17,7 @@ export function RatioCard({ ratio }: { ratio: DashboardRatio }) {
       <View style={styles.ratioRow}>
         <ThemedText style={styles.ratioValue}>
           {ratio.value !== null && ratio.value !== undefined
-            ? `${formatDecimal(ratio.value, 2)} ${ratio.unit}`
+            ? `${String(ratio.value)} ${ratio.unit}`
             : "Not enough data"}
         </ThemedText>
         <View style={[styles.statusPill, statusStyles.pill]}>
@@ -28,7 +28,7 @@ export function RatioCard({ ratio }: { ratio: DashboardRatio }) {
       </View>
       {ratio.target !== null && (
         <ThemedText style={styles.helperText}>
-          Target ≤ {formatDecimal(ratio.target, 2)} {ratio.unit}
+          Target ≤ {String(ratio.target)} {ratio.unit}
         </ThemedText>
       )}
       <ThemedText style={styles.helperText}>

@@ -13,7 +13,6 @@ import {
   STACKED_SIZE,
   STACKED_STROKE,
 } from "../constants";
-import { formatDecimal } from "../utils";
 
 export function StackedRadialsCard({
   radials,
@@ -76,8 +75,7 @@ function legendValue(radial: DashboardRadial) {
     return `${toDisplayPercent(radial.percent)}%`;
   }
   if (radial.actual !== null && radial.actual !== undefined) {
-    const precision = radial.unit === "g" ? 1 : 0;
-    return `${formatDecimal(radial.actual, precision)} ${radial.unit}`;
+    return `${String(radial.actual)} ${radial.unit}`;
   }
   return "No data";
 }

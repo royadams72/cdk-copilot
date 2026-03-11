@@ -138,9 +138,7 @@ export default function FoodDetails() {
                   <Text style={typeStyles.header}>
                     {formatNutrientLabel(key)}
                   </Text>
-                  <Text style={typeStyles.copy}>
-                    {parseFloat(String(value)).toFixed(2)}
-                  </Text>
+                  <Text style={typeStyles.copy}>{String(value)}</Text>
                 </View>
               ))}
           </View>
