@@ -23,6 +23,7 @@ export type ItemSummary = {
   name: string;
   phosphorusMg: string;
   potassiumMg: string;
+  proteinG: string;
   quantity: number;
   sodiumMg: string;
   uid: string;
@@ -314,17 +315,20 @@ const logMealSlice = createSlice({
         }
       },
     ),
-    setQuantity: create.reducer(
+    setPortion: create.reducer(
       (
         state,
         action: PayloadAction<{
           foodId: string;
           groupId: string;
+          nutrientRatio: number;
           quantity: number;
+          unit: string;
           uid: string;
         }>,
       ) => {
-        const { uid, quantity, groupId, foodId } = action.payload;
+        const { uid, quantity, groupId, foodId, unit, nutrientRatio } =
+          action.payload;
         const group = findGroupById(groupId, state);
         if (!group) return;
 
@@ -332,20 +336,25 @@ const logMealSlice = createSlice({
           (f) => f.foodId === foodId && f.uid === uid,
         );
         if (!item) return;
-        if (item.quantity !== quantity) {
-          const oldQty = item.quantity;
-          const ratio = quantity / oldQty;
+        const normalizedUnit = unit.trim();
+        const safeRatio =
+          Number.isFinite(nutrientRatio) && nutrientRatio > 0 ? nutrientRatio : 1;
+        const hasQuantityChanged = item.quantity !== quantity;
+        const hasUnitChanged = (item.unit ?? "").trim() !== normalizedUnit;
 
+        if (hasQuantityChanged || hasUnitChanged) {
           item.nutrients = Object.fromEntries(
             Object.entries(item.nutrients).map(([k, v]) => [
               k,
-              v == null ? v : v * ratio,
+              v == null ? v : v * safeRatio,
             ]),
           ) as typeof item.nutrients;
 
           item.quantity = quantity;
+          item.unit = normalizedUnit;
           state.activeItem = item;
           group.groupInfo.quantity = quantity;
+          group.groupInfo.unit = normalizedUnit;
           state.isDirty = true;
         }
       },
@@ -358,7 +367,7 @@ export const {
   applyNutritionResults,
   applyMealCandidate,
   applyFetchMealByDate,
-  setQuantity,
+  setPortion,
   setActiveItem,
   setMealType,
   applyFetchMealData,
@@ -452,6 +461,7 @@ export const selectItemsSummary = createSelector(
           name,
           phosphorusMg: phosphorusMg?.toString() ?? "0",
           potassiumMg: potassiumMg?.toString() ?? "0",
+          proteinG: item.nutrients.proteinG?.toString() ?? "0",
           quantity,
           sodiumMg: sodiumMg?.toString() ?? "0",
           uid,
@@ -473,7 +483,7 @@ export const selectAcitveGroupSummaries = createSelector(
     return entry?.foodItems
       .filter((f) => f.foodId !== foodId)
       .map((food) => {
-        const { uid, name, foodId, groupId, quantity } = food;
+        const { uid, name, foodId, groupId } = food;
         const { carbsG, fatG, fiberG, phosphorusMg, potassiumMg, sodiumMg } =
           food.nutrients;
         if (!foodId || !groupId) return null;
@@ -487,7 +497,8 @@ export const selectAcitveGroupSummaries = createSelector(
           name,
           phosphorusMg: phosphorusMg?.toString() ?? "0",
           potassiumMg: potassiumMg?.toString() ?? "0",
-          quantity,
+          proteinG: food.nutrients.proteinG?.toString() ?? "0",
+          quantity: entry.groupInfo.quantity,
           sodiumMg: sodiumMg?.toString() ?? "0",
           uid,
           unit: entry.groupInfo.unit ?? "",

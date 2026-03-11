@@ -544,7 +544,8 @@ export default function NutritionDetails() {
                   }
                   description={meal.items
                     .map(
-                      (item) => `${item.name} (${item.quantity} ${item.unit})`,
+                      (item) =>
+                        `${item.name} (${item.quantity} ${formatDisplayUnit(item.unit)})`,
                     )
                     .join(", ")}
                   actions={[
@@ -611,9 +612,13 @@ export default function NutritionDetails() {
 
 function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
-    return `0 ${unit}`;
+    return `0 ${formatDisplayUnit(unit)}`;
   }
-  return `${String(value ?? 0)} ${unit}`;
+  return `${String(value ?? 0)} ${formatDisplayUnit(unit)}`;
+}
+
+function formatDisplayUnit(unit: string) {
+  return ["g", "gram", "grams"].includes(unit.trim().toLowerCase()) ? "g" : unit;
 }
 
 function metricValue(
