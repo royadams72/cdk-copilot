@@ -4,9 +4,8 @@ export function describeRange(range: DashboardRange) {
   if (!range.entries) {
     return `No meals logged in the last ${range.days} days`;
   }
-  const from = formatDateShort(range.from);
-  const to = formatDateShort(range.to);
-  return `${range.entries} meals logged between ${from} and ${to}`;
+
+  return `${range.entries} meals logged today`;
 }
 
 export function formatDateShort(value: string | null | undefined) {

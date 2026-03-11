@@ -169,6 +169,10 @@ export default function NutritionDetails() {
 
   const selectedPoint =
     selectedPointIndex !== null ? chartSeries[selectedPointIndex] : null;
+  const selectedMetricValue =
+    selectedPoint !== null
+      ? metricValue(selectedPoint.totals, metricConfig.key)
+      : data?.nutrition.totals?.[metricConfig.key];
 
   const highlightDate =
     selectedPoint?.date ?? data?.nutrition.foodHighlights.latestDate ?? null;
@@ -236,7 +240,7 @@ export default function NutritionDetails() {
           <View style={NutritionStyles.navRow}>
             <TouchableOpacity
               accessibilityRole="button"
-              onPress={() => router.back()}
+              onPress={() => router.replace("/(dashboard)/dashboard")}
               style={NutritionStyles.navButton}
             >
               <ThemedText style={NutritionStyles.navButtonText}>
@@ -296,10 +300,7 @@ export default function NutritionDetails() {
                   {metricConfig.label}
                 </ThemedText>
                 <ThemedText style={NutritionStyles.legendValue}>
-                  {formatChartValue(
-                    data?.nutrition.totals?.[metricConfig.key],
-                    metricConfig.unit,
-                  )}
+                  {formatChartValue(selectedMetricValue, metricConfig.unit)}
                 </ThemedText>
               </View>
               <View style={NutritionStyles.chartWrap}>
@@ -543,7 +544,8 @@ export default function NutritionDetails() {
                   }
                   description={meal.items
                     .map(
-                      (item) => `${item.name} (${item.quantity} ${item.unit})`,
+                      (item) =>
+                        `${item.name} (${item.quantity} ${formatDisplayUnit(item.unit)})`,
                     )
                     .join(", ")}
                   actions={[
@@ -610,10 +612,13 @@ export default function NutritionDetails() {
 
 function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
-    return `0 ${unit}`;
+    return `0 ${formatDisplayUnit(unit)}`;
   }
-  const decimals = unit === "g" ? 1 : unit === "mg/g" ? 2 : 0;
-  return `${formatDecimal(value ?? 0, decimals)} ${unit}`;
+  return `${String(value ?? 0)} ${formatDisplayUnit(unit)}`;
+}
+
+function formatDisplayUnit(unit: string) {
+  return ["g", "gram", "grams"].includes(unit.trim().toLowerCase()) ? "g" : unit;
 }
 
 function metricValue(

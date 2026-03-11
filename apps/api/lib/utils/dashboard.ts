@@ -398,9 +398,13 @@ export function summarizeNutrition(
 function extractNutrition(entry: NutritionEntryDoc) {
   const totals = { ...ZERO_TOTALS };
 
+  // Persisted meal totals are already the sum of the meal items. Only fall
+  // back to recomputing from item nutrients when totals are missing.
   if (entry.totals) {
     mergeNutrients(totals, entry.totals);
+    return totals;
   }
+
   if (Array.isArray(entry.items)) {
     for (const item of entry.items) {
       if (item?.nutrients) {

@@ -390,7 +390,7 @@ export default function LogMeal() {
             <FoodCard
               key={item.uid}
               title={item.name}
-              subtitle={`${item.quantity} ${item.unit}`}
+              subtitle={`${item.quantity} ${formatMealUnit(item.unit)} | Calories ${item.caloriesKcal} kcal | Carbs ${item.carbsG} g | Phosphorus ${item.phosphorusMg} mg | Potassium ${item.potassiumMg} mg`}
               onPress={() =>
                 gotoItemDetails({
                   foodId: item.foodId,
@@ -537,4 +537,8 @@ export default function LogMeal() {
       </Modal>
     </View>
   );
+}
+
+function formatMealUnit(unit: string) {
+  return ["g", "gram", "grams"].includes(unit.trim().toLowerCase()) ? "g" : unit;
 }
