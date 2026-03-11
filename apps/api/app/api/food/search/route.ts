@@ -60,7 +60,12 @@ export async function GET(req: NextRequest) {
         }
 
         const data = await res.json();
-        console.log("data:", data.parsed[0].measure);
+        // console.log("data:", {
+        //   hintsCount: Array.isArray(data?.hints) ? data.hints.length : 0,
+        //   parsedCount: Array.isArray(data?.parsed) ? data.parsed.length : 0,
+        //   firstParsedMeasure: data?.parsed?.[0]?.measure ?? null,
+        //   firstHintLabel: data?.hints?.[0]?.food?.label ?? null,
+        // });
 
         const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
           data,
@@ -133,8 +138,7 @@ function scoreHint(
 
   if (query.includes("whole")) {
     const isWholeEntity =
-      /\bwhole\b/.test(label) &&
-      !/\bwhole\s+(grain|wheat|meal)\b/.test(label);
+      /\bwhole\b/.test(label) && !/\bwhole\s+(grain|wheat|meal)\b/.test(label);
     if (isWholeEntity) score += 60;
     else score -= 25;
   }

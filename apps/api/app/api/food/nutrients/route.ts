@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
           throw new Error(`${res.status} Failed to fetch nutrients`);
         }
 
-        const response = await res.json();
+        const response = normalizeNutritionResponse(await res.json());
         return {
           requestedFoodId: lookupItem.foodId,
           resolvedMeasure,
@@ -196,4 +196,55 @@ function shouldPreferServing(ingredient: TEdamamNutritionLookupItem) {
 
 function findMeasureLabel(measures: TEdamamMeasure[], measureURI: string) {
   return measures.find((measure) => measure.uri === measureURI)?.label ?? "";
+}
+
+function normalizeNutritionResponse(response: any) {
+  return {
+    ...response,
+    calories: roundNumber(response?.calories),
+    totalWeight: roundNumber(response?.totalWeight),
+    totalDaily: roundNutrientMap(response?.totalDaily),
+    totalNutrients: roundNutrientMap(response?.totalNutrients),
+    ingredients: Array.isArray(response?.ingredients)
+      ? response.ingredients.map((ingredient: any) => ({
+          ...ingredient,
+          parsed: Array.isArray(ingredient?.parsed)
+            ? ingredient.parsed.map((parsed: any) => ({
+                ...parsed,
+                quantity: roundNumber(parsed?.quantity),
+                retainedWeight: roundOptionalNumber(parsed?.retainedWeight),
+                weight: roundNumber(parsed?.weight),
+              }))
+            : [],
+        }))
+      : [],
+  };
+}
+
+function roundNutrientMap(
+  map: Record<string, { label: string; quantity: number; unit: string }> | undefined,
+) {
+  if (!map) return {};
+
+  return Object.fromEntries(
+    Object.entries(map).map(([key, value]) => [
+      key,
+      {
+        ...value,
+        quantity: roundNumber(value?.quantity),
+      },
+    ]),
+  );
+}
+
+function roundNumber(value: number | undefined, digits = 2) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function roundOptionalNumber(value: number | undefined, digits = 2) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
 }

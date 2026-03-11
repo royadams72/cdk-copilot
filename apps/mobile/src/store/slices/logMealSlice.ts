@@ -14,10 +14,17 @@ import type {
 } from "@ckd/core";
 
 export type ItemSummary = {
+  caloriesKcal: string;
+  carbsG: string;
+  fatG: string;
+  fiberG: string;
   foodId: string;
   groupId: string;
   name: string;
+  phosphorusMg: string;
+  potassiumMg: string;
   quantity: number;
+  sodiumMg: string;
   uid: string;
   unit: string;
 };
@@ -432,12 +439,21 @@ export const selectItemsSummary = createSelector(
     return activeMealItems
       .map((item) => {
         const { uid, name, foodId, groupId, quantity, unit } = item;
+        const { carbsG, fatG, fiberG, phosphorusMg, potassiumMg, sodiumMg } =
+          item.nutrients;
         if (!uid || !foodId || !groupId) return null;
         return {
+          caloriesKcal: item.nutrients.caloriesKcal?.toString() ?? "0",
+          carbsG: carbsG?.toString() ?? "0",
+          fatG: fatG?.toString() ?? "0",
+          fiberG: fiberG?.toString() ?? "0",
           foodId,
           groupId,
           name,
+          phosphorusMg: phosphorusMg?.toString() ?? "0",
+          potassiumMg: potassiumMg?.toString() ?? "0",
           quantity,
+          sodiumMg: sodiumMg?.toString() ?? "0",
           uid,
           unit: unit ?? "",
         } satisfies ItemSummary;
@@ -458,12 +474,21 @@ export const selectAcitveGroupSummaries = createSelector(
       .filter((f) => f.foodId !== foodId)
       .map((food) => {
         const { uid, name, foodId, groupId, quantity } = food;
+        const { carbsG, fatG, fiberG, phosphorusMg, potassiumMg, sodiumMg } =
+          food.nutrients;
         if (!foodId || !groupId) return null;
         return {
+          caloriesKcal: food.nutrients.caloriesKcal?.toString() ?? "0",
+          carbsG: carbsG?.toString() ?? "0",
+          fatG: fatG?.toString() ?? "0",
+          fiberG: fiberG?.toString() ?? "0",
           foodId,
           groupId,
           name,
+          phosphorusMg: phosphorusMg?.toString() ?? "0",
+          potassiumMg: potassiumMg?.toString() ?? "0",
           quantity,
+          sodiumMg: sodiumMg?.toString() ?? "0",
           uid,
           unit: entry.groupInfo.unit ?? "",
         } satisfies ItemSummary;

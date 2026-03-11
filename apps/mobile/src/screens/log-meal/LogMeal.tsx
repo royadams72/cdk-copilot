@@ -390,7 +390,7 @@ export default function LogMeal() {
             <FoodCard
               key={item.uid}
               title={item.name}
-              subtitle={`${item.quantity} ${item.unit}`}
+              subtitle={`${item.quantity} ${item.unit} | Calories ${item.caloriesKcal}Kcal | Carbs ${item.carbsG}g | Phosphorus ${item.phosphorusMg}mg | Potassium ${item.potassiumMg}mg`}
               onPress={() =>
                 gotoItemDetails({
                   foodId: item.foodId,
