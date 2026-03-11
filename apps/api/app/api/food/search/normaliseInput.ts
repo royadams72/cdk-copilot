@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { TLogMealItem, TLogMealNormalised } from "@ckd/core";
 
 export async function normaliseInput(
-  input: string
+  input: string,
 ): Promise<TLogMealNormalised | NextResponse> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const normalise = `Normalise this meal description into the JSON format described above. "${input}"`;
@@ -13,12 +13,12 @@ export async function normaliseInput(
     const completion = await openai.chat.completions.create({
       messages: [
         {
-          role: "developer",
           content: aiPrompt,
+          role: "developer",
         },
         {
-          role: "user",
           content: normalise,
+          role: "user",
         },
       ],
       model: "gpt-3.5-turbo",
@@ -76,8 +76,6 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
   for (const item of items) {
     const text = item.normalised.toLowerCase().trim();
     const normalised = normaliseForEdamam(item.normalised);
-    // const text = normaliseForEdamam(t);
-    //     console.log("text rewrite", text);
     // 🔹 jerk chicken -> roast chicken thigh with skin
     if (text === "jerk chicken") {
       out.push({
@@ -92,18 +90,18 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
       out.push(
         {
           ...item,
-          normalised: "boiled white rice",
           food: "white rice",
+          normalised: "boiled white rice",
           quantity: 1,
           unit: "cup",
         },
         {
           ...item,
-          normalised: "boiled kidney beans",
           food: "kidney beans",
+          normalised: "boiled kidney beans",
           quantity: 0.5,
           unit: "cup",
-        }
+        },
       );
       continue;
     }

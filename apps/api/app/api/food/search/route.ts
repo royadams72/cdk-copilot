@@ -48,11 +48,10 @@ export async function GET(req: NextRequest) {
         const params = new URLSearchParams({
           app_id: foodAppID,
           app_key: foodAppKey,
-          ingr: edamamText, // let URLSearchParams handle encoding
-          "nutrition-type": "logging",
           category: "generic-foods",
+          ingr: edamamText,
+          "nutrition-type": "logging",
         });
-        // console.log(params);
 
         const res = await fetch(`${foodURI}?${params.toString()}`);
         if (!res.ok) {
@@ -60,13 +59,6 @@ export async function GET(req: NextRequest) {
         }
 
         const data = await res.json();
-        // console.log("data:", {
-        //   hintsCount: Array.isArray(data?.hints) ? data.hints.length : 0,
-        //   parsedCount: Array.isArray(data?.parsed) ? data.parsed.length : 0,
-        //   firstParsedMeasure: data?.parsed?.[0]?.measure ?? null,
-        //   firstHintLabel: data?.hints?.[0]?.food?.label ?? null,
-        // });
-
         const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
           data,
           edamamText,
