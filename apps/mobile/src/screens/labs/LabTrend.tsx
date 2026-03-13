@@ -23,7 +23,7 @@ function formatDate(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return `${date.getDate()}/${date.getMonth() + 1}`;
 }
 
 export default function LabTrend() {
@@ -203,4 +203,3 @@ export default function LabTrend() {
     </View>
   );
 }
-

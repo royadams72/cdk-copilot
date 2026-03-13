@@ -307,16 +307,21 @@ const logMealSlice = createSlice({
       },
     ),
     setMealType: create.reducer(
-      (state, action: PayloadAction<{ mealType: TMealType }>) => {
-        const { mealType } = action.payload;
-        if (state.activeMealType !== mealType) {
-          state.activeMealType = mealType;
-          state.foodItems = [];
-          state.isDirty = false;
-          state.editingEntryId = null;
-          state.eatenAt = new Date().toISOString();
-          state.searchResults = null;
-        }
+      (
+        state,
+        action: PayloadAction<{ eatenAt?: string | null; mealType: TMealType }>,
+      ) => {
+        const { mealType, eatenAt } = action.payload;
+        state.activeMealType = mealType;
+        state.activeItem = null;
+        state.activeItems = null;
+        state.foodItems = [];
+        state.isDirty = false;
+        state.editingEntryId = null;
+        state.eatenAt = eatenAt ?? new Date().toISOString();
+        state.meal = createEmptyMeals();
+        state.mealCandidate = null;
+        state.searchResults = null;
       },
     ),
     appendFoodsToMeal: create.reducer(

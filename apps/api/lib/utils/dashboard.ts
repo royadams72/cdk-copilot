@@ -603,17 +603,8 @@ function startOfDay(date: Date) {
   return copy;
 }
 
-const WEEKDAY_LABELS = [
-  "Sun",
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat",
-] as const;
 function formatWeekdayLabel(date: Date) {
-  return WEEKDAY_LABELS[date.getDay()];
+  return `${date.getDate()}/${date.getMonth() + 1}`;
 }
 
 function dayKey(date: Date) {

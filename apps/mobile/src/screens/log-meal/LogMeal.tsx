@@ -84,7 +84,12 @@ type FavouriteMealView = Omit<
 
 export default function LogMeal() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    day?: string | string[];
+    tab?: string | string[];
+  }>();
+  const requestedDay = Array.isArray(params.day) ? params.day[0] : params.day;
+
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
 
@@ -114,8 +119,8 @@ export default function LogMeal() {
   const [searchTerm, setSearchTerm] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [dateTime, setDateTime] = useState(
-    () => new Date(eatenAtIso ?? Date.now()),
+  const [dateTime, setDateTime] = useState(() =>
+    buildInitialDateTime(requestedDay, eatenAtIso),
   );
   const [showDateTimeModal, setShowDateTimeModal] = useState(false);
   const [showExistingMealModal, setShowExistingMealModal] = useState(false);
@@ -128,6 +133,8 @@ export default function LogMeal() {
   const allowNextNavigationRef = useRef(false);
   const requestedNutritionUidsRef = useRef(new Set<string>());
   const hasAppliedDefaultTabRef = useRef(false);
+  const hasAppliedRequestedDayRef = useRef(false);
+  const mealDateIso = dateTime.toISOString();
 
   useEffect(() => {
     const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
@@ -139,6 +146,15 @@ export default function LogMeal() {
       setActiveTab(requestedTab);
     }
   }, [params.tab]);
+
+  useEffect(() => {
+    if (!requestedDay || editingEntryId || hasAppliedRequestedDayRef.current)
+      return;
+    const next = buildLogDateTimeForDay(requestedDay);
+    if (Number.isNaN(next.getTime())) return;
+    hasAppliedRequestedDayRef.current = true;
+    setDateTime(next);
+  }, [editingEntryId, requestedDay]);
 
   useEffect(() => {
     if (editingEntryId) {
@@ -167,9 +183,10 @@ export default function LogMeal() {
 
   useEffect(() => {
     if (!eatenAtIso) return;
+    if (requestedDay && !editingEntryId) return;
     const next = new Date(eatenAtIso);
     if (!Number.isNaN(next.getTime())) setDateTime(next);
-  }, [eatenAtIso]);
+  }, [eatenAtIso, editingEntryId, requestedDay]);
 
   useEffect(() => {
     if (!mealCandidate) return;
@@ -184,8 +201,7 @@ export default function LogMeal() {
     if (editingEntryId) return;
     if ((meal?.length ?? 0) > 0) return;
 
-    const todayIso = new Date().toISOString();
-    const dayKey = todayIso.slice(0, 10);
+    const dayKey = mealDateIso.slice(0, 10);
     const autoKey = `${mealType}:${dayKey}`;
     if (autoLoadKeyRef.current === autoKey) return;
 
@@ -193,7 +209,7 @@ export default function LogMeal() {
     void (async () => {
       try {
         const entry = await fetchMealByDate({
-          eatenAt: todayIso,
+          eatenAt: mealDateIso,
           mealType,
         }).unwrap();
         dispatch(applyFetchMealByDate({ entry }));
@@ -201,7 +217,7 @@ export default function LogMeal() {
         console.log("fetchMealByDate failed", error);
       }
     })();
-  }, [dispatch, editingEntryId, fetchMealByDate, meal, mealType]);
+  }, [dispatch, editingEntryId, fetchMealByDate, meal, mealDateIso, mealType]);
 
   useEffect(() => {
     const itemsMissingNutrition = meal.filter((item) => {
@@ -281,14 +297,14 @@ export default function LogMeal() {
     try {
       if (editingEntryId && meal && mealType) {
         const mealData = mapForSaveOrUpdate(
-          eatenAtIso,
+          mealDateIso,
           meal,
           mealType,
           editingEntryId,
         );
         await updateMealData({ mealData }).unwrap();
       } else if (meal && mealType) {
-        const mealData = mapForSaveOrUpdate(eatenAtIso, meal, mealType);
+        const mealData = mapForSaveOrUpdate(mealDateIso, meal, mealType);
         await saveMealData({ mealData }).unwrap();
       }
 
@@ -562,7 +578,8 @@ export default function LogMeal() {
                   onPress={() => {
                     const currentFood = meal.find(
                       (entry) =>
-                        entry.uid === item.uid && entry.groupId === item.groupId,
+                        entry.uid === item.uid &&
+                        entry.groupId === item.groupId,
                     );
                     if (currentFood) openFoodDetails(currentFood);
                   }}
@@ -722,7 +739,9 @@ export default function LogMeal() {
                   isPersistingMeal && logMealStyles.buttonDisabled,
                 ]}
               >
-                <ThemedText style={logMealStyles.footerSecondaryButtonTextLight}>
+                <ThemedText
+                  style={logMealStyles.footerSecondaryButtonTextLight}
+                >
                   Delete Meal
                 </ThemedText>
               </TouchableOpacity>
@@ -770,7 +789,9 @@ export default function LogMeal() {
       {toastMessage ? (
         <View pointerEvents="none" style={logMealStyles.toastWrap}>
           <View style={logMealStyles.toast}>
-            <ThemedText style={logMealStyles.toastText}>{toastMessage}</ThemedText>
+            <ThemedText style={logMealStyles.toastText}>
+              {toastMessage}
+            </ThemedText>
           </View>
         </View>
       ) : null}
@@ -918,4 +939,57 @@ function toDraftFoodEntry(item: TFoodItemEntry, seed: string): TFoodItem {
     groupId: `fav:${seed}:${buildFoodKey(item)}`,
     measures: [],
   };
+}
+
+function buildLogDateTimeForDay(dayKey: string) {
+  const normalizedDayKey = normalizeDayKey(dayKey);
+  if (!normalizedDayKey) {
+    return new Date(Number.NaN);
+  }
+
+  const [year, month, day] = normalizedDayKey
+    .split("-")
+    .map((value) => Number(value));
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
+    return new Date(Number.NaN);
+  }
+
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function buildInitialDateTime(
+  requestedDay: string | undefined,
+  eatenAtIso: string | null,
+) {
+  if (requestedDay) {
+    const requestedDate = buildLogDateTimeForDay(requestedDay);
+    if (!Number.isNaN(requestedDate.getTime())) {
+      return requestedDate;
+    }
+  }
+
+  const fallback = new Date(eatenAtIso ?? Date.now());
+  return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
+}
+
+function normalizeDayKey(value: string) {
+  const decodedValue = decodeURIComponent(value).trim().replace(/^"+|"+$/g, "");
+  const matchedDayKey = decodedValue.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (matchedDayKey) {
+    return matchedDayKey;
+  }
+
+  const parsed = new Date(decodedValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const year = parsed.getFullYear();
+  const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
+  const day = `${parsed.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

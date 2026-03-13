@@ -1,6 +1,17 @@
 import { StyleSheet } from "react-native";
 
 export const NutritionStyles = StyleSheet.create({
+  addMealsButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "#8B5CF6",
+  },
+  addMealsButtonText: {
+    fontWeight: "600",
+    color: "#fff",
+  },
   cardHeader: {
     marginBottom: 8,
     gap: 2,
