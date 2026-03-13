@@ -12,6 +12,7 @@ import {
 import type { ScrollView as ScrollViewType } from "react-native";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import type { TMealType } from "@ckd/core";
 
 import { ThemedText } from "@/components/themed-text";
@@ -61,6 +62,8 @@ export default function NutritionDetails() {
   );
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+  const [showAddForSelectedDay, setShowAddForSelectedDay] = useState(false);
 
   const chartScrollRef = useRef<ScrollViewType | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
@@ -157,6 +160,8 @@ export default function NutritionDetails() {
   useEffect(() => {
     if (!chartSeries.length) return;
     setSelectedPointIndex(chartSeries.length - 1);
+    setSelectedDayKey(chartSeries[chartSeries.length - 1]?.date ?? null);
+    setShowAddForSelectedDay(false);
   }, [chartSeries.length]);
 
   useEffect(() => {
@@ -173,6 +178,11 @@ export default function NutritionDetails() {
     selectedPoint !== null
       ? metricValue(selectedPoint.totals, metricConfig.key)
       : data?.nutrition.totals?.[metricConfig.key];
+
+  useEffect(() => {
+    if (!selectedPoint?.date) return;
+    setSelectedDayKey(selectedPoint.date);
+  }, [selectedPoint?.date]);
 
   const highlightDate =
     selectedPoint?.date ?? data?.nutrition.foodHighlights.latestDate ?? null;
@@ -214,6 +224,19 @@ export default function NutritionDetails() {
     refetch();
   }, [refetch]);
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  const canRender = Boolean(data?.nutrition.dailySeries?.length);
+
+  const openLogMealModal = useCallback((forSelectedDay = false) => {
+    setShowAddForSelectedDay(forSelectedDay);
+    setIsLogModalOpen(true);
+  }, []);
+
   if (loading) {
     return (
       <View style={NutritionStyles.loading}>
@@ -224,8 +247,6 @@ export default function NutritionDetails() {
       </View>
     );
   }
-
-  const canRender = Boolean(data?.nutrition.dailySeries?.length);
 
   return (
     <View style={NutritionStyles.screen}>
@@ -249,7 +270,7 @@ export default function NutritionDetails() {
             </TouchableOpacity>
             <TouchableOpacity
               style={NutritionStyles.logButton}
-              onPress={() => setIsLogModalOpen(true)}
+              onPress={() => openLogMealModal(false)}
             >
               <ThemedText style={NutritionStyles.logButtonText}>
                 Log meal
@@ -324,7 +345,11 @@ export default function NutritionDetails() {
                       labelColor={theme === "light" ? "#1F2937" : "#E2E8F0"}
                       gridRatios={[0.25, 0.5, 0.75]}
                       selectedIndex={selectedPointIndex}
-                      onSelectIndex={setSelectedPointIndex}
+                      onSelectIndex={(index) => {
+                        setSelectedPointIndex(index);
+                        setSelectedDayKey(chartSeries[index]?.date ?? null);
+                        setShowAddForSelectedDay(true);
+                      }}
                       targets={
                         targetLineOffset !== null
                           ? [
@@ -429,6 +454,16 @@ export default function NutritionDetails() {
                 </ThemedText>
               </TouchableOpacity>
             ) : null}
+            {showAddForSelectedDay && selectedPoint ? (
+              <TouchableOpacity
+                style={NutritionStyles.addMealsButton}
+                onPress={() => openLogMealModal(true)}
+              >
+                <ThemedText style={NutritionStyles.addMealsButtonText}>
+                  Add food for this day
+                </ThemedText>
+              </TouchableOpacity>
+            ) : null}
             <AccordionCard
               title={highlightTitle}
               subtitle={`Highest ${metricConfig.label.toLowerCase()} sources`}
@@ -481,7 +516,9 @@ export default function NutritionDetails() {
           >
             <ThemedText type="defaultSemiBold">Log your meal?</ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
-              Add foods to your diary to keep your nutrition targets on track.
+              {showAddForSelectedDay && selectedPoint
+                ? `Add foods for ${formatFullDate(selectedPoint.date)}.`
+                : "Add foods to your diary to keep your nutrition targets on track."}
             </ThemedText>
             <View style={NutritionStyles.modalActions}>
               {mealTypes.map((mealType) => (
@@ -492,9 +529,24 @@ export default function NutritionDetails() {
                     NutritionStyles.modalButtonPrimary,
                   ]}
                   onPress={() => {
-                    dispatch(setMealType({ mealType: mealType.value }));
+                    const selectedDayParam =
+                      showAddForSelectedDay && selectedDayKey
+                        ? selectedDayKey
+                        : undefined;
+                    dispatch(
+                      setMealType({
+                        eatenAt: selectedDayParam
+                          ? buildLogDateTimeForDay(selectedDayParam)
+                          : undefined,
+                        mealType: mealType.value,
+                      }),
+                    );
                     setIsLogModalOpen(false);
-                    router.push("/(log-meal)/log-meal");
+                    router.push(
+                      selectedDayParam
+                        ? `/(log-meal)/log-meal?day=${encodeURIComponent(selectedDayParam)}`
+                        : "/(log-meal)/log-meal",
+                    );
                   }}
                 >
                   <ThemedText style={NutritionStyles.modalButtonTextPrimary}>
@@ -619,6 +671,14 @@ function formatChartValue(value: number | null | undefined, unit: string) {
 
 function formatDisplayUnit(unit: string) {
   return ["g", "gram", "grams"].includes(unit.trim().toLowerCase()) ? "g" : unit;
+}
+
+function buildLogDateTimeForDay(dayKey: string) {
+  const localDate = new Date(`${dayKey}T12:00:00`);
+  if (Number.isNaN(localDate.getTime())) {
+    return new Date().toISOString();
+  }
+  return localDate.toISOString();
 }
 
 function metricValue(
