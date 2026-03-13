@@ -125,6 +125,13 @@ const logMealSlice = createSlice({
           incomingGroups,
         );
         state.searchResults = incomingGroups;
+        if (state.activeMealType) {
+          state.meal[state.activeMealType] = mergeUniqueMealItems(
+            state.meal[state.activeMealType],
+            setMealItems(incomingGroups),
+          );
+          state.isDirty = true;
+        }
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       },
@@ -156,7 +163,6 @@ const logMealSlice = createSlice({
           action.payload.results,
           action.payload.requestedFoodIds,
         );
-        state.isDirty = true;
       },
     ),
     clearMealCandidate: create.reducer((state) => {
@@ -819,7 +825,7 @@ function mergeEntryIntoState(
       .map((entry) => entry.foodItems[0])
       .filter((foodItem): foodItem is TFoodItem => !!foodItem),
   );
-  state.isDirty = true;
+  state.isDirty = false;
 }
 
 function extractNutrition(

@@ -37,7 +37,6 @@ export async function POST(req: NextRequest) {
       app_id: foodAppID,
       app_key: foodAppKey,
     });
-    console.log("lookupItems:", lookupItems);
 
     const results = await Promise.all(
       lookupItems.map(async (lookupItem: TEdamamNutritionLookupItem) => {
@@ -202,9 +201,6 @@ function normalizeNutritionResponse(response: any) {
   return {
     ...response,
     calories: roundNumber(response?.calories),
-    totalWeight: roundNumber(response?.totalWeight),
-    totalDaily: roundNutrientMap(response?.totalDaily),
-    totalNutrients: roundNutrientMap(response?.totalNutrients),
     ingredients: Array.isArray(response?.ingredients)
       ? response.ingredients.map((ingredient: any) => ({
           ...ingredient,
@@ -218,11 +214,16 @@ function normalizeNutritionResponse(response: any) {
             : [],
         }))
       : [],
+    totalDaily: roundNutrientMap(response?.totalDaily),
+    totalNutrients: roundNutrientMap(response?.totalNutrients),
+    totalWeight: roundNumber(response?.totalWeight),
   };
 }
 
 function roundNutrientMap(
-  map: Record<string, { label: string; quantity: number; unit: string }> | undefined,
+  map:
+    | Record<string, { label: string; quantity: number; unit: string }>
+    | undefined,
 ) {
   if (!map) return {};
 

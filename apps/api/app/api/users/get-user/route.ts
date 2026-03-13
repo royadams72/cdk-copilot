@@ -35,8 +35,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
     const status = error?.status || 500;
-    console.log("error:", error);
-
     return bad(error?.message || "Server error", { requestId }, status);
   }
 }

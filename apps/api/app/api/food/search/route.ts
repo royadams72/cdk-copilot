@@ -63,7 +63,6 @@ export async function GET(req: NextRequest) {
           data,
           edamamText,
         );
-        console.log("matches:", matches);
 
         return {
           tempId,
@@ -95,7 +94,7 @@ export async function pickBestEdamamFood(
   const pool = genericFoods.length ? genericFoods : hints;
 
   const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
-  console.log("phraseMatch", phraseMatch);
+
   return [...pool]
     .sort(
       (a, b) =>

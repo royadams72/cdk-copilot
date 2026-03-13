@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 
-import { useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import type {
   TFoodItem,
@@ -84,6 +84,7 @@ type FavouriteMealView = Omit<
 
 export default function LogMeal() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
 
@@ -126,6 +127,37 @@ export default function LogMeal() {
   const autoLoadKeyRef = useRef<string | null>(null);
   const allowNextNavigationRef = useRef(false);
   const requestedNutritionUidsRef = useRef(new Set<string>());
+  const hasAppliedDefaultTabRef = useRef(false);
+
+  useEffect(() => {
+    const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    if (
+      requestedTab === "current" ||
+      requestedTab === "foods" ||
+      requestedTab === "meals"
+    ) {
+      setActiveTab(requestedTab);
+    }
+  }, [params.tab]);
+
+  useEffect(() => {
+    if (editingEntryId) {
+      setActiveTab("current");
+    }
+  }, [editingEntryId]);
+
+  useEffect(() => {
+    const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    if (editingEntryId) return;
+    if (requestedTab) return;
+    if (hasAppliedDefaultTabRef.current) return;
+    if (favouriteItems === undefined) return;
+
+    hasAppliedDefaultTabRef.current = true;
+    if ((favouriteItems.foods?.length ?? 0) === 0) {
+      setActiveTab("current");
+    }
+  }, [editingEntryId, favouriteItems, params.tab]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -225,11 +257,16 @@ export default function LogMeal() {
     const nextQuery = searchTerm.trim();
     if (!nextQuery || isSearching) return;
     setIsSearching(true);
-    setHasSearched(true);
     try {
       const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
       dispatch(applyFetchMealData({ results }));
-      setActiveTab("foods");
+      if ((results.items?.length ?? 0) > 0) {
+        setHasSearched(false);
+        setActiveTab("current");
+      } else {
+        setHasSearched(true);
+        setActiveTab("foods");
+      }
     } catch (error) {
       console.log("fetchMealData failed", error);
     } finally {
@@ -377,6 +414,7 @@ export default function LogMeal() {
         ),
       }),
     );
+    setActiveTab("current");
     showAddedToast();
   }
 
