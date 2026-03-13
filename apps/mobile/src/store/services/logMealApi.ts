@@ -5,6 +5,8 @@ import {
   TFoodItemEntry,
   TLogMealEdamamResponse,
   TMealType,
+  TNutritionFavouriteFood,
+  TNutritionFavouriteMeal,
 } from "@ckd/core";
 
 import { setNutrientsBody } from "@/store/services/utils";
@@ -32,6 +34,31 @@ const logMealApi = appApi.injectEndpoints({
         url: "/api/food/nutrients",
       }),
     }),
+    fetchFavouriteItems: builder.query<
+      {
+        foods: Array<
+          Omit<TNutritionFavouriteFood, "patientId" | "createdAt" | "updatedAt" | "lastUsedAt"> & {
+            id: string;
+            lastUsedAt: string;
+            updatedAt: string;
+          }
+        >;
+        meals: Array<
+          Omit<TNutritionFavouriteMeal, "patientId" | "createdAt" | "updatedAt" | "lastUsedAt"> & {
+            id: string;
+            lastUsedAt: string;
+            updatedAt: string;
+          }
+        >;
+      },
+      void
+    >({
+      providesTags: [{ id: "favourites", type: "Food" }],
+      query: () => ({
+        method: "GET",
+        url: "/api/food/favourites",
+      }),
+    }),
     saveMealData: builder.mutation<
       ApiResponse<any> | null | string | undefined,
       {
@@ -41,6 +68,7 @@ const logMealApi = appApi.injectEndpoints({
       invalidatesTags: (_result, _error, arg) => [
         { id: "today", type: "Dashboard" },
         { id: "all", type: "Dashboard" },
+        { id: "favourites", type: "Food" },
       ],
       query: ({ mealData }) => ({
         body: mealData,
@@ -57,6 +85,7 @@ const logMealApi = appApi.injectEndpoints({
       invalidatesTags: (_result, _error, arg) => [
         { id: "today", type: "Dashboard" },
         { id: "all", type: "Dashboard" },
+        { id: "favourites", type: "Food" },
       ],
       query: ({ mealData }) => ({
         body: mealData,
@@ -73,6 +102,7 @@ const logMealApi = appApi.injectEndpoints({
       invalidatesTags: (_result, _error, _arg) => [
         { id: "today", type: "Dashboard" },
         { id: "all", type: "Dashboard" },
+        { id: "favourites", type: "Food" },
       ],
       query: ({ entryId }) => ({
         body: { entryId },
@@ -133,6 +163,7 @@ const logMealApi = appApi.injectEndpoints({
 });
 
 export const {
+  useFetchFavouriteItemsQuery,
   useFetchNutritionDataMutation,
   useFetchMealByDateMutation,
   useCheckMealExistsMutation,

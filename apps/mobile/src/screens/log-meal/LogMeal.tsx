@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -9,12 +9,19 @@ import {
   View,
 } from "react-native";
 
-import { useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import type {
+  TFoodItem,
+  TFoodItemEntry,
+  TNutritionFavouriteFood,
+  TNutritionFavouriteMeal,
+} from "@ckd/core";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
+  appendFoodsToMeal,
   applyFetchMealByDate,
   applyFetchMealData,
   applyMealCandidate,
@@ -22,6 +29,8 @@ import {
   clearMealCandidate,
   clearMealState,
   ItemSummary,
+  mealTypes,
+  registerFoodItem,
   removeMealItem,
   selectActiveMealType,
   selectEatenAt,
@@ -30,7 +39,7 @@ import {
   selectItemsSummary,
   selectMeal,
   selectMealCandidate,
-  selectMealItemsFromFoodItems,
+  selectSearchResults,
   setActiveItem,
   setEatenAt,
 } from "@/store/slices/logMealSlice";
@@ -43,6 +52,7 @@ import { DateTimeModal } from "@/components/date-time-modal";
 import {
   useCheckMealExistsMutation,
   useDeleteMealDataMutation,
+  useFetchFavouriteItemsQuery,
   useFetchMealByDateMutation,
   useFetchNutritionDataMutation,
   useLazyFetchMealDataQuery,
@@ -52,8 +62,29 @@ import {
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { mapForSaveOrUpdate } from "./utils";
 
+type LogMealTab = "current" | "foods" | "meals";
+
+type FavouriteFoodView = Omit<
+  TNutritionFavouriteFood,
+  "patientId" | "createdAt" | "updatedAt" | "lastUsedAt"
+> & {
+  id: string;
+  lastUsedAt: string;
+  updatedAt: string;
+};
+
+type FavouriteMealView = Omit<
+  TNutritionFavouriteMeal,
+  "patientId" | "createdAt" | "updatedAt" | "lastUsedAt"
+> & {
+  id: string;
+  lastUsedAt: string;
+  updatedAt: string;
+};
+
 export default function LogMeal() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
 
@@ -64,6 +95,7 @@ export default function LogMeal() {
   const [deleteMealData] = useDeleteMealDataMutation();
   const [saveMealData] = useSaveMealDataMutation();
   const [updateMealData] = useUpdateMealDataMutation();
+  const { data: favouriteItems } = useFetchFavouriteItemsQuery();
 
   const items = useAppSelector(selectItemsSummary);
   const mealType = useAppSelector(selectActiveMealType);
@@ -71,12 +103,17 @@ export default function LogMeal() {
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const mealCandidate = useAppSelector(selectMealCandidate);
+  const searchResults = useAppSelector(selectSearchResults);
 
+  const meal = useAppSelector((state) => {
+    if (!mealType) return [] as TFoodItem[];
+    return selectMeal(mealType)(state);
+  });
+
+  const [activeTab, setActiveTab] = useState<LogMealTab>("foods");
   const [searchTerm, setSearchTerm] = useState("");
-  const [shouldLoadInitialNutrition, setShouldLoadInitialNutrition] =
-    useState(false);
-
-  const isLeavingRef = useRef(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [dateTime, setDateTime] = useState(
     () => new Date(eatenAtIso ?? Date.now()),
   );
@@ -84,9 +121,49 @@ export default function LogMeal() {
   const [showExistingMealModal, setShowExistingMealModal] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isPersistingMeal, setIsPersistingMeal] = useState(false);
+
+  const isLeavingRef = useRef(false);
   const lastPromptRef = useRef<string | null>(null);
   const autoLoadKeyRef = useRef<string | null>(null);
   const allowNextNavigationRef = useRef(false);
+  const requestedNutritionUidsRef = useRef(new Set<string>());
+  const hasAppliedDefaultTabRef = useRef(false);
+
+  useEffect(() => {
+    const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    if (
+      requestedTab === "current" ||
+      requestedTab === "foods" ||
+      requestedTab === "meals"
+    ) {
+      setActiveTab(requestedTab);
+    }
+  }, [params.tab]);
+
+  useEffect(() => {
+    if (editingEntryId) {
+      setActiveTab("current");
+    }
+  }, [editingEntryId]);
+
+  useEffect(() => {
+    const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    if (editingEntryId) return;
+    if (requestedTab) return;
+    if (hasAppliedDefaultTabRef.current) return;
+    if (favouriteItems === undefined) return;
+
+    hasAppliedDefaultTabRef.current = true;
+    if ((favouriteItems.foods?.length ?? 0) === 0) {
+      setActiveTab("current");
+    }
+  }, [editingEntryId, favouriteItems, params.tab]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = setTimeout(() => setToastMessage(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
 
   useEffect(() => {
     if (!eatenAtIso) return;
@@ -101,12 +178,6 @@ export default function LogMeal() {
     lastPromptRef.current = mealCandidate.entryId;
     setShowExistingMealModal(true);
   }, [mealCandidate, editingEntryId]);
-
-  const meal = useAppSelector((state) => {
-    if (!mealType) return null;
-    return selectMeal(mealType)(state);
-  });
-  const mealItemsFromFoodItems = useAppSelector(selectMealItemsFromFoodItems);
 
   useEffect(() => {
     if (!mealType) return;
@@ -123,23 +194,79 @@ export default function LogMeal() {
       try {
         const entry = await fetchMealByDate({
           eatenAt: todayIso,
-          mealType: mealType,
+          mealType,
         }).unwrap();
         dispatch(applyFetchMealByDate({ entry }));
       } catch (error) {
         console.log("fetchMealByDate failed", error);
       }
     })();
-  }, [dispatch, fetchMealByDate, meal, mealType, editingEntryId]);
+  }, [dispatch, editingEntryId, fetchMealByDate, meal, mealType]);
+
+  useEffect(() => {
+    const itemsMissingNutrition = meal.filter((item) => {
+      if (!item.uid || requestedNutritionUidsRef.current.has(item.uid)) {
+        return false;
+      }
+      return isAnyFieldEmpty(item.nutrients);
+    });
+
+    if (!itemsMissingNutrition.length) return;
+
+    itemsMissingNutrition.forEach((item) => {
+      if (item.uid) requestedNutritionUidsRef.current.add(item.uid);
+    });
+
+    void (async () => {
+      try {
+        const results = await fetchNutritionData({
+          foodItems: itemsMissingNutrition,
+        }).unwrap();
+        dispatch(
+          applyNutritionResults({
+            requestedFoodIds: itemsMissingNutrition.map((item) => item.foodId),
+            results,
+          }),
+        );
+      } catch (error) {
+        console.log("fetchNutritionData failed", error);
+      }
+    })();
+  }, [dispatch, fetchNutritionData, meal]);
+
+  const favouriteFoods = useMemo(
+    () => (favouriteItems?.foods ?? []) as FavouriteFoodView[],
+    [favouriteItems?.foods],
+  );
+  const favouriteMeals = useMemo(
+    () => (favouriteItems?.meals ?? []) as FavouriteMealView[],
+    [favouriteItems?.meals],
+  );
+
+  const displayedFoods = useMemo(() => {
+    if (hasSearched && searchTerm.trim().length > 0) {
+      return (searchResults ?? [])
+        .map((group) => group.foodItems[0])
+        .filter((item): item is TFoodItem => !!item);
+    }
+
+    return favouriteFoods.map((item) => toDraftFood(item));
+  }, [favouriteFoods, hasSearched, searchResults, searchTerm]);
 
   async function submit() {
     const nextQuery = searchTerm.trim();
     if (!nextQuery || isSearching) return;
     setIsSearching(true);
-    setShouldLoadInitialNutrition(true);
     try {
       const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
       dispatch(applyFetchMealData({ results }));
+      if ((results.items?.length ?? 0) > 0) {
+        setHasSearched(false);
+        setActiveTab("current");
+      } else {
+        setHasSearched(true);
+        setActiveTab("foods");
+      }
     } catch (error) {
       console.log("fetchMealData failed", error);
     } finally {
@@ -149,6 +276,7 @@ export default function LogMeal() {
 
   async function persistMeal() {
     if (isPersistingMeal) return;
+    if (editingEntryId && !isDirty) return;
     setIsPersistingMeal(true);
     try {
       if (editingEntryId && meal && mealType) {
@@ -178,13 +306,9 @@ export default function LogMeal() {
   }
 
   async function deleteMeal() {
-    if (isPersistingMeal) return;
+    if (isPersistingMeal || !editingEntryId) return;
     setIsPersistingMeal(true);
     try {
-      if (!editingEntryId) {
-        Alert.alert("Delete failed", "No meal to delete.");
-        return;
-      }
       await deleteMealData({ entryId: editingEntryId }).unwrap();
       isLeavingRef.current = true;
       router.replace("/(nutrition)/nutrition-details");
@@ -199,8 +323,8 @@ export default function LogMeal() {
     (onLeave?: () => void) => {
       if (isLeavingRef.current) return;
       Alert.alert(
-        "Leave this screen?",
-        "Your meal will not be saved/updated.",
+        "Discard this meal?",
+        "Your current meal changes will be lost.",
         [
           { style: "cancel", text: "Stay" },
           {
@@ -211,7 +335,7 @@ export default function LogMeal() {
                 onLeave();
                 return;
               }
-              router.back();
+              router.replace("/(nutrition)/nutrition-details");
             },
             style: "destructive",
             text: "Leave",
@@ -254,56 +378,57 @@ export default function LogMeal() {
     }, [confirmExit, isDirty, navigation]),
   );
 
-  useEffect(() => {
-    if (!shouldLoadInitialNutrition) return;
-    const itemsToCheck =
-      meal && meal.length > 0 ? meal : mealItemsFromFoodItems;
-    if (!itemsToCheck.length) return;
-    (async () => {
-      setIsSearching(true);
-      const isAnyNurientsEmpty = itemsToCheck.some((item) =>
-        isAnyFieldEmpty(item.nutrients),
-      );
+  function showAddedToast() {
+    setToastMessage("This item has been added to current meal");
+  }
 
-      if (isAnyNurientsEmpty) {
-        try {
-          const results = await fetchNutritionData({
-            foodItems: itemsToCheck,
-          }).unwrap();
-          dispatch(
-            applyNutritionResults({
-              requestedFoodIds: itemsToCheck.map((item) => item.foodId),
-              results,
-            }),
-          );
-        } catch (error) {
-          console.log("fetchNutritionData failed", error);
-        } finally {
-          setIsSearching(false);
-        }
-      }
-      setShouldLoadInitialNutrition(false);
-    })();
-  }, [
-    dispatch,
-    fetchNutritionData,
-    meal,
-    mealItemsFromFoodItems,
-    shouldLoadInitialNutrition,
-  ]);
-
-  function gotoItemDetails({
-    groupId,
-    foodId,
-    uid,
-  }: {
-    foodId: string;
-    groupId: string;
-    uid: string;
-  }) {
+  function openFoodDetails(food: TFoodItem) {
+    dispatch(registerFoodItem({ food }));
     allowNextNavigationRef.current = true;
-    dispatch(setActiveItem({ foodId, groupId, uid }));
+    dispatch(
+      setActiveItem({
+        foodId: food.foodId,
+        groupId: food.groupId!,
+        uid: food.uid,
+      }),
+    );
     router.push("/(log-meal)/food-details");
+  }
+
+  function addFood(food: TFoodItem) {
+    dispatch(appendFoodsToMeal({ foods: [food] }));
+    showAddedToast();
+  }
+
+  function removeFood(food: TFoodItem) {
+    const match = meal.find((item) => sameFoodKey(item, food));
+    if (!match?.groupId) return;
+    dispatch(removeMealItem({ groupId: match.groupId }));
+  }
+
+  function addMealFavourite(favourite: FavouriteMealView) {
+    dispatch(
+      appendFoodsToMeal({
+        foods: favourite.snapshot.items.map((item, index) =>
+          toDraftFoodEntry(item, `${favourite.signature}:${index}`),
+        ),
+      }),
+    );
+    setActiveTab("current");
+    showAddedToast();
+  }
+
+  function removeMealFavourite(favourite: FavouriteMealView) {
+    const signatureSet = new Set(
+      favourite.snapshot.items.map((item) => buildFoodKey(item)),
+    );
+    meal
+      .filter((item) => signatureSet.has(buildFoodKey(item)))
+      .forEach((item) => {
+        if (item.groupId) {
+          dispatch(removeMealItem({ groupId: item.groupId }));
+        }
+      });
   }
 
   const isToday = (value: Date) => {
@@ -326,27 +451,33 @@ export default function LogMeal() {
     minute: "2-digit",
   });
   const dateLabel = isToday(dateTime) ? "Today" : "Selected";
-  const canSubmitMeal = items.length > 0;
+  const canSubmitMeal = items.length > 0 && (!editingEntryId || isDirty);
 
-  const capitalize = (value: string | null | undefined) => {
-    if (!value) return "";
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  };
+  const currentMealTypeLabel =
+    mealTypes.find((entry) => entry.value === mealType)?.label ?? "Meal";
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={logMealStyles.fixedHeader}>
         <View style={styles.navRow}>
           <TouchableOpacity
             accessibilityRole="button"
-            onPress={() => router.back()}
+            onPress={() => {
+              if (isDirty) {
+                confirmExit();
+                return;
+              }
+              isLeavingRef.current = true;
+              dispatch(clearMealState());
+              router.replace("/(nutrition)/nutrition-details");
+            }}
             style={styles.navButton}
           >
             <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
           </TouchableOpacity>
         </View>
         <ThemedText type="title">
-          {editingEntryId ? `Update` : `Log`} {capitalize(mealType)}
+          {editingEntryId ? "Update" : "Log"} {currentMealTypeLabel}
         </ThemedText>
         <View style={logMealStyles.dateRow}>
           <ThemedText style={logMealStyles.dateText}>
@@ -360,101 +491,290 @@ export default function LogMeal() {
             <ThemedText style={logMealStyles.dateButtonText}>Change</ThemedText>
           </TouchableOpacity>
         </View>
-      </View>
-      <View>
-        <TextInput
-          placeholder="100g Roast chicken thighs with skin and 150g of white rice"
-          autoCapitalize="none"
-          keyboardType="default"
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          style={{ borderRadius: 8, borderWidth: 1, padding: 12 }}
-        />
-        <TouchableOpacity
-          accessibilityRole="button"
-          disabled={isSearching || searchTerm.trim().length === 0}
-          onPress={() => submit()}
-          style={[
-            styles.navButton,
-            (isSearching || searchTerm.trim().length === 0) && { opacity: 0.5 },
-          ]}
-        >
-          <ThemedText style={styles.navButtonText}>
-            {isSearching ? "Searching..." : "Search"}
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-      {items && (
-        <ScrollView>
-          {items.map((item: ItemSummary) => (
-            <FoodCard
-              key={item.uid}
-              title={item.name}
-              subtitle={`${item.quantity} ${formatMealUnit(item.unit)} | Calories ${item.caloriesKcal} kcal | Carbs ${item.carbsG} g | Phosphorus ${item.phosphorusMg} mg | Potassium ${item.potassiumMg} mg`}
-              onPress={() =>
-                gotoItemDetails({
-                  foodId: item.foodId,
-                  groupId: item.groupId,
-                  uid: item.uid,
-                })
+        <View style={logMealStyles.searchWrap}>
+          <TextInput
+            placeholder="100g roast chicken thighs with 150g white rice"
+            autoCapitalize="none"
+            keyboardType="default"
+            value={searchTerm}
+            onChangeText={(value) => {
+              setSearchTerm(value);
+              if (!value.trim()) {
+                setHasSearched(false);
               }
-              actions={[
-                {
-                  label: "Remove",
-                  onPress: () =>
-                    dispatch(removeMealItem({ groupId: item.groupId })),
-                  variant: "danger",
-                },
+            }}
+            style={logMealStyles.searchInput}
+          />
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={isSearching || searchTerm.trim().length === 0}
+            onPress={submit}
+            style={[
+              logMealStyles.searchButton,
+              (isSearching || searchTerm.trim().length === 0) &&
+                logMealStyles.buttonDisabled,
+            ]}
+          >
+            <ThemedText style={logMealStyles.searchButtonText}>
+              {isSearching ? "Searching..." : "Search"}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+        <View style={logMealStyles.tabRow}>
+          {[
+            { label: "Current Meal", value: "current" as const },
+            { label: "Foods", value: "foods" as const },
+            { label: "Meals", value: "meals" as const },
+          ].map((tab) => (
+            <TouchableOpacity
+              key={tab.value}
+              onPress={() => setActiveTab(tab.value)}
+              style={[
+                logMealStyles.tabButton,
+                activeTab === tab.value && logMealStyles.tabButtonActive,
               ]}
-              style={logMealStyles.listCard}
-            />
+            >
+              <ThemedText
+                style={[
+                  logMealStyles.tabButtonText,
+                  activeTab === tab.value && logMealStyles.tabButtonTextActive,
+                ]}
+              >
+                {tab.label}
+              </ThemedText>
+            </TouchableOpacity>
           ))}
-          {items.length > 0 && (
+        </View>
+      </View>
+
+      <ScrollView
+        style={logMealStyles.contentScroll}
+        contentContainerStyle={logMealStyles.contentContainer}
+      >
+        {activeTab === "current" ? (
+          <View style={logMealStyles.section}>
+            {items.length ? (
+              items.map((item: ItemSummary) => (
+                <FoodCard
+                  key={item.uid}
+                  title={item.name}
+                  subtitle={buildFoodSubtitle(item)}
+                  onPress={() => {
+                    const currentFood = meal.find(
+                      (entry) =>
+                        entry.uid === item.uid && entry.groupId === item.groupId,
+                    );
+                    if (currentFood) openFoodDetails(currentFood);
+                  }}
+                  actions={[
+                    {
+                      label: "Remove",
+                      onPress: () =>
+                        dispatch(removeMealItem({ groupId: item.groupId })),
+                      variant: "danger",
+                    },
+                  ]}
+                  style={logMealStyles.listCard}
+                />
+              ))
+            ) : (
+              <View style={logMealStyles.emptyState}>
+                <ThemedText style={logMealStyles.emptyTitle}>
+                  No foods in the current meal yet
+                </ThemedText>
+                <ThemedText style={logMealStyles.emptyText}>
+                  Add items from the Foods or Meals tabs.
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {activeTab === "foods" ? (
+          <View style={logMealStyles.section}>
+            {displayedFoods.length ? (
+              displayedFoods.map((food) => {
+                const isAdded = meal.some((entry) => sameFoodKey(entry, food));
+                return (
+                  <FoodCard
+                    key={`${food.groupId}:${food.uid}`}
+                    title={food.name}
+                    subtitle={buildFoodSubtitle(food)}
+                    description={
+                      hasSearched && searchTerm.trim().length > 0
+                        ? "Tap the card to edit this food before adding it."
+                        : "Favourite food"
+                    }
+                    onPress={() => openFoodDetails(food)}
+                    actions={[
+                      {
+                        label: isAdded ? "Remove" : "Add",
+                        onPress: () =>
+                          isAdded ? removeFood(food) : addFood(food),
+                        variant: isAdded ? "danger" : "primary",
+                      },
+                    ]}
+                    style={logMealStyles.listCard}
+                  />
+                );
+              })
+            ) : (
+              <View style={logMealStyles.emptyState}>
+                <ThemedText style={logMealStyles.emptyTitle}>
+                  {hasSearched && searchTerm.trim().length > 0
+                    ? "No foods found"
+                    : "No favourite foods yet"}
+                </ThemedText>
+                <ThemedText style={logMealStyles.emptyText}>
+                  {hasSearched && searchTerm.trim().length > 0
+                    ? "Try a different search phrase."
+                    : "Foods you log twice will appear here automatically."}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        ) : null}
+
+        {activeTab === "meals" ? (
+          <View style={logMealStyles.section}>
+            {favouriteMeals.length ? (
+              favouriteMeals.map((favourite) => {
+                const mealFoodKeys = new Set(
+                  meal.map((item) => buildFoodKey(item)),
+                );
+                const isAdded = favourite.snapshot.items.every((item) =>
+                  mealFoodKeys.has(buildFoodKey(item)),
+                );
+
+                return (
+                  <FoodCard
+                    key={favourite.id}
+                    title={favourite.label}
+                    subtitle={`${capitalize(favourite.mealType)} | Last used ${formatShortDate(favourite.lastUsedAt)}`}
+                    description={favourite.snapshot.items
+                      .map(
+                        (item) =>
+                          `${item.name} (${item.quantity} ${formatMealUnit(item.unit)})`,
+                      )
+                      .join(", ")}
+                    actions={[
+                      {
+                        label: isAdded ? "Remove" : "Add",
+                        onPress: () =>
+                          isAdded
+                            ? removeMealFavourite(favourite)
+                            : addMealFavourite(favourite),
+                        variant: isAdded ? "danger" : "primary",
+                      },
+                    ]}
+                    style={logMealStyles.listCard}
+                  />
+                );
+              })
+            ) : (
+              <View style={logMealStyles.emptyState}>
+                <ThemedText style={logMealStyles.emptyTitle}>
+                  No favourite meals yet
+                </ThemedText>
+                <ThemedText style={logMealStyles.emptyText}>
+                  Meals you log twice will appear here automatically.
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <View style={logMealStyles.fixedFooter}>
+        {editingEntryId ? (
+          <>
             <TouchableOpacity
               accessibilityRole="button"
               disabled={isPersistingMeal || !canSubmitMeal}
               onPress={persistMeal}
               style={[
-                styles.navButton,
-                (isPersistingMeal || !canSubmitMeal) && { opacity: 0.5 },
+                logMealStyles.footerPrimaryButton,
+                (isPersistingMeal || !canSubmitMeal) &&
+                  logMealStyles.buttonDisabled,
               ]}
             >
-              <ThemedText style={styles.navButtonText}>
-                {isPersistingMeal
-                  ? editingEntryId
-                    ? "Updating..."
-                    : "Saving..."
-                  : editingEntryId
-                    ? "Update Meal"
-                    : "Save Meal"}
+              <ThemedText style={logMealStyles.footerPrimaryButtonText}>
+                {isPersistingMeal ? "Updating..." : "Update Meal"}
               </ThemedText>
             </TouchableOpacity>
-          )}
-          {editingEntryId ? (
+            <View style={logMealStyles.footerRow}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                disabled={isPersistingMeal}
+                onPress={() => {
+                  Alert.alert("Delete this meal?", "This cannot be undone.", [
+                    { style: "cancel", text: "Cancel" },
+                    {
+                      onPress: deleteMeal,
+                      style: "destructive",
+                      text: "Delete",
+                    },
+                  ]);
+                }}
+                style={[
+                  logMealStyles.footerSecondaryButton,
+                  logMealStyles.footerDangerButton,
+                  isPersistingMeal && logMealStyles.buttonDisabled,
+                ]}
+              >
+                <ThemedText style={logMealStyles.footerSecondaryButtonTextLight}>
+                  Delete Meal
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => confirmExit()}
+                style={logMealStyles.footerSecondaryButton}
+              >
+                <ThemedText style={logMealStyles.footerSecondaryButtonText}>
+                  Cancel
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <View style={logMealStyles.footerRow}>
             <TouchableOpacity
               accessibilityRole="button"
-              disabled={isPersistingMeal}
-              onPress={() => {
-                Alert.alert("Delete this meal?", "This cannot be undone.", [
-                  { style: "cancel", text: "Cancel" },
-                  {
-                    onPress: deleteMeal,
-                    style: "destructive",
-                    text: "Delete",
-                  },
-                ]);
-              }}
+              disabled={isPersistingMeal || !canSubmitMeal}
+              onPress={persistMeal}
               style={[
-                styles.navButton,
-                { marginTop: 8 },
-                isPersistingMeal && { opacity: 0.5 },
+                logMealStyles.footerSecondaryButton,
+                logMealStyles.footerPrimaryInlineButton,
+                (isPersistingMeal || !canSubmitMeal) &&
+                  logMealStyles.buttonDisabled,
               ]}
             >
-              <ThemedText style={styles.navButtonText}>Delete Meal</ThemedText>
+              <ThemedText style={logMealStyles.footerSecondaryButtonTextLight}>
+                {isPersistingMeal ? "Adding..." : "Add Meal"}
+              </ThemedText>
             </TouchableOpacity>
-          ) : null}
-        </ScrollView>
-      )}
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => confirmExit()}
+              style={logMealStyles.footerSecondaryButton}
+            >
+              <ThemedText style={logMealStyles.footerSecondaryButtonText}>
+                Cancel
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {toastMessage ? (
+        <View pointerEvents="none" style={logMealStyles.toastWrap}>
+          <View style={logMealStyles.toast}>
+            <ThemedText style={logMealStyles.toastText}>{toastMessage}</ThemedText>
+          </View>
+        </View>
+      ) : null}
+
       <DateTimeModal
         visible={showDateTimeModal}
         value={dateTime}
@@ -467,7 +787,7 @@ export default function LogMeal() {
               try {
                 const candidate = await checkMealExists({
                   eatenAt: next.toISOString(),
-                  mealType: mealType,
+                  mealType,
                 }).unwrap();
                 dispatch(applyMealCandidate({ candidate }));
               } catch (error) {
@@ -480,6 +800,7 @@ export default function LogMeal() {
         title="Meal date and time"
         disallowFutureDates={true}
       />
+
       <Modal
         transparent
         animationType="fade"
@@ -500,7 +821,7 @@ export default function LogMeal() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
                 onPress={() => {
-                  if (mealCandidate)
+                  if (mealCandidate) {
                     void (async () => {
                       try {
                         const entry = await fetchMealByDate({
@@ -513,22 +834,23 @@ export default function LogMeal() {
                         console.log("fetchMealByDate failed", error);
                       }
                     })();
+                  }
                   setShowExistingMealModal(false);
                 }}
               >
                 <ThemedText style={styles.modalButtonTextPrimary}>
-                  Yes, add
+                  Add to meal
                 </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonGhost]}
                 onPress={() => {
-                  setShowExistingMealModal(false);
                   dispatch(clearMealCandidate());
+                  setShowExistingMealModal(false);
                 }}
               >
                 <ThemedText style={styles.modalButtonTextGhost}>
-                  No thanks
+                  Keep separate
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -539,6 +861,61 @@ export default function LogMeal() {
   );
 }
 
-function formatMealUnit(unit: string) {
-  return ["g", "gram", "grams"].includes(unit.trim().toLowerCase()) ? "g" : unit;
+function buildFoodSubtitle(item: {
+  caloriesKcal?: string | number;
+  carbsG?: string | number;
+  phosphorusMg?: string | number;
+  potassiumMg?: string | number;
+  quantity: number;
+  unit: string;
+}) {
+  return `${item.quantity}${formatMealUnit(item.unit)} | Calories ${item.caloriesKcal ?? 0}kcal | Carbs ${item.carbsG ?? 0}g | Phosphorus ${item.phosphorusMg ?? 0}mg | Potassium ${item.potassiumMg ?? 0}mg`;
+}
+
+function capitalize(value: string | null | undefined) {
+  if (!value) return "Meal";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatMealUnit(unit: string | null | undefined) {
+  if (!unit) return "";
+  const normalized = unit.trim().toLowerCase();
+  if (["g", "gram", "grams"].includes(normalized)) return "g";
+  return ` ${unit}`;
+}
+
+function formatShortDate(value: string | null | undefined) {
+  if (!value) return "recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recently";
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function buildFoodKey(item: Pick<TFoodItemEntry, "foodId" | "name">) {
+  return (
+    item.foodId?.trim().toLowerCase() ||
+    item.name.trim().toLowerCase().replace(/\s+/g, " ")
+  );
+}
+
+function sameFoodKey(
+  a: Pick<TFoodItemEntry, "foodId" | "name">,
+  b: Pick<TFoodItemEntry, "foodId" | "name">,
+) {
+  return buildFoodKey(a) === buildFoodKey(b);
+}
+
+function toDraftFood(item: FavouriteFoodView): TFoodItem {
+  return toDraftFoodEntry(item.snapshot, item.signature);
+}
+
+function toDraftFoodEntry(item: TFoodItemEntry, seed: string): TFoodItem {
+  return {
+    ...item,
+    groupId: `fav:${seed}:${buildFoodKey(item)}`,
+    measures: [],
+  };
 }

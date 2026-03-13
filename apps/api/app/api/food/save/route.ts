@@ -2,6 +2,7 @@ import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { deriveFavouriteMaps, incrementFavouriteMaps } from "@/apps/api/lib/utils/nutritionFavourites";
 import {
   NutritionEntry,
   ROLES,
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
       return bad("Patient context missing", { requestId }, 403);
     }
     const db = await getDb();
+    const patientObjectId = new ObjectId(caller.patientId);
 
     type NutritionEntryInsert = Omit<TNutritionEntry, "patientId"> & {
       patientId: ObjectId;
@@ -157,8 +159,17 @@ export async function POST(req: NextRequest) {
     if (parsed?.data) {
       await collection.insertOne({
         ...parsed.data,
-        patientId: new ObjectId(parsed.data.patientId),
+        patientId: patientObjectId,
       });
+      await incrementFavouriteMaps(
+        db,
+        deriveFavouriteMaps({
+          eatenAt: resolvedEatenAt,
+          items: mealArray,
+          mealType,
+          patientId: patientObjectId,
+        }),
+      );
     }
 
     return ok("meal saved");

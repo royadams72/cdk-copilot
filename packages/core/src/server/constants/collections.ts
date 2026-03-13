@@ -33,6 +33,7 @@ export const COLLECTIONS = {
   MeasurementsLedger: "measurements_ledger",
   MedicationsCurrent: "medications_current",
   MedicationsLedger: "medications_ledger",
+  NutritionFavourites: "nutrition_favourites",
   NutritionLedger: "nutrition_ledger",
   TargetsCurrent: "targets_current",
   TargetsLedger: "targets_ledger",

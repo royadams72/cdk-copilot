@@ -249,7 +249,7 @@ export default function FoodDetails() {
               ]}
               onPress={() => {
                 dispatch(saveActiveItemToMeal());
-                router.push("/(log-meal)/log-meal");
+                router.replace("/(log-meal)/log-meal?tab=current");
               }}
             >
               <ThemedText style={NutritionStyles.modalButtonTextPrimary}>

@@ -1,0 +1,42 @@
+{
+  "collMod": "nutrition_favourites",
+  "indexes": [
+    { "key": { "patientId": 1, "kind": 1, "signature": 1 }, "unique": true },
+    { "key": { "patientId": 1, "kind": 1, "isFavourite": 1, "updatedAt": -1 } }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "kind",
+        "signature",
+        "label",
+        "timesUsed",
+        "isFavourite",
+        "lastUsedAt",
+        "snapshot",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "patientId": { "bsonType": "objectId" },
+        "kind": { "enum": ["food", "meal"] },
+        "signature": { "bsonType": "string" },
+        "label": { "bsonType": "string" },
+        "mealType": {
+          "enum": ["breakfast", "lunch", "dinner", "snack", "drink"]
+        },
+        "timesUsed": { "bsonType": ["int", "long", "double"] },
+        "isFavourite": { "bsonType": "bool" },
+        "lastUsedAt": { "bsonType": "date" },
+        "snapshot": { "bsonType": "object" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

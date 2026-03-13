@@ -19,7 +19,7 @@ import { FoodCard } from "@/components/food-card";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
-import { formatDateShort, formatDecimal } from "../dashboard/utils";
+import { formatDateShort } from "../dashboard/utils";
 import { NutritionStyles } from "./styles";
 import { useAppDispatch } from "@/store/hooks";
 import {
@@ -614,7 +614,7 @@ function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
     return `0 ${formatDisplayUnit(unit)}`;
   }
-  return `${String(value ?? 0)} ${formatDisplayUnit(unit)}`;
+  return `${Math.ceil(value ?? 0).toString()} ${formatDisplayUnit(unit)}`;
 }
 
 function formatDisplayUnit(unit: string) {

@@ -1,6 +1,15 @@
 import { StyleSheet } from "react-native";
 
 export const logMealStyles = StyleSheet.create({
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  contentContainer: {
+    paddingBottom: 180,
+  },
+  contentScroll: {
+    flex: 1,
+  },
   controlCard: {
     gap: 12,
     padding: 16,
@@ -22,6 +31,77 @@ export const logMealStyles = StyleSheet.create({
   controlRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  emptyState: {
+    borderRadius: 18,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 18,
+    gap: 6,
+  },
+  emptyText: {
+    color: "#64748b",
+    fontSize: 14,
+  },
+  emptyTitle: {
+    color: "#0f172a",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  fixedFooter: {
+    position: "absolute",
+    left: 15,
+    right: 15,
+    bottom: 15,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 12,
+    gap: 10,
+  },
+  fixedHeader: {
+    gap: 12,
+    paddingBottom: 12,
+  },
+  footerDangerButton: {
+    backgroundColor: "#dc2626",
+  },
+  footerPrimaryButton: {
+    minHeight: 48,
+    borderRadius: 16,
+    backgroundColor: "#0f766e",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerPrimaryButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  footerPrimaryInlineButton: {
+    backgroundColor: "#0f766e",
+  },
+  footerRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  footerSecondaryButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#e2e8f0",
+  },
+  footerSecondaryButtonText: {
+    color: "#0f172a",
+    fontWeight: "700",
+  },
+  footerSecondaryButtonTextLight: {
+    color: "#fff",
+    fontWeight: "700",
   },
   listCard: {
     marginBottom: 10,
@@ -64,11 +144,80 @@ export const logMealStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  searchButton: {
+    minWidth: 104,
+    borderRadius: 14,
+    backgroundColor: "#0f766e",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  searchButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  searchInput: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
+  },
+  searchWrap: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  section: {
+    gap: 4,
+  },
   screenContent: {
     paddingBottom: 32,
   },
   screenScroll: {
     flex: 1,
+  },
+  tabButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 999,
+    backgroundColor: "#e2e8f0",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  tabButtonActive: {
+    backgroundColor: "#111827",
+  },
+  tabButtonText: {
+    color: "#0f172a",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  tabButtonTextActive: {
+    color: "#fff",
+  },
+  tabRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  toast: {
+    backgroundColor: "#111827",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  toastText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  toastWrap: {
+    position: "absolute",
+    left: 15,
+    right: 15,
+    bottom: 135,
+    alignItems: "center",
   },
   helperText: {
     fontSize: 13,

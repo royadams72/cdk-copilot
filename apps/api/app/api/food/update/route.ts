@@ -2,6 +2,7 @@ import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { reconcileFavouriteMaps } from "@/apps/api/lib/utils/nutritionFavourites";
 import {
   NutritionEntry,
   ROLES,
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const db = await getDb();
+    const patientObjectId = new ObjectId(caller.patientId);
 
     type NutritionEntryInsert = Omit<TNutritionEntry, "patientId"> & {
       patientId: ObjectId;
@@ -125,7 +127,7 @@ export async function POST(req: NextRequest) {
     const entryObjectId = new ObjectId(entryId);
     const existing = await collection.findOne({
       _id: entryObjectId,
-      patientId: new ObjectId(caller.patientId),
+      patientId: patientObjectId,
     });
     if (!existing) {
       return bad("Meal not found", { requestId }, 404);
@@ -166,6 +168,16 @@ export async function POST(req: NextRequest) {
         },
       },
     );
+
+    await reconcileFavouriteMaps({
+      db,
+      eatenAt: resolvedEatenAt,
+      nextItems: mealArray,
+      nextMealType: mealType,
+      oldItems: existing.items ?? [],
+      oldMealType: existing.mealType,
+      patientId: patientObjectId,
+    });
 
     return ok("meal updated");
   } catch (err: any) {
