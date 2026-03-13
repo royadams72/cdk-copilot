@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { makeRandomId } from "@/apps/api/lib/http/request";
-import { SessionUser, requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTIONS } from "@/packages/core/dist/server";
@@ -17,11 +17,11 @@ export async function GET(req: NextRequest) {
 
     const database = await getDb();
     const usersAccounts = database.collection<TUsersAccount>(
-      COLLECTIONS.UsersAccounts
+      COLLECTIONS.UsersAccounts,
     );
     const activeUser = await usersAccounts.findOne({
-      principalId: user.principalId,
       isActive: true,
+      principalId: user.principalId,
     });
 
     if (!activeUser) {
@@ -30,11 +30,13 @@ export async function GET(req: NextRequest) {
 
     await usersAccounts.updateOne(
       { principalId: activeUser.principalId },
-      { $set: { lastActiveAt: new Date() } }
+      { $set: { lastActiveAt: new Date() } },
     );
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
     const status = error?.status || 500;
+    console.log("error:", error);
+
     return bad(error?.message || "Server error", { requestId }, status);
   }
 }

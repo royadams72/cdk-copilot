@@ -61,6 +61,7 @@ export type logMealState = {
     mealType: TMealType;
     eatenAt: string | null;
   } | null;
+  searchResults: FoodItemsObj[] | null;
   status: "idle" | "loading" | "succeeded" | "failed";
 };
 
@@ -84,6 +85,7 @@ const initialState: logMealState = {
   lastLoadedAt: null,
   meal: createEmptyMeals(),
   mealCandidate: null,
+  searchResults: null,
   status: "idle",
 };
 
@@ -122,14 +124,7 @@ const logMealSlice = createSlice({
           state.foodItems,
           incomingGroups,
         );
-        if (state.activeMealType) {
-          state.meal[state.activeMealType] = mergeUniqueMealItems(
-            state.meal[state.activeMealType],
-            setMealItems(incomingGroups),
-          );
-        }
-        state.isDirty = true;
-
+        state.searchResults = incomingGroups;
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       },
@@ -206,6 +201,7 @@ const logMealSlice = createSlice({
         state.editingEntryId = entryId;
         state.foodItems = nextFoodItems;
         state.meal = createEmptyMeals();
+        state.searchResults = null;
         state.meal[mealType] = nextFoodItems
           .map((entry) => entry.foodItems[0])
           .filter((foodItem): foodItem is TFoodItem => !!foodItem);
@@ -219,12 +215,6 @@ const logMealSlice = createSlice({
     removeMealItem: create.reducer(
       (state, action: PayloadAction<{ groupId: string }>) => {
         const { groupId } = action.payload;
-
-        if (state.foodItems?.length) {
-          state.foodItems = state.foodItems.filter(
-            (group) => group.groupId !== groupId,
-          );
-        }
 
         if (state.activeMealType) {
           state.meal[state.activeMealType] = state.meal[
@@ -261,6 +251,13 @@ const logMealSlice = createSlice({
       mealItems.push(nextFood);
       state.isDirty = true;
     }),
+    registerFoodItem: create.reducer(
+      (state, action: PayloadAction<{ food: TFoodItem }>) => {
+        state.foodItems = mergeUniqueFoodGroups(state.foodItems, [
+          createFoodGroup(action.payload.food),
+        ]);
+      },
+    ),
     setActiveItem: create.reducer(
       (
         state,
@@ -312,7 +309,23 @@ const logMealSlice = createSlice({
           state.isDirty = false;
           state.editingEntryId = null;
           state.eatenAt = new Date().toISOString();
+          state.searchResults = null;
         }
+      },
+    ),
+    appendFoodsToMeal: create.reducer(
+      (state, action: PayloadAction<{ foods: TFoodItem[] }>) => {
+        if (!state.activeMealType) return;
+        const nextFoods = action.payload.foods.map((food) => {
+          const nextGroup = createFoodGroup(food);
+          state.foodItems = mergeUniqueFoodGroups(state.foodItems, [nextGroup]);
+          return nextGroup.foodItems[0];
+        });
+        state.meal[state.activeMealType] = mergeUniqueMealItems(
+          state.meal[state.activeMealType],
+          nextFoods.filter((item): item is TFoodItem => !!item),
+        );
+        state.isDirty = true;
       },
     ),
     setPortion: create.reducer(
@@ -323,8 +336,8 @@ const logMealSlice = createSlice({
           groupId: string;
           nutrientRatio: number;
           quantity: number;
-          unit: string;
           uid: string;
+          unit: string;
         }>,
       ) => {
         const { uid, quantity, groupId, foodId, unit, nutrientRatio } =
@@ -338,7 +351,9 @@ const logMealSlice = createSlice({
         if (!item) return;
         const normalizedUnit = unit.trim();
         const safeRatio =
-          Number.isFinite(nutrientRatio) && nutrientRatio > 0 ? nutrientRatio : 1;
+          Number.isFinite(nutrientRatio) && nutrientRatio > 0
+            ? nutrientRatio
+            : 1;
         const hasQuantityChanged = item.quantity !== quantity;
         const hasUnitChanged = (item.unit ?? "").trim() !== normalizedUnit;
 
@@ -372,11 +387,13 @@ export const {
   setMealType,
   applyFetchMealData,
   saveActiveItemToMeal,
+  registerFoodItem,
   removeMealItem,
   clearMealState,
   setEatenAt,
   hydrateMealFromEntry,
   clearMealCandidate,
+  appendFoodsToMeal,
 } = logMealSlice.actions;
 
 const state = (state: RootState) => state.logMeal;
@@ -407,6 +424,11 @@ export const selectActiveItem = createSelector(
 export const selectFoodItems = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.foodItems,
+);
+
+export const selectSearchResults = createSelector(
+  (state: RootState) => state.logMeal,
+  (logMeal) => logMeal.searchResults,
 );
 export const selectIsDirty = createSelector(
   (state: RootState) => state.logMeal,
@@ -722,6 +744,29 @@ function resetLogMeal(state: RootState["logMeal"]) {
   state.eatenAt = new Date().toISOString();
   state.editingEntryId = null;
   state.mealCandidate = null;
+  state.searchResults = null;
+}
+
+function createFoodGroup(food: TFoodItem): FoodItemsObj {
+  const groupId =
+    food.groupId ??
+    `${food.foodId}:${food.uid}:${food.quantity}:${(food.unit ?? "").trim().toLowerCase()}`;
+  const nextFood = {
+    ...food,
+    groupId,
+  };
+
+  return {
+    foodItems: [nextFood],
+    groupId,
+    groupInfo: {
+      food: nextFood.name,
+      normalised: nextFood.name.toLowerCase(),
+      original: nextFood.name,
+      quantity: nextFood.quantity,
+      unit: nextFood.unit ?? "",
+    },
+  };
 }
 
 function mergeEntryIntoState(
@@ -839,9 +884,11 @@ function extractNutrition(
       unit: measureByFoodId.get(item.foodId) ?? item.unit,
     };
   };
+
   const phosphorus_protein_ratio = (a: number, b: number): number => {
     return a / b;
   };
+
   const nutritionUpdated = Array.isArray(activeItems)
     ? activeItems.map(returnNutrition)
     : activeItems

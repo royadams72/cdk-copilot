@@ -7,6 +7,7 @@ export * from "./schemas/labs";
 export * from "./schemas/measurements";
 export * from "./schemas/medications";
 export * from "./schemas/nutrition";
+export * from "./schemas/nutrition_favourites";
 export * from "./schemas/patients";
 export * from "./schemas/clinical_reference_rules";
 export * from "./schemas/targets";
