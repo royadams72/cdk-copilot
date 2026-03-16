@@ -51,8 +51,12 @@ export type MedicationCurrentDoc = {
   updatedAt?: Date;
 };
 
-export type NutritionEntryDoc = Omit<TNutritionEntry, "patientId"> & {
+export type NutritionEntryDoc = Omit<
+  TNutritionEntry,
+  "patientId" | "eatenAt"
+> & {
   _id: ObjectId;
+  eatenAt?: Date | null;
   patientId: ObjectId;
 };
 
