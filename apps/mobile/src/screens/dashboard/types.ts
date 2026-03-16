@@ -55,6 +55,26 @@ export type FoodHighlights = {
   itemsByDate: Record<string, Record<NutritionMetricKey, FoodHighlight[]>>;
 };
 
+export type NutritionTrendChunk = {
+  hasMore: boolean;
+  nextBefore: string | null;
+  nutrition: {
+    range: DashboardRange;
+    totals: Record<string, number>;
+    radials: DashboardRadial[];
+    ratio: DashboardRatio;
+    dailySeries: NutritionDailyPoint[];
+    foodHighlights: FoodHighlights;
+    mealsByDate: Record<string, NutritionMealEntry[]>;
+  };
+  targets: Partial<Record<NutrientKey, number>>;
+  window: {
+    days: number;
+    from: string;
+    to: string;
+  };
+};
+
 export type NutritionMealEntry = {
   id: string;
   mealType: string;

@@ -12,7 +12,6 @@ import {
 import type { ScrollView as ScrollViewType } from "react-native";
 import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 import type { TMealType } from "@ckd/core";
 
 import { ThemedText } from "@/components/themed-text";
@@ -24,8 +23,9 @@ import { formatDateShort } from "../dashboard/utils";
 import { NutritionStyles } from "./styles";
 import { useAppDispatch } from "@/store/hooks";
 import {
+  useGetNutritionTrendChunkQuery,
   toQueryErrorMessage,
-  useGetDashboardQuery,
+  useLazyGetNutritionTrendChunkQuery,
 } from "@/store/services/dashboardApi";
 
 import {
@@ -34,7 +34,12 @@ import {
   setMealType,
 } from "@/store/slices/logMealSlice";
 import { useDeleteMealDataMutation } from "@/store/services/logMealApi";
-import type { FoodHighlight } from "../dashboard/types";
+import type {
+  DashboardRatio,
+  FoodHighlight,
+  NutrientKey,
+  NutritionDailyPoint,
+} from "../dashboard/types";
 import { RatioCard } from "../dashboard/components/RatioCard";
 import { AccordionCard } from "../dashboard/components/AccordionCard";
 
@@ -47,15 +52,30 @@ export default function NutritionDetails() {
   const router = useRouter();
   const theme = useColorScheme() ?? "light";
   const dispatch = useAppDispatch();
+  const chartRequestDays = 7;
   const [deleteMealData] = useDeleteMealDataMutation();
-  const { data, error, isFetching, isLoading, refetch } =
-    useGetDashboardQuery("all");
+  const {
+    data: trendData,
+    error: trendQueryError,
+    isLoading: isTrendLoading,
+  } = useGetNutritionTrendChunkQuery({ days: chartRequestDays });
+  const [loadTrendChunk] = useLazyGetNutritionTrendChunkQuery();
+  const [requestError, setRequestError] = useState<unknown>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const requestedBeforeRef = useRef<Set<string>>(new Set());
+  const isLoadingMoreRef = useRef(false);
+  const pendingScrollWidthRef = useRef<number | null>(null);
+  const prefetchArmedRef = useRef(true);
+  const contentWidthRef = useRef(CHART_VIEWPORT_WIDTH);
+  const scrollOffsetRef = useRef(0);
+  const shouldScrollToEndRef = useRef(true);
   const errorMessage = toQueryErrorMessage(
-    error,
+    requestError ?? trendQueryError,
     "We couldn't refresh your nutrition data",
   );
-  const refreshing = isFetching && !!data;
-  const loading = isLoading && !data;
+  const hasError = Boolean(requestError ?? trendQueryError);
+  const refreshing = isRefreshing;
+  const loading = isTrendLoading && !trendData;
 
   const [selectedMetricId, setSelectedMetricId] = useState(
     NUTRITION_METRICS[0]?.id ?? "protein",
@@ -66,35 +86,114 @@ export default function NutritionDetails() {
   const [showAddForSelectedDay, setShowAddForSelectedDay] = useState(false);
 
   const chartScrollRef = useRef<ScrollViewType | null>(null);
-  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
-    null,
-  );
   const metricConfig =
     NUTRITION_METRICS.find((metric) => metric.id === selectedMetricId) ??
     NUTRITION_METRICS[0];
 
+  useEffect(() => {
+    if (trendData) {
+      setRequestError(null);
+    }
+  }, [trendData]);
+
+  const fetchTrend = useCallback(async (preserveViewport: boolean) => {
+    setIsRefreshing(true);
+    setRequestError(null);
+    requestedBeforeRef.current.clear();
+    isLoadingMoreRef.current = false;
+    pendingScrollWidthRef.current = preserveViewport
+      ? contentWidthRef.current
+      : null;
+    prefetchArmedRef.current = true;
+
+    try {
+      const currentTrendData = trendData;
+      const latestDay =
+        currentTrendData?.dailySeries[currentTrendData.dailySeries.length - 1]
+          ?.date;
+      const requestArgs =
+        preserveViewport && currentTrendData?.dailySeries.length
+          ? {
+              before: latestDay ?? undefined,
+              days: Math.max(
+                currentTrendData.dailySeries.length,
+                chartRequestDays,
+              ),
+              reset: true,
+            }
+          : { days: chartRequestDays, reset: true };
+      await loadTrendChunk(requestArgs).unwrap();
+      shouldScrollToEndRef.current = !preserveViewport;
+      if (!preserveViewport) {
+        scrollOffsetRef.current = 0;
+      }
+    } catch (err) {
+      setRequestError(err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [chartRequestDays, loadTrendChunk, trendData]);
+
+  const fetchOlderChunk = useCallback(async () => {
+    if (
+      !trendData?.hasMore ||
+      !trendData.nextBefore ||
+      isLoadingMoreRef.current
+    ) {
+      return;
+    }
+    if (requestedBeforeRef.current.has(trendData.nextBefore)) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    setRequestError(null);
+    requestedBeforeRef.current.add(trendData.nextBefore);
+    pendingScrollWidthRef.current = contentWidthRef.current;
+
+    try {
+      await loadTrendChunk({
+        before: trendData.nextBefore,
+        days: chartRequestDays,
+      }).unwrap();
+    } catch (err) {
+      requestedBeforeRef.current.delete(trendData.nextBefore);
+      pendingScrollWidthRef.current = null;
+      setRequestError(err);
+    } finally {
+      isLoadingMoreRef.current = false;
+    }
+  }, [chartRequestDays, loadTrendChunk, trendData]);
+
   const chartSeries = useMemo(() => {
-    if (!data?.nutrition.dailySeries) return [];
-    return data.nutrition.dailySeries.map((point, index) => ({
+    if (!trendData?.dailySeries) return [];
+    return trendData.dailySeries.map((point, index) => ({
       ...point,
       index,
       value: Math.max(metricValue(point.totals, metricConfig.key), 0),
     }));
-  }, [data, metricConfig.key]);
+  }, [metricConfig.key, trendData]);
+
+  const aggregateTotals = useMemo(
+    () => sumNutritionTotals(trendData?.dailySeries ?? []),
+    [trendData?.dailySeries],
+  );
+
+  const chartRatio = useMemo(
+    () => buildRatioFromTotals(aggregateTotals, trendData?.targets),
+    [aggregateTotals, trendData?.targets],
+  );
 
   const chartTarget = useMemo(() => {
     if (metricConfig.key === "phosphorus_protein_ratio") {
-      const ratioTarget = data?.nutrition.ratio?.target;
+      const ratioTarget = chartRatio.target;
       return typeof ratioTarget === "number" && Number.isFinite(ratioTarget)
         ? ratioTarget
         : null;
     }
-    if (!data?.nutrition.radials) return null;
-    const radial = data.nutrition.radials.find(
-      (item) => item.id === metricConfig.id,
-    );
-    return radial?.target ?? null;
-  }, [data, metricConfig.id, metricConfig.key]);
+    const target = trendData?.targets?.[metricConfig.key as NutrientKey];
+    return typeof target === "number" && Number.isFinite(target) ? target : null;
+  }, [chartRatio.target, metricConfig.key, trendData?.targets]);
 
   const chartDomainMax = useMemo(() => {
     const values = chartSeries.map((point) => point.value);
@@ -139,60 +238,94 @@ export default function NutritionDetails() {
 
   const chartPoints = useMemo(() => {
     if (!chartSeries.length) return [];
-    const innerWidth =
-      chartContentWidth - CHART_PADDING.left - CHART_PADDING.right;
     const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
-    const denominator = chartSeries.length > 1 ? chartSeries.length - 1 : 1;
 
     return chartSeries.map((point, index) => {
-      const xRatio = chartSeries.length === 1 ? 0.5 : index / denominator;
       const value = Math.max(point.value, 0);
       const yRatio =
         chartDomainMax > 0 ? Math.min(value / chartDomainMax, 1) : 0;
       return {
         ...point,
-        chartX: CHART_PADDING.left + innerWidth * xRatio,
+        chartX:
+          chartSeries.length === 1
+            ? chartContentWidth / 2
+            : CHART_PADDING.left + index * POINT_GAP,
         chartY: CHART_PADDING.top + innerHeight * (1 - yRatio),
       };
     });
   }, [chartSeries, chartDomainMax, chartContentWidth]);
 
   useEffect(() => {
-    if (!chartSeries.length) return;
-    setSelectedPointIndex(chartSeries.length - 1);
-    setSelectedDayKey(chartSeries[chartSeries.length - 1]?.date ?? null);
-    setShowAddForSelectedDay(false);
-  }, [chartSeries.length]);
+    contentWidthRef.current = chartContentWidth;
+    if (!chartScrollRef.current) return;
+
+    if (pendingScrollWidthRef.current !== null) {
+      const previousWidth = pendingScrollWidthRef.current;
+      pendingScrollWidthRef.current = null;
+      chartScrollRef.current.scrollTo({
+        animated: false,
+        x: scrollOffsetRef.current + (chartContentWidth - previousWidth),
+      });
+      return;
+    }
+
+    if (shouldScrollToEndRef.current) {
+      shouldScrollToEndRef.current = false;
+      const nextOffset = Math.max(chartContentWidth - CHART_VIEWPORT_WIDTH, 0);
+      scrollOffsetRef.current = nextOffset;
+      chartScrollRef.current.scrollTo({
+        animated: false,
+        x: nextOffset,
+      });
+    }
+  }, [chartContentWidth, chartSeries.length]);
 
   useEffect(() => {
-    if (!chartScrollRef.current) return;
-    chartScrollRef.current.scrollTo({
-      animated: false,
-      x: Math.max(chartContentWidth - CHART_VIEWPORT_WIDTH, 0),
-    });
-  }, [chartContentWidth, chartSeries.length]);
+    if (!chartSeries.length) return;
+    if (selectedDayKey) {
+      const hasSelectedDay = chartSeries.some((point) => point.date === selectedDayKey);
+      if (hasSelectedDay) {
+        return;
+      }
+    }
+    const latestPoint = chartSeries[chartSeries.length - 1];
+    setSelectedDayKey(latestPoint?.date ?? null);
+    setShowAddForSelectedDay(false);
+  }, [chartSeries, selectedDayKey]);
+
+  const selectedPointIndex = useMemo(() => {
+    if (!chartSeries.length) return null;
+    if (selectedDayKey) {
+      const index = chartSeries.findIndex((point) => point.date === selectedDayKey);
+      if (index >= 0) return index;
+    }
+    return chartSeries.length - 1;
+  }, [chartSeries, selectedDayKey]);
 
   const selectedPoint =
     selectedPointIndex !== null ? chartSeries[selectedPointIndex] : null;
   const selectedMetricValue =
     selectedPoint !== null
       ? metricValue(selectedPoint.totals, metricConfig.key)
-      : data?.nutrition.totals?.[metricConfig.key];
+      : metricValue(aggregateTotals, metricConfig.key);
 
   useEffect(() => {
     if (!selectedPoint?.date) return;
     setSelectedDayKey(selectedPoint.date);
   }, [selectedPoint?.date]);
 
-  const highlightDate =
-    selectedPoint?.date ?? data?.nutrition.foodHighlights.latestDate ?? null;
+  const latestLoadedDate = trendData?.dailySeries.length
+    ? trendData.dailySeries[trendData.dailySeries.length - 1]?.date ?? null
+    : null;
+
+  const highlightDate = selectedPoint?.date ?? latestLoadedDate ?? null;
 
   const { highlights, hasHighlightBucket } = useMemo(() => {
     if (!highlightDate) {
       return { hasHighlightBucket: false, highlights: [] as FoodHighlight[] };
     }
     const dayBucket =
-      data?.nutrition.foodHighlights.itemsByDate?.[highlightDate];
+      trendData?.foodHighlightsByDate?.[highlightDate];
     if (!dayBucket) {
       return { hasHighlightBucket: false, highlights: [] as FoodHighlight[] };
     }
@@ -200,7 +333,7 @@ export default function NutritionDetails() {
       hasHighlightBucket: true,
       highlights: dayBucket[metricConfig.key] ?? [],
     };
-  }, [data, highlightDate, metricConfig.key]);
+  }, [highlightDate, metricConfig.key, trendData?.foodHighlightsByDate]);
 
   const highlightTitle = buildHighlightTitle(metricConfig.label, highlightDate);
 
@@ -211,8 +344,8 @@ export default function NutritionDetails() {
   );
   const mealsForDay = useMemo(() => {
     if (!highlightDate) return [];
-    return data?.nutrition.mealsByDate?.[highlightDate] ?? [];
-  }, [data, highlightDate]);
+    return trendData?.mealsByDate?.[highlightDate] ?? [];
+  }, [highlightDate, trendData?.mealsByDate]);
 
   useEffect(() => {
     if (mealsForDay.length === 0) {
@@ -221,21 +354,40 @@ export default function NutritionDetails() {
   }, [mealsForDay.length]);
 
   const handleRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
+    void fetchTrend(true);
+  }, [fetchTrend]);
 
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch]),
-  );
-
-  const canRender = Boolean(data?.nutrition.dailySeries?.length);
+  const canRender = Boolean(trendData?.dailySeries?.length);
 
   const openLogMealModal = useCallback((forSelectedDay = false) => {
     setShowAddForSelectedDay(forSelectedDay);
     setIsLogModalOpen(true);
   }, []);
+
+  const handleChartScroll = useCallback(
+    (event: {
+      nativeEvent: {
+        contentOffset: { x: number };
+        contentSize: { width: number };
+        layoutMeasurement: { width: number };
+      };
+    }) => {
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      scrollOffsetRef.current = contentOffset.x;
+      const maxOffset = Math.max(contentSize.width - layoutMeasurement.width, 0);
+      if (maxOffset <= 0) return;
+      const isPastPrefetchThreshold = contentOffset.x <= maxOffset * 0.5;
+      if (!isPastPrefetchThreshold) {
+        prefetchArmedRef.current = true;
+        return;
+      }
+      if (prefetchArmedRef.current) {
+        prefetchArmedRef.current = false;
+        void fetchOlderChunk();
+      }
+    },
+    [fetchOlderChunk],
+  );
 
   if (loading) {
     return (
@@ -283,7 +435,7 @@ export default function NutritionDetails() {
           </ThemedText>
         </View>
 
-        {error && (
+        {hasError && (
           <Card>
             <ThemedText type="defaultSemiBold">
               We couldn't refresh your nutrition data
@@ -308,7 +460,7 @@ export default function NutritionDetails() {
                 <ThemedText style={NutritionStyles.helperText}>
                   Since{" "}
                   {new Date(
-                    data?.nutrition.range.from ?? Date.now(),
+                    trendData?.dailySeries[0]?.date ?? Date.now(),
                   ).toLocaleDateString("en-GB", {
                     day: "2-digit",
                     month: "short",
@@ -328,6 +480,8 @@ export default function NutritionDetails() {
                 <ScrollView
                   horizontal
                   ref={chartScrollRef}
+                  onScroll={handleChartScroll}
+                  scrollEventThrottle={16}
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ width: chartContentWidth }}
                 >
@@ -346,7 +500,6 @@ export default function NutritionDetails() {
                       gridRatios={[0.25, 0.5, 0.75]}
                       selectedIndex={selectedPointIndex}
                       onSelectIndex={(index) => {
-                        setSelectedPointIndex(index);
                         setSelectedDayKey(chartSeries[index]?.date ?? null);
                         setShowAddForSelectedDay(true);
                       }}
@@ -488,7 +641,7 @@ export default function NutritionDetails() {
               )}
             </AccordionCard>
           </>
-        ) : (
+        ) : !hasError ? (
           <Card>
             <ThemedText type="defaultSemiBold">
               No meals logged this week
@@ -498,8 +651,8 @@ export default function NutritionDetails() {
               potassium, and sodium insights.
             </ThemedText>
           </Card>
-        )}
-        {data && <RatioCard ratio={data.nutrition.ratio} />}
+        ) : null}
+        {trendData && <RatioCard ratio={chartRatio} />}
       </ScrollView>
       <Modal
         transparent
@@ -630,7 +783,7 @@ export default function NutritionDetails() {
                               onPress: () => {
                                 deleteMealData({ entryId: meal.id })
                                   .unwrap()
-                                  .then(() => refetch());
+                                  .then(() => fetchTrend(true));
                               },
                               style: "destructive",
                               text: "Delete",
@@ -660,6 +813,52 @@ export default function NutritionDetails() {
       </Modal>
     </View>
   );
+}
+
+const EMPTY_TOTALS: Record<NutrientKey, number> = {
+  caloriesKcal: 0,
+  phosphorusMg: 0,
+  potassiumMg: 0,
+  proteinG: 0,
+  sodiumMg: 0,
+};
+
+function sumNutritionTotals(series: NutritionDailyPoint[]) {
+  return series.reduce(
+    (totals, point) => {
+      totals.caloriesKcal += point.totals.caloriesKcal ?? 0;
+      totals.phosphorusMg += point.totals.phosphorusMg ?? 0;
+      totals.potassiumMg += point.totals.potassiumMg ?? 0;
+      totals.proteinG += point.totals.proteinG ?? 0;
+      totals.sodiumMg += point.totals.sodiumMg ?? 0;
+      return totals;
+    },
+    { ...EMPTY_TOTALS },
+  );
+}
+
+function buildRatioFromTotals(
+  totals: Record<NutrientKey, number>,
+  targets?: Partial<Record<NutrientKey, number>>,
+): DashboardRatio {
+  const value =
+    totals.proteinG > 0
+      ? Math.round((totals.phosphorusMg / totals.proteinG) * 100) / 100
+      : null;
+  const target =
+    typeof targets?.proteinG === "number" &&
+    typeof targets?.phosphorusMg === "number" &&
+    targets.proteinG > 0
+      ? Math.round((targets.phosphorusMg / targets.proteinG) * 100) / 100
+      : 12;
+
+  return {
+    status:
+      value === null ? "unknown" : value <= target ? "in-range" : "high",
+    target,
+    unit: "mg phosphorus per g protein",
+    value,
+  };
 }
 
 function formatChartValue(value: number | null | undefined, unit: string) {

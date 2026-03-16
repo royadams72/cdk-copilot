@@ -209,6 +209,72 @@ export async function fetchNutritionEntries(db: Db, patientId: ObjectId) {
     .toArray();
 }
 
+export async function fetchNutritionEntriesInRange(
+  db: Db,
+  patientId: ObjectId,
+  from: Date,
+  toExclusive: Date,
+) {
+  return db
+    .collection<NutritionEntryDoc>(COLLECTIONS.NutritionLedger)
+    .find(
+      {
+        patientId,
+        $or: [
+          {
+            eatenAt: { $gte: from, $lt: toExclusive },
+          },
+          {
+            eatenAt: null,
+            createdAt: { $gte: from, $lt: toExclusive },
+          },
+          {
+            eatenAt: { $exists: false },
+            createdAt: { $gte: from, $lt: toExclusive },
+          },
+        ],
+      },
+      {
+        projection: {
+          _id: 1,
+          createdAt: 1,
+          eatenAt: 1,
+          items: 1,
+          mealType: 1,
+          totals: 1,
+        },
+      },
+    )
+    .sort({ eatenAt: -1, createdAt: -1 })
+    .limit(200)
+    .toArray();
+}
+
+export async function hasOlderNutritionEntries(
+  db: Db,
+  patientId: ObjectId,
+  before: Date,
+) {
+  const doc = await db
+    .collection<NutritionEntryDoc>(COLLECTIONS.NutritionLedger)
+    .findOne(
+      {
+        patientId,
+        $or: [
+          { eatenAt: { $lt: before } },
+          { eatenAt: null, createdAt: { $lt: before } },
+          { eatenAt: { $exists: false }, createdAt: { $lt: before } },
+        ],
+      },
+      {
+        projection: { _id: 1 },
+        sort: { eatenAt: -1, createdAt: -1 },
+      },
+    );
+
+  return Boolean(doc);
+}
+
 export async function fetchRecentMedications(db: Db, patientId: ObjectId) {
   return db
     .collection<MedicationCurrentDoc>(COLLECTIONS.MedicationsCurrent)
@@ -637,6 +703,10 @@ function buildRatio(
     unit: "mg phosphorus per g protein",
     value: actual,
   };
+}
+
+export function startOfDayUtc(date: Date) {
+  return startOfDay(date);
 }
 
 type TargetStateLike = {

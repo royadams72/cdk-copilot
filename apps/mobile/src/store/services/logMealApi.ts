@@ -68,6 +68,7 @@ const logMealApi = appApi.injectEndpoints({
       invalidatesTags: (_result, _error, arg) => [
         { id: "today", type: "Dashboard" },
         { id: "all", type: "Dashboard" },
+        { id: "trend", type: "Dashboard" },
         { id: "favourites", type: "Food" },
       ],
       query: ({ mealData }) => ({
@@ -85,6 +86,7 @@ const logMealApi = appApi.injectEndpoints({
       invalidatesTags: (_result, _error, arg) => [
         { id: "today", type: "Dashboard" },
         { id: "all", type: "Dashboard" },
+        { id: "trend", type: "Dashboard" },
         { id: "favourites", type: "Food" },
       ],
       query: ({ mealData }) => ({
@@ -102,6 +104,7 @@ const logMealApi = appApi.injectEndpoints({
       invalidatesTags: (_result, _error, _arg) => [
         { id: "today", type: "Dashboard" },
         { id: "all", type: "Dashboard" },
+        { id: "trend", type: "Dashboard" },
         { id: "favourites", type: "Food" },
       ],
       query: ({ entryId }) => ({
