@@ -14,6 +14,7 @@ import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
 import type { TMealType } from "@ckd/core";
 
+import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
@@ -23,8 +24,8 @@ import { formatDateShort } from "../dashboard/utils";
 import { NutritionStyles } from "./styles";
 import { useAppDispatch } from "@/store/hooks";
 import {
-  useGetNutritionTrendChunkQuery,
   toQueryErrorMessage,
+  useGetNutritionTrendChunkQuery,
   useLazyGetNutritionTrendChunkQuery,
 } from "@/store/services/dashboardApi";
 
@@ -96,43 +97,46 @@ export default function NutritionDetails() {
     }
   }, [trendData]);
 
-  const fetchTrend = useCallback(async (preserveViewport: boolean) => {
-    setIsRefreshing(true);
-    setRequestError(null);
-    requestedBeforeRef.current.clear();
-    isLoadingMoreRef.current = false;
-    pendingScrollWidthRef.current = preserveViewport
-      ? contentWidthRef.current
-      : null;
-    prefetchArmedRef.current = true;
+  const fetchTrend = useCallback(
+    async (preserveViewport: boolean) => {
+      setIsRefreshing(true);
+      setRequestError(null);
+      requestedBeforeRef.current.clear();
+      isLoadingMoreRef.current = false;
+      pendingScrollWidthRef.current = preserveViewport
+        ? contentWidthRef.current
+        : null;
+      prefetchArmedRef.current = true;
 
-    try {
-      const currentTrendData = trendData;
-      const latestDay =
-        currentTrendData?.dailySeries[currentTrendData.dailySeries.length - 1]
-          ?.date;
-      const requestArgs =
-        preserveViewport && currentTrendData?.dailySeries.length
-          ? {
-              before: latestDay ?? undefined,
-              days: Math.max(
-                currentTrendData.dailySeries.length,
-                chartRequestDays,
-              ),
-              reset: true,
-            }
-          : { days: chartRequestDays, reset: true };
-      await loadTrendChunk(requestArgs).unwrap();
-      shouldScrollToEndRef.current = !preserveViewport;
-      if (!preserveViewport) {
-        scrollOffsetRef.current = 0;
+      try {
+        const currentTrendData = trendData;
+        const latestDay =
+          currentTrendData?.dailySeries[currentTrendData.dailySeries.length - 1]
+            ?.date;
+        const requestArgs =
+          preserveViewport && currentTrendData?.dailySeries.length
+            ? {
+                before: latestDay ?? undefined,
+                days: Math.max(
+                  currentTrendData.dailySeries.length,
+                  chartRequestDays,
+                ),
+                reset: true,
+              }
+            : { days: chartRequestDays, reset: true };
+        await loadTrendChunk(requestArgs).unwrap();
+        shouldScrollToEndRef.current = !preserveViewport;
+        if (!preserveViewport) {
+          scrollOffsetRef.current = 0;
+        }
+      } catch (err) {
+        setRequestError(err);
+      } finally {
+        setIsRefreshing(false);
       }
-    } catch (err) {
-      setRequestError(err);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [chartRequestDays, loadTrendChunk, trendData]);
+    },
+    [chartRequestDays, loadTrendChunk, trendData],
+  );
 
   const fetchOlderChunk = useCallback(async () => {
     if (
@@ -192,7 +196,9 @@ export default function NutritionDetails() {
         : null;
     }
     const target = trendData?.targets?.[metricConfig.key as NutrientKey];
-    return typeof target === "number" && Number.isFinite(target) ? target : null;
+    return typeof target === "number" && Number.isFinite(target)
+      ? target
+      : null;
   }, [chartRatio.target, metricConfig.key, trendData?.targets]);
 
   const chartDomainMax = useMemo(() => {
@@ -283,7 +289,9 @@ export default function NutritionDetails() {
   useEffect(() => {
     if (!chartSeries.length) return;
     if (selectedDayKey) {
-      const hasSelectedDay = chartSeries.some((point) => point.date === selectedDayKey);
+      const hasSelectedDay = chartSeries.some(
+        (point) => point.date === selectedDayKey,
+      );
       if (hasSelectedDay) {
         return;
       }
@@ -296,7 +304,9 @@ export default function NutritionDetails() {
   const selectedPointIndex = useMemo(() => {
     if (!chartSeries.length) return null;
     if (selectedDayKey) {
-      const index = chartSeries.findIndex((point) => point.date === selectedDayKey);
+      const index = chartSeries.findIndex(
+        (point) => point.date === selectedDayKey,
+      );
       if (index >= 0) return index;
     }
     return chartSeries.length - 1;
@@ -315,7 +325,7 @@ export default function NutritionDetails() {
   }, [selectedPoint?.date]);
 
   const latestLoadedDate = trendData?.dailySeries.length
-    ? trendData.dailySeries[trendData.dailySeries.length - 1]?.date ?? null
+    ? (trendData.dailySeries[trendData.dailySeries.length - 1]?.date ?? null)
     : null;
 
   const highlightDate = selectedPoint?.date ?? latestLoadedDate ?? null;
@@ -324,8 +334,7 @@ export default function NutritionDetails() {
     if (!highlightDate) {
       return { hasHighlightBucket: false, highlights: [] as FoodHighlight[] };
     }
-    const dayBucket =
-      trendData?.foodHighlightsByDate?.[highlightDate];
+    const dayBucket = trendData?.foodHighlightsByDate?.[highlightDate];
     if (!dayBucket) {
       return { hasHighlightBucket: false, highlights: [] as FoodHighlight[] };
     }
@@ -372,9 +381,13 @@ export default function NutritionDetails() {
         layoutMeasurement: { width: number };
       };
     }) => {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      const { contentOffset, contentSize, layoutMeasurement } =
+        event.nativeEvent;
       scrollOffsetRef.current = contentOffset.x;
-      const maxOffset = Math.max(contentSize.width - layoutMeasurement.width, 0);
+      const maxOffset = Math.max(
+        contentSize.width - layoutMeasurement.width,
+        0,
+      );
       if (maxOffset <= 0) return;
       const isPastPrefetchThreshold = contentOffset.x <= maxOffset * 0.5;
       if (!isPastPrefetchThreshold) {
@@ -420,14 +433,35 @@ export default function NutritionDetails() {
                 ‹ Back
               </ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={NutritionStyles.logButton}
-              onPress={() => openLogMealModal(false)}
+            <View
+              style={{ alignItems: "center", flexDirection: "row", gap: 10 }}
             >
-              <ThemedText style={NutritionStyles.logButtonText}>
-                Log meal
-              </ThemedText>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={NutritionStyles.logButton}
+                onPress={() => openLogMealModal(false)}
+              >
+                <ThemedText style={NutritionStyles.logButtonText}>
+                  Log meal
+                </ThemedText>
+              </TouchableOpacity>
+              <HeaderOverflowMenu
+                accessibilityLabel="Open nutrition actions"
+                items={[
+                  {
+                    id: "edit-targets",
+                    label: "Edit targets",
+                    onPress: () =>
+                      router.push({
+                        params: {
+                          domain: "renal",
+                          title: "Nutrition targets",
+                        },
+                        pathname: "/targets",
+                      }),
+                  },
+                ]}
+              />
+            </View>
           </View>
           <ThemedText type="title">Nutrition</ThemedText>
           <ThemedText style={NutritionStyles.helperText}>
@@ -853,8 +887,7 @@ function buildRatioFromTotals(
       : 12;
 
   return {
-    status:
-      value === null ? "unknown" : value <= target ? "in-range" : "high",
+    status: value === null ? "unknown" : value <= target ? "in-range" : "high",
     target,
     unit: "mg phosphorus per g protein",
     value,
@@ -869,7 +902,9 @@ function formatChartValue(value: number | null | undefined, unit: string) {
 }
 
 function formatDisplayUnit(unit: string) {
-  return ["g", "gram", "grams"].includes(unit.trim().toLowerCase()) ? "g" : unit;
+  return ["g", "gram", "grams"].includes(unit.trim().toLowerCase())
+    ? "g"
+    : unit;
 }
 
 function buildLogDateTimeForDay(dayKey: string) {

@@ -5,25 +5,19 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
-import { COLLECTIONS } from "@ckd/core/server";
-import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import { DAY_MS } from "@/apps/api/app/api/dashboard/route";
+import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
 import {
   fetchNutritionEntriesInRange,
   hasOlderNutritionEntries,
-  mapNutritionTargets,
-  summarizeNutrition,
   startOfDayUtc,
+  summarizeNutrition,
 } from "@/apps/api/lib/utils/dashboard";
 
 export const runtime = "nodejs";
 
 const DEFAULT_DAYS = 7;
 const MAX_DAYS = 7;
-
-type TargetsCurrentDoc = {
-  targets?: Record<string, unknown>;
-};
 
 function parsePositiveInt(value: string | null, fallback: number) {
   if (!value) return fallback;
@@ -64,29 +58,16 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
 
-    const [entries, targetsCurrentDoc, hasMore] = await Promise.all([
+    const [entries, hasMore, nutritionTargets] = await Promise.all([
       fetchNutritionEntriesInRange(
         db,
         patientObjectId,
         rangeStart,
         rangeEndExclusive,
       ),
-      db.collection<TargetsCurrentDoc>(COLLECTIONS.TargetsCurrent).findOne(
-        {
-          patientId: patientObjectId,
-          targets: { $exists: true, $type: "object" },
-        },
-        {
-          projection: { targets: 1 },
-          sort: { updatedAt: -1, _id: -1 },
-        },
-      ),
       hasOlderNutritionEntries(db, patientObjectId, rangeStart),
+      getMappedNutritionTargets(db, patientObjectId),
     ]);
-
-    const nutritionTargets = mapNutritionTargets(
-      (targetsCurrentDoc?.targets as Record<string, never> | undefined) ?? null,
-    ) as Partial<Record<NutrientKey, number>>;
 
     const nutrition = summarizeNutrition(
       entries,
@@ -95,7 +76,6 @@ export async function GET(req: NextRequest) {
       rangeEnd,
       days,
     );
-
     return ok({
       hasMore,
       nextBefore: hasMore

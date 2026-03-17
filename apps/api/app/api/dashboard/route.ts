@@ -4,14 +4,14 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
+import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
-import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 import {
   fetchNutritionEntries,
   fetchRecentLabs,
   fetchRecentMedications,
-  mapNutritionTargets,
   normaliseNumber,
   summarizeLabs,
   summarizeMedications,
@@ -89,34 +89,6 @@ type UserClinicalSummaryDoc = {
   lastClinicalUpdateAt?: Date | null;
 };
 
-type TargetsCurrentDoc = {
-  targets?: Record<
-    string,
-    {
-      effective?: {
-        type?: "range" | "max" | "min" | "exact";
-        high?: number | null;
-        low?: number | null;
-        value?: number | null;
-      } | null;
-      metric?: string;
-      override?: {
-        type?: "range" | "max" | "min" | "exact";
-        high?: number | null;
-        low?: number | null;
-        value?: number | null;
-      } | null;
-      recommended?: {
-        type?: "range" | "max" | "min" | "exact";
-        high?: number | null;
-        low?: number | null;
-        value?: number | null;
-      } | null;
-    }
-  >;
-  updatedAt?: Date | null;
-};
-
 export async function GET(req: NextRequest) {
   try {
     // Patients only have the default auth scopes, so rely on role + patient context.
@@ -134,10 +106,10 @@ export async function GET(req: NextRequest) {
 
     const [
       clinicalDoc,
-      targetsCurrentDoc,
       labDocs,
       nutritionDocs,
       medicationDocs,
+      nutritionTargets,
     ] = await Promise.all([
       db.collection<UserClinicalSummaryDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
@@ -150,22 +122,10 @@ export async function GET(req: NextRequest) {
           },
         },
       ),
-      db.collection<TargetsCurrentDoc>(COLLECTIONS.TargetsCurrent).findOne(
-        {
-          patientId: patientObjectId,
-          targets: { $exists: true, $type: "object" },
-        },
-        {
-          projection: {
-            targets: 1,
-            updatedAt: 1,
-          },
-          sort: { updatedAt: -1, _id: -1 },
-        },
-      ),
       fetchRecentLabs(db, patientObjectId),
       fetchNutritionEntries(db, patientObjectId),
       fetchRecentMedications(db, patientObjectId),
+      getMappedNutritionTargets(db, patientObjectId),
     ]);
 
     const scope = req.nextUrl.searchParams.get("scope");
@@ -190,11 +150,6 @@ export async function GET(req: NextRequest) {
         rangeDays = Math.max(1, Math.floor(diffMs / DAY_MS) + 1);
       }
     }
-
-    const nutritionTargets = mapNutritionTargets(
-      targetsCurrentDoc?.targets ?? null,
-    );
-    const debugMode = req.nextUrl.searchParams.get("debug") === "1";
 
     const labs = summarizeLabs(labDocs);
     const nutrition = summarizeNutrition(

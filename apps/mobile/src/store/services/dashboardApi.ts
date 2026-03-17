@@ -46,6 +46,52 @@ export type MeasurementLatest = {
   systolicMmHg?: number;
 };
 
+export type TargetDomain = "renal" | "lifestyle";
+export type TargetDefinitionValue = {
+  basis?: "perDay" | "perKgPerDay" | null;
+  high?: number | null;
+  low?: number | null;
+  type: "range" | "max" | "min" | "exact";
+  value?: number | null;
+};
+
+export type TargetItem = {
+  key: string;
+  derivedFrom?: {
+    matchedAt?: string;
+    ruleId: string;
+    version: number;
+  } | null;
+  domain: TargetDomain;
+  effective: TargetDefinitionValue;
+  metric: string;
+  override?: TargetDefinitionValue | null;
+  overrideMeta?: {
+    reason?: string | null;
+    setAt: string;
+    setBy: {
+      actorType: "user" | "clinician" | "system";
+      displayName?: string | null;
+      principalId: string;
+    };
+  } | null;
+  recommended: TargetDefinitionValue;
+  unit: string;
+};
+
+export type TargetsResponse = {
+  items: TargetItem[];
+  updatedAt: string | null;
+  weightKg?: number | null;
+};
+
+export type UpdateTargetArgs = {
+  clearOverride?: boolean;
+  metric: string;
+  override?: TargetDefinitionValue;
+  reason?: string;
+};
+
 export const dashboardApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
     getDashboard: builder.query<DashboardQueryData, DashboardScope | void>({
@@ -102,6 +148,32 @@ export const dashboardApi = appApi.injectEndpoints({
       transformResponse: (response: NutritionTrendChunk) =>
         toNutritionTrendData(response),
     }),
+    getTargets: builder.query<TargetsResponse, TargetDomain | void>({
+      providesTags: (_result, _error, domain) => [
+        { id: domain ?? "all", type: "Targets" as const },
+      ],
+      query: (domain) =>
+        domain ? `/api/targets?domain=${domain}` : "/api/targets",
+    }),
+    updateTarget: builder.mutation<
+      { metric: string; target: TargetItem; updated: boolean },
+      UpdateTargetArgs
+    >({
+      invalidatesTags: (_result, _error, arg) => [
+        { id: "today", type: "Dashboard" as const },
+        { id: "all", type: "Dashboard" as const },
+        { id: "latest", type: "Fitness" as const },
+        { id: "all", type: "Targets" as const },
+        { id: arg.metric, type: "Targets" as const },
+        { id: "renal", type: "Targets" as const },
+        { id: "lifestyle", type: "Targets" as const },
+      ],
+      query: (body) => ({
+        body,
+        method: "PATCH",
+        url: "/api/targets/update",
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -110,7 +182,9 @@ export const {
   useGetDashboardQuery,
   useGetLatestMeasurementsQuery,
   useGetNutritionTrendChunkQuery,
+  useGetTargetsQuery,
   useLazyGetNutritionTrendChunkQuery,
+  useUpdateTargetMutation,
 } = dashboardApi;
 
 function toNutritionTrendData(chunk: NutritionTrendChunk): NutritionTrendData {
