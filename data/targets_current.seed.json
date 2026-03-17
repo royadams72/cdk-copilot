@@ -61,9 +61,9 @@
         "domain": "renal",
         "metric": "proteinG",
         "unit": "g/day",
-        "recommended": { "type": "max", "low": null, "high": null, "value": 60, "basis": "perDay" },
+        "recommended": { "type": "max", "low": null, "high": null, "value": 0.8, "basis": "perKgPerDay" },
         "override": null,
-        "effective": { "type": "max", "low": null, "high": null, "value": 60, "basis": "perDay" },
+        "effective": { "type": "max", "low": null, "high": null, "value": 0.8, "basis": "perKgPerDay" },
         "derivedFrom": {
           "ruleId": "renal-protein-default-nondialysis",
           "version": 1,
@@ -117,9 +117,9 @@
         "domain": "renal",
         "metric": "caloriesKcal",
         "unit": "kcal/day",
-        "recommended": { "type": "range", "low": 1800, "high": 2200, "value": null, "basis": "perDay" },
+        "recommended": { "type": "range", "low": 25, "high": 35, "value": null, "basis": "perKgPerDay" },
         "override": null,
-        "effective": { "type": "range", "low": 1800, "high": 2200, "value": null, "basis": "perDay" },
+        "effective": { "type": "range", "low": 25, "high": 35, "value": null, "basis": "perKgPerDay" },
         "derivedFrom": {
           "ruleId": "renal-energy-default",
           "version": 1,

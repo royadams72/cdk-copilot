@@ -21,6 +21,7 @@ import {
   NutritionMealEntry,
 } from "../types/dashboard";
 import type { MedicationCurrentDoc } from "../types/dashboard";
+ 
 
 type ReferenceRangeDoc = {
   ageMax?: number;
@@ -707,81 +708,6 @@ function buildRatio(
 
 export function startOfDayUtc(date: Date) {
   return startOfDay(date);
-}
-
-type TargetStateLike = {
-  effective?: {
-    type?: "range" | "max" | "min" | "exact";
-    high?: number | null;
-    low?: number | null;
-    value?: number | null;
-  } | null;
-  metric?: string;
-  override?: {
-    type?: "range" | "max" | "min" | "exact";
-    high?: number | null;
-    low?: number | null;
-    value?: number | null;
-  } | null;
-  recommended?: {
-    type?: "range" | "max" | "min" | "exact";
-    high?: number | null;
-    low?: number | null;
-    value?: number | null;
-  } | null;
-};
-
-function resolveTargetValue(state?: TargetStateLike | null): number | null {
-  const target = state?.effective ?? state?.override ?? state?.recommended;
-  if (!target) return null;
-  const direct = normaliseNumber(target.value);
-  if (direct !== null) return direct;
-
-  if (target.type === "range") {
-    return normaliseNumber(target.high ?? target.low);
-  }
-  if (target.type === "max")
-    return normaliseNumber(target.high ?? target.value);
-  if (target.type === "min") return normaliseNumber(target.low ?? target.value);
-  return null;
-}
-
-const TARGET_ALIASES: Record<NutrientKey, string[]> = {
-  caloriesKcal: ["caloriesKcal", "calories_kcal_day", "energy_kcal_day"],
-  phosphorusMg: ["phosphorusMg", "phosphorus_mg_day"],
-  potassiumMg: ["potassiumMg", "potassium_mg_day"],
-  proteinG: ["proteinG", "protein_g_day", "protein_g_kg_day"],
-  sleep_duration_min_day: [],
-  sodiumMg: ["sodiumMg", "sodium_mg_day"],
-  steps_per_day: [],
-  weight_kg: [],
-};
-
-function normaliseMetricKey(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-export function mapNutritionTargets(
-  targetsCurrent: Record<string, TargetStateLike> | null | undefined,
-): Partial<Record<NutrientKey, number>> {
-  const mapped: Partial<Record<NutrientKey, number>> = {};
-  const entries = Object.entries(targetsCurrent ?? {});
-
-  for (const nutrientKey of Object.keys(TARGET_ALIASES) as NutrientKey[]) {
-    const aliases = TARGET_ALIASES[nutrientKey].map(normaliseMetricKey);
-    const match = entries.find(([key, state]) => {
-      const entryKey = normaliseMetricKey(key);
-      if (aliases.includes(entryKey)) return true;
-      if (state?.metric && aliases.includes(normaliseMetricKey(state.metric)))
-        return true;
-      return false;
-    });
-    if (!match) continue;
-    const value = resolveTargetValue(match[1]);
-    if (value !== null) mapped[nutrientKey] = value;
-  }
-
-  return mapped;
 }
 
 function clamp(value: number, min: number, max: number) {

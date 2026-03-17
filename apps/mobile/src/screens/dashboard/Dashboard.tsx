@@ -124,7 +124,7 @@ export default function Dashboard() {
                 <StackedRadialsCard
                   centerLabel="Nutrition"
                   radials={data.nutrition.radials}
-                  subtitle="Weekly intake"
+                  subtitle="Today's intake"
                   title="Nutrition"
                 />
               </Pressable>

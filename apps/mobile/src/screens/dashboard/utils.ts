@@ -2,10 +2,17 @@ import { DashboardRange, DashboardRatio } from "./types";
 
 export function describeRange(range: DashboardRange) {
   if (!range.entries) {
-    return `No meals logged in the last ${range.days} days`;
+    return range.days <= 1
+      ? "No meals logged today"
+      : `No meals logged in this range`;
+  }
+  if (range.days <= 1) {
+    return `${range.entries} meals logged today`;
   }
 
-  return `${range.entries} meals logged today`;
+  const from = formatDateShort(range.from);
+  const to = formatDateShort(range.to);
+  return `${range.entries} meals logged · ${from} to ${to}`;
 }
 
 export function formatDateShort(value: string | null | undefined) {
