@@ -1,0 +1,136 @@
+[
+  {
+    "candidateSwapGroups": ["soft_cheese", "cream_cheese_spread"],
+    "isActive": true,
+    "minSimilarityScore": 0.7,
+    "notes": "Prefer spreadable or softer cheese-type alternatives with lower phosphorus.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "hard_cheese",
+    "tags": ["dairy", "phosphorus"]
+  },
+  {
+    "candidateSwapGroups": ["soft_cheese", "cream_cheese_spread"],
+    "isActive": true,
+    "minSimilarityScore": 0.7,
+    "notes": "Use lower-sodium alternatives where available.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "hard_cheese",
+    "tags": ["dairy", "sodium"]
+  },
+  {
+    "candidateSwapGroups": ["fresh_poultry", "egg", "fresh_fish"],
+    "isActive": true,
+    "minSimilarityScore": 0.65,
+    "notes": "Fresh, less processed protein options are usually better sodium swaps.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "processed_meat",
+    "tags": ["protein", "sodium"]
+  },
+  {
+    "candidateSwapGroups": ["fresh_poultry", "fresh_fish", "egg"],
+    "isActive": true,
+    "minSimilarityScore": 0.65,
+    "notes": "Prefer fresher protein options where phosphorus is lower per serving.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "processed_meat",
+    "tags": ["protein", "phosphorus"]
+  },
+  {
+    "candidateSwapGroups": ["fresh_poultry", "egg"],
+    "isActive": true,
+    "minSimilarityScore": 0.6,
+    "notes": "Aimed at breakfast-style swaps with lower sodium.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "bacon",
+    "tags": ["breakfast", "protein", "sodium"]
+  },
+  {
+    "candidateSwapGroups": ["fresh_poultry", "egg"],
+    "isActive": true,
+    "minSimilarityScore": 0.6,
+    "notes": "Use less processed breakfast or protein alternatives.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "sausage",
+    "tags": ["breakfast", "protein", "sodium"]
+  },
+  {
+    "candidateSwapGroups": [
+      "low_phosphate_soft_drink",
+      "water_flavoured",
+      "water"
+    ],
+    "isActive": true,
+    "minSimilarityScore": 0.5,
+    "notes": "Useful where cola-style drinks are contributing phosphorus.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "cola_soft_drink",
+    "tags": ["drink", "phosphorus"]
+  },
+  {
+    "candidateSwapGroups": ["water_flavoured", "water"],
+    "isActive": true,
+    "minSimilarityScore": 0.5,
+    "notes": "Useful for weight-loss-oriented suggestions.",
+    "nutrientFocus": "calories",
+    "strategy": "lower_calorie_same_role",
+    "swapGroup": "soft_drink",
+    "tags": ["drink", "calories"]
+  },
+  {
+    "candidateSwapGroups": ["unsalted_snack", "plain_crackers"],
+    "isActive": true,
+    "minSimilarityScore": 0.55,
+    "notes": "Prefer salty-snack alternatives with lower sodium.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "crisps",
+    "tags": ["snack", "sodium"]
+  },
+  {
+    "candidateSwapGroups": ["unsalted_snack"],
+    "isActive": true,
+    "minSimilarityScore": 0.55,
+    "notes": "General sodium-lowering snack substitution.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "salty_snack",
+    "tags": ["snack", "sodium"]
+  },
+  {
+    "candidateSwapGroups": ["lower_phosphorus_yoghurt", "soft_cheese"],
+    "isActive": true,
+    "minSimilarityScore": 0.65,
+    "notes": "Only use if your taxonomy supports these destination groups.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "yoghurt",
+    "tags": ["dairy", "phosphorus"]
+  },
+  {
+    "candidateSwapGroups": ["fresh_poultry", "fresh_fish", "egg"],
+    "isActive": true,
+    "minSimilarityScore": 0.65,
+    "notes": "For situations where better-quality protein options are needed.",
+    "nutrientFocus": "protein",
+    "strategy": "higher_protein_same_role",
+    "swapGroup": "red_meat",
+    "tags": ["protein"]
+  },
+  {
+    "candidateSwapGroups": ["fruit", "lower_calorie_dessert"],
+    "isActive": true,
+    "minSimilarityScore": 0.5,
+    "notes": "Useful for weight-loss-oriented substitutions.",
+    "nutrientFocus": "calories",
+    "strategy": "lower_calorie_same_role",
+    "swapGroup": "dessert",
+    "tags": ["dessert", "calories"]
+  }
+]

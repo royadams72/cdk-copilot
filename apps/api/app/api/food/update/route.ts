@@ -3,6 +3,7 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { reconcileFavouriteMaps } from "@/apps/api/lib/utils/nutritionFavourites";
+import { attachFoodTaxonomies } from "@/apps/api/lib/utils/foodTaxonomy";
 import {
   NutritionEntry,
   ROLES,
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     if (rawMealItems.length === 0) {
       return bad("Meal must include at least one item", { requestId }, 400);
     }
-    const mealArray: TFoodItemEntry[] = rawMealItems.map((rawItem, index) => {
+    const mealArrayBase: TFoodItemEntry[] = rawMealItems.map((rawItem, index) => {
       const { groupId, measures, ...rest } = rawItem;
       const fallbackUid = `${entryId}:${index}`;
       const source =
@@ -116,10 +117,12 @@ export async function POST(req: NextRequest) {
         nutrients: sanitiseNutrients(rest.nutrients),
         quantity,
         source,
+        taxonomy: undefined,
         uid,
         unit,
       };
     });
+    const mealArray = await attachFoodTaxonomies(db, mealArrayBase);
     const now = new Date();
     const eatenAt = eatenAtRaw ? new Date(eatenAtRaw) : now;
     const resolvedEatenAt = Number.isNaN(eatenAt.getTime()) ? now : eatenAt;
@@ -276,6 +279,13 @@ function sanitiseNutrients(nutrients: unknown) {
   for (const key of keys) {
     const n = normaliseNutrient(key, input[key]);
     if (typeof n === "number") out[key] = n;
+  }
+
+  if (typeof input.source === "string" && input.source.trim().length > 0) {
+    (out as Record<string, string | number>).source = input.source.trim();
+  }
+  if (typeof input.unit === "string" && input.unit.trim().length > 0) {
+    (out as Record<string, string | number>).unit = input.unit.trim();
   }
 
   return out;

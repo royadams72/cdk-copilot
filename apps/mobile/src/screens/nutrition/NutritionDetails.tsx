@@ -26,6 +26,7 @@ import { useAppDispatch } from "@/store/hooks";
 import {
   toQueryErrorMessage,
   useGetNutritionTrendChunkQuery,
+  useGetLatestWeeklyNutritionInsightQuery,
   useLazyGetNutritionTrendChunkQuery,
 } from "@/store/services/dashboardApi";
 
@@ -60,6 +61,7 @@ export default function NutritionDetails() {
     error: trendQueryError,
     isLoading: isTrendLoading,
   } = useGetNutritionTrendChunkQuery({ days: chartRequestDays });
+  const { data: latestWeeklyInsight } = useGetLatestWeeklyNutritionInsightQuery();
   const [loadTrendChunk] = useLazyGetNutritionTrendChunkQuery();
   const [requestError, setRequestError] = useState<unknown>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -483,6 +485,33 @@ export default function NutritionDetails() {
             >
               <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
             </TouchableOpacity>
+          </Card>
+        )}
+
+        {latestWeeklyInsight && (
+          <Card>
+            <View style={NutritionStyles.cardHeader}>
+              <ThemedText type="defaultSemiBold">Weekly nutrition alert</ThemedText>
+              <ThemedText style={NutritionStyles.helperText}>
+                {latestWeeklyInsight.weekStart} to {latestWeeklyInsight.weekEnd}
+              </ThemedText>
+            </View>
+            <ThemedText style={NutritionStyles.helperText}>
+              {latestWeeklyInsight.humanMessage}
+            </ThemedText>
+            {latestWeeklyInsight.findings.slice(0, 2).map((finding) => (
+              <View key={finding.type}>
+                <ThemedText style={NutritionStyles.helperText}>
+                  {finding.type.replace(/_/g, " ")}: {finding.actual} / {finding.target}
+                </ThemedText>
+                {finding.topContributors?.[0] ? (
+                  <ThemedText style={NutritionStyles.helperText}>
+                    {finding.topContributors[0].food} contributed{" "}
+                    {finding.topContributors[0].contribution}%.
+                  </ThemedText>
+                ) : null}
+              </View>
+            ))}
           </Card>
         )}
 

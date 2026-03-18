@@ -10,8 +10,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
 import {
   applyNutritionResults,
-  saveActiveItemToMeal,
   type ItemSummary,
+  saveActiveItemToMeal,
   selectAcitveGroupSummaries,
   selectActiveItem,
   selectEditingEntryId,
@@ -110,7 +110,12 @@ export default function FoodDetails() {
     nextMode: PortionMode,
     nextQuantityRaw: number,
   ) => {
-    if (!selectedFood || !selectedFood.groupId || !groupInfo || !portionConfig) {
+    if (
+      !selectedFood ||
+      !selectedFood.groupId ||
+      !groupInfo ||
+      !portionConfig
+    ) {
       return;
     }
 
@@ -236,7 +241,10 @@ export default function FoodDetails() {
                       {formatNutrientLabel(key)}
                     </Text>
                     <Text style={logMealStyles.nutrientValue}>
-                      {formatNutrientValue(key, value)}
+                      {formatNutrientValue(
+                        key,
+                        typeof value === "string" ? Number(value) : value,
+                      )}
                     </Text>
                   </View>
                 ))}
@@ -297,8 +305,8 @@ function resolvePortionConfig(
   const fallbackPortionMeasure = findFirstNonGramMeasure(measures);
 
   const servingMeasure = isGramUnit(currentUnitNorm)
-    ? fallbackServingMeasure ?? fallbackPortionMeasure
-    : currentMeasure ?? fallbackServingMeasure ?? fallbackPortionMeasure;
+    ? (fallbackServingMeasure ?? fallbackPortionMeasure)
+    : (currentMeasure ?? fallbackServingMeasure ?? fallbackPortionMeasure);
 
   const servingWeight = servingMeasure?.weight;
   const servingLabel = servingMeasure?.label?.trim() || "serving";
@@ -460,8 +468,8 @@ const nutrientUnits: Record<string, string> = {
   carbsG: "g",
   fatG: "g",
   fiberG: "g",
-  phosphorusMg: "mg",
   phosphorus_protein_ratio: "",
+  phosphorusMg: "mg",
   potassiumMg: "mg",
   proteinG: "g",
   sodiumMg: "mg",
@@ -472,8 +480,8 @@ const nutrientLabels: Record<string, string> = {
   carbsG: "Carbs",
   fatG: "Fat",
   fiberG: "Fiber",
-  phosphorusMg: "Phosphorus",
   phosphorus_protein_ratio: "Phosphorus/Protein Ratio",
+  phosphorusMg: "Phosphorus",
   potassiumMg: "Potassium",
   proteinG: "Protein",
   sodiumMg: "Sodium",

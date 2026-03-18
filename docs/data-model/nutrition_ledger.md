@@ -16,7 +16,18 @@
   - `quantity` · number
   - `unit` · string
   - `source` · string (e.g., `"manual"`)
-  - `nutrients` · { caloriesKcal, proteinG, phosphorusMg, potassiumMg, sodiumMg }
+  - `nutrients` · { caloriesKcal, proteinG, phosphorusMg, potassiumMg, sodiumMg, source?, unit? }
+  - `taxonomy` · embedded snapshot used for weekly contributor analysis and swap suggestions
+    - `source` · string (typically `"edamam"` for API matched foods)
+    - `sourceFoodId` · string
+    - `taxonomyKey` · stable derived key: `source + sourceFoodId + normalizedName`
+    - `canonicalName` · string
+    - `normalizedName` · lower-cased food name
+    - `majorGroup` · `protein|dairy|grain|fruit_veg|drink|snack|condiment|mixed|dessert|other`
+    - `subGroup` · string|null
+    - `swapGroup` · string|null
+    - `tags[]` · string
+    - `inferredFrom` · rule metadata (`override`, `exactName`, `keywordRules`, `categoryHint`, `nutrientTags`)
 - `totals` · same nutrient fields as `items.nutrients`, summed for the entry
 - `createdAt` · Date · when stored
 - `updatedAt` · Date · when stored
@@ -42,7 +53,27 @@
         "phosphorusMg": 320,
         "potassiumMg": 350,
         "sodiumMg": 110,
-        "phosphorus_protein_ratio": 6.9
+        "phosphorus_protein_ratio": 6.9,
+        "source": "edamam",
+        "unit": "serving"
+      },
+      "taxonomy": {
+        "source": "edamam",
+        "sourceFoodId": "food_bmyxrshbfao9s1asmyhtjbp5ou7q",
+        "taxonomyKey": "edamam::food-bmyxrshbfao9s1asmyhtjbp5ou7q::grilled-chicken-breast",
+        "canonicalName": "Grilled chicken breast",
+        "normalizedName": "grilled chicken breast",
+        "majorGroup": "protein",
+        "subGroup": "poultry",
+        "swapGroup": "fresh_poultry",
+        "tags": ["animal_protein", "high_protein", "phosphorus_dense"],
+        "inferredFrom": {
+          "override": false,
+          "exactName": false,
+          "keywordRules": [],
+          "categoryHint": null,
+          "nutrientTags": ["high_protein", "phosphorus_dense"]
+        }
       }
     },
     {
@@ -132,3 +163,9 @@ export async function GET(req: Request) {
 
 - Treat as **Clinical**: scope by `patientId`, restrict by role, and audit access.
 - Retention policy: keep for user value (trends, goal tracking); allow user to sudo delete individual entries; purge on account deletion.
+
+## Weekly analysis use
+
+- The logging routes attach `items[].taxonomy` at write time.
+- Weekly background analysis reads the last completed week from `nutrition_ledger`, ranks top nutrient contributors from `items[].nutrients`, then follows `items[].taxonomy.swapGroup` into `food_swap_rules`.
+- The embedded taxonomy snapshot is intentionally denormalized so weekly analysis does not depend on later name changes or reclassification.

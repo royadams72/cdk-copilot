@@ -1,3 +1,4 @@
+import { TWeeklyNutritionInsight } from "@ckd/core";
 import type {
   DashboardData,
   FoodHighlight,
@@ -48,15 +49,14 @@ export type MeasurementLatest = {
 
 export type TargetDomain = "renal" | "lifestyle";
 export type TargetDefinitionValue = {
+  type: "range" | "max" | "min" | "exact";
   basis?: "perDay" | "perKgPerDay" | null;
   high?: number | null;
   low?: number | null;
-  type: "range" | "max" | "min" | "exact";
   value?: number | null;
 };
 
 export type TargetItem = {
-  key: string;
   derivedFrom?: {
     matchedAt?: string;
     ruleId: string;
@@ -64,6 +64,7 @@ export type TargetItem = {
   } | null;
   domain: TargetDomain;
   effective: TargetDefinitionValue;
+  key: string;
   metric: string;
   override?: TargetDefinitionValue | null;
   overrideMeta?: {
@@ -84,6 +85,8 @@ export type TargetsResponse = {
   updatedAt: string | null;
   weightKg?: number | null;
 };
+
+export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
 
 export type UpdateTargetArgs = {
   clearOverride?: boolean;
@@ -107,6 +110,16 @@ export const dashboardApi = appApi.injectEndpoints({
     getLatestMeasurements: builder.query<MeasurementLatest[], void>({
       providesTags: [{ id: "latest", type: "Fitness" as const }],
       query: () => "/api/measurements/latest",
+    }),
+    getLatestWeeklyNutritionInsight: builder.query<
+      WeeklyNutritionInsightResponse,
+      void
+    >({
+      providesTags: [{ id: "weekly-summary", type: "Dashboard" as const }],
+      query: () => "/api/nutrition/weekly-summary/latest",
+      transformResponse: (response: {
+        insight: TWeeklyNutritionInsight | null;
+      }) => response?.insight ?? null,
     }),
     getNutritionTrendChunk: builder.query<
       NutritionTrendData,
@@ -181,6 +194,7 @@ export const dashboardApi = appApi.injectEndpoints({
 export const {
   useGetDashboardQuery,
   useGetLatestMeasurementsQuery,
+  useGetLatestWeeklyNutritionInsightQuery,
   useGetNutritionTrendChunkQuery,
   useGetTargetsQuery,
   useLazyGetNutritionTrendChunkQuery,
@@ -218,7 +232,9 @@ function mergeNutritionTrendData(
     },
     nextBefore: incoming.nextBefore,
     targets:
-      Object.keys(current.targets).length > 0 ? current.targets : incoming.targets,
+      Object.keys(current.targets).length > 0
+        ? current.targets
+        : incoming.targets,
   };
 }
 

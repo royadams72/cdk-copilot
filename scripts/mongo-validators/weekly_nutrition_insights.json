@@ -1,0 +1,98 @@
+{
+  "collMod": "weekly_nutrition_insights",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "weekStart": 1, "weekEnd": 1 },
+      "name": "uniqPatientWeek",
+      "unique": true
+    },
+    {
+      "key": { "patientId": 1, "updatedAt": -1 },
+      "name": "byPatientUpdatedAt"
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "weekStart",
+        "weekEnd",
+        "goal",
+        "findings",
+        "suggestions",
+        "humanMessage",
+        "generatedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "patientId": { "bsonType": "string" },
+        "weekStart": { "bsonType": "string" },
+        "weekEnd": { "bsonType": "string" },
+        "goal": { "bsonType": "string" },
+        "findings": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": [
+              "type",
+              "severity",
+              "actual",
+              "target",
+              "topFoods",
+              "topContributors"
+            ],
+            "properties": {
+              "type": { "bsonType": "string" },
+              "severity": { "enum": ["low", "moderate", "high"] },
+              "actual": { "bsonType": ["double", "int", "long", "decimal"] },
+              "target": { "bsonType": ["double", "int", "long", "decimal"] },
+              "topFoods": {
+                "bsonType": "array",
+                "items": { "bsonType": "string" }
+              },
+              "topContributors": {
+                "bsonType": "array",
+                "items": {
+                  "bsonType": "object",
+                  "required": ["food", "nutrientAmount", "contribution"],
+                  "properties": {
+                    "food": { "bsonType": "string" },
+                    "nutrientAmount": {
+                      "bsonType": ["double", "int", "long", "decimal"]
+                    },
+                    "contribution": {
+                      "bsonType": ["double", "int", "long", "decimal"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "suggestions": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["fromFood", "reason", "alternatives"],
+            "properties": {
+              "fromFood": { "bsonType": "string" },
+              "reason": { "bsonType": "string" },
+              "alternatives": {
+                "bsonType": "array",
+                "items": { "bsonType": "string" }
+              }
+            }
+          }
+        },
+        "humanMessage": { "bsonType": "string" },
+        "generatedAt": { "bsonType": "date" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      }
+    }
+  }
+}
