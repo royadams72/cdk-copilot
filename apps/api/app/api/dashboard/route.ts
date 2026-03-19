@@ -45,7 +45,7 @@ export const TRACKED_LABS = [
 ] as const;
 
 export const RADIAL_METRICS = [
-  { id: "protein", key: "proteinG", label: "Protein", precision: 1, unit: "g" },
+  { id: "protein", key: "proteinG", label: "Protein", precision: 0, unit: "g" },
   {
     id: "phosphorus",
     key: "phosphorusMg",

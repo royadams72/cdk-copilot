@@ -132,5 +132,27 @@
     "strategy": "lower_calorie_same_role",
     "swapGroup": "dessert",
     "tags": ["dessert", "calories"]
+  },
+  {
+    "candidateSwapGroups": ["unsalted_snack", "plain_crackers", "popcorn"],
+    "createdAt": { "$date": "2026-03-19T00:00:00.000Z" },
+    "minSimilarityScore": 0.6,
+    "notes": "Replace nuts with lower phosphorus snack options.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_similar_use",
+    "swapGroup": "nuts_and_seeds",
+    "tags": ["snack", "phosphorus"],
+    "updatedAt": { "$date": "2026-03-19T00:00:00.000Z" }
+  },
+  {
+    "candidateSwapGroups": ["low_phosphorus_spread"],
+    "createdAt": { "$date": "2026-03-19T00:00:00.000Z" },
+    "minSimilarityScore": 0.7,
+    "notes": "Replace nut butters with lower phosphorus spread options.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "nut_butter",
+    "tags": ["spread", "phosphorus"],
+    "updatedAt": { "$date": "2026-03-19T00:00:00.000Z" }
   }
 ]

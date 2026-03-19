@@ -1,6 +1,6 @@
 import {
-  FoodTaxonomySnapshot,
   FoodTaxonomyDocument,
+  FoodTaxonomySnapshot,
   TFoodItemEntry,
   TFoodTaxonomyDocument,
   TFoodTaxonomySnapshot,
@@ -19,11 +19,26 @@ type TaxonomyRuleResult = {
 };
 
 type KeywordRule = {
-  any?: string[];
   all?: string[];
+  any?: string[];
   name: string;
   result: TaxonomyRuleResult;
 };
+const NUT_BUTTER_REGEX = new RegExp(
+  "\\b(peanut butter|almond butter|cashew butter|hazelnut butter|pistachio butter|mixed nut butter|nut butter|(peanut|almond|cashew|hazelnut|pistachio|nut)\\s+butter)\\b",
+  "i",
+);
+const NUTS_AND_SEEDS_REGEX =
+  /\b(peanut|peanuts|almond|almonds|cashew|cashews|walnut|walnuts|hazelnut|hazelnuts|pistachio|pistachios|mixed nuts)\b/i;
+
+function detectNutButter(name: string) {
+  if (!name) return false;
+  return NUT_BUTTER_REGEX.test(name.toLowerCase());
+}
+function detectNutsAndSeeds(name: string) {
+  if (!name) return false;
+  return NUTS_AND_SEEDS_REGEX.test(name.toLowerCase());
+}
 
 const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
   {
@@ -105,6 +120,14 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
       swapGroup: "pasta",
     },
     test: /\bpasta\b|\bspaghetti\b|\bpenne\b|\bmacaroni\b/i,
+  },
+  {
+    result: {
+      majorGroup: "grain",
+      subGroup: "bread",
+      swapGroup: "nuts_and_seeds",
+    },
+    test: /\bbread\b|\broll\b|\btoast\b|\bbagel\b/i,
   },
   {
     result: {
@@ -237,30 +260,80 @@ function mergeRuleResults(
 ): TaxonomyRuleResult {
   if (!incoming) return current;
   return {
-    ...current,
     ...incoming,
+    ...current,
     inferredFrom: {
-      ...(current.inferredFrom ?? {}),
       ...(incoming.inferredFrom ?? {}),
+      ...(current.inferredFrom ?? {}),
       keywordRules: uniqueStrings([
+        ...((incoming.inferredFrom?.keywordRules as string[] | undefined) ??
+          []),
         ...((current.inferredFrom?.keywordRules as string[] | undefined) ?? []),
-        ...((incoming.inferredFrom?.keywordRules as string[] | undefined) ?? []),
       ]),
       nutrientTags: uniqueStrings([
+        ...((incoming.inferredFrom?.nutrientTags as string[] | undefined) ??
+          []),
         ...((current.inferredFrom?.nutrientTags as string[] | undefined) ?? []),
-        ...((incoming.inferredFrom?.nutrientTags as string[] | undefined) ?? []),
       ]),
     },
+    majorGroup: current.majorGroup ?? incoming.majorGroup,
+    subGroup:
+      current.subGroup !== undefined ? current.subGroup : incoming.subGroup,
+    swapGroup:
+      current.swapGroup !== undefined ? current.swapGroup : incoming.swapGroup,
     tags: uniqueStrings([...(current.tags ?? []), ...(incoming.tags ?? [])]),
   };
+}
+
+function shouldRepairExistingTaxonomy(
+  existing: TFoodTaxonomyDocument,
+  inferred: TFoodTaxonomySnapshot,
+) {
+  if (existing.inferredFrom.override) {
+    return false;
+  }
+
+  return (
+    (existing.majorGroup === "other" && inferred.majorGroup !== "other") ||
+    (!existing.subGroup && !!inferred.subGroup) ||
+    (!existing.swapGroup && !!inferred.swapGroup)
+  );
 }
 
 function getTextPool(item: Pick<TFoodItemEntry, "name">) {
   return normalizeFoodName(item.name);
 }
 
-function inferFromExactName(item: Pick<TFoodItemEntry, "name">): TaxonomyRuleResult | null {
+function inferFromExactName(
+  item: Pick<TFoodItemEntry, "name">,
+): TaxonomyRuleResult | null {
   const text = item.name ?? "";
+  if (detectNutButter(text)) {
+    return mergeRuleResults(
+      {
+        majorGroup: "protein",
+        subGroup: "spread",
+        swapGroup: "nut_butter",
+        tags: ["high_fat", "phosphorus_dense"],
+      },
+      {
+        inferredFrom: { exactName: true },
+      },
+    );
+  }
+  if (detectNutsAndSeeds(text)) {
+    return mergeRuleResults(
+      {
+        majorGroup: "protein",
+        subGroup: "nuts_and_seeds",
+        swapGroup: "nuts_and_seeds",
+        tags: ["high_fat", "phosphorus_dense"],
+      },
+      {
+        inferredFrom: { exactName: true },
+      },
+    );
+  }
   for (const rule of EXACT_NAME_RULES) {
     if (rule.test.test(text)) {
       return mergeRuleResults(rule.result, {
@@ -271,7 +344,9 @@ function inferFromExactName(item: Pick<TFoodItemEntry, "name">): TaxonomyRuleRes
   return null;
 }
 
-function inferFromKeywords(item: Pick<TFoodItemEntry, "name">): TaxonomyRuleResult | null {
+function inferFromKeywords(
+  item: Pick<TFoodItemEntry, "name">,
+): TaxonomyRuleResult | null {
   const pool = getTextPool(item);
   let result: TaxonomyRuleResult = {};
 
@@ -376,7 +451,9 @@ export function normalizeFoodName(value?: string | null) {
 
 function normalizeKeyPart(value?: string | null) {
   const normalized = normalizeFoodName(value);
-  return normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+  return (
+    normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "unknown"
+  );
 }
 
 export function buildFoodTaxonomyKey(input: {
@@ -389,7 +466,9 @@ export function buildFoodTaxonomyKey(input: {
   )}::${normalizeKeyPart(input.normalizedName)}`;
 }
 
-export function deriveTaxonomySource(item: Pick<TFoodItemEntry, "source" | "nutrients">): TFoodTaxonomySource {
+export function deriveTaxonomySource(
+  item: Pick<TFoodItemEntry, "source" | "nutrients">,
+): TFoodTaxonomySource {
   const nutrientSource = normalizeFoodName(item.nutrients?.source);
   if (nutrientSource.includes("edamam")) return "edamam";
   if (item.source === "api") return "edamam";
@@ -400,7 +479,10 @@ export function deriveTaxonomySource(item: Pick<TFoodItemEntry, "source" | "nutr
 }
 
 export function inferFoodTaxonomy(
-  item: Pick<TFoodItemEntry, "foodId" | "name" | "nutrients" | "source" | "uid">,
+  item: Pick<
+    TFoodItemEntry,
+    "foodId" | "name" | "nutrients" | "source" | "uid"
+  >,
 ): TFoodTaxonomySnapshot {
   const canonicalName = item.name?.trim() || "Food item";
   const normalizedName = normalizeFoodName(canonicalName);
@@ -417,22 +499,10 @@ export function inferFoodTaxonomy(
   const subGroup = result.subGroup ?? null;
   const swapGroup =
     result.swapGroup ??
-    (subGroup ? DEFAULT_SWAP_GROUP_BY_SUBGROUP[subGroup] ?? subGroup : null);
+    (subGroup ? (DEFAULT_SWAP_GROUP_BY_SUBGROUP[subGroup] ?? subGroup) : null);
 
   return {
-    source,
-    sourceFoodId,
-    taxonomyKey: buildFoodTaxonomyKey({
-      normalizedName,
-      source,
-      sourceFoodId,
-    }),
     canonicalName,
-    normalizedName,
-    majorGroup: result.majorGroup ?? "other",
-    subGroup,
-    swapGroup,
-    tags: uniqueStrings(result.tags ?? []),
     inferredFrom: {
       override: result.inferredFrom?.override ?? false,
       exactName: result.inferredFrom?.exactName ?? false,
@@ -444,21 +514,62 @@ export function inferFoodTaxonomy(
         (result.inferredFrom?.nutrientTags as string[] | undefined) ?? [],
       ),
     },
+    majorGroup: result.majorGroup ?? "other",
+    normalizedName,
+    source,
+    sourceFoodId,
+    subGroup,
+    swapGroup,
+    tags: uniqueStrings(result.tags ?? []),
+    taxonomyKey: buildFoodTaxonomyKey({
+      normalizedName,
+      source,
+      sourceFoodId,
+    }),
   };
 }
 
 export async function getOrCreateFoodTaxonomy(
   db: Db,
-  item: Pick<TFoodItemEntry, "foodId" | "name" | "nutrients" | "source" | "uid">,
+  item: Pick<
+    TFoodItemEntry,
+    "foodId" | "name" | "nutrients" | "source" | "uid"
+  >,
 ): Promise<TFoodTaxonomyDocument> {
   const collection = getCollection<TFoodTaxonomyDocument>(
     db,
     COLLECTIONS.FoodTaxonomy,
   );
   const inferred = inferFoodTaxonomy(item);
-  const existing = await collection.findOne({ taxonomyKey: inferred.taxonomyKey });
+  const existing = await collection.findOne({
+    taxonomyKey: inferred.taxonomyKey,
+  });
   if (existing) {
-    return toFoodTaxonomyDocument(existing as Record<string, unknown>);
+    const parsedExisting = toFoodTaxonomyDocument(
+      existing as Record<string, unknown>,
+    );
+
+    if (!shouldRepairExistingTaxonomy(parsedExisting, inferred)) {
+      return parsedExisting;
+    }
+
+    const now = new Date();
+    await collection.updateOne(
+      { taxonomyKey: inferred.taxonomyKey },
+      {
+        $set: {
+          ...inferred,
+          createdAt: parsedExisting.createdAt,
+          updatedAt: now,
+        },
+      },
+    );
+
+    return {
+      ...parsedExisting,
+      ...inferred,
+      updatedAt: now,
+    };
   }
 
   const now = new Date();
@@ -476,7 +587,9 @@ export async function getOrCreateFoodTaxonomy(
     { upsert: true },
   );
 
-  const persisted = await collection.findOne({ taxonomyKey: inferred.taxonomyKey });
+  const persisted = await collection.findOne({
+    taxonomyKey: inferred.taxonomyKey,
+  });
   return toFoodTaxonomyDocument({
     ...inferred,
     createdAt: now,
