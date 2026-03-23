@@ -87,6 +87,9 @@ export type TargetsResponse = {
 };
 
 export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
+export type RunWeeklyNutritionInsightArgs = {
+  referenceDate?: string;
+};
 
 export type UpdateTargetArgs = {
   clearOverride?: boolean;
@@ -120,6 +123,21 @@ export const dashboardApi = appApi.injectEndpoints({
       transformResponse: (response: {
         insight: TWeeklyNutritionInsight | null;
       }) => response?.insight ?? null,
+    }),
+    runWeeklyNutritionInsight: builder.mutation<
+      TWeeklyNutritionInsight,
+      RunWeeklyNutritionInsightArgs | void
+    >({
+      invalidatesTags: [
+        { id: "today", type: "Dashboard" as const },
+        { id: "all", type: "Dashboard" as const },
+        { id: "weekly-summary", type: "Dashboard" as const },
+      ],
+      query: (body) => ({
+        body: body ?? {},
+        method: "POST",
+        url: "/api/nutrition/weekly-summary/run",
+      }),
     }),
     getNutritionTrendChunk: builder.query<
       NutritionTrendData,
@@ -198,6 +216,7 @@ export const {
   useGetNutritionTrendChunkQuery,
   useGetTargetsQuery,
   useLazyGetNutritionTrendChunkQuery,
+  useRunWeeklyNutritionInsightMutation,
   useUpdateTargetMutation,
 } = dashboardApi;
 

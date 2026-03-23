@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import {
   TFoodTaxonomyDocument,
+  TWeeklyNutritionAnalysisMode,
   TPatientGoalCode,
   TWeeklyNutritionGoal,
   TWeeklyNutritionInsight,
@@ -183,6 +184,27 @@ function sumMetric(entries: NutritionEntryDoc[], metricKey: NutrientMetricKey) {
 
 function averageDailyMetric(entries: NutritionEntryDoc[], metricKey: NutrientMetricKey) {
   return sumMetric(entries, metricKey) / 7;
+}
+
+function countLoggedDays(entries: NutritionEntryDoc[]) {
+  return new Set(
+    entries
+      .map((entry) => entry.eatenAt)
+      .filter((value): value is Date => value instanceof Date && !Number.isNaN(value.getTime()))
+      .map((value) => toDateOnly(startOfDayUtc(value))),
+  ).size;
+}
+
+function metricValueForAnalysis(
+  entries: NutritionEntryDoc[],
+  metricKey: NutrientMetricKey,
+  analysisMode: TWeeklyNutritionAnalysisMode,
+  loggedDays: number,
+) {
+  if (analysisMode === "logged_day_average" && loggedDays > 0) {
+    return sumMetric(entries, metricKey) / loggedDays;
+  }
+  return averageDailyMetric(entries, metricKey);
 }
 
 async function ensureTaxonomyOnEntries(db: Db, entries: NutritionEntryDoc[]) {
@@ -382,18 +404,30 @@ async function resolveAlternatives(
 }
 
 function buildFallbackHumanMessage(summary: {
+  analysisMode: TWeeklyNutritionAnalysisMode;
   findings: TWeeklyNutritionInsight["findings"];
   goal: TWeeklyNutritionGoal;
+  loggedDays: number;
   suggestions: TWeeklyNutritionInsight["suggestions"];
 }) {
   const parts: string[] = [];
+
+  if (summary.analysisMode === "insufficient_data") {
+    return `You logged meals on ${summary.loggedDays} of 7 days this week, so this summary may not reflect your usual intake yet.`;
+  }
 
   for (const finding of summary.findings) {
     const nutrient = finding.type.replace(/^high_/, "").replace(/^low_/, "");
     const comparator = finding.type.startsWith("low_") ? "below" : "above";
     const foods =
       finding.topFoods.length > 0 ? `, mainly from ${finding.topFoods.join(" and ")}` : "";
-    parts.push(`Your ${nutrient.replace(/_/g, " ")} was ${comparator} target this week${foods}.`);
+    const prefix =
+      summary.analysisMode === "logged_day_average"
+        ? "On the days you logged, your average"
+        : "Your average daily";
+    parts.push(
+      `${prefix} ${nutrient.replace(/_/g, " ")} intake was ${comparator} target this week${foods}.`,
+    );
   }
 
   for (const suggestion of summary.suggestions) {
@@ -412,8 +446,10 @@ function buildFallbackHumanMessage(summary: {
 }
 
 async function buildHumanMessage(summary: {
+  analysisMode: TWeeklyNutritionAnalysisMode;
   findings: TWeeklyNutritionInsight["findings"];
   goal: TWeeklyNutritionGoal;
+  loggedDays: number;
   suggestions: TWeeklyNutritionInsight["suggestions"];
 }) {
   if (!process.env.OPENAI_API_KEY) {
@@ -428,6 +464,9 @@ async function buildHumanMessage(summary: {
       "Use the provided goal only as tone/context.",
       "Keep it to 2-4 sentences.",
       "Mention the top food contributors and suggested swaps plainly.",
+      "The actual and target values are average daily amounts across the completed week, not single-day values.",
+      "If analysisMode is logged_day_average, make clear the interpretation is based on logged days only.",
+      "If analysisMode is insufficient_data, do not give nutrient advice and explain there were too few logged days for a reliable weekly interpretation.",
       JSON.stringify(summary),
     ].join("\n");
 
@@ -460,6 +499,14 @@ export async function generateWeeklyNutritionInsight(
   ]);
 
   await ensureTaxonomyOnEntries(db, entries);
+
+  const loggedDays = countLoggedDays(entries);
+  const analysisMode: TWeeklyNutritionAnalysisMode =
+    loggedDays >= 5
+      ? "weekly_average"
+      : loggedDays >= 3
+        ? "logged_day_average"
+        : "insufficient_data";
 
   const findings: TWeeklyNutritionInsight["findings"] = [];
   const suggestions: TWeeklyNutritionInsight["suggestions"] = [];
@@ -517,37 +564,50 @@ export async function generateWeeklyNutritionInsight(
     });
   }
 
-  for (const check of nutrientChecks) {
-    if (typeof check.target !== "number" || check.target <= 0) continue;
-    const actual = round(averageDailyMetric(entries, check.metricKey));
-    if (!check.when(actual, check.target)) continue;
-
-    const topContributors = collectTopContributors(
-      entries,
-      check.metricKey,
-      check.nutrientReason,
-    );
+  if (analysisMode === "insufficient_data") {
     findings.push({
-      type: check.findingType,
-      severity: severityFromDelta(actual, check.target),
-      actual,
-      target: round(check.target),
-      topFoods: topContributors.slice(0, 3).map((item) => item.food),
-      topContributors: topContributors.slice(0, 3).map((item) => ({
-        contribution: item.contribution,
-        food: item.food,
-        nutrientAmount: item.nutrientAmount,
-      })),
+      type: "insufficient_logging",
+      severity: "low",
+      actual: loggedDays,
+      target: 5,
+      topFoods: [],
+      topContributors: [],
     });
+  } else {
+    for (const check of nutrientChecks) {
+      if (typeof check.target !== "number" || check.target <= 0) continue;
+      const actual = round(
+        metricValueForAnalysis(entries, check.metricKey, analysisMode, loggedDays),
+      );
+      if (!check.when(actual, check.target)) continue;
 
-    for (const contributor of topContributors.slice(0, 3)) {
-      const alternatives = await resolveAlternatives(db, contributor);
-      if (alternatives.length === 0) continue;
-      suggestions.push({
-        fromFood: contributor.food,
-        reason: contributor.nutrientReason,
-        alternatives,
+      const topContributors = collectTopContributors(
+        entries,
+        check.metricKey,
+        check.nutrientReason,
+      );
+      findings.push({
+        type: check.findingType,
+        severity: severityFromDelta(actual, check.target),
+        actual,
+        target: round(check.target),
+        topFoods: topContributors.slice(0, 3).map((item) => item.food),
+        topContributors: topContributors.slice(0, 3).map((item) => ({
+          contribution: item.contribution,
+          food: item.food,
+          nutrientAmount: item.nutrientAmount,
+        })),
       });
+
+      for (const contributor of topContributors.slice(0, 3)) {
+        const alternatives = await resolveAlternatives(db, contributor);
+        if (alternatives.length === 0) continue;
+        suggestions.push({
+          fromFood: contributor.food,
+          reason: contributor.nutrientReason,
+          alternatives,
+        });
+      }
     }
   }
 
@@ -561,16 +621,20 @@ export async function generateWeeklyNutritionInsight(
   });
 
   const humanMessage = await buildHumanMessage({
+    analysisMode,
     findings,
     goal,
+    loggedDays,
     suggestions: dedupedSuggestions,
   });
 
   return WeeklyNutritionInsight.parse({
+    analysisMode,
     patientId: patientId.toString(),
     weekStart: toDateOnly(weekStart),
     weekEnd: toDateOnly(weekEnd),
     goal,
+    loggedDays,
     findings,
     suggestions: dedupedSuggestions,
     humanMessage,
@@ -589,6 +653,8 @@ export async function saveWeeklyNutritionInsight(
     COLLECTIONS.WeeklyNutritionInsights,
   );
   const now = new Date();
+  const { createdAt: createdAtInput, ...insightWithoutCreatedAt } = insight;
+  const createdAt = createdAtInput ?? now;
 
   await collection.updateOne(
     {
@@ -598,19 +664,19 @@ export async function saveWeeklyNutritionInsight(
     },
     {
       $set: {
-        ...insight,
+        ...insightWithoutCreatedAt,
         updatedAt: now,
       },
       $setOnInsert: {
-        createdAt: now,
+        createdAt,
       },
     },
     { upsert: true },
   );
 
   return WeeklyNutritionInsight.parse({
-    ...insight,
-    createdAt: insight.createdAt ?? now,
+    ...insightWithoutCreatedAt,
+    createdAt,
     updatedAt: now,
   });
 }

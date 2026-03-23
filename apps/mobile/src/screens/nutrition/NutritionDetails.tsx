@@ -461,6 +461,12 @@ export default function NutritionDetails() {
                         pathname: "/targets",
                       }),
                   },
+                  {
+                    id: "weekly-swap-tester",
+                    label: "Test weekly swaps",
+                    onPress: () =>
+                      router.push("/(nutrition)/weekly-swap-tester"),
+                  },
                 ]}
               />
             </View>
@@ -490,10 +496,23 @@ export default function NutritionDetails() {
 
         {latestWeeklyInsight && (
           <Card>
+            {(() => {
+              const analysisMode =
+                latestWeeklyInsight.analysisMode ?? "weekly_average";
+              const loggedDays =
+                typeof latestWeeklyInsight.loggedDays === "number"
+                  ? latestWeeklyInsight.loggedDays
+                  : 7;
+              return (
+                <>
             <View style={NutritionStyles.cardHeader}>
               <ThemedText type="defaultSemiBold">Weekly nutrition alert</ThemedText>
               <ThemedText style={NutritionStyles.helperText}>
                 {latestWeeklyInsight.weekStart} to {latestWeeklyInsight.weekEnd}
+              </ThemedText>
+              <ThemedText style={NutritionStyles.helperText}>
+                Logged days: {loggedDays} | Mode:{" "}
+                {analysisMode.replace(/_/g, " ")}
               </ThemedText>
             </View>
             <ThemedText style={NutritionStyles.helperText}>
@@ -512,6 +531,9 @@ export default function NutritionDetails() {
                 ) : null}
               </View>
             ))}
+                </>
+              );
+            })()}
           </Card>
         )}
 
@@ -802,7 +824,11 @@ export default function NutritionDetails() {
             <ThemedText style={NutritionStyles.helperText}>
               Select a meal to edit what you logged.
             </ThemedText>
-            <View style={NutritionStyles.mealList}>
+            <ScrollView
+              style={NutritionStyles.modalScroll}
+              contentContainerStyle={NutritionStyles.mealList}
+              showsVerticalScrollIndicator
+            >
               {mealsForDay.map((meal) => (
                 <FoodCard
                   key={meal.id}
@@ -859,7 +885,7 @@ export default function NutritionDetails() {
                   ]}
                 />
               ))}
-            </View>
+            </ScrollView>
             <TouchableOpacity
               style={[
                 NutritionStyles.modalButton,

@@ -9,6 +9,8 @@
 - `weekEnd` · `YYYY-MM-DD`
 - `goal` · primary effective goal from `patient_goals_current`
   - `weight_loss|weight_maintenance|weight_gain|reduce_phosphorus|reduce_potassium|reduce_sodium|increase_protein|improve_energy|better_meal_routine|general_health`
+- `analysisMode` · `weekly_average|logged_day_average|insufficient_data`
+- `loggedDays` · number of distinct logged days in the 7-day window
 - `findings[]`
   - `type` · string (for example `high_phosphorus`, `low_protein`)
   - `severity` · `low|moderate|high`
@@ -28,16 +30,26 @@
 ## Generation flow
 
 1. Read the last completed 7-day window from `nutrition_ledger`.
-2. Compare weekly totals with mapped nutrition targets.
-3. For breached metrics, compute each food contribution:
+2. Count distinct logged days in the 7-day window.
+3. Choose analysis mode:
+   - `weekly_average` when logging coverage is strong
+   - `logged_day_average` when the week is only partially logged
+   - `insufficient_data` when there are too few logged days for a reliable nutrient interpretation
+4. Compare intake with mapped nutrition targets using the chosen mode.
+5. For breached metrics, compute each food contribution:
    `foodContribution = (nutrient_from_food / total_nutrient) * 100`
-4. Keep the top 2-3 contributors.
-5. Read each contributor's stored taxonomy.
-6. Rank `primarySwapGroup` and `secondarySwapGroups` by nutrient relevance.
-7. Map the best available `swapGroup + nutrientFocus` through `food_swap_rules`.
-8. Suggest alternatives in the same food role.
-9. Read primary goal context from `patient_goals_current`.
-10. Use AI only to turn the already-determined findings into a short human-friendly message.
+6. Keep the top 2-3 contributors.
+7. Read each contributor's stored taxonomy.
+8. Rank `primarySwapGroup` and `secondarySwapGroups` by nutrient relevance.
+9. Map the best available `swapGroup + nutrientFocus` through `food_swap_rules`.
+10. Suggest alternatives in the same food role.
+11. Read primary goal context from `patient_goals_current`.
+12. Use AI only to turn the already-determined findings into a short human-friendly message.
+
+## Sparse logging behavior
+
+- If the patient logs meals on fewer than 3 days in the week, the insight stores `analysisMode: "insufficient_data"` and should not give nutrient advice such as "increase protein".
+- If the patient logs meals on 3-4 days, the insight stores `analysisMode: "logged_day_average"` and the message should make clear the interpretation is based on logged days only.
 
 ## Routes
 

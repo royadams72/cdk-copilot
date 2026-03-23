@@ -21,6 +21,8 @@
         "weekStart",
         "weekEnd",
         "goal",
+        "analysisMode",
+        "loggedDays",
         "findings",
         "suggestions",
         "humanMessage",
@@ -33,6 +35,10 @@
         "weekStart": { "bsonType": "string" },
         "weekEnd": { "bsonType": "string" },
         "goal": { "bsonType": "string" },
+        "analysisMode": {
+          "enum": ["weekly_average", "logged_day_average", "insufficient_data"]
+        },
+        "loggedDays": { "bsonType": ["int", "long"] },
         "findings": {
           "bsonType": "array",
           "items": {
