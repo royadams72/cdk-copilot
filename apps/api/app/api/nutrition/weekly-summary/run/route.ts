@@ -7,7 +7,7 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { runWeeklyNutritionInsightForPatient, runWeeklyNutritionInsightsForActivePatients } from "@/apps/api/lib/utils/weeklyNutritionInsights";
-import { ROLES, TWeeklyNutritionGoal } from "@ckd/core";
+import { ROLES } from "@ckd/core";
 
 function isCronRequest(req: NextRequest) {
   const secret = process.env.WEEKLY_NUTRITION_CRON_SECRET;
@@ -20,12 +20,10 @@ export async function POST(req: NextRequest) {
   const body =
     (await req.json().catch(() => null)) as
       | {
-          goal?: TWeeklyNutritionGoal;
           patientId?: string;
           referenceDate?: string;
         }
       | null;
-  const goalOverride = body?.goal;
   const referenceDate =
     body?.referenceDate && !Number.isNaN(new Date(body.referenceDate).getTime())
       ? new Date(body.referenceDate)
@@ -40,13 +38,12 @@ export async function POST(req: NextRequest) {
         const insight = await runWeeklyNutritionInsightForPatient(
           db,
           new ObjectId(body.patientId),
-          { goalOverride, referenceDate },
+          { referenceDate },
         );
         return ok({ count: 1, insights: [insight] });
       }
 
       const insights = await runWeeklyNutritionInsightsForActivePatients(db, {
-        goalOverride,
         referenceDate,
       });
       return ok({ count: insights.length, insights });
@@ -68,7 +65,7 @@ export async function POST(req: NextRequest) {
     const insight = await runWeeklyNutritionInsightForPatient(
       db,
       new ObjectId(caller.patientId),
-      { goalOverride, referenceDate },
+      { referenceDate },
     );
     return ok(insight);
   } catch (err: any) {

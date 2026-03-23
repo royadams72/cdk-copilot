@@ -66,6 +66,11 @@
         },
         "subGroup": { "bsonType": ["string", "null"] },
         "swapGroup": { "bsonType": ["string", "null"] },
+        "primarySwapGroup": { "bsonType": ["string", "null"] },
+        "secondarySwapGroups": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
         "tags": {
           "bsonType": "array",
           "items": { "bsonType": "string" }

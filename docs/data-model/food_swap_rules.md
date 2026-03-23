@@ -7,6 +7,7 @@
 - Weekly nutrition analysis should not invent substitutions with AI.
 - The app first identifies high contributors from logged foods.
 - Each logged food already carries taxonomy, including `swapGroup`.
+- Mixed dishes can carry `primarySwapGroup` and `secondarySwapGroups`, with `swapGroup` kept as a compatibility alias of the primary role.
 - `food_swap_rules` tells the system which alternative groups are valid for a given nutrient problem.
 
 Example:
@@ -69,8 +70,10 @@ There should usually be one active rule per combination.
 1. Read the patient's logged foods for the completed week.
 2. Find top contributors for a nutrient such as phosphorus or sodium.
 3. Read each food's stored taxonomy.
-4. Take `swapGroup` from taxonomy.
-5. Query `food_swap_rules` with:
+4. Rank the food's available swap groups:
+   - `primarySwapGroup`
+   - `secondarySwapGroups`
+5. Query `food_swap_rules` with the most nutrient-relevant matching `swapGroup`:
    - `swapGroup`
    - `nutrientFocus`
    - `isActive: true`
@@ -96,6 +99,8 @@ There should usually be one active rule per combination.
 
 - `hard_cheese + phosphorus` -> `soft_cheese`
 - `hard_cheese + sodium` -> `soft_cheese`
+- `pasta + phosphorus` -> `plain_pasta`, `rice`
+- `pasta + sodium` -> `plain_pasta`, `rice`
 - `processed_meat + sodium` -> `fresh_poultry`, `egg`, `fresh_fish`
 - `bacon + sodium` -> `egg`, `fresh_poultry`
 - `cola_soft_drink + phosphorus` -> `water`, `water_flavoured`, `low_phosphate_soft_drink`

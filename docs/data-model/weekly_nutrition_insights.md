@@ -7,7 +7,8 @@
 - `patientId` · string
 - `weekStart` · `YYYY-MM-DD`
 - `weekEnd` · `YYYY-MM-DD`
-- `goal` · `weight_loss|weight_gain|weight_maintenance|renal_support|better_energy|balanced_nutrition|general_health`
+- `goal` · primary effective goal from `patient_goals_current`
+  - `weight_loss|weight_maintenance|weight_gain|reduce_phosphorus|reduce_potassium|reduce_sodium|increase_protein|improve_energy|better_meal_routine|general_health`
 - `findings[]`
   - `type` · string (for example `high_phosphorus`, `low_protein`)
   - `severity` · `low|moderate|high`
@@ -32,9 +33,11 @@
    `foodContribution = (nutrient_from_food / total_nutrient) * 100`
 4. Keep the top 2-3 contributors.
 5. Read each contributor's stored taxonomy.
-6. Map `swapGroup + nutrientFocus` through `food_swap_rules`.
-7. Suggest alternatives in the same food role.
-8. Use AI only to turn the already-determined findings into a short human-friendly message.
+6. Rank `primarySwapGroup` and `secondarySwapGroups` by nutrient relevance.
+7. Map the best available `swapGroup + nutrientFocus` through `food_swap_rules`.
+8. Suggest alternatives in the same food role.
+9. Read primary goal context from `patient_goals_current`.
+10. Use AI only to turn the already-determined findings into a short human-friendly message.
 
 ## Routes
 

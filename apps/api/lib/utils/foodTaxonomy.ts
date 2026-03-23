@@ -13,6 +13,8 @@ import type { Db } from "mongodb";
 type TaxonomyRuleResult = {
   inferredFrom?: Partial<TFoodTaxonomySnapshot["inferredFrom"]>;
   majorGroup?: TTaxonomyMajorGroup;
+  primarySwapGroup?: string | null;
+  secondarySwapGroups?: string[];
   subGroup?: string | null;
   swapGroup?: string | null;
   tags?: string[];
@@ -30,6 +32,14 @@ const NUT_BUTTER_REGEX = new RegExp(
 );
 const NUTS_AND_SEEDS_REGEX =
   /\b(peanut|peanuts|almond|almonds|cashew|cashews|walnut|walnuts|hazelnut|hazelnuts|pistachio|pistachios|mixed nuts)\b/i;
+const PASTA_REGEX =
+  /\b(pasta|spaghetti|penne|macaroni|linguine|tagliatelle|fettuccine)\b/i;
+const CHEESE_COMPONENT_REGEX =
+  /\b(cheese|cheddar|parmesan|mozzarella|gruyere|pecorino)\b/i;
+const RED_MEAT_COMPONENT_REGEX =
+  /\b(beef|mince|minced beef|minced meat|bolognese|bolognaise|meatball|meatballs)\b/i;
+const FISH_COMPONENT_REGEX = /\b(tuna|salmon|cod|haddock)\b/i;
+const POULTRY_COMPONENT_REGEX = /\b(chicken|turkey)\b/i;
 
 function detectNutButter(name: string) {
   if (!name) return false;
@@ -277,6 +287,18 @@ function mergeRuleResults(
       ]),
     },
     majorGroup: current.majorGroup ?? incoming.majorGroup,
+    primarySwapGroup:
+      current.primarySwapGroup !== undefined
+        ? current.primarySwapGroup
+        : current.swapGroup !== undefined
+          ? current.swapGroup
+          : incoming.primarySwapGroup !== undefined
+            ? incoming.primarySwapGroup
+            : incoming.swapGroup,
+    secondarySwapGroups: uniqueStrings([
+      ...(current.secondarySwapGroups ?? []),
+      ...(incoming.secondarySwapGroups ?? []),
+    ]),
     subGroup:
       current.subGroup !== undefined ? current.subGroup : incoming.subGroup,
     swapGroup:
@@ -296,7 +318,10 @@ function shouldRepairExistingTaxonomy(
   return (
     (existing.majorGroup === "other" && inferred.majorGroup !== "other") ||
     (!existing.subGroup && !!inferred.subGroup) ||
-    (!existing.swapGroup && !!inferred.swapGroup)
+    (!existing.swapGroup && !!inferred.swapGroup) ||
+    (!existing.primarySwapGroup && !!inferred.primarySwapGroup) ||
+    (existing.secondarySwapGroups?.length ?? 0) <
+      inferred.secondarySwapGroups.length
   );
 }
 
@@ -367,6 +392,49 @@ function inferFromKeywords(
   }
 
   return Object.keys(result).length > 0 ? result : null;
+}
+
+function inferMixedDishSwapGroups(
+  item: Pick<TFoodItemEntry, "name">,
+): TaxonomyRuleResult | null {
+  const text = item.name ?? "";
+
+  if (!PASTA_REGEX.test(text)) {
+    return null;
+  }
+
+  const secondarySwapGroups: string[] = [];
+  const keywordRules: string[] = [];
+
+  if (CHEESE_COMPONENT_REGEX.test(text)) {
+    secondarySwapGroups.push("hard_cheese");
+    keywordRules.push("pasta_dish_cheese");
+  }
+  if (RED_MEAT_COMPONENT_REGEX.test(text)) {
+    secondarySwapGroups.push("red_meat");
+    keywordRules.push("pasta_dish_red_meat");
+  }
+  if (FISH_COMPONENT_REGEX.test(text)) {
+    secondarySwapGroups.push("fresh_fish");
+    keywordRules.push("pasta_dish_fish");
+  }
+  if (POULTRY_COMPONENT_REGEX.test(text)) {
+    secondarySwapGroups.push("fresh_poultry");
+    keywordRules.push("pasta_dish_poultry");
+  }
+
+  if (secondarySwapGroups.length === 0) {
+    return null;
+  }
+
+  return {
+    inferredFrom: { keywordRules },
+    majorGroup: "mixed",
+    primarySwapGroup: "pasta",
+    secondarySwapGroups: uniqueStrings(secondarySwapGroups),
+    subGroup: "pasta_dish",
+    tags: ["mixed_dish"],
+  };
 }
 
 function inferNutrientTags(
@@ -491,15 +559,23 @@ export function inferFoodTaxonomy(
     item.foodId?.trim() || item.uid?.trim() || normalizeKeyPart(canonicalName);
 
   let result: TaxonomyRuleResult = {};
+  result = mergeRuleResults(result, inferMixedDishSwapGroups(item));
   result = mergeRuleResults(result, inferFromExactName(item));
   result = mergeRuleResults(result, inferFromKeywords(item));
   result = mergeRuleResults(result, inferNutrientTags(item));
   result = mergeRuleResults(result, fallbackRule(item));
 
   const subGroup = result.subGroup ?? null;
-  const swapGroup =
+  const primarySwapGroup =
+    result.primarySwapGroup ??
     result.swapGroup ??
     (subGroup ? (DEFAULT_SWAP_GROUP_BY_SUBGROUP[subGroup] ?? subGroup) : null);
+  const secondarySwapGroups = uniqueStrings(
+    (result.secondarySwapGroups ?? []).filter(
+      (group) => group && group !== primarySwapGroup,
+    ),
+  );
+  const swapGroup = result.swapGroup ?? primarySwapGroup;
 
   return {
     canonicalName,
@@ -516,6 +592,8 @@ export function inferFoodTaxonomy(
     },
     majorGroup: result.majorGroup ?? "other",
     normalizedName,
+    primarySwapGroup,
+    secondarySwapGroups,
     source,
     sourceFoodId,
     subGroup,

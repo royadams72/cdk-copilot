@@ -84,6 +84,30 @@
     "tags": ["drink", "calories"]
   },
   {
+    "candidateSwapGroups": ["plain_pasta", "rice"],
+    "createdAt": { "$date": "2026-03-23T00:00:00.000Z" },
+    "isActive": true,
+    "minSimilarityScore": 0.6,
+    "notes": "Prefer simpler pasta dishes or plain starch sides when pasta meals are driving phosphorus.",
+    "nutrientFocus": "phosphorus",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "pasta",
+    "tags": ["grain", "phosphorus"],
+    "updatedAt": { "$date": "2026-03-23T00:00:00.000Z" }
+  },
+  {
+    "candidateSwapGroups": ["plain_pasta", "rice"],
+    "createdAt": { "$date": "2026-03-23T00:00:00.000Z" },
+    "isActive": true,
+    "minSimilarityScore": 0.6,
+    "notes": "Prefer less salty pasta dishes or plain starch sides when sodium is the concern.",
+    "nutrientFocus": "sodium",
+    "strategy": "lower_nutrient_same_role",
+    "swapGroup": "pasta",
+    "tags": ["grain", "sodium"],
+    "updatedAt": { "$date": "2026-03-23T00:00:00.000Z" }
+  },
+  {
     "candidateSwapGroups": ["unsalted_snack", "plain_crackers"],
     "isActive": true,
     "minSimilarityScore": 0.55,
@@ -136,10 +160,11 @@
   {
     "candidateSwapGroups": ["unsalted_snack", "plain_crackers", "popcorn"],
     "createdAt": { "$date": "2026-03-19T00:00:00.000Z" },
+    "isActive": true,
     "minSimilarityScore": 0.6,
     "notes": "Replace nuts with lower phosphorus snack options.",
     "nutrientFocus": "phosphorus",
-    "strategy": "lower_nutrient_similar_use",
+    "strategy": "lower_nutrient_same_role",
     "swapGroup": "nuts_and_seeds",
     "tags": ["snack", "phosphorus"],
     "updatedAt": { "$date": "2026-03-19T00:00:00.000Z" }
@@ -147,6 +172,7 @@
   {
     "candidateSwapGroups": ["low_phosphorus_spread"],
     "createdAt": { "$date": "2026-03-19T00:00:00.000Z" },
+    "isActive": true,
     "minSimilarityScore": 0.7,
     "notes": "Replace nut butters with lower phosphorus spread options.",
     "nutrientFocus": "phosphorus",

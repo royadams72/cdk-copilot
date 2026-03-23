@@ -26,6 +26,8 @@ This folder contains developer documentation for **CKD Copilot**. It covers the 
 - [ERD (Entity–Relationship Diagram) — Mermaid](./data-model/erd.mmd)
 - [Nutrition ledger](./data-model/nutrition_ledger.md)
 - [Food taxonomy](./data-model/food_taxonomy.md)
+- [Patient goals current](./data-model/patient_goals_current.md)
+- [Patient goals ledger](./data-model/patient_goals_ledger.md)
 - [Weekly nutrition insights](./data-model/weekly_nutrition_insights.md)
 
 ## Security

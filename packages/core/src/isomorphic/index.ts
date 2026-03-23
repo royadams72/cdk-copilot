@@ -9,6 +9,7 @@ export * from "./schemas/measurements";
 export * from "./schemas/medications";
 export * from "./schemas/nutrition";
 export * from "./schemas/nutrition_favourites";
+export * from "./schemas/patient_goals";
 export * from "./schemas/patients";
 export * from "./schemas/weekly_nutrition_insights";
 export * from "./schemas/clinical_reference_rules";

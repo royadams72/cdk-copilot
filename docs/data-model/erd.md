@@ -5,6 +5,9 @@ erDiagram
   patients ||--o{ measurements_ledger : "patientId"
   patients ||--o{ targets_ledger : "patientId"
   patients ||--o{ targets_current : "patientId"
+  patients ||--o{ patient_goals_current : "patientId"
+  patients ||--o{ patient_goals_ledger : "patientId"
+  patients ||--o{ care_plans : "patientId"
   clinical_reference_rules ||--o{ targets_current : "derivedFrom.ruleId/version"
   clinical_reference_rules ||--o{ targets_ledger : "derivedFrom.ruleId/version"
   clinical_reference_rules ||--o{ labs_ledger : "derivedFromRangeId/version"
@@ -56,6 +59,26 @@ erDiagram
   targets_current {
     ObjectId _id PK
     ObjectId patientId FK
+    date updatedAt
+  }
+
+  patient_goals_current {
+    ObjectId _id PK
+    ObjectId patientId FK
+    date updatedAt
+  }
+
+  patient_goals_ledger {
+    ObjectId _id PK
+    ObjectId patientId FK
+    string goalCode
+    date createdAt
+  }
+
+  care_plans {
+    ObjectId _id PK
+    ObjectId patientId FK
+    string status
     date updatedAt
   }
 ```

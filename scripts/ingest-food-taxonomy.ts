@@ -43,6 +43,8 @@ type FoodTaxonomyDoc = {
   };
   majorGroup: TaxonomyMajorGroup;
   normalizedName: string;
+  primarySwapGroup: string | null;
+  secondarySwapGroups: string[];
   source: string;
   sourceFoodId: string;
   subGroup: string | null;
@@ -606,6 +608,8 @@ function inferTaxonomy(food: BaseFood): TaxonomyResult {
       nutrientTags: uniqueStrings(result.inferredFrom?.nutrientTags || []),
     },
     majorGroup: (result.majorGroup || "other") as TaxonomyMajorGroup,
+    primarySwapGroup: result.swapGroup ?? null,
+    secondarySwapGroups: [],
     subGroup: result.subGroup ?? null,
     swapGroup: result.swapGroup ?? null,
     tags: uniqueStrings(result.tags || []),
@@ -676,6 +680,8 @@ async function main() {
         inferredFrom: inferred.inferredFrom,
         majorGroup: inferred.majorGroup,
         normalizedName,
+        primarySwapGroup: inferred.primarySwapGroup,
+        secondarySwapGroups: inferred.secondarySwapGroups,
         source,
         sourceFoodId,
         subGroup: inferred.subGroup,
@@ -696,6 +702,8 @@ async function main() {
               canonicalName: doc.canonicalName,
               normalizedName: doc.normalizedName,
               majorGroup: doc.majorGroup,
+              primarySwapGroup: doc.primarySwapGroup,
+              secondarySwapGroups: doc.secondarySwapGroups,
               subGroup: doc.subGroup,
               swapGroup: doc.swapGroup,
               tags: doc.tags,

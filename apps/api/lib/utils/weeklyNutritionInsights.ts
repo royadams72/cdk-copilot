@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import {
   TFoodTaxonomyDocument,
+  TPatientGoalCode,
   TWeeklyNutritionGoal,
   TWeeklyNutritionInsight,
   WeeklyNutritionInsight,
@@ -11,6 +12,7 @@ import type { Db, ObjectId } from "mongodb";
 import type { NutritionEntryDoc } from "../types/dashboard";
 import { fetchNutritionEntriesInRange } from "./dashboard";
 import { attachFoodTaxonomies } from "./foodTaxonomy";
+import { getPatientGoalsCurrent, resolveActivePatientGoals } from "./patientGoals";
 import { getMappedNutritionTargets } from "./targets";
 
 type NutrientReason = "phosphorus" | "potassium" | "sodium" | "protein" | "calories";
@@ -18,11 +20,13 @@ type NutrientMetricKey = "phosphorusMg" | "potassiumMg" | "sodiumMg" | "proteinG
 
 type FoodContribution = {
   alternatives: string[];
+  availableSwapGroups: string[];
   contribution: number;
   food: string;
   nutrientAmount: number;
   nutrientReason: NutrientReason;
-  swapGroup: string | null;
+  primarySwapGroup: string | null;
+  secondarySwapGroups: string[];
 };
 
 type FoodSwapRuleDoc = {
@@ -32,20 +36,6 @@ type FoodSwapRuleDoc = {
   notes?: string | null;
   swapGroup?: string;
   updatedAt?: Date;
-};
-
-type PatientsDoc = {
-  flags?: string[];
-  goal?: string | null;
-  summary?: {
-    goal?: string | null;
-    primaryGoal?: string | null;
-  } | null;
-};
-
-type UsersClinicalGoalDoc = {
-  goal?: string | null;
-  primaryGoal?: string | null;
 };
 
 const OPENAI_SUMMARY_MODEL = "gpt-4.1-mini";
@@ -58,13 +48,73 @@ const DEFAULT_SWAP_GROUP_FOODS: Record<string, string[]> = {
   fresh_poultry: ["chicken breast", "turkey"],
   fruit: ["apple", "berries"],
   low_phosphate_soft_drink: ["lemonade", "clear soda"],
+  low_phosphorus_spread: ["jam", "honey"],
   lower_calorie_dessert: ["yoghurt", "fruit salad"],
   lower_phosphorus_yoghurt: ["greek-style yoghurt", "plain yoghurt"],
+  plain_pasta: ["plain pasta", "pasta with tomato sauce"],
+  popcorn: ["plain popcorn"],
   plain_crackers: ["plain crackers", "rice cakes"],
   soft_cheese: ["ricotta", "cottage cheese"],
   unsalted_snack: ["unsalted popcorn", "rice cakes"],
   water: ["water"],
   water_flavoured: ["sparkling water", "flavoured water"],
+};
+
+const SWAP_GROUP_NUTRIENT_RELEVANCE: Partial<
+  Record<NutrientReason, Partial<Record<string, number>>>
+> = {
+  calories: {
+    cola_soft_drink: 3,
+    crisps: 3,
+    dessert: 3,
+    hard_cheese: 2,
+    nut_butter: 2,
+    nuts_and_seeds: 2,
+    pasta: 2,
+    red_meat: 2,
+    soft_drink: 3,
+  },
+  phosphorus: {
+    bacon: 2,
+    cola_soft_drink: 3,
+    fresh_fish: 2,
+    hard_cheese: 3,
+    nut_butter: 3,
+    nuts_and_seeds: 3,
+    processed_meat: 2,
+    red_meat: 2,
+    sausage: 2,
+    shellfish: 2,
+    soft_cheese: 2,
+  },
+  potassium: {
+    fruit: 2,
+    nut_butter: 2,
+    nuts_and_seeds: 2,
+    vegetable: 2,
+  },
+  protein: {
+    egg: 3,
+    fresh_fish: 3,
+    fresh_poultry: 3,
+    hard_cheese: 1,
+    nuts_and_seeds: 1,
+    processed_meat: 2,
+    red_meat: 3,
+    shellfish: 3,
+    soft_cheese: 1,
+  },
+  sodium: {
+    bacon: 3,
+    cola_soft_drink: 1,
+    crisps: 3,
+    hard_cheese: 3,
+    mixed_meal: 1,
+    processed_meat: 3,
+    sausage: 3,
+    soft_drink: 2,
+    soft_cheese: 2,
+  },
 };
 
 function toWeeklyNutritionInsight(value: Record<string, unknown>) {
@@ -114,49 +164,14 @@ function resolveCompletedWeekWindow(referenceDate = new Date()) {
   return { weekEnd, weekEndExclusive, weekStart };
 }
 
-async function resolvePatientGoal(db: Db, patientId: ObjectId): Promise<TWeeklyNutritionGoal> {
-  const [patientDoc, clinicalDoc] = await Promise.all([
-    db.collection<PatientsDoc>(COLLECTIONS.Patients).findOne(
-      { _id: patientId },
-      { projection: { flags: 1, goal: 1, summary: 1 } },
-    ),
-    db.collection<UsersClinicalGoalDoc>(COLLECTIONS.UsersClinical).findOne(
-      { patientId },
-      { projection: { goal: 1, primaryGoal: 1 } },
-    ),
-  ]);
-
-  const values = [
-    patientDoc?.goal,
-    patientDoc?.summary?.goal,
-    patientDoc?.summary?.primaryGoal,
-    clinicalDoc?.goal,
-    clinicalDoc?.primaryGoal,
-    ...(patientDoc?.flags ?? []),
-  ]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => value.toLowerCase());
-
-  if (values.some((value) => value.includes("weight_loss") || value.includes("lose weight"))) {
-    return "weight_loss";
-  }
-  if (values.some((value) => value.includes("weight_gain") || value.includes("gain weight"))) {
-    return "weight_gain";
-  }
-  if (
-    values.some(
-      (value) => value.includes("maintain weight") || value.includes("weight_maintenance"),
-    )
-  ) {
-    return "weight_maintenance";
-  }
-  if (values.some((value) => value.includes("energy"))) {
-    return "better_energy";
-  }
-  if (values.some((value) => value.includes("renal"))) {
-    return "renal_support";
-  }
-  return "general_health";
+async function resolvePatientGoal(
+  db: Db,
+  patientId: ObjectId,
+): Promise<TWeeklyNutritionGoal> {
+  const current = await getPatientGoalsCurrent(db, patientId);
+  const activeGoals = resolveActivePatientGoals(current);
+  const primaryGoal = activeGoals[0]?.effectiveCode as TPatientGoalCode | undefined;
+  return primaryGoal ?? "general_health";
 }
 
 function sumMetric(entries: NutritionEntryDoc[], metricKey: NutrientMetricKey) {
@@ -195,6 +210,44 @@ function getNutrientValue(
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function getItemSwapGroups(item: NutritionEntryDoc["items"][number]) {
+  const primarySwapGroup =
+    item.taxonomy?.primarySwapGroup ?? item.taxonomy?.swapGroup ?? null;
+  const secondarySwapGroups = Array.isArray(item.taxonomy?.secondarySwapGroups)
+    ? item.taxonomy.secondarySwapGroups.filter(
+        (group): group is string => Boolean(group && group !== primarySwapGroup),
+      )
+    : [];
+  return {
+    availableSwapGroups: [
+      ...new Set(
+        [primarySwapGroup, ...secondarySwapGroups].filter(
+          (group): group is string => Boolean(group),
+        ),
+      ),
+    ],
+    primarySwapGroup,
+    secondarySwapGroups,
+  };
+}
+
+function rankContributorSwapGroups(contributor: FoodContribution) {
+  return [...contributor.availableSwapGroups].sort((left, right) => {
+    const leftScore =
+      (left === contributor.primarySwapGroup ? 1 : 0) +
+      (SWAP_GROUP_NUTRIENT_RELEVANCE[contributor.nutrientReason]?.[left] ?? 0);
+    const rightScore =
+      (right === contributor.primarySwapGroup ? 1 : 0) +
+      (SWAP_GROUP_NUTRIENT_RELEVANCE[contributor.nutrientReason]?.[right] ?? 0);
+
+    if (rightScore !== leftScore) {
+      return rightScore - leftScore;
+    }
+    return contributor.availableSwapGroups.indexOf(left) -
+      contributor.availableSwapGroups.indexOf(right);
+  });
+}
+
 function collectTopContributors(
   entries: NutritionEntryDoc[],
   nutrientKey: NutrientMetricKey,
@@ -217,9 +270,11 @@ function collectTopContributors(
   const buckets = new Map<
     string,
     {
+      availableSwapGroups: string[];
       canonicalName: string;
       nutrientAmount: number;
-      swapGroup: string | null;
+      primarySwapGroup: string | null;
+      secondarySwapGroups: string[];
     }
   >();
 
@@ -228,12 +283,27 @@ function collectTopContributors(
       const amount = getNutrientValue(item, nutrientKey);
       if (amount <= 0) continue;
       const key = contributionKey(item);
+      const swapGroups = getItemSwapGroups(item);
       const bucket = buckets.get(key) ?? {
+        availableSwapGroups: swapGroups.availableSwapGroups,
         canonicalName: item.taxonomy?.canonicalName ?? item.name ?? "Logged food",
         nutrientAmount: 0,
-        swapGroup: item.taxonomy?.swapGroup ?? null,
+        primarySwapGroup: swapGroups.primarySwapGroup,
+        secondarySwapGroups: swapGroups.secondarySwapGroups,
       };
       bucket.nutrientAmount += amount;
+      bucket.availableSwapGroups = [
+        ...new Set([
+          ...bucket.availableSwapGroups,
+          ...swapGroups.availableSwapGroups,
+        ]),
+      ];
+      bucket.secondarySwapGroups = [
+        ...new Set([
+          ...bucket.secondarySwapGroups,
+          ...swapGroups.secondarySwapGroups,
+        ]),
+      ];
       buckets.set(key, bucket);
     }
   }
@@ -243,11 +313,13 @@ function collectTopContributors(
     .slice(0, CONTRIBUTOR_LIMIT)
     .map((bucket) => ({
       alternatives: [],
+      availableSwapGroups: bucket.availableSwapGroups,
       contribution: round((bucket.nutrientAmount / total) * 100),
       food: bucket.canonicalName,
       nutrientAmount: round(bucket.nutrientAmount),
       nutrientReason,
-      swapGroup: bucket.swapGroup,
+      primarySwapGroup: bucket.primarySwapGroup,
+      secondarySwapGroups: bucket.secondarySwapGroups,
     }));
 }
 
@@ -255,7 +327,7 @@ async function resolveAlternatives(
   db: Db,
   contributor: FoodContribution,
 ): Promise<string[]> {
-  if (!contributor.swapGroup) {
+  if (contributor.availableSwapGroups.length === 0) {
     return [];
   }
 
@@ -264,16 +336,23 @@ async function resolveAlternatives(
     db,
     COLLECTIONS.FoodTaxonomy,
   );
-  const rule = await swapRules.findOne(
-    {
-      isActive: true,
-      nutrientFocus: contributor.nutrientReason,
-      swapGroup: contributor.swapGroup,
-    },
-    { sort: { updatedAt: -1 } },
-  );
+  let candidateGroups: string[] = [];
 
-  const candidateGroups = rule?.candidateSwapGroups ?? [];
+  for (const swapGroup of rankContributorSwapGroups(contributor)) {
+    const rule = await swapRules.findOne(
+      {
+        isActive: true,
+        nutrientFocus: contributor.nutrientReason,
+        swapGroup,
+      },
+      { sort: { updatedAt: -1 } },
+    );
+    candidateGroups = rule?.candidateSwapGroups ?? [];
+    if (candidateGroups.length > 0) {
+      break;
+    }
+  }
+
   if (candidateGroups.length === 0) {
     return [];
   }
@@ -368,7 +447,6 @@ export async function generateWeeklyNutritionInsight(
   db: Db,
   patientId: ObjectId,
   options?: {
-    goalOverride?: TWeeklyNutritionGoal;
     referenceDate?: Date;
   },
 ): Promise<TWeeklyNutritionInsight> {
@@ -378,7 +456,7 @@ export async function generateWeeklyNutritionInsight(
   const [entries, nutritionTargets, goal] = await Promise.all([
     fetchNutritionEntriesInRange(db, patientId, weekStart, weekEndExclusive),
     getMappedNutritionTargets(db, patientId),
-    options?.goalOverride ? Promise.resolve(options.goalOverride) : resolvePatientGoal(db, patientId),
+    resolvePatientGoal(db, patientId),
   ]);
 
   await ensureTaxonomyOnEntries(db, entries);
@@ -541,7 +619,6 @@ export async function runWeeklyNutritionInsightForPatient(
   db: Db,
   patientId: ObjectId,
   options?: {
-    goalOverride?: TWeeklyNutritionGoal;
     referenceDate?: Date;
   },
 ) {
@@ -552,7 +629,6 @@ export async function runWeeklyNutritionInsightForPatient(
 export async function runWeeklyNutritionInsightsForActivePatients(
   db: Db,
   options?: {
-    goalOverride?: TWeeklyNutritionGoal;
     referenceDate?: Date;
   },
 ) {

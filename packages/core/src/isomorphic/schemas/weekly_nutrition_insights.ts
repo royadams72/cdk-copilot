@@ -1,15 +1,8 @@
 import { z } from "zod";
 import { objectIdHex } from "./common";
+import { PatientGoalCode } from "./patient_goals";
 
-export const WeeklyNutritionGoal = z.enum([
-  "weight_loss",
-  "weight_gain",
-  "weight_maintenance",
-  "renal_support",
-  "better_energy",
-  "balanced_nutrition",
-  "general_health",
-]);
+export const WeeklyNutritionGoal = PatientGoalCode;
 
 export const WeeklyNutritionFinding = z
   .object({

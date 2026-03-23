@@ -4,6 +4,10 @@
 **Contains PII (Personally Identifiable Information):** No direct PII; linked via `patientId`.
 **Access:** User (self), app server; clinicians if assigned. Audited.
 
+loggedItem.taxonomy.primarySwapGroup / secondarySwapGroups + nutrientFocus
+->
+food_swap_rules
+
 ## Shape (summary)
 
 - `_id` · ObjectId
@@ -25,7 +29,9 @@
     - `normalizedName` · lower-cased food name
     - `majorGroup` · `protein|dairy|grain|fruit_veg|drink|snack|condiment|mixed|dessert|other`
     - `subGroup` · string|null
-    - `swapGroup` · string|null
+    - `swapGroup` · string|null - legacy primary alias
+    - `primarySwapGroup` · string|null
+    - `secondarySwapGroups[]` · string[]
     - `tags[]` · string
     - `inferredFrom` · rule metadata (`override`, `exactName`, `keywordRules`, `categoryHint`, `nutrientTags`)
 - `totals` · same nutrient fields as `items.nutrients`, summed for the entry
@@ -66,6 +72,8 @@
         "majorGroup": "protein",
         "subGroup": "poultry",
         "swapGroup": "fresh_poultry",
+        "primarySwapGroup": "fresh_poultry",
+        "secondarySwapGroups": [],
         "tags": ["animal_protein", "high_protein", "phosphorus_dense"],
         "inferredFrom": {
           "override": false,
@@ -167,5 +175,5 @@ export async function GET(req: Request) {
 ## Weekly analysis use
 
 - The logging routes attach `items[].taxonomy` at write time.
-- Weekly background analysis reads the last completed week from `nutrition_ledger`, ranks top nutrient contributors from `items[].nutrients`, then follows `items[].taxonomy.swapGroup` into `food_swap_rules`.
+- Weekly background analysis reads the last completed week from `nutrition_ledger`, ranks top nutrient contributors from `items[].nutrients`, then ranks `items[].taxonomy.primarySwapGroup` and `secondarySwapGroups` by nutrient relevance before resolving through `food_swap_rules`.
 - The embedded taxonomy snapshot is intentionally denormalized so weekly analysis does not depend on later name changes or reclassification.
