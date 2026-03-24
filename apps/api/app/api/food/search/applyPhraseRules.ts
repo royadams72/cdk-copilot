@@ -4,13 +4,13 @@ export function applyPhraseRules(
   text: string,
   pool: EdamamHint[],
 ): EdamamHint | null {
-  // const lowerText = text.toLowerCase();
-
   const rules: { labelPattern: RegExp; pattern: RegExp }[] = [
     // wholemeal / wholegrain / brown bread etc.
     {
-      labelPattern: /\b(brown|wholemeal|whole[- ]wheat|wholegrain|granary)\b/i,
-      pattern: /\b(brown|wholemeal|whole[- ]wheat|wholegrain|granary)\b/i,
+      labelPattern:
+        /\b(brown|whole meal|wholemeal|whole[- ]meal||whole[- ]wheat|wholegrain|whole grain|granary)\b/i,
+      pattern:
+        /\b(brown|whole meal|wholemeal|whole[- ]meal||whole[- ]wheat|wholegrain|whole grain|granary)\b/i,
     },
     // white staple (bread, toast, roll, rice, pasta)
     {
@@ -107,6 +107,29 @@ export function applyPhraseRules(
   const lowerText = text.toLowerCase();
   const userMentionedSeeds = /\bseed(s)?\b/i.test(lowerText);
 
+  const breadStylePattern =
+    /\b(brown|whole meal|wholemeal|whole[- ]wheat|wholegrain|whole grain|granary)\b/i;
+  const isBreadStyleQuery =
+    /\bbread\b/i.test(lowerText) && breadStylePattern.test(lowerText);
+
+  if (isBreadStyleQuery) {
+    const breadMatches = pool.filter((h) => {
+      const label = h.food.label.toLowerCase();
+      return (
+        breadStylePattern.test(label) &&
+        /\bbread\b/i.test(label) &&
+        !/\b(canned|boston|crust|crumb|crumbs|crouton|croutons)\b/i.test(label)
+      );
+    });
+
+    const exactBreadMatch = breadMatches.find(
+      (h) => normalizeText(h.food.label) === normalizeText(lowerText),
+    );
+    if (exactBreadMatch) return exactBreadMatch;
+
+    if (breadMatches.length) return breadMatches[0];
+  }
+
   for (const rule of rules) {
     /**If the query text does not match the rule’s pattern, skip that rule.
       If it does match, filter the returned hints to those whose food.label matches labelPattern. */
@@ -141,4 +164,8 @@ export function applyPhraseRules(
   }
 
   return null;
+}
+
+function normalizeText(text: string) {
+  return text.toLowerCase().replace(/[^\w\s-]/g, " ").replace(/\s+/g, " ").trim();
 }

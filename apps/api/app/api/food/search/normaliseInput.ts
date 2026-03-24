@@ -7,6 +7,11 @@ import { TLogMealItem, TLogMealNormalised } from "@ckd/core";
 export async function normaliseInput(
   input: string,
 ): Promise<TLogMealNormalised | NextResponse> {
+  const directBreadMatch = buildDirectBreadNormalisation(input);
+  if (directBreadMatch) {
+    return directBreadMatch;
+  }
+
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const normalise = `Normalise this meal description into the JSON format described above. "${input}"`;
   try {
@@ -70,11 +75,48 @@ Output JSON schema:
   ]
 }`;
 
+function buildDirectBreadNormalisation(
+  input: string,
+): TLogMealNormalised | null {
+  const cleaned = input.toLowerCase().trim().replace(/\s+/g, " ");
+  if (!cleaned) return null;
+
+  const isBreadStyleQuery =
+    /^(brown|wholemeal|whole meal|wholegrain|whole grain|wholewheat|whole wheat|granary)( bread)?$/.test(
+      cleaned,
+    );
+
+  if (!isBreadStyleQuery) return null;
+
+  return {
+    mealText: input,
+    items: [
+      {
+        original: input,
+        normalised: "whole wheat bread",
+        quantity: 1,
+        unit: "slice",
+        food: "whole wheat bread",
+      },
+    ],
+  };
+}
+
 export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
   const out: TLogMealItem[] = [];
 
   for (const item of items) {
     const text = item.normalised.toLowerCase().trim();
+    const breadRewrite = rewriteBreadForEdamam(item);
+    if (breadRewrite) {
+      out.push({
+        ...item,
+        food: breadRewrite,
+        normalised: breadRewrite,
+      });
+      continue;
+    }
+
     const normalised = normaliseForEdamam(item.normalised);
     // 🔹 jerk chicken -> roast chicken thigh with skin
     if (text === "jerk chicken") {
@@ -155,4 +197,28 @@ function normaliseForEdamam(text: string): string {
   }
 
   return text;
+}
+
+function rewriteBreadForEdamam(item: TLogMealItem) {
+  const source = [item.original, item.normalised, item.food]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const mentionsBread = /\bbread\b/.test(source) || item.normalised.toLowerCase() === "bread";
+  if (!mentionsBread) return null;
+
+  if (/\bbrown bread\b/.test(source)) {
+    return "whole wheat bread";
+  }
+
+  if (
+    /\b(wholemeal|whole meal|wholegrain|whole grain|wholewheat|whole wheat|granary)\b/.test(
+      source,
+    )
+  ) {
+    return "whole wheat bread";
+  }
+
+  return null;
 }
