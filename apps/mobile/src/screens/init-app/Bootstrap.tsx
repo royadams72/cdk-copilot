@@ -86,11 +86,13 @@ const Bootstrap = () => {
             setError(refreshed.message);
             router.replace("/(init-app)/welcome");
           }
+        } else {
+          setError(data?.message ?? "We couldn't restore your session.");
         }
       } catch (error: any) {
         console.log("Bootstrap", error);
 
-        setError("not loaded");
+        setError(error?.message ?? "We couldn't restore your session.");
       }
 
       // await clearSessionToken();

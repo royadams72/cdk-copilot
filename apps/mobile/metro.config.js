@@ -19,12 +19,6 @@ config.resolver.nodeModulesPaths = [
   path.join(workspaceRoot, "node_modules"),
 ];
 config.resolver.unstable_enableSymlinks = true;
-config.resolver.extraNodeModules = new Proxy(
-  {},
-  {
-    get: (_, name) => path.join(workspaceRoot, "node_modules", name),
-  },
-);
 // Often helps with modern package "exports"
 config.resolver.unstable_enablePackageExports = true;
 // handy aliases
