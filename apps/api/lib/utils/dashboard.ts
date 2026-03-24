@@ -458,7 +458,7 @@ export function summarizeNutrition(
           : null,
     },
     ratio,
-    totals,
+    totals: roundNutrientTotals(totals),
   };
 }
 
@@ -525,7 +525,7 @@ function buildDailySeries(
     .map(([key, totals]) => ({
       date: key,
       label: formatWeekdayLabel(new Date(key)),
-      totals,
+      totals: roundNutrientTotals(totals),
     }));
 }
 
@@ -564,7 +564,7 @@ function buildFoodHighlights(
         const nutrientValue = normaliseNumber(item.nutrients?.[metric.key]);
         if (!nutrientValue || nutrientValue <= 0) continue;
         buckets[metric.key as ChartMetricKey].push({
-          amount: nutrientValue,
+          amount: round(nutrientValue, 0),
           eatenAt: eatenAtIso,
           mealType: entry.mealType ?? null,
           name,
@@ -580,7 +580,7 @@ function buildFoodHighlights(
         (phosphorus && protein && protein > 0 ? phosphorus / protein : null);
       if (resolvedRatio && resolvedRatio > 0) {
         buckets.phosphorus_protein_ratio.push({
-          amount: resolvedRatio,
+          amount: round(resolvedRatio, 0),
           eatenAt: eatenAtIso,
           mealType: entry.mealType ?? null,
           name,
@@ -684,7 +684,7 @@ function buildRatio(
 ) {
   const actual =
     totals.proteinG > 0
-      ? round(totals.phosphorusMg / totals.proteinG, 2)
+      ? round(totals.phosphorusMg / totals.proteinG, 0)
       : null;
 
   const targetDerived =
@@ -692,7 +692,7 @@ function buildRatio(
       ? targets.phosphorusMg / targets.proteinG
       : DEFAULT_RATIO_THRESHOLD;
 
-  const target = round(targetDerived, 2);
+  const target = round(targetDerived, 0);
   let status: "in-range" | "high" | "unknown" = "unknown";
   if (actual !== null && Number.isFinite(target)) {
     status = actual <= target ? "in-range" : "high";
@@ -703,6 +703,22 @@ function buildRatio(
     target,
     unit: "mg phosphorus per g protein",
     value: actual,
+  };
+}
+
+function roundNutrientTotals(
+  totals: Record<NutrientKey, number>,
+): Record<NutrientKey, number> {
+  return {
+    ...totals,
+    caloriesKcal: round(totals.caloriesKcal, 0),
+    phosphorusMg: round(totals.phosphorusMg, 0),
+    potassiumMg: round(totals.potassiumMg, 0),
+    proteinG: round(totals.proteinG, 0),
+    sodiumMg: round(totals.sodiumMg, 0),
+    steps_per_day: round(totals.steps_per_day, 0),
+    sleep_duration_min_day: round(totals.sleep_duration_min_day, 0),
+    weight_kg: round(totals.weight_kg, 1),
   };
 }
 

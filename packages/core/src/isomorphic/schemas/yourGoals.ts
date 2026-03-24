@@ -1,9 +1,9 @@
 import { z } from "zod";
+import { PatientGoalCode } from "./patient_goals";
 
 export const YourGoalsSchema = z
   .object({
-    primaryGoal: z.string(),
-    secondaryGoal: z.string(),
+    selectedGoals: z.array(PatientGoalCode).default([]),
     motivationLevel: z.string(),
     targetTimeline: z.string(),
   })

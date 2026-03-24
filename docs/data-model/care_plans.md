@@ -4,6 +4,8 @@
 **Contains PII:** No (references only)
 **Access:** Staff with `careplans.write` to create/update; `careplans.read` for viewing. Patients can read their own plans.
 
+`care_plans.goals` may include clinician-authored goals and mirrored major goals from `patient_goals_current` for visibility. `care_plans` is not the editing source of truth for patient-selected goals.
+
 ## Fields (summary)
 
 - `_id` · ObjectId · **PK**

@@ -26,6 +26,7 @@ import { useAppDispatch } from "@/store/hooks";
 import {
   toQueryErrorMessage,
   useGetNutritionTrendChunkQuery,
+  useGetLatestWeeklyNutritionInsightQuery,
   useLazyGetNutritionTrendChunkQuery,
 } from "@/store/services/dashboardApi";
 
@@ -60,6 +61,7 @@ export default function NutritionDetails() {
     error: trendQueryError,
     isLoading: isTrendLoading,
   } = useGetNutritionTrendChunkQuery({ days: chartRequestDays });
+  const { data: latestWeeklyInsight } = useGetLatestWeeklyNutritionInsightQuery();
   const [loadTrendChunk] = useLazyGetNutritionTrendChunkQuery();
   const [requestError, setRequestError] = useState<unknown>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -459,6 +461,12 @@ export default function NutritionDetails() {
                         pathname: "/targets",
                       }),
                   },
+                  {
+                    id: "weekly-swap-tester",
+                    label: "Test weekly swaps",
+                    onPress: () =>
+                      router.push("/(nutrition)/weekly-swap-tester"),
+                  },
                 ]}
               />
             </View>
@@ -483,6 +491,49 @@ export default function NutritionDetails() {
             >
               <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
             </TouchableOpacity>
+          </Card>
+        )}
+
+        {latestWeeklyInsight && (
+          <Card>
+            {(() => {
+              const analysisMode =
+                latestWeeklyInsight.analysisMode ?? "weekly_average";
+              const loggedDays =
+                typeof latestWeeklyInsight.loggedDays === "number"
+                  ? latestWeeklyInsight.loggedDays
+                  : 7;
+              return (
+                <>
+            <View style={NutritionStyles.cardHeader}>
+              <ThemedText type="defaultSemiBold">Weekly nutrition alert</ThemedText>
+              <ThemedText style={NutritionStyles.helperText}>
+                {latestWeeklyInsight.weekStart} to {latestWeeklyInsight.weekEnd}
+              </ThemedText>
+              <ThemedText style={NutritionStyles.helperText}>
+                Logged days: {loggedDays} | Mode:{" "}
+                {analysisMode.replace(/_/g, " ")}
+              </ThemedText>
+            </View>
+            <ThemedText style={NutritionStyles.helperText}>
+              {latestWeeklyInsight.humanMessage}
+            </ThemedText>
+            {latestWeeklyInsight.findings.slice(0, 2).map((finding) => (
+              <View key={finding.type}>
+                <ThemedText style={NutritionStyles.helperText}>
+                  {finding.type.replace(/_/g, " ")}: {finding.actual} / {finding.target}
+                </ThemedText>
+                {finding.topContributors?.[0] ? (
+                  <ThemedText style={NutritionStyles.helperText}>
+                    {finding.topContributors[0].food} contributed{" "}
+                    {finding.topContributors[0].contribution}%.
+                  </ThemedText>
+                ) : null}
+              </View>
+            ))}
+                </>
+              );
+            })()}
           </Card>
         )}
 
@@ -773,7 +824,11 @@ export default function NutritionDetails() {
             <ThemedText style={NutritionStyles.helperText}>
               Select a meal to edit what you logged.
             </ThemedText>
-            <View style={NutritionStyles.mealList}>
+            <ScrollView
+              style={NutritionStyles.modalScroll}
+              contentContainerStyle={NutritionStyles.mealList}
+              showsVerticalScrollIndicator
+            >
               {mealsForDay.map((meal) => (
                 <FoodCard
                   key={meal.id}
@@ -830,7 +885,7 @@ export default function NutritionDetails() {
                   ]}
                 />
               ))}
-            </View>
+            </ScrollView>
             <TouchableOpacity
               style={[
                 NutritionStyles.modalButton,

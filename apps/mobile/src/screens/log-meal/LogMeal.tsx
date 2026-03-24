@@ -46,7 +46,6 @@ import {
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles as styles } from "../nutrition/styles";
-import { isAnyFieldEmpty } from "@/lib/emptyFields";
 import { ThemedText } from "@/components/themed-text";
 import { DateTimeModal } from "@/components/date-time-modal";
 import {
@@ -224,7 +223,7 @@ export default function LogMeal() {
       if (!item.uid || requestedNutritionUidsRef.current.has(item.uid)) {
         return false;
       }
-      return isAnyFieldEmpty(item.nutrients);
+      return hasMissingCoreNutrients(item);
     });
 
     if (!itemsMissingNutrition.length) return;
@@ -240,7 +239,7 @@ export default function LogMeal() {
         }).unwrap();
         dispatch(
           applyNutritionResults({
-            requestedFoodIds: itemsMissingNutrition.map((item) => item.foodId),
+            requestedUids: itemsMissingNutrition.map((item) => item.uid),
             results,
           }),
         );
@@ -913,6 +912,17 @@ function formatShortDate(value: string | null | undefined) {
     day: "2-digit",
     month: "short",
   });
+}
+
+function hasMissingCoreNutrients(item: TFoodItem) {
+  const nutrients = item.nutrients ?? {};
+  return (
+    nutrients.caloriesKcal == null ||
+    nutrients.proteinG == null ||
+    nutrients.phosphorusMg == null ||
+    nutrients.potassiumMg == null ||
+    nutrients.sodiumMg == null
+  );
 }
 
 function buildFoodKey(item: Pick<TFoodItemEntry, "foodId" | "name">) {

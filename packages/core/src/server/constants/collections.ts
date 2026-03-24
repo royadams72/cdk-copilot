@@ -26,6 +26,8 @@ export const COLLECTIONS = {
 
   ClinicalReferenceRules: "clinical_reference_rules",
   ExerciseReference: "exercise_reference",
+  FoodSwapRules: "food_swap_rules",
+  FoodTaxonomy: "food_taxonomy",
   LabsLedger: "labs_ledger",
   LabsCurrent: "labs_current",
   // Deprecated alias kept for compatibility while callers migrate.
@@ -35,10 +37,13 @@ export const COLLECTIONS = {
   MedicationsLedger: "medications_ledger",
   NutritionFavourites: "nutrition_favourites",
   NutritionLedger: "nutrition_ledger",
+  WeeklyNutritionInsights: "weekly_nutrition_insights",
   TargetsCurrent: "targets_current",
   TargetsLedger: "targets_ledger",
 
   Orgs: "orgs",
+  PatientGoalsCurrent: "patient_goals_current",
+  PatientGoalsLedger: "patient_goals_ledger",
   Patients: "patients",
 
   UsersAccounts: "users_accounts",

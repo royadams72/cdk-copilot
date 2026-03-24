@@ -110,6 +110,9 @@ function scoreHint(
   phraseMatch: { food?: { foodId?: string; label?: string } } | null,
 ) {
   const label = hint.food.label.trim().toLowerCase();
+  const normalizedQuery = normalizeSearchText(query);
+  const normalizedLabel = normalizeSearchText(label);
+  const queryTokens = normalizedQuery.split(" ").filter(Boolean);
   let score = 0;
 
   const phraseFoodId = phraseMatch?.food?.foodId;
@@ -123,15 +126,61 @@ function scoreHint(
     score += 40;
   }
 
-  for (const token of query.split(/\s+/).filter(Boolean)) {
+  if (normalizedLabel === normalizedQuery) score += 120;
+  else if (normalizedQuery && normalizedLabel.includes(normalizedQuery))
+    score += 70;
+
+  let matchedTokenCount = 0;
+  for (const token of queryTokens) {
     if (label.includes(token)) score += 8;
+    if (hasWord(label, token)) matchedTokenCount += 1;
+  }
+
+  if (queryTokens.length > 1) {
+    if (matchedTokenCount === queryTokens.length) score += 30;
+    else if (matchedTokenCount <= 1) score -= 25;
   }
 
   if (query.includes("whole")) {
-    const isWholeEntity =
-      /\bwhole\b/.test(label) && !/\bwhole\s+(grain|wheat|meal)\b/.test(label);
-    if (isWholeEntity) score += 60;
-    else score -= 25;
+    const isWholegrainStyle =
+      /\b(whole|wholegrain|whole grain|wholemeal|whole meal|wholewheat|whole wheat|granary)\b/.test(
+        label,
+      );
+    if (isWholegrainStyle) score += 45;
+    else score -= 20;
+  }
+
+  if (/\bbread\b/.test(normalizedQuery)) {
+    if (hasWord(label, "bread")) score += 40;
+    else score -= 45;
+
+    if (normalizedLabel.includes("brown bread")) score += 70;
+    if (
+      /\b(wholemeal|whole meal|wholewheat|whole wheat|wholegrain|whole grain|granary)\s+bread\b/.test(
+        normalizedLabel,
+      )
+    ) {
+      score += 80;
+    }
+
+    const breadSideProductTerms = [
+      "crust",
+      "crumb",
+      "crumbs",
+      "crouton",
+      "croutons",
+      "stuffing",
+      "dressing",
+      "breading",
+    ];
+    for (const term of breadSideProductTerms) {
+      if (hasWord(label, term)) score -= 80;
+    }
+  }
+
+  if (normalizedQuery === "brown bread") {
+    if (/\bcanned\b/.test(label)) score -= 90;
+    if (/\bboston\b/.test(label)) score -= 90;
   }
 
   const junkTerms = [
@@ -182,4 +231,16 @@ function scoreHint(
   }
 
   return score;
+}
+
+function normalizeSearchText(text: string) {
+  return text.toLowerCase().replace(/[^\w\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function hasWord(text: string, word: string) {
+  return new RegExp(`\\b${escapeRegex(word)}\\b`, "i").test(text);
+}
+
+function escapeRegex(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

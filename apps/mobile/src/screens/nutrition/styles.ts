@@ -172,11 +172,15 @@ export const NutritionStyles = StyleSheet.create({
   modalCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
+    maxHeight: "80%",
     padding: 20,
     gap: 10,
   },
   modalCardDark: {
     backgroundColor: "#0f172a",
+  },
+  modalScroll: {
+    maxHeight: 420,
   },
   navButton: {
     paddingHorizontal: 12,

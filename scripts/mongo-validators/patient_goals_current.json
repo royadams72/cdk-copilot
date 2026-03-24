@@ -1,0 +1,144 @@
+{
+  "collMod": "patient_goals_current",
+  "indexes": [
+    {
+      "key": { "patientId": 1 },
+      "name": "uniqPatientId",
+      "unique": true
+    },
+    {
+      "key": { "updatedAt": -1 },
+      "name": "byUpdatedAtDesc"
+    },
+    {
+      "key": { "goals.effectiveCode": 1, "goals.status": 1 },
+      "name": "byEffectiveGoalStatus"
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "goals",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy"
+      ],
+      "properties": {
+        "patientId": { "bsonType": "objectId" },
+        "orgId": { "bsonType": ["string", "null"] },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": {
+          "bsonType": "object",
+          "required": ["actorType", "principalId"],
+          "properties": {
+            "actorType": { "enum": ["patient", "clinician", "dietitian", "admin", "system"] },
+            "displayName": { "bsonType": ["string", "null"] },
+            "principalId": { "bsonType": "string" }
+          }
+        },
+        "updatedBy": {
+          "bsonType": "object",
+          "required": ["actorType", "principalId"],
+          "properties": {
+            "actorType": { "enum": ["patient", "clinician", "dietitian", "admin", "system"] },
+            "displayName": { "bsonType": ["string", "null"] },
+            "principalId": { "bsonType": "string" }
+          }
+        },
+        "goals": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": [
+              "code",
+              "domain",
+              "effectiveCode",
+              "label",
+              "lockedByCareTeam",
+              "priority",
+              "selectedAt",
+              "selectedBy",
+              "source",
+              "status",
+              "updatedAt"
+            ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "weight_loss",
+                  "weight_maintenance",
+                  "weight_gain",
+                  "reduce_phosphorus",
+                  "reduce_potassium",
+                  "reduce_sodium",
+                  "increase_protein",
+                  "improve_energy",
+                  "better_meal_routine",
+                  "general_health"
+                ]
+              },
+              "domain": {
+                "enum": ["weight", "nutrition", "symptom", "lifestyle", "general"]
+              },
+              "effectiveCode": {
+                "enum": [
+                  "weight_loss",
+                  "weight_maintenance",
+                  "weight_gain",
+                  "reduce_phosphorus",
+                  "reduce_potassium",
+                  "reduce_sodium",
+                  "increase_protein",
+                  "improve_energy",
+                  "better_meal_routine",
+                  "general_health"
+                ]
+              },
+              "label": { "bsonType": "string" },
+              "lockedByCareTeam": { "bsonType": "bool" },
+              "notes": { "bsonType": ["string", "null"] },
+              "overrideAt": { "bsonType": ["date", "null"] },
+              "overrideBy": {
+                "bsonType": ["object", "null"],
+                "required": ["actorType", "principalId"],
+                "properties": {
+                  "actorType": { "enum": ["patient", "clinician", "dietitian", "admin", "system"] },
+                  "displayName": { "bsonType": ["string", "null"] },
+                  "principalId": { "bsonType": "string" }
+                }
+              },
+              "overrideCode": {
+                "bsonType": ["string", "null"]
+              },
+              "overrideReason": { "bsonType": ["string", "null"] },
+              "priority": { "bsonType": ["int", "long"] },
+              "selectedAt": { "bsonType": "date" },
+              "selectedBy": {
+                "bsonType": "object",
+                "required": ["actorType", "principalId"],
+                "properties": {
+                  "actorType": { "enum": ["patient", "clinician", "dietitian", "admin", "system"] },
+                  "displayName": { "bsonType": ["string", "null"] },
+                  "principalId": { "bsonType": "string" }
+                }
+              },
+              "source": {
+                "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+              },
+              "status": {
+                "enum": ["active", "inactive", "completed", "archived"]
+              },
+              "updatedAt": { "bsonType": "date" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "collMod": "food_taxonomy",
+  "indexes": [
+    {
+      "key": { "taxonomyKey": 1 },
+      "name": "uniqTaxonomyKey",
+      "unique": true
+    },
+    {
+      "key": { "source": 1, "sourceFoodId": 1 },
+      "name": "bySourceFoodId"
+    },
+    {
+      "key": { "normalizedName": 1 },
+      "name": "byNormalizedName"
+    },
+    {
+      "key": { "majorGroup": 1, "subGroup": 1, "swapGroup": 1 },
+      "name": "byMajorSubSwap"
+    },
+    {
+      "key": { "swapGroup": 1 },
+      "name": "bySwapGroup"
+    },
+    {
+      "key": { "tags": 1 },
+      "name": "byTags"
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "source",
+        "sourceFoodId",
+        "taxonomyKey",
+        "canonicalName",
+        "normalizedName",
+        "majorGroup",
+        "tags",
+        "inferredFrom",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "source": { "bsonType": "string" },
+        "sourceFoodId": { "bsonType": "string" },
+        "taxonomyKey": { "bsonType": "string" },
+        "canonicalName": { "bsonType": "string" },
+        "normalizedName": { "bsonType": "string" },
+        "majorGroup": {
+          "enum": [
+            "protein",
+            "dairy",
+            "grain",
+            "fruit_veg",
+            "drink",
+            "snack",
+            "condiment",
+            "mixed",
+            "dessert",
+            "other"
+          ]
+        },
+        "subGroup": { "bsonType": ["string", "null"] },
+        "swapGroup": { "bsonType": ["string", "null"] },
+        "primarySwapGroup": { "bsonType": ["string", "null"] },
+        "secondarySwapGroups": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "tags": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "inferredFrom": {
+          "bsonType": "object",
+          "required": [
+            "override",
+            "exactName",
+            "keywordRules",
+            "categoryHint",
+            "nutrientTags"
+          ],
+          "properties": {
+            "override": { "bsonType": "bool" },
+            "exactName": { "bsonType": "bool" },
+            "keywordRules": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" }
+            },
+            "categoryHint": { "bsonType": ["string", "null"] },
+            "nutrientTags": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" }
+            }
+          }
+        },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      }
+    }
+  }
+}

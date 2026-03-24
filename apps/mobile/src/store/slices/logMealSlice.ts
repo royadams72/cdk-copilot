@@ -154,14 +154,14 @@ const logMealSlice = createSlice({
       (
         state,
         action: PayloadAction<{
-          requestedFoodIds: string[];
+          requestedUids: string[];
           results: TEdamamNutritionLookupResult[];
         }>,
       ) => {
         applyNutritionResultsToState(
           state,
           action.payload.results,
-          action.payload.requestedFoodIds,
+          action.payload.requestedUids,
         );
       },
     ),
@@ -551,29 +551,29 @@ function findGroupById(groupId: string, state: any): FoodItemsObj {
 function applyNutritionResultsToState(
   state: RootState["logMeal"],
   results: TEdamamNutritionLookupResult[],
-  requestedFoodIds: string[],
+  requestedUids: string[],
 ) {
   state.status = "succeeded";
-  const requestedSet = new Set(requestedFoodIds.filter(Boolean));
+  const requestedSet = new Set(requestedUids.filter(Boolean));
   const shouldFilterGroups = requestedSet.size > 0;
 
   if (state.foodItems?.length) {
     state.foodItems = state.foodItems.map((group) => {
       if (shouldFilterGroups) {
         const hasMatch = group.foodItems.some((item) =>
-          requestedSet.has(item.foodId ?? ""),
+          requestedSet.has(item.uid ?? ""),
         );
         if (!hasMatch) return group;
       }
       const updatedGroupItems = extractNutrition(
         group.foodItems,
         results,
-        requestedFoodIds,
+        requestedUids,
       );
       if (!Array.isArray(updatedGroupItems)) return group;
 
       const resolvedUnit =
-        updatedGroupItems.find((item) => requestedSet.has(item.foodId ?? ""))
+        updatedGroupItems.find((item) => requestedSet.has(item.uid ?? ""))
           ?.unit ?? group.groupInfo.unit;
 
       return {
@@ -836,11 +836,16 @@ function mergeEntryIntoState(
 function extractNutrition(
   activeItems: TFoodItem[] | TFoodItem | null,
   data: TEdamamNutritionLookupResult[],
-  requestedFoodIds: string[] = [],
+  requestedUids: string[] = [],
 ): TFoodItem[] | TFoodItem | null {
   if (Array.isArray(activeItems) && !activeItems?.length) return null;
   if (Array.isArray(data) && data.length === 0) return null;
 
+  const nutrientsByUid = new Map<
+    string,
+    TEdamamNutritionResponse["totalNutrients"]
+  >();
+  const measureByUid = new Map<string, string>();
   const nutrientsByFoodId = new Map<
     string,
     TEdamamNutritionResponse["totalNutrients"]
@@ -848,7 +853,15 @@ function extractNutrition(
   const measureByFoodId = new Map<string, string>();
 
   data.forEach((result, index) => {
-    const requestedFoodId = requestedFoodIds[index];
+    const requestedUid = requestedUids[index];
+    if (requestedUid && !nutrientsByUid.has(requestedUid)) {
+      nutrientsByUid.set(requestedUid, result.response.totalNutrients);
+      if (result.resolvedMeasure.label) {
+        measureByUid.set(requestedUid, result.resolvedMeasure.label);
+      }
+    }
+
+    const requestedFoodId = result.requestedFoodId;
     if (!requestedFoodId || nutrientsByFoodId.has(requestedFoodId)) return;
     nutrientsByFoodId.set(requestedFoodId, result.response.totalNutrients);
     if (result.resolvedMeasure.label) {
@@ -873,7 +886,9 @@ function extractNutrition(
   }
 
   const returnNutrition = (item: TFoodItem) => {
-    const n = item.foodId ? nutrientsByFoodId.get(item.foodId) : undefined;
+    const n =
+      (item.uid ? nutrientsByUid.get(item.uid) : undefined) ??
+      (item.foodId ? nutrientsByFoodId.get(item.foodId) : undefined);
     if (!n) return item;
     return {
       ...item,
@@ -892,7 +907,10 @@ function extractNutrition(
         proteinG: n.PROCNT?.quantity ?? item.nutrients.proteinG,
         sodiumMg: n.NA?.quantity ?? item.nutrients.sodiumMg,
       },
-      unit: measureByFoodId.get(item.foodId) ?? item.unit,
+      unit:
+        (item.uid ? measureByUid.get(item.uid) : undefined) ??
+        measureByFoodId.get(item.foodId) ??
+        item.unit,
     };
   };
 
