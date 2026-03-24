@@ -239,7 +239,7 @@ export default function LogMeal() {
         }).unwrap();
         dispatch(
           applyNutritionResults({
-            requestedFoodIds: itemsMissingNutrition.map((item) => item.foodId),
+            requestedUids: itemsMissingNutrition.map((item) => item.uid),
             results,
           }),
         );

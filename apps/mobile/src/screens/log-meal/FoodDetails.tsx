@@ -76,7 +76,7 @@ export default function FoodDetails() {
         }).unwrap();
         dispatch(
           applyNutritionResults({
-            requestedFoodIds: [selectedFood.foodId],
+            requestedUids: [selectedFood.uid],
             results,
           }),
         );
