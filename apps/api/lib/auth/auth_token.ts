@@ -3,10 +3,18 @@ import { Collection, WithId, ObjectId } from "mongodb";
 import { Role } from "@ckd/core";
 
 const EXPECTED = 32; // HMAC-SHA256
-const PEPPER_B64 = process.env.AUTH_TOKEN_PEPPER || "";
-if (!PEPPER_B64) throw new Error("AUTH_TOKEN_PEPPER missing");
-const PEPPER = Buffer.from(PEPPER_B64, "base64");
-if (PEPPER.length < 32) throw new Error("AUTH_TOKEN_PEPPER too short");
+
+function getPepperB64() {
+  const pepperB64 = process.env.AUTH_TOKEN_PEPPER || "";
+  if (!pepperB64) throw new Error("AUTH_TOKEN_PEPPER missing");
+  return pepperB64;
+}
+
+function getPepper() {
+  const pepper = Buffer.from(getPepperB64(), "base64");
+  if (pepper.length < 32) throw new Error("AUTH_TOKEN_PEPPER too short");
+  return pepper;
+}
 
 export function constantTimeCheck(
   storedB64: string,
@@ -26,10 +34,7 @@ export function constantTimeCheck(
 }
 
 export function hmac(secretBytes: Buffer) {
-  if (!PEPPER) {
-    throw new Error("AUTH_TOKEN_PEPPER is not set");
-  }
-  return createHmac("sha256", PEPPER).update(secretBytes).digest();
+  return createHmac("sha256", getPepper()).update(secretBytes).digest();
 }
 
 export function b64url(buf: Buffer) {
