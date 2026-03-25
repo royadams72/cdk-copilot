@@ -101,12 +101,13 @@ export async function PATCH(req: NextRequest) {
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
     const orgId = caller.orgId ?? "org_demo";
+    type LabKey = `${string}::${string}`;
     const current = await db
       .collection<CurrentDoc>(COLLECTIONS.LabsCurrent)
       .find({ patientId })
       .toArray();
-    const currentByKey = new Map(
-      current.map((doc) => [`${doc.code}::${doc.unit ?? ""}`, doc] as const),
+    const currentByKey = new Map<LabKey, CurrentDoc>(
+      current.map((doc) => [`${doc.code}::${doc.unit ?? ""}` as LabKey, doc] as const),
     );
 
     const results: Array<{ code: string; ledgerId: string; updated: boolean }> = [];
@@ -124,7 +125,7 @@ export async function PATCH(req: NextRequest) {
         return bad("Each lab requires code, name, value, and takenAt", undefined, 400);
       }
 
-      const key = `${code}::${unit ?? ""}`;
+      const key = `${code}::${unit ?? ""}` as LabKey;
       const prev = currentByKey.get(key);
       if (
         prev &&

@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { COLLECTIONS } from "@ckd/core/server";
 import { Role, TUsersAccount } from "@ckd/core";
 
+import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
 import { ROLE_SCOPES } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
@@ -15,7 +16,6 @@ import {
   setToken,
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
-import { COLLECTION_TYPE } from "@/apps/api/app/api/patients/signup-init/route";
 import { ObjectId } from "mongodb";
 
 export const runtime = "nodejs";

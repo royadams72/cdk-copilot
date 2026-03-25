@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
 
+import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 
 import { COLLECTIONS } from "@ckd/core/server";
-import { COLLECTION_TYPE } from "@/apps/api/app/api/patients/signup-init/route";
 import {
   AuthTokenDoc,
   b64url,

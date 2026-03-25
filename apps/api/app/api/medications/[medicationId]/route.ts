@@ -20,8 +20,6 @@ import type {
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
-type MedicationRouteContext = { params: { medicationId: string } };
-
 function cleanText(value: unknown) {
   if (typeof value !== "string") return "";
   return value.trim().replace(/\s+/g, " ");
@@ -175,10 +173,13 @@ function toErrorResponse(err: any) {
   return bad(message, errors, status);
 }
 
-export async function GET(req: NextRequest, { params }: MedicationRouteContext) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ medicationId: string }> },
+) {
   try {
     const caller = await requireUser(req);
-    const { medicationId } = params;
+    const { medicationId } = await params;
     if (
       caller.role !== ROLES.Patient ||
       !caller.patientId ||
@@ -225,11 +226,11 @@ export async function GET(req: NextRequest, { params }: MedicationRouteContext) 
 
 export async function PATCH(
   req: NextRequest,
-  { params }: MedicationRouteContext,
+  { params }: { params: Promise<{ medicationId: string }> },
 ) {
   try {
     const caller = await requireUser(req);
-    const { medicationId } = params;
+    const { medicationId } = await params;
     if (
       caller.role !== ROLES.Patient ||
       !caller.patientId ||

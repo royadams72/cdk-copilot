@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function pickBestEdamamFood(
+async function pickBestEdamamFood(
   data: any,
   item: string,
 ): Promise<TEdamamFoodMeasure[] | null> {
@@ -234,7 +234,11 @@ function scoreHint(
 }
 
 function normalizeSearchText(text: string) {
-  return text.toLowerCase().replace(/[^\w\s-]/g, " ").replace(/\s+/g, " ").trim();
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function hasWord(text: string, word: string) {

@@ -2,8 +2,8 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { ObjectId } from "mongodb";
+import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { COLLECTION_TYPE } from "../../patients/signup-init/route";
 import { COLLECTIONS } from "@ckd/core/server";
 import {
   AuthTokenDoc,

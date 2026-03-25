@@ -6,18 +6,11 @@ import { Resend } from "resend";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
+import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
 import { COLLECTIONS } from "@ckd/core/server";
 import { DEFAULT_SCOPES, ROLES, TUsersAccount } from "@ckd/core";
-
-export type colType = "oauth_code" | "email_verify" | "password_reset";
-export enum COLLECTION_TYPE {
-  OauthCode = "oauth_code",
-  EmailVerify = "email_verify",
-  PasswordReset = "password_reset",
-  Refresh = "refresh",
-}
 const Body = z.object({ email: z.email() });
 
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
