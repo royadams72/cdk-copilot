@@ -15,8 +15,17 @@ type NutritionFavouriteDoc = {
   patientId: ObjectId;
 };
 
-type FavouriteFoodDoc = Extract<NutritionFavouriteDoc, { kind: "food" }>;
-type FavouriteMealDoc = Extract<NutritionFavouriteDoc, { kind: "meal" }>;
+type FavouriteFoodDoc = {
+  _id?: ObjectId;
+} & Omit<TNutritionFavouriteFood, "patientId"> & {
+  patientId: ObjectId;
+};
+
+type FavouriteMealDoc = {
+  _id?: ObjectId;
+} & Omit<TNutritionFavouriteMeal, "patientId"> & {
+  patientId: ObjectId;
+};
 
 type SignatureMaps = {
   foods: Map<string, FavouriteFoodDoc>;
