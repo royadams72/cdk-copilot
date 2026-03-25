@@ -6,13 +6,15 @@ import { NextRequest } from "next/server";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { sendWeeklyInsightPushNotifications } from "@/apps/api/lib/utils/pushNotifications";
 import { runWeeklyNutritionInsightForPatient, runWeeklyNutritionInsightsForActivePatients } from "@/apps/api/lib/utils/weeklyNutritionInsights";
 import { ROLES } from "@ckd/core";
 
 function isCronRequest(req: NextRequest) {
-  const secret = process.env.WEEKLY_NUTRITION_CRON_SECRET;
+  const secret =
+    process.env.CRON_SECRET ?? process.env.WEEKLY_NUTRITION_CRON_SECRET;
   if (!secret) return false;
-  return req.headers.get("x-cron-secret") === secret;
+  return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -46,7 +48,8 @@ export async function POST(req: NextRequest) {
       const insights = await runWeeklyNutritionInsightsForActivePatients(db, {
         referenceDate,
       });
-      return ok({ count: insights.length, insights });
+      const notifications = await sendWeeklyInsightPushNotifications(db, insights);
+      return ok({ count: insights.length, insights, notifications });
     } catch (err: any) {
       return bad(err?.message || "Server error", undefined, err?.status || 500);
     }
