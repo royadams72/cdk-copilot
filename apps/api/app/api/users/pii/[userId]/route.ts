@@ -35,10 +35,11 @@ const PiiPatchSchema = z
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const requestId = makeRandomId();
   try {
+    const { userId } = await params;
     const caller = await requireUser(req, ["users:pii:write"]);
     const body = await req.json();
     const parsed = PiiPatchSchema.safeParse(body);
@@ -56,7 +57,7 @@ export async function PATCH(
 
     const database = await getDb();
     const res = await database.collection("users_pii").updateOne(
-      { userId: params.userId },
+      { userId },
       {
         $set: {
           ...parsed.data,
