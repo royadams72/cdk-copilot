@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb"; // or your getDb()
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { makeRequestId } from "@/apps/api/lib/http/request";
+import { makeRandomId } from "@/apps/api/lib/http/request";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -37,7 +37,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { userId: string } }
 ) {
-  const requestId = makeRequestId();
+  const requestId = makeRandomId();
   try {
     const caller = await requireUser(req, ["users:pii:write"]);
     const body = await req.json();
