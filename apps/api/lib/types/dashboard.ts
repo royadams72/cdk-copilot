@@ -4,7 +4,7 @@ import {
   TNutritionEntry,
 } from "@/packages/core/dist/isomorphic";
 import { ObjectId } from "mongodb";
-import { RADIAL_METRICS } from "../../app/api/dashboard/route";
+import { RADIAL_METRICS } from "@/apps/api/lib/constants/dashboard";
 
 export type LabDoc = {
   _id: ObjectId;

@@ -7,7 +7,7 @@ import {
   RADIAL_METRICS,
   TRACKED_LABS,
   ZERO_TOTALS,
-} from "@/apps/api/app/api/dashboard/route";
+} from "@/apps/api/lib/constants/dashboard";
 
 import {
   ChartMetricKey,

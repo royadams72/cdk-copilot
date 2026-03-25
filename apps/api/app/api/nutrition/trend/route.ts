@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { DAY_MS } from "@/apps/api/lib/constants/dashboard";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
-import { DAY_MS } from "@/apps/api/app/api/dashboard/route";
 import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
 import {
   fetchNutritionEntriesInRange,
