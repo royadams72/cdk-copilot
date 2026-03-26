@@ -150,6 +150,15 @@ export async function POST(req: NextRequest) {
           ? (pendingAuth as any).scopes
         : scopes;
 
+    const isExistingIdentity = Boolean(
+      existingPii ||
+        existingAccount ||
+        existingAccountByEmail ||
+        patientByPiiId ||
+        patientByPrincipal ||
+        pendingAuth,
+    );
+
     if (existingPii && !existingAccount) {
       await accounts.updateOne(
         { principalId },
@@ -213,7 +222,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Existing identity (account and/or pii): email a direct oauth-code sign-in link.
-    if (existingAccount || existingPii) {
+    if (isExistingIdentity) {
       // Invalidate older unconsumed oauth-code links so only the newest sign-in link is valid.
       await auth_tokens.updateMany(
         {
