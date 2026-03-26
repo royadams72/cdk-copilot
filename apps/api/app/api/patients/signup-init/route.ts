@@ -65,6 +65,14 @@ export async function POST(req: NextRequest) {
       },
     );
 
+    const existingAccountByEmail = await accounts.findOne(
+      { isActive: true, email },
+      {
+        collation: { locale: "en", strength: 2 },
+        projection: { principalId: 1, role: 1, scopes: 1 },
+      },
+    );
+
     const patientByPiiId =
       existingPii?.patientId instanceof ObjectId
         ? await patients.findOne(
@@ -73,18 +81,42 @@ export async function POST(req: NextRequest) {
           )
         : null;
 
-    const existingAccount = await accounts.findOne(
-      { isActive: true, principalId: existingPii?.principalId },
+    const principalCandidate =
+      existingPii?.principalId ?? existingAccountByEmail?.principalId;
+
+    const existingAccount = principalCandidate
+      ? await accounts.findOne(
+          {
+            isActive: true,
+            principalId: principalCandidate,
+          },
+          {
+            collation: { locale: "en", strength: 2 },
+            projection: { principalId: 1, role: 1, scopes: 1 },
+          },
+        )
+      : null;
+
+    const pendingAuth = await auth_tokens.findOne(
       {
-        collation: { locale: "en", strength: 2 },
-        projection: { principalId: 1, role: 1, scopes: 1 },
+        email,
+        usedAt: null,
+        type: {
+          $in: [COLLECTION_TYPE.EmailVerify, COLLECTION_TYPE.OauthCode],
+        },
+      },
+      {
+        sort: { createdAt: -1 },
+        projection: { patientId: 1, principalId: 1, role: 1, scopes: 1 },
       },
     );
 
     let principalId =
       (existingAccount?.principalId as string | undefined) ??
+      (existingAccountByEmail?.principalId as string | undefined) ??
       (existingPii?.principalId as string | undefined) ??
       (patientByPiiId?.principalId as string | undefined) ??
+      (pendingAuth?.principalId as string | undefined) ??
       `pr_${randomBytes(12).toString("hex")}`;
 
     const patientByPrincipal = await patients.findOne(
@@ -96,18 +128,26 @@ export async function POST(req: NextRequest) {
       (existingPii?.patientId as ObjectId | undefined) ??
       (patientByPrincipal?._id as ObjectId | undefined) ??
       (patientByPiiId?._id as ObjectId | undefined) ??
+      (pendingAuth?.patientId as ObjectId | undefined) ??
       new ObjectId();
 
     let role =
       (existingAccount?.role as any) ??
+      (existingAccountByEmail?.role as any) ??
       ((existingPii as any)?.role as any) ??
+      ((pendingAuth as any)?.role as any) ??
       ROLES.Patient;
 
     const effectiveScopes = existingAccount?.scopes?.length
       ? existingAccount.scopes
+      : existingAccountByEmail?.scopes?.length
+        ? existingAccountByEmail.scopes
       : Array.isArray((existingPii as any)?.scopes) &&
           (existingPii as any).scopes.length
         ? (existingPii as any).scopes
+        : Array.isArray((pendingAuth as any)?.scopes) &&
+            (pendingAuth as any).scopes.length
+          ? (pendingAuth as any).scopes
         : scopes;
 
     if (existingPii && !existingAccount) {
