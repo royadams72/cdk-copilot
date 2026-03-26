@@ -1,8 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @ckd/core build && pnpm --filter ./apps/api build",
-  "outputDirectory": "apps/api/.next",
   "crons": [
     {
       "path": "/api/nutrition/weekly-summary/run",
