@@ -172,21 +172,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await patients.updateOne(
-      { _id: patientId },
-      {
-        $set: { updatedAt: now },
-        $setOnInsert: {
-          _id: patientId,
-          createdAt: now,
-          flags: [],
-          orgId: "",
-          principalId,
-          summary: {},
+    try {
+      await patients.updateOne(
+        { _id: patientId },
+        {
+          $set: { updatedAt: now },
+          $setOnInsert: {
+            _id: patientId,
+            createdAt: now,
+            flags: [],
+            orgId: "",
+            principalId,
+            summary: {},
+          },
         },
-      },
-      { upsert: true },
-    );
+        { upsert: true },
+      );
+    } catch (error: any) {
+      // Legacy or partially-provisioned users can already have a patient row for
+      // this principalId even if our earlier email-based lookups missed it.
+      if (error?.code !== 11000 || error?.keyPattern?.principalId !== 1) {
+        throw error;
+      }
+
+      const patientByPrincipalConflict = await patients.findOne(
+        { principalId },
+        { projection: { _id: 1 } },
+      );
+
+      if (!patientByPrincipalConflict?._id) {
+        throw error;
+      }
+
+      patientId = patientByPrincipalConflict._id as ObjectId;
+
+      await patients.updateOne(
+        { _id: patientId },
+        { $set: { updatedAt: now } },
+      );
+    }
 
     // Existing identity (account and/or pii): email a direct oauth-code sign-in link.
     if (existingAccount || existingPii) {
