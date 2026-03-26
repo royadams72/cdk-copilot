@@ -24,7 +24,7 @@
 - `onboardingSteps` · string\[]
 - `notificationPrefs` · { email, push, sms }
 - `integrations` · Apple Health / Google Fit / Withings link state
-- `devices` · array of { platform, pushToken?, lastSeenAt? }
+- `devices` · array of device records `{ platform, pushToken?, lastSeenAt? }`
 - `consentAppTosAt` · Date
   **(TOS = Terms of Service)**
 - `consentPrivacyAt` · Date
