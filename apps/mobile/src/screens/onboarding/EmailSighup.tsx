@@ -25,7 +25,19 @@ export default function EmailSignup() {
         );
         return;
       }
-      Alert.alert("Check your email", "Tap the link to continue in the app.");
+
+      if (data?.existingUser) {
+        Alert.alert(
+          "Check your email",
+          "We found your account and sent you a sign-in link.",
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Check your email",
+        "We sent you a verification link to continue in the app.",
+      );
     } catch (e: any) {
       Alert.alert("Network error", String(e?.message || e));
     }
