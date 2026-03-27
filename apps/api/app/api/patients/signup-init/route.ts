@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
       };
       await auth_tokens.insertOne(auth_tokens_doc);
 
-      const signInUrl = new URL(REDIRECT_URI);
+      const signInUrl = new URL("/api/auth/open-app", APP_ORIGIN);
       signInUrl.searchParams.set("token", token);
       if (resend) {
         await resend.emails.send({
