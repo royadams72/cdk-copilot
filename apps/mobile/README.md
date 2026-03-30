@@ -1,5 +1,7 @@
 # Welcome to your Expo app 👋
 
+Project-specific setup notes live in [`../../docs/mobile-dev-notes.md`](../../docs/mobile-dev-notes.md).
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

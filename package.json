@@ -37,8 +37,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
     "mobile:dev": "pnpm --filter ./apps/mobile exec expo start --dev-client",
+    "mobile:build:android:debug": "cd apps/mobile/android && ./gradlew assembleDebug",
     "mobile:rebuild:android": "pnpm --filter ./apps/mobile exec expo run:android",
-    "mobile:install:android:prod": "adb install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk && adb shell monkey -p com.ckdcopilot.ckdapp -c android.intent.category.LAUNCHER 1",
+    "mobile:install:android:debug": "adb install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk && adb shell monkey -p com.ckdcopilot.ckdapp -c android.intent.category.LAUNCHER 1",
     "core:build": "pnpm -w --filter @ckd/core run build",
     "api:dev": "pnpm  --filter ./apps/api dev",
     "db:export:nutrition": "mongoexport --uri=\"$MONGODB_URI_APP\" --db=ckd-copilot --collection=nutrition_ledger --out=nutrition_ledger.json"
