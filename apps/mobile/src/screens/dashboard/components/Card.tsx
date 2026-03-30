@@ -1,5 +1,6 @@
 import { PropsWithChildren } from "react";
-import { ViewStyle, useColorScheme, View } from "react-native";
+import { ViewStyle, View } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { styles } from "../styles";
 
 export function Card({

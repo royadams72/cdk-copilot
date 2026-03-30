@@ -4,13 +4,13 @@ import {
   Alert,
   Dimensions,
   Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
 import type { ScrollView as ScrollViewType } from "react-native";
-import { useColorScheme } from "react-native";
 import { useRouter } from "expo-router";
 import type { TMealType } from "@ckd/core";
 
@@ -52,7 +52,6 @@ const POINT_GAP = 56;
 
 export default function NutritionDetails() {
   const router = useRouter();
-  const theme = useColorScheme() ?? "light";
   const dispatch = useAppDispatch();
   const chartRequestDays = 7;
   const [deleteMealData] = useDeleteMealDataMutation();
@@ -580,8 +579,8 @@ export default function NutritionDetails() {
                       width={chartContentWidth}
                       height={CHART_HEIGHT}
                       padding={CHART_PADDING}
-                      lineColor={theme === "light" ? "#CBD5F5" : "#475569"}
-                      labelColor={theme === "light" ? "#1F2937" : "#E2E8F0"}
+                      lineColor="#CBD5F5"
+                      labelColor="#1F2937"
                       gridRatios={[0.25, 0.5, 0.75]}
                       selectedIndex={selectedPointIndex}
                       onSelectIndex={(index) => {
@@ -617,6 +616,24 @@ export default function NutritionDetails() {
                         x: point.chartX,
                       }))}
                     />
+                    <View style={NutritionStyles.chartTouchLayer} pointerEvents="box-none">
+                      {chartPoints.map((point) => (
+                        <Pressable
+                          key={`hit-${point.index}`}
+                          onPress={() => {
+                            setSelectedDayKey(chartSeries[point.index]?.date ?? null);
+                            setShowAddForSelectedDay(true);
+                          }}
+                          style={[
+                            NutritionStyles.chartTouchTarget,
+                            {
+                              left: point.chartX - 22,
+                              top: point.chartY - 22,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
                   </View>
                 </ScrollView>
               </View>
@@ -746,12 +763,7 @@ export default function NutritionDetails() {
         onRequestClose={() => setIsLogModalOpen(false)}
       >
         <View style={NutritionStyles.modalBackdrop}>
-          <View
-            style={[
-              NutritionStyles.modalCard,
-              theme === "dark" && NutritionStyles.modalCardDark,
-            ]}
-          >
+          <View style={NutritionStyles.modalCard}>
             <ThemedText type="defaultSemiBold">Log your meal?</ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               {showAddForSelectedDay && selectedPoint
@@ -814,12 +826,7 @@ export default function NutritionDetails() {
         onRequestClose={() => setIsEditModalOpen(false)}
       >
         <View style={NutritionStyles.modalBackdrop}>
-          <View
-            style={[
-              NutritionStyles.modalCard,
-              theme === "dark" && NutritionStyles.modalCardDark,
-            ]}
-          >
+          <View style={NutritionStyles.modalCard}>
             <ThemedText type="defaultSemiBold">Edit meals</ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               Select a meal to edit what you logged.
