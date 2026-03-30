@@ -105,6 +105,14 @@ export const styles = StyleSheet.create({
   legendColumn: {
     flex: 1,
     gap: 8,
+    minWidth: 0,
+  },
+  legendColumnCompact: {
+    width: "100%",
+  },
+  legendCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   legendDot: {
     width: 10,
@@ -119,10 +127,12 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    minWidth: 0,
   },
   legendSubtext: {
     fontSize: 13,
     opacity: 0.75,
+    flexShrink: 1,
   },
   loading: {
     flex: 1,
@@ -212,6 +222,10 @@ export const styles = StyleSheet.create({
     height: STACKED_SIZE,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+  },
+  stackedChartWrapCompact: {
+    width: "100%",
   },
   stackedHeader: {
     gap: 2,
@@ -219,6 +233,10 @@ export const styles = StyleSheet.create({
   stackedLayout: {
     flexDirection: "row",
     gap: 12,
+    alignItems: "flex-start",
+  },
+  stackedLayoutCompact: {
+    flexDirection: "column",
     alignItems: "center",
   },
   stackedRadialCard: {

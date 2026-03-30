@@ -1,4 +1,9 @@
-import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
+import Svg, {
+  Circle,
+  Line,
+  Polyline,
+  Text as SvgText,
+} from "react-native-svg";
 
 export type TrendLinePadding = {
   bottom: number;
@@ -160,7 +165,6 @@ export function TrendLineChart({
                   ? 1
                   : 0.55
               }
-              onPress={() => onSelectIndex?.(point.index)}
             />
           )),
       )}

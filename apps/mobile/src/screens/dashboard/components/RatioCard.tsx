@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
-import { useColorScheme, View } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { View } from "react-native";
 import { styles } from "../styles";
 import { DashboardRatio } from "../types";
 import { getStatusStyles, ratioStatusLabel } from "../utils";

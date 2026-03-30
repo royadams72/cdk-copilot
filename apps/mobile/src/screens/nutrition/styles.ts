@@ -19,6 +19,16 @@ export const NutritionStyles = StyleSheet.create({
   chartInner: {
     position: "relative",
   },
+  chartTouchLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  chartTouchTarget: {
+    position: "absolute",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "transparent",
+  },
   chartLegend: {
     flexDirection: "row",
     alignItems: "center",
@@ -175,9 +185,6 @@ export const NutritionStyles = StyleSheet.create({
     maxHeight: "80%",
     padding: 20,
     gap: 10,
-  },
-  modalCardDark: {
-    backgroundColor: "#0f172a",
   },
   modalScroll: {
     maxHeight: 420,
