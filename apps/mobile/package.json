@@ -1,19 +1,4 @@
 {
-  "name": "mobile",
-  "main": "expo-router/entry",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "expo start",
-    "dev:tunnel": "expo start --tunnel -c",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "android:reverse": "adb start-server && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8081 tcp:8081 && adb reverse tcp:19000 tcp:19000 && adb reverse tcp:19001 tcp:19001",
-    "android:dev": "EXPO_USE_POLLING=1 CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=100 expo start --tunnel --android",
-    "android:clean": "adb reverse --remove-all || true && rm -rf .expo .expo-shared && EXPO_USE_POLLING=1 CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=100 expo start -c --tunnel --android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "lint": "expo lint"
-  },
   "dependencies": {
     "@ckd/core": "workspace:*",
     "@expo/metro-runtime": "~6.1.2",
@@ -67,5 +52,20 @@
     "redux-devtools-expo-dev-plugin": "^2.0.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "main": "expo-router/entry",
+  "name": "mobile",
+  "private": true,
+  "scripts": {
+    "dev": "expo start",
+    "dev:tunnel": "expo start --tunnel -c",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "android:reverse": "adb start-server && adb wait-for-device && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8081 tcp:8081 && adb reverse tcp:19000 tcp:19000 && adb reverse tcp:19001 tcp:19001",
+    "android:dev": "EXPO_USE_POLLING=1 CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=100 expo start --tunnel --android",
+    "android:clean": "adb reverse --remove-all || true && rm -rf .expo .expo-shared && EXPO_USE_POLLING=1 CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=100 expo start -c --tunnel --android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "version": "1.0.0"
 }

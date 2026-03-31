@@ -16,6 +16,7 @@ import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
 const foodURI = process.env.EDAMAM_API_FOOD_URI || "";
 const foodAppID = process.env.EDAMAM_API_ID || "";
+const SEARCH_CATEGORIES = ["packaged-foods", "generic-foods"] as const;
 
 export async function GET(req: NextRequest) {
   const requestId = makeRandomId();
@@ -44,23 +45,9 @@ export async function GET(req: NextRequest) {
       itemsForEdamam.map(async (item: TLogMealItem) => {
         const tempId = makeRandomId();
         const edamamText = item.normalised;
-
-        const params = new URLSearchParams({
-          app_id: foodAppID,
-          app_key: foodAppKey,
-          category: "generic-foods",
-          ingr: edamamText,
-          "nutrition-type": "logging",
-        });
-
-        const res = await fetch(`${foodURI}?${params.toString()}`);
-        if (!res.ok) {
-          throw new Error(`Edamam error (${res.status})`);
-        }
-
-        const data = await res.json();
+        const hints = await fetchEdamamHints(edamamText);
         const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
-          data,
+          hints,
           edamamText,
         );
 
@@ -81,15 +68,12 @@ export async function GET(req: NextRequest) {
 }
 
 async function pickBestEdamamFood(
-  data: any,
+  hints: TEdamamFoodMeasure[],
   item: string,
 ): Promise<TEdamamFoodMeasure[] | null> {
   item = item.toLowerCase();
-  const hints = (data?.hints ?? []) as any[];
-
   if (!hints.length) return null;
 
-  // Prefer generic foods
   const genericFoods = hints.filter((h) => h.food.categoryLabel === "food");
   const pool = genericFoods.length ? genericFoods : hints;
 
@@ -104,14 +88,67 @@ async function pickBestEdamamFood(
     .map((entry) => entry as TEdamamFoodMeasure);
 }
 
+async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
+  const responses = await Promise.all(
+    SEARCH_CATEGORIES.map(async (category) => {
+      const params = new URLSearchParams({
+        app_id: foodAppID,
+        app_key: foodAppKey,
+        ingr: query,
+        "nutrition-type": "logging",
+      });
+      params.append("category", category);
+
+      const res = await fetch(`${foodURI}?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error(`Edamam error (${res.status})`);
+      }
+
+      const data = await res.json();
+      return (data?.hints ?? []) as TEdamamFoodMeasure[];
+    }),
+  );
+
+  return dedupeHints(responses.flat());
+}
+
+function dedupeHints(hints: TEdamamFoodMeasure[]): TEdamamFoodMeasure[] {
+  const byFoodId = new Map<string, TEdamamFoodMeasure>();
+
+  for (const hint of hints) {
+    const existing = byFoodId.get(hint.food.foodId);
+    if (!existing) {
+      byFoodId.set(hint.food.foodId, hint);
+      continue;
+    }
+
+    const existingScore = getCategoryPriority(existing.food.category);
+    const nextScore = getCategoryPriority(hint.food.category);
+
+    if (nextScore > existingScore) {
+      byFoodId.set(hint.food.foodId, hint);
+    }
+  }
+
+  return [...byFoodId.values()];
+}
+
 function scoreHint(
   hint: TEdamamFoodMeasure,
   query: string,
   phraseMatch: { food?: { foodId?: string; label?: string } } | null,
 ) {
   const label = hint.food.label.trim().toLowerCase();
+  const brand = hint.food.brand?.trim().toLowerCase() ?? "";
+  const knownAs = hint.food.knownAs?.trim().toLowerCase() ?? "";
+  const category = hint.food.category ?? "";
   const normalizedQuery = normalizeSearchText(query);
   const normalizedLabel = normalizeSearchText(label);
+  const normalizedBrand = normalizeSearchText(brand);
+  const normalizedKnownAs = normalizeSearchText(knownAs);
+  const combinedSearchText = [normalizedLabel, normalizedBrand, normalizedKnownAs]
+    .filter(Boolean)
+    .join(" ");
   const queryTokens = normalizedQuery.split(" ").filter(Boolean);
   let score = 0;
 
@@ -130,10 +167,17 @@ function scoreHint(
   else if (normalizedQuery && normalizedLabel.includes(normalizedQuery))
     score += 70;
 
+  score += getCategoryPriority(category);
+
+  if (brand) score += 12;
+  if (normalizedBrand && normalizedQuery.includes(normalizedBrand)) score += 55;
+  if (normalizedKnownAs && normalizedKnownAs === normalizedQuery) score += 35;
+
   let matchedTokenCount = 0;
   for (const token of queryTokens) {
-    if (label.includes(token)) score += 8;
-    if (hasWord(label, token)) matchedTokenCount += 1;
+    if (combinedSearchText.includes(token)) score += 8;
+    if (hasWord(combinedSearchText, token)) matchedTokenCount += 1;
+    if (normalizedBrand && hasWord(normalizedBrand, token)) score += 16;
   }
 
   if (queryTokens.length > 1) {
@@ -231,6 +275,12 @@ function scoreHint(
   }
 
   return score;
+}
+
+function getCategoryPriority(category: string) {
+  if (category === "packaged-foods") return 28;
+  if (category === "generic-foods") return 10;
+  return 0;
 }
 
 function normalizeSearchText(text: string) {
