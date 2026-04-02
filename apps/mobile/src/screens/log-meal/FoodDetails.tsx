@@ -234,7 +234,13 @@ export default function FoodDetails() {
 
             <View style={logMealStyles.nutrientList}>
               {Object.entries(selectedFood.nutrients ?? {})
-                .filter(([, value]) => value !== null && value !== undefined)
+                .filter(
+                  ([key, value]) =>
+                    key !== "source" &&
+                    key !== "unit" &&
+                    value !== null &&
+                    value !== undefined,
+                )
                 .map(([key, value]) => (
                   <View key={key} style={logMealStyles.nutrientRow}>
                     <Text style={logMealStyles.nutrientLabel}>

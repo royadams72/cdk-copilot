@@ -13,11 +13,13 @@ export function setNutrientsBody({
   const items = Array.isArray(foodItems) ? foodItems : [foodItems];
   return items.map((foodItem) => {
     return {
+      brand: foodItem.brand,
       foodId: foodItem.foodId,
       foodName: foodItem.name,
       measures: foodItem.measures ?? [],
       originalText: foodItem.name,
       quantity: foodItem.quantity,
+      source: foodItem.source,
       unit: sanitizeUnitForLookup(foodItem.unit),
     };
   });

@@ -26,6 +26,7 @@ export const COLLECTIONS = {
 
   ClinicalReferenceRules: "clinical_reference_rules",
   ExerciseReference: "exercise_reference",
+  FoodMappings: "food_mappings",
   FoodSwapRules: "food_swap_rules",
   FoodTaxonomy: "food_taxonomy",
   LabsLedger: "labs_ledger",

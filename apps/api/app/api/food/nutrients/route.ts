@@ -1,17 +1,27 @@
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   ROLES,
   TEdamamMeasure,
+  TEdamamFoodMeasure,
   TEdamamNutritionLookupItem,
   TEdamamNutritionLookupResult,
 } from "@ckd/core";
+import type { TFoodMappingRecord } from "@/packages/core/src/isomorphic/schemas/food_search";
 import { NextRequest } from "next/server";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
+const foodUri = process.env.EDAMAM_API_FOOD_URI || "";
 const nutrientsUri = process.env.EDAMAM_API_NUTRIENTS_URI || "";
 const foodAppID = process.env.EDAMAM_API_ID || "";
+const EDAMAM_GRAM_MEASURE_URI =
+  "http://www.edamam.com/ontologies/edamam.owl#Measure_gram";
+type NutritionLookupItem = TEdamamNutritionLookupItem & {
+  brand?: string;
+  source?: "user" | "barcode" | "image_ai" | "api";
+};
 
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
@@ -23,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
-  if (!foodAppID || !foodAppKey || !nutrientsUri) {
+  if (!foodAppID || !foodAppKey || !nutrientsUri || !foodUri) {
     return bad("App vars not found", { requestId }, 403);
   }
 
@@ -39,14 +49,19 @@ export async function POST(req: NextRequest) {
     });
 
     const results = await Promise.all(
-      lookupItems.map(async (lookupItem: TEdamamNutritionLookupItem) => {
-        const resolvedMeasure = resolveMeasureInfo(lookupItem);
+      lookupItems.map(async (lookupItem: NutritionLookupItem) => {
+        const resolvedLookup = await resolveLookupItem(lookupItem);
+        if (!resolvedLookup) {
+          throw new Error(`No mapped Edamam food found for ${lookupItem.foodName ?? lookupItem.foodId}`);
+        }
+
+        const resolvedMeasure = resolveMeasureInfo(resolvedLookup);
         const ingredients = [
           {
-            foodId: lookupItem.foodId,
+            foodId: resolvedLookup.foodId,
             measureURI: resolvedMeasure.measureURI,
             qualifiers: resolvedMeasure.qualifiers,
-            quantity: lookupItem.quantity,
+            quantity: resolvedLookup.quantity,
           },
         ];
 
@@ -80,6 +95,75 @@ export async function POST(req: NextRequest) {
   }
 }
 
+async function resolveLookupItem(
+  lookupItem: NutritionLookupItem,
+): Promise<NutritionLookupItem | null> {
+  if (lookupItem.source !== "barcode") {
+    return lookupItem;
+  }
+
+  const mapping = await getReviewedOffMapping(lookupItem.foodId);
+  if (!mapping?.edamamMatch?.foodId) {
+    return null;
+  }
+
+  const searchQuery = [mapping.brand, mapping.productName, mapping.edamamMatch.foodLabel]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const hints = await fetchEdamamHints(searchQuery || mapping.edamamMatch.foodLabel);
+  const matched =
+    hints.find((hint) => hint.food.foodId === mapping.edamamMatch.foodId) ??
+    hints.find(
+      (hint) =>
+        hint.food.label.trim().toLowerCase() ===
+        mapping.edamamMatch.foodLabel.trim().toLowerCase(),
+    ) ??
+    null;
+
+  if (!matched) {
+    return {
+      ...lookupItem,
+      foodId: mapping.edamamMatch.foodId,
+    };
+  }
+
+  return {
+    ...lookupItem,
+    foodId: matched.food.foodId,
+    foodName: matched.food.label,
+    measures: matched.measures ?? [],
+  };
+}
+
+async function getReviewedOffMapping(barcode: string) {
+  const db = await getDb();
+  const collection = db.collection<TFoodMappingRecord>("food_mappings");
+  return collection.findOne({
+    barcode,
+    mappingStatus: "reviewed",
+    source: "open_food_facts",
+  });
+}
+
+async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
+  const params = new URLSearchParams({
+    app_id: foodAppID,
+    app_key: foodAppKey,
+    ingr: query,
+    "nutrition-type": "logging",
+  });
+  params.append("category", "packaged-foods");
+
+  const res = await fetch(`${foodUri}?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Edamam error (${res.status})`);
+  }
+
+  const data = await res.json();
+  return (data?.hints ?? []) as TEdamamFoodMeasure[];
+}
+
 function resolveMeasureInfo(ingredient: TEdamamNutritionLookupItem) {
   if (ingredient.measureURI) {
     return {
@@ -90,7 +174,7 @@ function resolveMeasureInfo(ingredient: TEdamamNutritionLookupItem) {
 
   const measures = ingredient.measures ?? [];
   if (!measures.length) {
-    return { label: "", measureURI: "" };
+    return { label: "gram", measureURI: EDAMAM_GRAM_MEASURE_URI };
   }
 
   const normalizedUnit = (ingredient.unit ?? "").trim().toLowerCase();

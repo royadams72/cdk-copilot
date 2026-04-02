@@ -46,6 +46,8 @@ export const EdamamNutritionResponseSchema = z.object({
 export const EdamamNutritionLookupItemSchema = z.object({
   foodId: z.string(),
   foodName: z.string().optional(),
+  source: z.enum(["user", "barcode", "image_ai", "api"]).optional(),
+  brand: z.string().optional(),
   measures: z.array(EdamamMeasureSchema).default([]),
   measureURI: z.string().optional(),
   originalText: z.string().optional(),

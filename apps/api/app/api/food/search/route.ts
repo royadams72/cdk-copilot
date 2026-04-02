@@ -3,12 +3,16 @@ import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
-  ROLES,
   TEdamamFoodMeasure,
+  ROLES,
+} from "@ckd/core";
+import type { TFoodSearchCandidate } from "@/packages/core/src/isomorphic/schemas/food_search";
+import type {
   TLogMealItem,
   TLogMealNormalised,
   TLogMealResponseItem,
-} from "@ckd/core";
+} from "@/packages/core/src/isomorphic/schemas/log_meal";
+import { searchOpenFoodFacts } from "@/apps/api/lib/nutrition/searchOpenFoodFacts";
 import { NextRequest } from "next/server";
 import { applyPhraseRules } from "./applyPhraseRules";
 import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
@@ -39,25 +43,8 @@ export async function GET(req: NextRequest) {
       return bad("Normalisation failed", { requestId }, 400);
     }
 
-    const itemsForEdamam = rewriteForEdamam(normalised.items);
-
-    const results = await Promise.all(
-      itemsForEdamam.map(async (item: TLogMealItem) => {
-        const tempId = makeRandomId();
-        const edamamText = item.normalised;
-        const hints = await fetchEdamamHints(edamamText);
-        const matches: TEdamamFoodMeasure[] | null = await pickBestEdamamFood(
-          hints,
-          edamamText,
-        );
-
-        return {
-          tempId,
-          item, // original normalised item
-          matches, // Edamam parser response for this item
-        } satisfies TLogMealResponseItem;
-      }),
-    );
+    const searchItems = rewriteForEdamam(normalised.items);
+    const results = await Promise.all(searchItems.map(resolveMatchesForItem));
 
     return ok({ items: results, requestId });
     // return NextResponse.json({ items: results, requestId });
@@ -70,22 +57,35 @@ export async function GET(req: NextRequest) {
 async function pickBestEdamamFood(
   hints: TEdamamFoodMeasure[],
   item: string,
-): Promise<TEdamamFoodMeasure[] | null> {
-  item = item.toLowerCase();
+): Promise<TFoodSearchCandidate[] | null> {
+  item = item.toLowerCase().trim();
   if (!hints.length) return null;
 
-  const genericFoods = hints.filter((h) => h.food.categoryLabel === "food");
-  const pool = genericFoods.length ? genericFoods : hints;
+  const phraseMatch = applyPhraseRules(item, hints as TEdamamFoodMeasure[]);
+  const scored = [...hints]
+    .map((hint) => ({
+      hint,
+      score: scoreHint(hint, item, phraseMatch),
+    }))
+    .sort((a, b) => b.score - a.score);
 
-  const phraseMatch = applyPhraseRules(item, pool as TEdamamFoodMeasure[]);
-
-  return [...pool]
-    .sort(
-      (a, b) =>
-        scoreHint(b as TEdamamFoodMeasure, item, phraseMatch) -
-        scoreHint(a as TEdamamFoodMeasure, item, phraseMatch),
-    )
-    .map((entry) => entry as TEdamamFoodMeasure);
+  return balanceEdamamCandidates(
+    scored.map(({ hint }) => ({
+      food: {
+        ...hint.food,
+        nutrients: {
+          caloriesKcal: hint.food.nutrients.ENERC_KCAL,
+          carbsG: hint.food.nutrients.CHOCDF,
+          fatG: hint.food.nutrients.FAT,
+          fiberG: hint.food.nutrients.FIBTG,
+          proteinG: hint.food.nutrients.PROCNT,
+        },
+      },
+      measures: hint.measures,
+      provider: "edamam",
+    })),
+    item,
+  );
 }
 
 async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
@@ -113,24 +113,25 @@ async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
 }
 
 function dedupeHints(hints: TEdamamFoodMeasure[]): TEdamamFoodMeasure[] {
-  const byFoodId = new Map<string, TEdamamFoodMeasure>();
+  const byKey = new Map<string, TEdamamFoodMeasure>();
 
   for (const hint of hints) {
-    const existing = byFoodId.get(hint.food.foodId);
+    const dedupeKey = buildEdamamDedupeKey(hint);
+    const existing = byKey.get(dedupeKey);
     if (!existing) {
-      byFoodId.set(hint.food.foodId, hint);
+      byKey.set(dedupeKey, hint);
       continue;
     }
 
-    const existingScore = getCategoryPriority(existing.food.category);
-    const nextScore = getCategoryPriority(hint.food.category);
+    const existingScore = getCategoryPriority(existing.food.category, "");
+    const nextScore = getCategoryPriority(hint.food.category, "");
 
     if (nextScore > existingScore) {
-      byFoodId.set(hint.food.foodId, hint);
+      byKey.set(dedupeKey, hint);
     }
   }
 
-  return [...byFoodId.values()];
+  return [...byKey.values()];
 }
 
 function scoreHint(
@@ -167,10 +168,11 @@ function scoreHint(
   else if (normalizedQuery && normalizedLabel.includes(normalizedQuery))
     score += 70;
 
-  score += getCategoryPriority(category);
+  score += getCategoryPriority(category, query);
 
   if (brand) score += 12;
   if (normalizedBrand && normalizedQuery.includes(normalizedBrand)) score += 55;
+  if (!normalizedBrand && !looksBrandedQuery(normalizedQuery)) score += 6;
   if (normalizedKnownAs && normalizedKnownAs === normalizedQuery) score += 35;
 
   let matchedTokenCount = 0;
@@ -241,8 +243,52 @@ function scoreHint(
   }
 
   if (query.includes("chicken")) {
-    if (label.includes("chicken")) score += 15;
-    else score -= 20;
+    if (label.includes("chicken")) score += 30;
+    else score -= 90;
+  }
+
+  if (/\bburger\b/.test(normalizedQuery)) {
+    if (/\bburger\b|\bburgers\b|\bpatty\b|\bpatties\b/.test(normalizedLabel)) {
+      score += 110;
+    } else {
+      score -= 120;
+    }
+
+    const burgerNoiseTerms = [
+      "frankfurter",
+      "fat",
+      "marrow",
+      "meatless",
+      "meat",
+      "skin",
+      "giblet",
+      "broth",
+      "stock",
+    ];
+    for (const term of burgerNoiseTerms) {
+      if (hasWord(normalizedLabel, term)) score -= 120;
+    }
+  }
+
+  if (/\bmeatless\b|\bvegan\b|\bvegetarian\b/.test(normalizedLabel)) {
+    if (!/\bmeatless\b|\bvegan\b|\bvegetarian\b/.test(normalizedQuery)) {
+      score -= 80;
+    }
+  }
+
+  if (normalizedQuery.split(" ").length > 1) {
+    const essentialTokens = normalizedQuery
+      .split(" ")
+      .filter((token) => !["with", "and", "the", "a", "an", "of"].includes(token));
+    const missingEssentialTokens = essentialTokens.filter(
+      (token) => !hasWord(combinedSearchText, token),
+    );
+
+    if (missingEssentialTokens.length === 0) {
+      score += 45;
+    } else {
+      score -= missingEssentialTokens.length * 70;
+    }
   }
 
   const cookingTerms = [
@@ -274,13 +320,152 @@ function scoreHint(
     else score -= 10;
   }
 
+  if (!looksBrandedQuery(normalizedQuery) && hint.food.category === "packaged-foods") {
+    score += 8;
+  }
+
   return score;
 }
 
-function getCategoryPriority(category: string) {
-  if (category === "packaged-foods") return 28;
-  if (category === "generic-foods") return 10;
+function buildEdamamDedupeKey(hint: TEdamamFoodMeasure) {
+  const brand = normalizeSearchText(hint.food.brand ?? "");
+  const label = normalizeSearchText(hint.food.label)
+    .replace(/\bburgers\b/g, "burger")
+    .replace(/\bpatties\b/g, "patty")
+    .replace(/\bchicken burgers\b/g, "chicken burger")
+    .replace(/\bchicken patties\b/g, "chicken burger")
+    .trim();
+  return `${brand}::${label}`;
+}
+
+function getCategoryPriority(category: string, query: string) {
+  if (category === "packaged-foods") {
+    return looksBrandedQuery(query) ? 42 : 24;
+  }
+  if (category === "generic-foods") return looksBrandedQuery(query) ? 8 : 18;
   return 0;
+}
+
+function balanceEdamamCandidates(
+  candidates: TFoodSearchCandidate[],
+  query: string,
+): TFoodSearchCandidate[] {
+  const branded = candidates.filter(isBrandedCandidate);
+  const generic = candidates.filter((candidate) => !isBrandedCandidate(candidate));
+
+  if (looksBrandedQuery(query)) {
+    return [...branded, ...generic].slice(0, 8);
+  }
+
+  const mixed: TFoodSearchCandidate[] = [];
+  mixed.push(...generic.slice(0, 5));
+  mixed.push(...branded.slice(0, 3));
+
+  for (const candidate of candidates) {
+    if (mixed.length >= 8) break;
+    if (
+      mixed.some(
+        (existing) =>
+          existing.provider === candidate.provider &&
+          existing.food.foodId === candidate.food.foodId,
+      )
+    ) {
+      continue;
+    }
+    mixed.push(candidate);
+  }
+
+  return mixed;
+}
+
+function isBrandedCandidate(candidate: TFoodSearchCandidate) {
+  return Boolean(candidate.food.brand?.trim()) || candidate.food.category === "packaged-foods";
+}
+
+function looksBrandedQuery(query: string) {
+  const normalized = normalizeSearchText(query);
+  if (!normalized) return false;
+
+  const brandMarkers = [
+    "tesco",
+    "asda",
+    "sainsburys",
+    "sainsbury",
+    "waitrose",
+    "morrisons",
+    "aldi",
+    "lidl",
+    "heinz",
+    "birds eye",
+    "coca cola",
+    "pepsi",
+    "walkers",
+    "warburtons",
+    "ben and jerrys",
+    "muller",
+    "yeo valley",
+  ];
+
+  return brandMarkers.some((brand) => normalized.includes(brand));
+}
+
+function scoreOffCandidate(candidate: TFoodSearchCandidate, query: string) {
+  const normalizedQuery = normalizeSearchText(query);
+  const label = normalizeSearchText(candidate.food.label);
+  const brand = normalizeSearchText(candidate.food.brand ?? "");
+  const combined = [brand, label].filter(Boolean).join(" ");
+  const tokens = normalizedQuery.split(" ").filter(Boolean);
+  let score = 0;
+
+  if (brand && normalizedQuery.includes(brand)) score += 90;
+  if (label === normalizedQuery) score += 110;
+  else if (label.includes(normalizedQuery)) score += 50;
+  if (candidate.metadata?.ukMarketMatch) score += 24;
+
+  for (const token of tokens) {
+    if (hasWord(combined, token)) score += 14;
+  }
+
+  if (tokens.length > 1 && tokens.every((token) => hasWord(combined, token))) {
+    score += 30;
+  }
+
+  return score;
+}
+
+async function resolveMatchesForItem(item: TLogMealItem) {
+  const tempId = makeRandomId();
+  const query = item.normalised.trim();
+  const brandedQuery = looksBrandedQuery(query);
+
+  let matches: TFoodSearchCandidate[] | null = null;
+
+  if (brandedQuery) {
+    const offResults = await searchOpenFoodFacts(query);
+    const rankedOff = offResults
+      .map((candidate) => ({
+        candidate,
+        score: scoreOffCandidate(candidate, query),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .map(({ candidate }) => candidate);
+
+    if (rankedOff.length) {
+      matches = rankedOff.slice(0, 8);
+    } else {
+      const hints = await fetchEdamamHints(query);
+      matches = await pickBestEdamamFood(hints, query);
+    }
+  } else {
+    const hints = await fetchEdamamHints(query);
+    matches = await pickBestEdamamFood(hints, query);
+  }
+
+  return {
+    item,
+    matches,
+    tempId,
+  } satisfies TLogMealResponseItem;
 }
 
 function normalizeSearchText(text: string) {

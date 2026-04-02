@@ -223,6 +223,9 @@ export default function LogMeal() {
       if (!item.uid || requestedNutritionUidsRef.current.has(item.uid)) {
         return false;
       }
+      if (item.source === "barcode") {
+        return false;
+      }
       return hasMissingCoreNutrients(item);
     });
 
@@ -275,13 +278,8 @@ export default function LogMeal() {
     try {
       const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
       dispatch(applyFetchMealData({ results }));
-      if ((results.items?.length ?? 0) > 0) {
-        setHasSearched(false);
-        setActiveTab("current");
-      } else {
-        setHasSearched(true);
-        setActiveTab("foods");
-      }
+      setHasSearched(true);
+      setActiveTab("foods");
     } catch (error) {
       console.log("fetchMealData failed", error);
     } finally {
