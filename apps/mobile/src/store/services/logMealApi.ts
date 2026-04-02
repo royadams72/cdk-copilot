@@ -3,8 +3,8 @@ import {
   TEdamamNutritionLookupResult,
   TFoodItem,
   TFoodItemEntry,
-  TLogMealEdamamResponse,
   TMealType,
+  TFoodSearchApiResponse,
   TNutritionFavouriteFood,
   TNutritionFavouriteMeal,
 } from "@ckd/core";
@@ -16,12 +16,16 @@ import { MealData } from "@/screens/log-meal/utils";
 const logMealApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
     fetchMealData: builder.query<
-      TLogMealEdamamResponse,
-      { searchTerm: string }
+      TFoodSearchApiResponse,
+      { normalizedText?: string; searchTerm: string }
     >({
-      query: ({ searchTerm }) => ({
-        method: "GET",
-        url: `/api/food/search?query=${encodeURIComponent(searchTerm)}`,
+      query: ({ searchTerm, normalizedText }) => ({
+        body: {
+          normalizedText: (normalizedText ?? searchTerm).trim(),
+          query: searchTerm.trim(),
+        },
+        method: "POST",
+        url: "/api/food/search",
       }),
     }),
     fetchNutritionData: builder.mutation<

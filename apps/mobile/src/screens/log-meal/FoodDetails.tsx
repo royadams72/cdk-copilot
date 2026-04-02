@@ -16,6 +16,7 @@ import {
   selectActiveItem,
   selectEditingEntryId,
   selectGroupInfoById,
+  selectGroupSearchMetaById,
   setActiveItem,
   setPortion,
 } from "@/store/slices/logMealSlice";
@@ -51,6 +52,11 @@ export default function FoodDetails() {
     if (!groupId) return null;
     return selectGroupInfoById(groupId)(state);
   });
+  const groupSearchMeta = useAppSelector((state) => {
+    const groupId = selectedFood?.groupId;
+    if (!groupId) return null;
+    return selectGroupSearchMetaById(groupId)(state);
+  });
 
   const hasMissingCoreNutrients = (food: NonNullable<typeof selectedFood>) => {
     const nutrients = food.nutrients ?? {};
@@ -65,6 +71,7 @@ export default function FoodDetails() {
 
   useEffect(() => {
     if (!selectedFood || !groupInfo || !selectedFood.uid) return;
+    if (selectedFood.source === "api") return;
     if (!hasMissingCoreNutrients(selectedFood)) return;
     if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
 
@@ -185,6 +192,36 @@ export default function FoodDetails() {
         {selectedFood && groupInfo && portionConfig ? (
           <View style={logMealStyles.detailsWrap}>
             <Text style={typeStyles.title}>{selectedFood.name}</Text>
+
+            {groupSearchMeta ? (
+              <View style={logMealStyles.metaCard}>
+                <Text style={logMealStyles.metaTitle}>
+                  {formatResolverLabel(groupSearchMeta.source)} • {groupSearchMeta.confidence} confidence
+                </Text>
+                <Text style={logMealStyles.metaText}>
+                  {groupSearchMeta.queryKind} • {groupSearchMeta.resolutionPath}
+                </Text>
+                {groupSearchMeta.estimated ? (
+                  <Text style={logMealStyles.metaWarning}>
+                    Some nutrients are estimated from CoFID reference data.
+                  </Text>
+                ) : null}
+                {groupSearchMeta.resolutionNotes.map((note) => (
+                  <Text key={note} style={logMealStyles.metaText}>
+                    {note}
+                  </Text>
+                ))}
+                {groupSearchMeta.provenance.length ? (
+                  <View style={logMealStyles.provenanceBlock}>
+                    {groupSearchMeta.provenance.map((entry) => (
+                      <Text key={entry.nutrient} style={logMealStyles.provenanceText}>
+                        {entry.nutrient}: {entry.source} ({entry.value ?? "n/a"})
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
             <View style={logMealStyles.controlCard}>
               <View style={logMealStyles.controlRow}>
@@ -443,6 +480,13 @@ function formatNutrientValue(key: string, value: number) {
   const unit = nutrientUnits[key] ?? "";
   const formattedValue = formatNumber(value);
   return unit ? `${formattedValue} ${unit}` : formattedValue;
+}
+
+function formatResolverLabel(source: string) {
+  if (source === "open_food_facts") return "OFF";
+  if (source === "cofid") return "CoFID";
+  if (source === "merged") return "OFF + CoFID";
+  return source;
 }
 
 function buildKnownNutrientSummary(food: ItemSummary) {

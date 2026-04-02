@@ -103,6 +103,7 @@ async function main() {
   const PROT_COL = "Protein (g)";
   const FAT_COL = "Fat (g)";
   const CARB_COL = "Carbohydrate (g)";
+  const FIBRE_COL = "AOAC fibre (g)";
   const K_COL = "Potassium (mg)";
   const P_COL = "Phosphorus (mg)";
   const NA_COL = "Sodium (mg)";
@@ -123,12 +124,14 @@ async function main() {
       carbs_g: parseCofidCell(row[CARB_COL]).value,
       energyKcal: parseCofidCell(row[KCAL_COL]).value,
       fat_g: parseCofidCell(row[FAT_COL]).value,
+      fiber_g: parseCofidCell(row[FIBRE_COL]).value,
       protein_g: parseCofidCell(row[PROT_COL]).value,
     };
     nutirentCodes = {
       carbs_g: parseCofidCell(row[CARB_COL]).code,
       energyKcal: parseCofidCell(row[KCAL_COL]).code,
       fat_g: parseCofidCell(row[FAT_COL]).code,
+      fiber_g: parseCofidCell(row[FIBRE_COL]).code,
       protein_g: parseCofidCell(row[PROT_COL]).code,
     };
 

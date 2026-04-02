@@ -6,6 +6,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
+      "@ckd/core": ["packages/core/src/isomorphic/index.ts"],
+      "@ckd/core/server": ["packages/core/src/server/index.ts"],
       "core": ["packages/core/src/index.ts"],
       "core/*": ["packages/core/src/*"],
       "networking": ["packages/networking/src/index.ts"],

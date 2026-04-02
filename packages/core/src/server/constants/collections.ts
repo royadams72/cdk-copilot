@@ -28,6 +28,7 @@ export const COLLECTIONS = {
   ExerciseReference: "exercise_reference",
   FoodSwapRules: "food_swap_rules",
   FoodTaxonomy: "food_taxonomy",
+  FoodMappings: "food_mappings",
   LabsLedger: "labs_ledger",
   LabsCurrent: "labs_current",
   // Deprecated alias kept for compatibility while callers migrate.

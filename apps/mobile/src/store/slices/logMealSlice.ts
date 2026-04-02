@@ -1,16 +1,17 @@
 import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 import { RootState } from "..";
-import { inferUnitFromMeasures } from "@/store/services/utils";
 // TODO: put these types into package
 import type {
   TEdamamNutritionLookupResult,
   TEdamamNutritionResponse,
+  TFoodSearchApiResponse,
   TFoodItem,
   TFoodItemEntry,
-  TLogMealEdamamResponse,
   TLogMealItem,
   TMealType,
+  TNutrientProvenanceEntry,
+  TResolvedFoodCandidate,
 } from "@ckd/core";
 
 export type ItemSummary = {
@@ -43,6 +44,16 @@ export type FoodItemsObj = {
   foodItems: TFoodItem[];
   groupId: string;
   groupInfo: TLogMealItem;
+  searchMeta?: {
+    ambiguityFlags: string[];
+    confidence: string;
+    estimated: boolean;
+    provenance: TNutrientProvenanceEntry[];
+    queryKind: string;
+    resolutionNotes: string[];
+    resolutionPath: string;
+    source: string;
+  };
 };
 
 export type logMealState = {
@@ -115,7 +126,7 @@ const logMealSlice = createSlice({
       (
         state,
         action: PayloadAction<{
-          results: TLogMealEdamamResponse;
+          results: TFoodSearchApiResponse;
         }>,
       ) => {
         state.status = "succeeded";
@@ -125,13 +136,6 @@ const logMealSlice = createSlice({
           incomingGroups,
         );
         state.searchResults = incomingGroups;
-        if (state.activeMealType) {
-          state.meal[state.activeMealType] = mergeUniqueMealItems(
-            state.meal[state.activeMealType],
-            setMealItems(incomingGroups),
-          );
-          state.isDirty = true;
-        }
         state.error = null;
         state.lastLoadedAt = new Date().toISOString();
       },
@@ -372,7 +376,7 @@ const logMealSlice = createSlice({
           item.nutrients = Object.fromEntries(
             Object.entries(item.nutrients).map(([k, v]) => [
               k,
-              v == null ? v : v * safeRatio,
+              typeof v === "number" ? v * safeRatio : v,
             ]),
           ) as typeof item.nutrients;
 
@@ -417,6 +421,14 @@ export const selectGroupInfoById = (groupId: string) => {
       foodItems?.find((group) => group.groupId === groupId)?.groupInfo ?? null,
   );
 };
+
+export const selectGroupSearchMetaById = (groupId: string) => {
+  return createSelector(
+    selectFoodItems,
+    (foodItems) =>
+      foodItems?.find((group) => group.groupId === groupId)?.searchMeta ?? null,
+  );
+};
 //
 export const selectMeal = (mealType: TMealType) => {
   return createSelector(mealState, (meal) => meal[mealType]);
@@ -441,6 +453,12 @@ export const selectSearchResults = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.searchResults,
 );
+
+export const selectSearchGroupById = (groupId: string) =>
+  createSelector(
+    selectSearchResults,
+    (groups) => groups?.find((group) => group.groupId === groupId) ?? null,
+  );
 export const selectIsDirty = createSelector(
   (state: RootState) => state.logMeal,
   (logMeal) => logMeal.isDirty,
@@ -614,72 +632,45 @@ function applyNutritionResultsToState(
   state.lastLoadedAt = new Date().toISOString();
 }
 
-function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
-  if (!data) return null;
-  return (
-    data?.items?.map((item) => {
-      const seen = new Map<string, number>();
-      const groupUnit =
-        item.item.unit?.trim() ||
-        inferUnitFromMeasures(
-          item.matches?.[0]?.measures ?? [],
-          item.item.unit ?? "",
-          item.item.food,
-          item.item.quantity,
-          item.item.original,
-        );
-      const unitNorm = groupUnit.trim().toLowerCase();
+function mapFoodItems(data: TFoodSearchApiResponse): FoodItemsObj[] | null {
+  if (!data?.result) return null;
+  const groupId = `resolver:${slugify(data.result.query)}:${Date.now()}`;
+  const quantity = 100;
+  const unit = "gram";
 
-      return {
-        foodItems:
-          item.matches?.map<TFoodItem>((m) => {
-            const foodId = m.food.foodId;
-            const name = m.food.label;
-            const inferredUnit =
-              item.item.unit?.trim() ||
-              inferUnitFromMeasures(
-                m.measures,
-                item.item.unit ?? "",
-                name,
-                item.item.quantity,
-                item.item.original,
-              );
-            const keyBase = `${item.tempId}|${foodId}|${unitNorm}|${name
-              .trim()
-              .toLowerCase()}`;
-            const next = (seen.get(keyBase) ?? 0) + 1;
-            seen.set(keyBase, next);
-            const uid = `${keyBase}|${next}`;
-
-            return {
-              foodId,
-              groupId: item.tempId,
-              measures: m.measures,
-              name,
-              nutrients: {
-                caloriesKcal: m.food.nutrients.ENERC_KCAL,
-                fatG: m.food.nutrients.FAT,
-                carbsG: undefined,
-                fiberG: undefined,
-                phosphorusMg: undefined,
-                potassiumMg: undefined,
-                sodiumMg: undefined,
-                phosphorus_protein_ratio: undefined,
-              },
-              quantity: item.item.quantity,
-              source: "user",
-              uid,
-              unit: inferredUnit,
-            };
-          }) ?? [],
-        groupId: item.tempId,
-        groupInfo: {
-          ...item.item,
-          unit: groupUnit,
-        },
-      };
-    }) ?? null
+  const candidates = [data.result.selectedResult, ...data.result.alternatives];
+  const foodItems = candidates.map((candidate, index) =>
+    toFoodItem(candidate, {
+      groupId,
+      quantity,
+      uidSuffix: index + 1,
+      unit,
+    }),
   );
+
+  return [
+    {
+      foodItems,
+      groupId,
+      groupInfo: {
+        food: data.result.selectedResult.displayName,
+        normalised: data.result.normalizedQuery,
+        original: data.result.query,
+        quantity,
+        unit,
+      },
+      searchMeta: {
+        ambiguityFlags: data.result.ambiguityFlags,
+        confidence: data.result.confidence,
+        estimated: data.result.selectedResult.estimated,
+        provenance: data.result.provenance,
+        queryKind: data.result.queryKind,
+        resolutionNotes: data.result.selectedResult.resolutionNotes,
+        resolutionPath: data.result.resolutionPath,
+        source: data.result.selectedResult.source,
+      },
+    },
+  ];
 }
 
 function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
@@ -687,6 +678,56 @@ function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
   return items
     .map((item) => item.foodItems[0])
     .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+}
+
+function toFoodItem(
+  candidate: TResolvedFoodCandidate & {
+    estimated?: boolean;
+    offBarcode?: string | null;
+    resolutionNotes?: string[];
+  },
+  options: {
+    groupId: string;
+    quantity: number;
+    uidSuffix: number;
+    unit: string;
+  },
+): TFoodItem {
+  const normalizedName = candidate.normalizedName.trim().toLowerCase();
+  const foodId =
+    candidate.barcode ??
+    candidate.offBarcode ??
+    normalizedName.replace(/\s+/g, "-");
+
+  return {
+    foodId,
+    groupId: options.groupId,
+    measures: [],
+    name: candidate.displayName,
+    nutrients: {
+      caloriesKcal: candidate.nutrientsPer100g.caloriesKcal,
+      carbsG: candidate.nutrientsPer100g.carbsG,
+      fatG: candidate.nutrientsPer100g.fatG,
+      fiberG: candidate.nutrientsPer100g.fiberG,
+      phosphorusMg: candidate.nutrientsPer100g.phosphorusMg,
+      phosphorus_protein_ratio: undefined,
+      potassiumMg: candidate.nutrientsPer100g.potassiumMg,
+      proteinG: candidate.nutrientsPer100g.proteinG,
+      sodiumMg: candidate.nutrientsPer100g.sodiumMg,
+    },
+    quantity: options.quantity,
+    source: "api",
+    uid: `${options.groupId}:${foodId}:${options.uidSuffix}`,
+    unit: options.unit,
+  };
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, "-");
 }
 
 function buildGroupSignature(group: FoodItemsObj) {

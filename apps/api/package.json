@@ -30,7 +30,7 @@
   "name": "api",
   "packageManager": "pnpm@10.16.1",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --import tsx --test ./lib/nutrition/searchFood.test.ts",
     "dev": "next dev",
     "build": "pnpm --filter @ckd/core build && next build",
     "start": "next start"

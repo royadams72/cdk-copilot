@@ -1,0 +1,65 @@
+{
+  "collMod": "food_mappings",
+  "indexes": [
+    {
+      "key": { "source": 1, "barcode": 1 },
+      "options": {
+        "name": "uniqSourceBarcode",
+        "partialFilterExpression": { "barcode": { "$type": "string" } },
+        "unique": true
+      }
+    },
+    {
+      "key": { "normalizedName": 1 },
+      "options": { "name": "byNormalizedName" }
+    },
+    {
+      "key": { "mappingStatus": 1, "confidence": 1 },
+      "options": { "name": "byStatusConfidence" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "source",
+        "barcode",
+        "brand",
+        "productName",
+        "normalizedName",
+        "cofidMatch",
+        "confidence",
+        "mappingMethod",
+        "mappingStatus",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "source": { "enum": ["open_food_facts"] },
+        "barcode": { "bsonType": ["string", "null"] },
+        "brand": { "bsonType": ["string", "null"] },
+        "productName": { "bsonType": "string" },
+        "normalizedName": { "bsonType": "string" },
+        "cofidMatch": {
+          "bsonType": "object",
+          "required": ["foodCode", "foodName"],
+          "properties": {
+            "foodCode": { "bsonType": "string" },
+            "foodName": { "bsonType": "string" }
+          }
+        },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "mappingMethod": {
+          "enum": ["manual", "auto_rule", "auto_similarity", "direct_generic"]
+        },
+        "mappingStatus": {
+          "enum": ["pending", "reviewed", "rejected", "not_needed"]
+        },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      }
+    }
+  }
+}

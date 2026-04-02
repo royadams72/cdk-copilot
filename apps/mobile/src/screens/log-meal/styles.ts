@@ -106,6 +106,28 @@ export const logMealStyles = StyleSheet.create({
   listCard: {
     marginBottom: 10,
   },
+  metaCard: {
+    gap: 6,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+  },
+  metaText: {
+    fontSize: 13,
+    color: "#334155",
+  },
+  metaTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  metaWarning: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#92400e",
+  },
   detailsWrap: {
     gap: 16,
     marginBottom: 16,
@@ -257,5 +279,16 @@ export const logMealStyles = StyleSheet.create({
     borderColor: "#cbd5e1",
     overflow: "hidden",
     backgroundColor: "#fff",
+  },
+  provenanceBlock: {
+    gap: 4,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#bfdbfe",
+  },
+  provenanceText: {
+    fontSize: 12,
+    color: "#475569",
   },
 });

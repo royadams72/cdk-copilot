@@ -39,7 +39,9 @@ import {
   selectItemsSummary,
   selectMeal,
   selectMealCandidate,
+  selectFoodItems,
   selectSearchResults,
+  type FoodItemsObj,
   setActiveItem,
   setEatenAt,
 } from "@/store/slices/logMealSlice";
@@ -108,6 +110,7 @@ export default function LogMeal() {
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const mealCandidate = useAppSelector(selectMealCandidate);
   const searchResults = useAppSelector(selectSearchResults);
+  const foodItems = useAppSelector(selectFoodItems);
 
   const meal = useAppSelector((state) => {
     if (!mealType) return [] as TFoodItem[];
@@ -220,6 +223,9 @@ export default function LogMeal() {
 
   useEffect(() => {
     const itemsMissingNutrition = meal.filter((item) => {
+      if (item.source === "api") {
+        return false;
+      }
       if (!item.uid || requestedNutritionUidsRef.current.has(item.uid)) {
         return false;
       }
@@ -260,24 +266,31 @@ export default function LogMeal() {
 
   const displayedFoods = useMemo(() => {
     if (hasSearched && searchTerm.trim().length > 0) {
-      return (searchResults ?? [])
-        .map((group) => group.foodItems[0])
-        .filter((item): item is TFoodItem => !!item);
+      return (foodItems ?? []).map((group) => ({
+        food: group.foodItems[0],
+        group,
+      }));
     }
 
-    return favouriteFoods.map((item) => toDraftFood(item));
-  }, [favouriteFoods, hasSearched, searchResults, searchTerm]);
+    return favouriteFoods.map((item) => ({
+      food: toDraftFood(item),
+      group: null,
+    }));
+  }, [favouriteFoods, foodItems, hasSearched, searchTerm]);
 
   async function submit() {
     const nextQuery = searchTerm.trim();
     if (!nextQuery || isSearching) return;
     setIsSearching(true);
     try {
-      const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
+      const results = await fetchMealData({
+        normalizedText: nextQuery,
+        searchTerm: nextQuery,
+      }).unwrap();
       dispatch(applyFetchMealData({ results }));
-      if ((results.items?.length ?? 0) > 0) {
-        setHasSearched(false);
-        setActiveTab("current");
+      if (results.result) {
+        setHasSearched(true);
+        setActiveTab("foods");
       } else {
         setHasSearched(true);
         setActiveTab("foods");
@@ -609,16 +622,21 @@ export default function LogMeal() {
         {activeTab === "foods" ? (
           <View style={logMealStyles.section}>
             {displayedFoods.length ? (
-              displayedFoods.map((food) => {
+              displayedFoods.map(({ food, group }) => {
                 const isAdded = meal.some((entry) => sameFoodKey(entry, food));
+                const resolverMeta = group?.searchMeta;
                 return (
                   <FoodCard
                     key={`${food.groupId}:${food.uid}`}
                     title={food.name}
-                    subtitle={buildFoodSubtitle(food)}
+                    subtitle={
+                      resolverMeta
+                        ? buildResolverSubtitle(food, resolverMeta)
+                        : buildFoodSubtitle(food)
+                    }
                     description={
                       hasSearched && searchTerm.trim().length > 0
-                        ? "Tap the card to edit this food before adding it."
+                        ? buildResolverDescription(group)
                         : "Favourite food"
                     }
                     onPress={() => openFoodDetails(food)}
@@ -890,6 +908,37 @@ function buildFoodSubtitle(item: {
   unit: string;
 }) {
   return `${item.quantity}${formatMealUnit(item.unit)} | Calories ${item.caloriesKcal ?? 0}kcal | Carbs ${item.carbsG ?? 0}g | Phosphorus ${item.phosphorusMg ?? 0}mg | Potassium ${item.potassiumMg ?? 0}mg`;
+}
+
+function buildResolverSubtitle(
+  item: TFoodItem,
+  meta: NonNullable<FoodItemsObj["searchMeta"]>,
+) {
+  return `${item.quantity}${formatMealUnit(item.unit)} | ${formatResolverLabel(meta.source)} | ${capitalize(meta.confidence)} confidence | ${meta.resolutionPath}`;
+}
+
+function buildResolverDescription(group: FoodItemsObj | null) {
+  if (!group?.searchMeta) {
+    return "Tap the card to edit this food before adding it.";
+  }
+
+  const notes = [
+    `${capitalize(group.searchMeta.queryKind)} query`,
+    ...(group.searchMeta.estimated ? ["Some nutrients are estimated from CoFID."] : []),
+    ...group.searchMeta.resolutionNotes,
+    group.searchMeta.ambiguityFlags.length
+      ? `Flags: ${group.searchMeta.ambiguityFlags.join(", ")}`
+      : null,
+  ].filter(Boolean);
+
+  return notes.join(" ");
+}
+
+function formatResolverLabel(source: string) {
+  if (source === "open_food_facts") return "OFF";
+  if (source === "cofid") return "CoFID";
+  if (source === "merged") return "OFF + CoFID";
+  return source;
 }
 
 function capitalize(value: string | null | undefined) {
