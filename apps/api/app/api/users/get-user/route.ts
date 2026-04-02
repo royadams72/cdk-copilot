@@ -34,6 +34,13 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
+    console.error("GET /api/users/get-user failed", {
+      requestId,
+      error:
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : error,
+    });
     const status = error?.status || 500;
     return bad(error?.message || "Server error", { requestId }, status);
   }

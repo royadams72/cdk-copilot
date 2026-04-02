@@ -29,8 +29,22 @@ function getSupportedPlatform() {
   return "web";
 }
 
-export async function registerForPushNotificationsAsync() {
+function shouldAttemptPushRegistration() {
   if (Platform.OS !== "ios" && Platform.OS !== "android") {
+    return false;
+  }
+
+  // Android debug/dev-client builds in this repo do not ship Firebase config,
+  // so Expo push token registration fails noisily during local emulator startup.
+  if (Platform.OS === "android" && __DEV__) {
+    return false;
+  }
+
+  return true;
+}
+
+export async function registerForPushNotificationsAsync() {
+  if (!shouldAttemptPushRegistration()) {
     return null;
   }
 
