@@ -43,6 +43,13 @@ async function tryRefreshSession() {
   };
 }
 
+async function restoreUserSession() {
+  const res = await authFetch(`${API}/api/users/get-user`);
+  const data = await res.json().catch(() => ({ ok: false }));
+
+  return { data, res };
+}
+
 const Bootstrap = () => {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -65,7 +72,16 @@ const Bootstrap = () => {
         if (!token.jwt && token.refreshToken) {
           const refreshed = await tryRefreshSession();
           if (refreshed.ok) {
-            router.replace("/(dashboard)/dashboard");
+            const retried = await restoreUserSession();
+
+            if (retried.data?.ok) {
+              router.replace("/(dashboard)/dashboard");
+              return;
+            }
+
+            setError(
+              retried.data?.message ?? "We couldn't restore your session.",
+            );
             return;
           }
           setError(refreshed.message);
@@ -73,15 +89,23 @@ const Bootstrap = () => {
           return;
         }
 
-        const res = await authFetch(`${API}/api/users/get-user`);
-        const data = await res.json();
+        const { res, data } = await restoreUserSession();
 
         if (data.ok) {
           router.replace("/(dashboard)/dashboard");
         } else if (res.status === 401) {
           const refreshed = await tryRefreshSession();
           if (refreshed.ok) {
-            router.replace("/(dashboard)/dashboard");
+            const retried = await restoreUserSession();
+
+            if (retried.data?.ok) {
+              router.replace("/(dashboard)/dashboard");
+              return;
+            }
+
+            setError(
+              retried.data?.message ?? "We couldn't restore your session.",
+            );
           } else {
             setError(refreshed.message);
             router.replace("/(init-app)/welcome");

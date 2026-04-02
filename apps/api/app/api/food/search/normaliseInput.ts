@@ -57,7 +57,9 @@ Rules:
 - Infer sensible quantities and units if missing (e.g. "a bowl of cereal" → 1 bowl cereal).
 - Use everyday measures when possible: slice, cup, tablespoon, teaspoon, piece, can, bottle, gram, milliliter, ounce.
 - Keep each ingredient's "normalized" text short but specific enough for a food database search.
-- Do not include brand names unless they clearly matter (e.g. “Coca-Cola” vs “cola”).
+- Preserve explicit product descriptors that help search quality, including variety/type words such as "basmati", "wholemeal", "seeded", and "reduced salt".
+- Preserve explicit brand names when the user typed them (e.g. "Birds Eye peas" should stay branded rather than being reduced to just "peas").
+- Do not invent brand names if the user did not provide one.
 - If something is too vague to be logged (e.g. “a snack”), omit it.
 - Return ONLY valid JSON. Do not include any explanation, comments, or extra text.
 

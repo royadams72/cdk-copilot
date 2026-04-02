@@ -35,6 +35,11 @@ This folder contains developer documentation for **CKD Copilot**. It covers the 
 - [RBAC (Role-Based Access Control)](./security/rbac.md)
 - [Data retention](./security/data-retention.md)
 
+## App flows
+
+- [Email and Resend](./email-resend.md)
+- [Mobile dev notes](./mobile-dev-notes.md)
+
 ## Architecture decisions
 
 - [ADR-0001: Split PII and Clinical](./adr/ADR-0001-split-pii-clinical.md)
