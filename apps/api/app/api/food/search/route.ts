@@ -276,6 +276,23 @@ function scoreHint(
     }
   }
 
+  const mixedDishTerms = [
+    "casserole",
+    "curry",
+    "lasagne",
+    "stew",
+    "pie",
+    "pasta bake",
+  ];
+  for (const term of mixedDishTerms) {
+    if (!hasWord(normalizedQuery, term)) continue;
+    if (hasWord(normalizedLabel, term)) {
+      score += 130;
+    } else {
+      score -= 150;
+    }
+  }
+
   if (normalizedQuery.split(" ").length > 1) {
     const essentialTokens = normalizedQuery
       .split(" ")

@@ -57,9 +57,9 @@ export default function FoodDetails() {
     return (
       nutrients.caloriesKcal == null ||
       nutrients.proteinG == null ||
-      nutrients.phosphorusMg == null ||
-      nutrients.potassiumMg == null ||
-      nutrients.sodiumMg == null
+      isBarcodeUnknownMicronutrient(food, nutrients.phosphorusMg) ||
+      isBarcodeUnknownMicronutrient(food, nutrients.potassiumMg) ||
+      isBarcodeUnknownMicronutrient(food, nutrients.sodiumMg)
     );
   };
 
@@ -449,6 +449,13 @@ function formatNutrientValue(key: string, value: number) {
   const unit = nutrientUnits[key] ?? "";
   const formattedValue = formatNumber(value);
   return unit ? `${formattedValue} ${unit}` : formattedValue;
+}
+
+function isBarcodeUnknownMicronutrient(
+  food: NonNullable<ReturnType<typeof selectActiveItem>>,
+  value: number | undefined,
+) {
+  return value == null || (food.source === "barcode" && value === 0);
 }
 
 function buildKnownNutrientSummary(food: ItemSummary) {

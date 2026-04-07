@@ -22,6 +22,7 @@ type NutritionLookupItem = TEdamamNutritionLookupItem & {
   brand?: string;
   source?: "user" | "barcode" | "image_ai" | "api";
 };
+const SEARCH_CATEGORIES = ["packaged-foods", "generic-foods"] as const;
 
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
@@ -51,31 +52,30 @@ export async function POST(req: NextRequest) {
     const results = await Promise.all(
       lookupItems.map(async (lookupItem: NutritionLookupItem) => {
         const resolvedLookup = await resolveLookupItem(lookupItem);
-        if (!resolvedLookup) {
-          throw new Error(`No mapped Edamam food found for ${lookupItem.foodName ?? lookupItem.foodId}`);
+        let response = null;
+        let resolvedMeasure = {
+          label: "gram",
+          measureURI: EDAMAM_GRAM_MEASURE_URI,
+        };
+
+        if (resolvedLookup) {
+          resolvedMeasure = resolveMeasureInfo(resolvedLookup);
+          response = await requestNutrition(
+            resolvedLookup,
+            resolvedMeasure,
+            params,
+          );
         }
 
-        const resolvedMeasure = resolveMeasureInfo(resolvedLookup);
-        const ingredients = [
-          {
-            foodId: resolvedLookup.foodId,
-            measureURI: resolvedMeasure.measureURI,
-            qualifiers: resolvedMeasure.qualifiers,
-            quantity: resolvedLookup.quantity,
-          },
-        ];
-
-        const res = await fetch(`${nutrientsUri}?${params.toString()}`, {
-          body: JSON.stringify({ ingredients }),
-          headers: { "content-type": "application/json" },
-          method: "POST",
-        });
-
-        if (!res.ok) {
-          throw new Error(`${res.status} Failed to fetch nutrients`);
+        if (!response && lookupItem.source === "barcode") {
+          response = await retryBarcodeNutritionLookup(
+            lookupItem,
+            params,
+          );
         }
-
-        const response = normalizeNutritionResponse(await res.json());
+        if (!response) {
+          throw new Error("Failed to fetch nutrients");
+        }
         return {
           requestedFoodId: lookupItem.foodId,
           resolvedMeasure,
@@ -136,6 +136,78 @@ async function resolveLookupItem(
   };
 }
 
+async function requestNutrition(
+  lookupItem: NutritionLookupItem,
+  resolvedMeasure: ReturnType<typeof resolveMeasureInfo>,
+  params: URLSearchParams,
+) {
+  const ingredients = [
+    {
+      foodId: lookupItem.foodId,
+      measureURI: resolvedMeasure.measureURI,
+      qualifiers: resolvedMeasure.qualifiers,
+      quantity: lookupItem.quantity,
+    },
+  ];
+
+  const res = await fetch(`${nutrientsUri}?${params.toString()}`, {
+    body: JSON.stringify({ ingredients }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    return null;
+  }
+
+  const response = normalizeNutritionResponse(await res.json());
+  const parsedCount = response.ingredients?.reduce(
+    (sum: number, ingredient: any) => sum + (ingredient?.parsed?.length ?? 0),
+    0,
+  );
+  if (!parsedCount) {
+    return null;
+  }
+
+  return response;
+}
+
+async function retryBarcodeNutritionLookup(
+  originalLookup: NutritionLookupItem,
+  params: URLSearchParams,
+) {
+  const mainTerms = extractFallbackTerms(
+    originalLookup.foodName,
+    originalLookup.originalText,
+    originalLookup.brand,
+  );
+
+  for (const term of mainTerms) {
+    const hints = await fetchEdamamHints(term);
+    const fallbackHint =
+      hints.find((hint) => hasWord(normalizeLookupText(hint.food.label), term)) ??
+      hints.find((hint) => hasWord(normalizeLookupText(hint.food.knownAs), term)) ??
+      null;
+
+    if (!fallbackHint) continue;
+
+    const fallbackLookup: NutritionLookupItem = {
+      ...originalLookup,
+      foodId: fallbackHint.food.foodId,
+      foodName: fallbackHint.food.label,
+      measures: fallbackHint.measures ?? [],
+      source: "api",
+    };
+    const fallbackMeasure = resolveMeasureInfo(fallbackLookup);
+    const response = await requestNutrition(fallbackLookup, fallbackMeasure, params);
+    if (response) {
+      return response;
+    }
+  }
+
+  return null;
+}
+
 async function getReviewedOffMapping(barcode: string) {
   const db = await getDb();
   const collection = db.collection<TFoodMappingRecord>("food_mappings");
@@ -147,21 +219,34 @@ async function getReviewedOffMapping(barcode: string) {
 }
 
 async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
-  const params = new URLSearchParams({
-    app_id: foodAppID,
-    app_key: foodAppKey,
-    ingr: query,
-    "nutrition-type": "logging",
-  });
-  params.append("category", "packaged-foods");
+  const responses = await Promise.all(
+    SEARCH_CATEGORIES.map(async (category) => {
+      const params = new URLSearchParams({
+        app_id: foodAppID,
+        app_key: foodAppKey,
+        ingr: query,
+        "nutrition-type": "logging",
+      });
+      params.append("category", category);
 
-  const res = await fetch(`${foodUri}?${params.toString()}`);
-  if (!res.ok) {
-    throw new Error(`Edamam error (${res.status})`);
+      const res = await fetch(`${foodUri}?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error(`Edamam error (${res.status})`);
+      }
+
+      const data = await res.json();
+      return (data?.hints ?? []) as TEdamamFoodMeasure[];
+    }),
+  );
+
+  const deduped = new Map<string, TEdamamFoodMeasure>();
+  for (const hint of responses.flat()) {
+    if (!deduped.has(hint.food.foodId)) {
+      deduped.set(hint.food.foodId, hint);
+    }
   }
 
-  const data = await res.json();
-  return (data?.hints ?? []) as TEdamamFoodMeasure[];
+  return [...deduped.values()];
 }
 
 function resolveMeasureInfo(ingredient: TEdamamNutritionLookupItem) {
@@ -312,13 +397,19 @@ function roundNutrientMap(
   if (!map) return {};
 
   return Object.fromEntries(
-    Object.entries(map).map(([key, value]) => [
-      key,
-      {
-        ...value,
-        quantity: roundNumber(value?.quantity),
-      },
-    ]),
+    Object.entries(map)
+      .map(([key, value]) => {
+        const quantity = roundOptionalNumber(value?.quantity);
+        if (quantity === undefined) return null;
+        return [
+          key,
+          {
+            ...value,
+            quantity,
+          },
+        ] as const;
+      })
+      .filter((entry): entry is readonly [string, { label: string; quantity: number; unit: string }] => entry !== null),
   );
 }
 
@@ -332,4 +423,87 @@ function roundOptionalNumber(value: number | undefined, digits = 2) {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
+}
+
+function normalizeLookupText(text?: string) {
+  return (text ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\btinned\b/g, "canned")
+    .replace(/\btin\b/g, "can")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function extractFallbackTerms(...values: Array<string | undefined>) {
+  const text = values
+    .map(normalizeLookupText)
+    .filter(Boolean)
+    .join(" ");
+
+  const preferredTerms = [
+    "tomato",
+    "bean",
+    "beans",
+    "chickpea",
+    "lentil",
+    "tuna",
+    "salmon",
+    "sardine",
+    "mackerel",
+    "corn",
+    "sweetcorn",
+    "coconut",
+    "pumpkin",
+    "tomatoes",
+    "peas",
+  ];
+  const foundPreferred = preferredTerms.filter((term) => hasWord(text, term));
+  if (foundPreferred.length) {
+    return [...new Set(foundPreferred.map(singularizeLookupTerm))];
+  }
+
+  const genericStopWords = new Set([
+    "can",
+    "canned",
+    "tinned",
+    "in",
+    "water",
+    "brine",
+    "sauce",
+    "salted",
+    "unsalted",
+    "chopped",
+    "diced",
+    "whole",
+    "peeled",
+    "organic",
+    "reduced",
+    "salt",
+    "no",
+    "added",
+  ]);
+
+  const tokens = text
+    .split(" ")
+    .map((token) => token.trim())
+    .filter((token) => token && !genericStopWords.has(token));
+
+  return [...new Set(tokens.map(singularizeLookupTerm).slice(-2))];
+}
+
+function singularizeLookupTerm(term: string) {
+  if (term === "tomatoes") return "tomato";
+  if (term.endsWith("ies")) return `${term.slice(0, -3)}y`;
+  if (term.endsWith("es")) return term.slice(0, -2);
+  if (term.endsWith("s") && term.length > 3) return term.slice(0, -1);
+  return term;
+}
+
+function hasWord(text: string, word: string) {
+  return new RegExp(`\\b${escapeRegex(word)}\\b`, "i").test(text);
+}
+
+function escapeRegex(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

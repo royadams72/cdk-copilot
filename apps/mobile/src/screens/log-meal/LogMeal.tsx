@@ -166,13 +166,9 @@ export default function LogMeal() {
     if (editingEntryId) return;
     if (requestedTab) return;
     if (hasAppliedDefaultTabRef.current) return;
-    if (favouriteItems === undefined) return;
-
     hasAppliedDefaultTabRef.current = true;
-    if ((favouriteItems.foods?.length ?? 0) === 0) {
-      setActiveTab("current");
-    }
-  }, [editingEntryId, favouriteItems, params.tab]);
+    setActiveTab("foods");
+  }, [editingEntryId, params.tab]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -223,9 +219,6 @@ export default function LogMeal() {
       if (!item.uid || requestedNutritionUidsRef.current.has(item.uid)) {
         return false;
       }
-      if (item.source === "barcode") {
-        return false;
-      }
       return hasMissingCoreNutrients(item);
     });
 
@@ -262,14 +255,8 @@ export default function LogMeal() {
   );
 
   const displayedFoods = useMemo(() => {
-    if (hasSearched && searchTerm.trim().length > 0) {
-      return (searchResults ?? [])
-        .map((group) => group.foodItems[0])
-        .filter((item): item is TFoodItem => !!item);
-    }
-
     return favouriteFoods.map((item) => toDraftFood(item));
-  }, [favouriteFoods, hasSearched, searchResults, searchTerm]);
+  }, [favouriteFoods]);
 
   async function submit() {
     const nextQuery = searchTerm.trim();
@@ -279,7 +266,7 @@ export default function LogMeal() {
       const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
       dispatch(applyFetchMealData({ results }));
       setHasSearched(true);
-      setActiveTab("foods");
+      setActiveTab("current");
     } catch (error) {
       console.log("fetchMealData failed", error);
     } finally {
@@ -887,7 +874,15 @@ function buildFoodSubtitle(item: {
   quantity: number;
   unit: string;
 }) {
-  return `${item.quantity}${formatMealUnit(item.unit)} | Calories ${item.caloriesKcal ?? 0}kcal | Carbs ${item.carbsG ?? 0}g | Phosphorus ${item.phosphorusMg ?? 0}mg | Potassium ${item.potassiumMg ?? 0}mg`;
+  return [
+    `${formatMealValue(item.quantity)}${formatMealUnit(item.unit)}`,
+    buildMealNutrientPart("Calories", item.caloriesKcal, "kcal"),
+    buildMealNutrientPart("Carbs", item.carbsG, "g"),
+    buildMealNutrientPart("Phosphorus", item.phosphorusMg, "mg"),
+    buildMealNutrientPart("Potassium", item.potassiumMg, "mg"),
+  ]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 function capitalize(value: string | null | undefined) {
@@ -912,15 +907,44 @@ function formatShortDate(value: string | null | undefined) {
   });
 }
 
+function formatMealValue(value: string | number | null | undefined) {
+  const numberValue =
+    typeof value === "number" ? value : Number.parseFloat(value ?? "");
+  if (!Number.isFinite(numberValue)) return "";
+
+  const rounded = Math.round(numberValue * 10) / 10;
+  if (Math.abs(rounded - Math.round(rounded)) < 0.0001) {
+    return String(Math.round(rounded));
+  }
+  return rounded.toFixed(1);
+}
+
 function hasMissingCoreNutrients(item: TFoodItem) {
   const nutrients = item.nutrients ?? {};
   return (
     nutrients.caloriesKcal == null ||
     nutrients.proteinG == null ||
-    nutrients.phosphorusMg == null ||
-    nutrients.potassiumMg == null ||
-    nutrients.sodiumMg == null
+    isBarcodeUnknownMicronutrient(item, nutrients.phosphorusMg) ||
+    isBarcodeUnknownMicronutrient(item, nutrients.potassiumMg) ||
+    isBarcodeUnknownMicronutrient(item, nutrients.sodiumMg)
   );
+}
+
+function buildMealNutrientPart(
+  label: string,
+  value: string | number | null | undefined,
+  unit: string,
+) {
+  const formattedValue = formatMealValue(value);
+  if (!formattedValue) return "";
+  return `${label} ${formattedValue}${unit}`;
+}
+
+function isBarcodeUnknownMicronutrient(
+  item: TFoodItem,
+  value: number | undefined,
+) {
+  return value == null || (item.source === "barcode" && value === 0);
 }
 
 function buildFoodKey(item: Pick<TFoodItemEntry, "foodId" | "name">) {
