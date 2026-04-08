@@ -2,10 +2,7 @@ export const runtime = "nodejs";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
-import {
-  TEdamamFoodMeasure,
-  ROLES,
-} from "@ckd/core";
+import { ROLES, TEdamamFoodMeasure } from "@ckd/core";
 import type { TFoodSearchCandidate } from "@/packages/core/src/isomorphic/schemas/food_search";
 import type {
   TLogMealItem,
@@ -15,6 +12,7 @@ import type {
 import { searchOpenFoodFacts } from "@/apps/api/lib/nutrition/searchOpenFoodFacts";
 import { NextRequest } from "next/server";
 import { applyPhraseRules } from "./applyPhraseRules";
+import { BRAND_MARKERS } from "./brandMarkers";
 import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
@@ -147,7 +145,11 @@ function scoreHint(
   const normalizedLabel = normalizeSearchText(label);
   const normalizedBrand = normalizeSearchText(brand);
   const normalizedKnownAs = normalizeSearchText(knownAs);
-  const combinedSearchText = [normalizedLabel, normalizedBrand, normalizedKnownAs]
+  const combinedSearchText = [
+    normalizedLabel,
+    normalizedBrand,
+    normalizedKnownAs,
+  ]
     .filter(Boolean)
     .join(" ");
   const queryTokens = normalizedQuery.split(" ").filter(Boolean);
@@ -296,7 +298,9 @@ function scoreHint(
   if (normalizedQuery.split(" ").length > 1) {
     const essentialTokens = normalizedQuery
       .split(" ")
-      .filter((token) => !["with", "and", "the", "a", "an", "of"].includes(token));
+      .filter(
+        (token) => !["with", "and", "the", "a", "an", "of"].includes(token),
+      );
     const missingEssentialTokens = essentialTokens.filter(
       (token) => !hasWord(combinedSearchText, token),
     );
@@ -337,8 +341,19 @@ function scoreHint(
     else score -= 10;
   }
 
-  if (!looksBrandedQuery(normalizedQuery) && hint.food.category === "packaged-foods") {
+  if (
+    !looksBrandedQuery(normalizedQuery) &&
+    hint.food.category === "packaged-foods"
+  ) {
     score += 8;
+  }
+
+  if (
+    !looksBrandedQuery(normalizedQuery) &&
+    isSimpleIngredientQuery(normalizedQuery)
+  ) {
+    if (brand) score -= 110;
+    if (hint.food.category === "packaged-foods") score -= 90;
   }
 
   return score;
@@ -368,10 +383,16 @@ function balanceEdamamCandidates(
   query: string,
 ): TFoodSearchCandidate[] {
   const branded = candidates.filter(isBrandedCandidate);
-  const generic = candidates.filter((candidate) => !isBrandedCandidate(candidate));
+  const generic = candidates.filter(
+    (candidate) => !isBrandedCandidate(candidate),
+  );
 
   if (looksBrandedQuery(query)) {
     return [...branded, ...generic].slice(0, 8);
+  }
+
+  if (isSimpleIngredientQuery(query)) {
+    return [...generic, ...branded].slice(0, 8);
   }
 
   const mixed: TFoodSearchCandidate[] = [];
@@ -396,40 +417,68 @@ function balanceEdamamCandidates(
 }
 
 function isBrandedCandidate(candidate: TFoodSearchCandidate) {
-  return Boolean(candidate.food.brand?.trim()) || candidate.food.category === "packaged-foods";
+  return (
+    Boolean(candidate.food.brand?.trim()) ||
+    candidate.food.category === "packaged-foods"
+  );
 }
 
 function looksBrandedQuery(query: string) {
   const normalized = normalizeSearchText(query);
+  console.log("query:", query);
+
   if (!normalized) return false;
 
-  const brandMarkers = [
-    "tesco",
-    "asda",
-    "sainsburys",
-    "sainsbury",
-    "waitrose",
-    "morrisons",
-    "aldi",
-    "lidl",
-    "heinz",
-    "birds eye",
-    "coca cola",
-    "pepsi",
-    "walkers",
-    "warburtons",
-    "ben and jerrys",
-    "muller",
-    "yeo valley",
+  return BRAND_MARKERS.some((brand) => {
+    const normalizedBrand = normalizeSearchText(brand);
+    return (
+      normalized === normalizedBrand ||
+      normalized.startsWith(`${normalizedBrand} `) ||
+      normalized.endsWith(` ${normalizedBrand}`) ||
+      normalized.includes(` ${normalizedBrand} `)
+    );
+  });
+}
+
+function isSimpleIngredientQuery(query: string) {
+  const normalized = normalizeSearchText(query);
+  if (!normalized || looksBrandedQuery(normalized)) return false;
+
+  const preparedSignals = [
+    "casserole",
+    "curry",
+    "dinner",
+    "lasagne",
+    "meal",
+    "pie",
+    "pasta bake",
+    "recipe",
+    "salad",
+    "sandwich",
+    "soup",
+    "stew",
+    "with",
   ];
 
-  return brandMarkers.some((brand) => normalized.includes(brand));
+  if (preparedSignals.some((signal) => hasWord(normalized, signal))) {
+    return false;
+  }
+
+  const tokens = normalized
+    .split(" ")
+    .filter(
+      (token) => token && !["a", "an", "and", "of", "the"].includes(token),
+    );
+
+  return tokens.length > 0 && tokens.length <= 3;
 }
 
 function scoreOffCandidate(candidate: TFoodSearchCandidate, query: string) {
   const normalizedQuery = normalizeSearchText(query);
   const label = normalizeSearchText(candidate.food.label);
   const brand = normalizeSearchText(candidate.food.brand ?? "");
+  // console.log("brand:", brand);
+
   const combined = [brand, label].filter(Boolean).join(" ");
   const tokens = normalizedQuery.split(" ").filter(Boolean);
   let score = 0;
@@ -459,6 +508,10 @@ async function resolveMatchesForItem(item: TLogMealItem) {
 
   if (brandedQuery) {
     const offResults = await searchOpenFoodFacts(query);
+    // console.log(
+    //   "offResults",
+    //   offResults.map((food) => [food.food.nutrients, food.food.label]),
+    // );
     const rankedOff = offResults
       .map((candidate) => ({
         candidate,

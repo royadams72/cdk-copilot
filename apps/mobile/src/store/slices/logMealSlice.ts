@@ -4,6 +4,7 @@ import { RootState } from "..";
 import { inferUnitFromMeasures } from "@/store/services/utils";
 // TODO: put these types into package
 import type {
+  TEdamamMeasure,
   TEdamamNutritionLookupResult,
   TEdamamNutritionResponse,
   TFoodItem,
@@ -17,6 +18,7 @@ import type {
 import type { TFoodSearchCandidate } from "../../../../../packages/core/src/isomorphic/schemas/food_search";
 
 export type ItemSummary = {
+  brand: string | undefined;
   caloriesKcal: string;
   carbsG: string;
   fatG: string;
@@ -96,6 +98,20 @@ const logMealSlice = createSlice({
   initialState,
   name: "logMeal",
   reducers: (create) => ({
+    appendFoodsToMeal: create.reducer(
+      (state, action: PayloadAction<{ foods: TFoodItem[] }>) => {
+        if (!state.activeMealType) return;
+        const nextFoods = action.payload.foods.map((food) => {
+          const nextGroup = createFoodGroup(food);
+          return nextGroup.foodItems[0];
+        });
+        state.meal[state.activeMealType] = mergeUniqueMealItems(
+          state.meal[state.activeMealType],
+          nextFoods.filter((item): item is TFoodItem => !!item),
+        );
+        state.isDirty = true;
+      },
+    ),
     applyFetchMealByDate: create.reducer(
       (
         state,
@@ -221,6 +237,13 @@ const logMealSlice = createSlice({
         state.status = "idle";
       },
     ),
+    registerFoodItem: create.reducer(
+      (state, action: PayloadAction<{ food: TFoodItem }>) => {
+        state.foodItems = mergeUniqueFoodGroups(state.foodItems, [
+          createFoodGroup(action.payload.food),
+        ]);
+      },
+    ),
     removeMealItem: create.reducer(
       (state, action: PayloadAction<{ groupId: string }>) => {
         const { groupId } = action.payload;
@@ -260,13 +283,6 @@ const logMealSlice = createSlice({
       mealItems.push(nextFood);
       state.isDirty = true;
     }),
-    registerFoodItem: create.reducer(
-      (state, action: PayloadAction<{ food: TFoodItem }>) => {
-        state.foodItems = mergeUniqueFoodGroups(state.foodItems, [
-          createFoodGroup(action.payload.food),
-        ]);
-      },
-    ),
     setActiveItem: create.reducer(
       (
         state,
@@ -325,20 +341,6 @@ const logMealSlice = createSlice({
         state.meal = createEmptyMeals();
         state.mealCandidate = null;
         state.searchResults = null;
-      },
-    ),
-    appendFoodsToMeal: create.reducer(
-      (state, action: PayloadAction<{ foods: TFoodItem[] }>) => {
-        if (!state.activeMealType) return;
-        const nextFoods = action.payload.foods.map((food) => {
-          const nextGroup = createFoodGroup(food);
-          return nextGroup.foodItems[0];
-        });
-        state.meal[state.activeMealType] = mergeUniqueMealItems(
-          state.meal[state.activeMealType],
-          nextFoods.filter((item): item is TFoodItem => !!item),
-        );
-        state.isDirty = true;
       },
     ),
     setPortion: create.reducer(
@@ -487,6 +489,7 @@ export const selectItemsSummary = createSelector(
           item.nutrients;
         if (!uid || !foodId || !groupId) return null;
         return {
+          brand: item.brand,
           caloriesKcal: item.nutrients.caloriesKcal?.toString() ?? "",
           carbsG: carbsG?.toString() ?? "",
           fatG: fatG?.toString() ?? "",
@@ -524,6 +527,7 @@ export const selectAcitveGroupSummaries = createSelector(
           food.nutrients;
         if (!foodId || !groupId) return null;
         return {
+          brand: food.brand,
           caloriesKcal: food.nutrients.caloriesKcal?.toString() ?? "",
           carbsG: carbsG?.toString() ?? "",
           fatG: fatG?.toString() ?? "",
@@ -626,10 +630,13 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   return (
     data?.items?.map((item) => {
       const seen = new Map<string, number>();
+      const primaryMeasures = item.matches?.[0]
+        ? buildMeasuresForMatch(item.matches[0])
+        : [];
       const groupUnit =
         item.item.unit?.trim() ||
         inferUnitFromMeasures(
-          item.matches?.[0]?.measures ?? [],
+          primaryMeasures,
           item.item.unit ?? "",
           item.item.food,
           item.item.quantity,
@@ -642,13 +649,14 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
           dedupeFoodMatches(item.matches ?? []).map<TFoodItem>((match) => {
             const foodId =
               match.provider === "open_food_facts"
-                ? match.metadata?.barcode ?? match.food.foodId
+                ? (match.metadata?.barcode ?? match.food.foodId)
                 : match.food.foodId;
             const name = match.food.label;
+            const measures = buildMeasuresForMatch(match);
             const inferredUnit =
               item.item.unit?.trim() ||
               inferUnitFromMeasures(
-                match.measures,
+                measures,
                 item.item.unit ?? "",
                 name,
                 item.item.quantity,
@@ -665,7 +673,7 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
               brand: match.food.brand,
               foodId,
               groupId: item.tempId,
-              measures: match.measures,
+              measures,
               name,
               nutrients: {
                 caloriesKcal: match.food.nutrients.caloriesKcal,
@@ -746,6 +754,52 @@ function dedupeFoodItemsByLabel(items: TFoodItem[]) {
   return [...deduped.values()];
 }
 
+function buildMeasuresForMatch(match: TFoodSearchCandidate): TEdamamMeasure[] {
+  if (match.measures?.length) return match.measures;
+  const parsedServingMeasure = parseServingSizeMeasure(
+    match.metadata?.servingSize,
+  );
+  return parsedServingMeasure ? [parsedServingMeasure] : [];
+}
+
+function parseServingSizeMeasure(servingSize?: string): TEdamamMeasure | null {
+  if (!servingSize) return null;
+
+  const normalized = servingSize.trim().replace(/\s+/g, " ");
+  const match = normalized.match(
+    /^(\d+(?:\.\d+)?)\s+(.+?)\s*\((\d+(?:\.\d+)?)\s*g\)$/i,
+  );
+  if (!match) return null;
+
+  const quantity = Number.parseFloat(match[1]);
+  const label = match[2].trim();
+  const grams = Number.parseFloat(match[3]);
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    !Number.isFinite(grams) ||
+    grams <= 0 ||
+    !label
+  ) {
+    return null;
+  }
+
+  return {
+    label: normalizeServingLabel(label),
+    uri: `local://measure/${normalizeServingLabel(label).replace(/\s+/g, "-")}`,
+    weight: grams / quantity,
+  };
+}
+
+function normalizeServingLabel(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 function sortFoodItemsForQuery(items: TFoodItem[], query: string) {
   return [...dedupeFoodItemsByLabel(items)].sort(
     (a, b) => scoreFoodItemForQuery(b, query) - scoreFoodItemForQuery(a, query),
@@ -766,7 +820,10 @@ function scoreFoodItemForQuery(item: TFoodItem, query: string) {
   const combined = `${normalizedBrand} ${normalizedName}`.trim();
   const tokens = normalizedQuery
     .split(" ")
-    .filter((token) => token && !["with", "and", "the", "a", "an", "of"].includes(token));
+    .filter(
+      (token) =>
+        token && !["with", "and", "the", "a", "an", "of"].includes(token),
+    );
   let score = 0;
 
   if (normalizedName === normalizedQuery) score += 200;
@@ -1074,34 +1131,19 @@ function extractNutrition(
       ...item,
       nutrients: {
         ...item.nutrients,
-        caloriesKcal: n.ENERC_KCAL?.quantity ?? item.nutrients.caloriesKcal,
-        carbsG: n.CHOCDF?.quantity ?? item.nutrients.carbsG,
-        fatG: n.FAT?.quantity ?? item.nutrients.fatG,
+        caloriesKcal: item.nutrients.caloriesKcal ?? n.ENERC_KCAL?.quantity,
+        carbsG: item.nutrients.carbsG ?? n.CHOCDF?.quantity,
+        fatG: item.nutrients.fatG ?? n.FAT?.quantity,
         fiberG: n.FIBTG?.quantity ?? item.nutrients.fiberG,
         phosphorus_protein_ratio: phosphorus_protein_ratio(
-          resolveBarcodeFallbackNutrient(
-            item,
-            n.P?.quantity,
-            item.nutrients.phosphorusMg,
-          ),
-          n.PROCNT?.quantity ?? item.nutrients.proteinG,
+          item.nutrients.phosphorusMg ?? n.P?.quantity,
+          item.nutrients.proteinG ?? n.PROCNT?.quantity,
         ),
-        phosphorusMg: resolveBarcodeFallbackNutrient(
-          item,
-          n.P?.quantity,
-          item.nutrients.phosphorusMg,
-        ),
-        potassiumMg: resolveBarcodeFallbackNutrient(
-          item,
-          n.K?.quantity,
-          item.nutrients.potassiumMg,
-        ),
-        proteinG: n.PROCNT?.quantity ?? item.nutrients.proteinG,
-        sodiumMg: resolveBarcodeFallbackNutrient(
-          item,
-          n.NA?.quantity,
-          item.nutrients.sodiumMg,
-        ),
+        phosphorusMg: item.nutrients.phosphorusMg ?? n.P?.quantity,
+
+        potassiumMg: item.nutrients.potassiumMg ?? n.K?.quantity,
+        proteinG: item.nutrients.proteinG ?? n.PROCNT?.quantity,
+        sodiumMg: item.nutrients.sodiumMg ?? n.NA?.quantity,
       },
       quantity: shouldAdoptResolvedWeight
         ? Math.round(resolvedWeight)
@@ -1144,16 +1186,4 @@ function normalizeBarcodeMicronutrient(
     return undefined;
   }
   return value;
-}
-
-function resolveBarcodeFallbackNutrient(
-  item: TFoodItem,
-  nextValue: number | undefined,
-  currentValue: number | undefined,
-) {
-  if (nextValue !== undefined) return nextValue;
-  if (item.source === "barcode" && currentValue === 0) {
-    return undefined;
-  }
-  return currentValue;
 }

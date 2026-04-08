@@ -554,30 +554,33 @@ export default function LogMeal() {
         {activeTab === "current" ? (
           <View style={logMealStyles.section}>
             {items.length ? (
-              items.map((item: ItemSummary) => (
-                <FoodCard
-                  key={item.uid}
-                  title={item.name}
-                  subtitle={buildFoodSubtitle(item)}
-                  onPress={() => {
-                    const currentFood = meal.find(
-                      (entry) =>
-                        entry.uid === item.uid &&
-                        entry.groupId === item.groupId,
-                    );
-                    if (currentFood) openFoodDetails(currentFood);
-                  }}
-                  actions={[
-                    {
-                      label: "Remove",
-                      onPress: () =>
-                        dispatch(removeMealItem({ groupId: item.groupId })),
-                      variant: "danger",
-                    },
-                  ]}
-                  style={logMealStyles.listCard}
-                />
-              ))
+              items.map(
+                (item) =>
+                  item && (
+                    <FoodCard
+                      key={item.uid}
+                      title={buildDisplayFoodName(item.name, item.brand)}
+                      subtitle={buildFoodSubtitle(item)}
+                      onPress={() => {
+                        const currentFood = meal.find(
+                          (entry) =>
+                            entry.uid === item.uid &&
+                            entry.groupId === item.groupId,
+                        );
+                        if (currentFood) openFoodDetails(currentFood);
+                      }}
+                      actions={[
+                        {
+                          label: "Remove",
+                          onPress: () =>
+                            dispatch(removeMealItem({ groupId: item.groupId })),
+                          variant: "danger",
+                        },
+                      ]}
+                      style={logMealStyles.listCard}
+                    />
+                  ),
+              )
             ) : (
               <View style={logMealStyles.emptyState}>
                 <ThemedText style={logMealStyles.emptyTitle}>
@@ -599,7 +602,7 @@ export default function LogMeal() {
                 return (
                   <FoodCard
                     key={`${food.groupId}:${food.uid}`}
-                    title={food.name}
+                    title={buildDisplayFoodName(food.name, food.brand)}
                     subtitle={buildFoodSubtitle(food)}
                     description={
                       hasSearched && searchTerm.trim().length > 0
@@ -885,6 +888,13 @@ function buildFoodSubtitle(item: {
     .join(" | ");
 }
 
+function buildDisplayFoodName(name: string, brand?: string) {
+  const trimmedBrand = brand?.trim();
+  if (!trimmedBrand) return name;
+  if (name.toLowerCase().includes(trimmedBrand.toLowerCase())) return name;
+  return `${name} (${trimmedBrand})`;
+}
+
 function capitalize(value: string | null | undefined) {
   if (!value) return "Meal";
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -1009,7 +1019,9 @@ function buildInitialDateTime(
 }
 
 function normalizeDayKey(value: string) {
-  const decodedValue = decodeURIComponent(value).trim().replace(/^"+|"+$/g, "");
+  const decodedValue = decodeURIComponent(value)
+    .trim()
+    .replace(/^"+|"+$/g, "");
   const matchedDayKey = decodedValue.match(/\d{4}-\d{2}-\d{2}/)?.[0];
   if (matchedDayKey) {
     return matchedDayKey;

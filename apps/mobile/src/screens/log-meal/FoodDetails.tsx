@@ -65,10 +65,16 @@ export default function FoodDetails() {
 
   useEffect(() => {
     if (!selectedFood || !groupInfo || !selectedFood.uid) return;
-    if (!hasMissingCoreNutrients(selectedFood)) return;
+    if (
+      selectedFood.source !== "barcode" &&
+      !hasMissingCoreNutrients(selectedFood)
+    ) {
+      return;
+    }
     if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
 
     requestedNutritionByUidRef.current.add(selectedFood.uid);
+
     void (async () => {
       try {
         const results = await fetchNutritionData({
@@ -184,7 +190,9 @@ export default function FoodDetails() {
       >
         {selectedFood && groupInfo && portionConfig ? (
           <View style={logMealStyles.detailsWrap}>
-            <Text style={typeStyles.title}>{selectedFood.name}</Text>
+            <Text style={typeStyles.title}>
+              {buildDisplayFoodName(selectedFood.name, selectedFood.brand)}
+            </Text>
 
             <View style={logMealStyles.controlCard}>
               <View style={logMealStyles.controlRow}>
@@ -274,27 +282,37 @@ export default function FoodDetails() {
         ) : null}
 
         {foods &&
-          foods.map((food) => (
-            <FoodCard
-              key={food.uid}
-              title={food.name}
-              subtitle={`${formatNumber(food.quantity)} ${formatMeasureUnit(food.unit)}`}
-              description={buildKnownNutrientSummary(food)}
-              onPress={() =>
-                dispatch(
-                  setActiveItem({
-                    foodId: food.foodId,
-                    groupId: food.groupId,
-                    uid: food.uid,
-                  }),
-                )
-              }
-              style={logMealStyles.listCard}
-            />
-          ))}
+          foods.map(
+            (food) =>
+              food && (
+                <FoodCard
+                  key={food.uid}
+                  title={buildDisplayFoodName(food.name, food.brand)}
+                  subtitle={`${formatNumber(food.quantity)} ${formatMeasureUnit(food.unit)}`}
+                  description={buildKnownNutrientSummary(food)}
+                  onPress={() =>
+                    dispatch(
+                      setActiveItem({
+                        foodId: food.foodId,
+                        groupId: food.groupId,
+                        uid: food.uid,
+                      }),
+                    )
+                  }
+                  style={logMealStyles.listCard}
+                />
+              ),
+          )}
       </ScrollView>
     </View>
   );
+}
+
+function buildDisplayFoodName(name: string, brand?: string) {
+  const trimmedBrand = brand?.trim();
+  if (!trimmedBrand) return name;
+  if (name.toLowerCase().includes(trimmedBrand.toLowerCase())) return name;
+  return `${name} (${trimmedBrand})`;
 }
 
 function resolvePortionConfig(
