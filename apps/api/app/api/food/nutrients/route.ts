@@ -10,6 +10,8 @@ import {
   TEdamamNutritionLookupItem,
   TEdamamNutritionLookupResult,
 } from "@ckd/core";
+import { COLLECTIONS } from "@ckd/core/server";
+
 import type { TFoodMappingRecord } from "@/packages/core/src/isomorphic/schemas/food_search";
 import { NextRequest } from "next/server";
 
@@ -106,8 +108,6 @@ export async function POST(req: NextRequest) {
 
     const results = await Promise.all(
       lookupItems.map(async (lookupItem: NutritionLookupItem) => {
-        console.log("lookupItem:", lookupItem);
-
         const resolvedLookup = await resolveLookupItem(lookupItem);
         let response = null;
         let resolvedMeasure = {
@@ -115,6 +115,8 @@ export async function POST(req: NextRequest) {
           measureURI: EDAMAM_GRAM_MEASURE_URI,
         };
 
+        console.log("lookupItem:", lookupItem);
+        console.log("resolvedLookup:", resolvedLookup);
         if (resolvedLookup) {
           resolvedMeasure = resolveMeasureInfo(resolvedLookup);
           response = await requestNutrition(
@@ -167,12 +169,13 @@ async function resolveLookupItem(
   if (lookupItem.source !== "barcode") {
     return lookupItem;
   }
+  console.log("lookupItem resovle", lookupItem);
 
   const mapping = await getReviewedOffMapping(lookupItem.foodId);
-  console.log("mapping:", mapping);
   if (!mapping?.edamamMatch?.foodId) {
     return null;
   }
+  console.log("mapping", mapping);
 
   const searchQuery = [
     mapping.brand,
@@ -291,7 +294,9 @@ async function retryBarcodeNutritionLookup(
 
 async function getReviewedOffMapping(barcode: string) {
   const db = await getDb();
-  const collection = db.collection<TFoodMappingRecord>("food_mappings");
+  const collection = db.collection<TFoodMappingRecord>(
+    COLLECTIONS.FoodMappings,
+  );
   return collection.findOne({
     barcode,
     mappingStatus: "reviewed",
@@ -354,8 +359,7 @@ function alignEdamamResponseToRequestedPortion(
 ) {
   const requestedWeight = resolveRequestedPortionWeight(originalLookup);
   const responseWeight = resolveEdamamResponseWeight(response);
-  console.log("originalLookup:", originalLookup);
-  console.log("response:", response);
+
   if (
     typeof requestedWeight !== "number" ||
     !Number.isFinite(requestedWeight) ||
@@ -583,10 +587,10 @@ async function findBestCofidMatch(lookupItem: NutritionLookupItem) {
     lookupItem.originalText,
   );
   if (!queryTokens.length) return null;
-  // console.log("queryTokens:", queryTokens);
+  console.log("queryTokens:", queryTokens);
 
   const db = await getDb();
-  const collection = db.collection<TBaseFoodSchema>("base_foods");
+  const collection = db.collection<TBaseFoodSchema>(COLLECTIONS.BaseFoods);
   const candidates = await collection
     .find(
       {
