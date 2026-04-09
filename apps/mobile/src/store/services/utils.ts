@@ -18,6 +18,7 @@ export function setNutrientsBody({
       foodId: foodItem.foodId,
       foodName: normalizedFoodName,
       measures: foodItem.measures ?? [],
+      openFoodFacts: foodItem.openFoodFacts,
       originalText: normalizedFoodName,
       quantity: foodItem.quantity,
       source: foodItem.source,

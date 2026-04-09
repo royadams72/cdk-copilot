@@ -700,6 +700,8 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
                     : "edamam",
               },
               quantity: item.item.quantity,
+              openFoodFacts:
+                match.provider === "open_food_facts" ? match.metadata : undefined,
               source: match.provider === "open_food_facts" ? "barcode" : "api",
               uid,
               unit: inferredUnit,

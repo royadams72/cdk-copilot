@@ -1,5 +1,6 @@
 import type {
   TFoodSearchCandidate,
+  TOpenFoodFactsIngredient,
   TSearchFoodNutrients,
 } from "@/packages/core/src/isomorphic/schemas/food_search";
 
@@ -18,6 +19,10 @@ const OFF_FIELDS = [
   "countries_tags",
   "data_quality_errors_tags",
   "image_front_small_url",
+  "ingredients",
+  "ingredients_tags",
+  "ingredients_text",
+  "ingredients_text_en",
   "nutriments",
   "product_name",
   "product_name_en",
@@ -102,6 +107,16 @@ function toOpenFoodFactsCandidate(
     metadata: {
       barcode,
       imageUrl: getString(product.image_front_small_url) ?? undefined,
+      ingredients: parseIngredients(product.ingredients),
+      ingredientsTags: toStringArray(product.ingredients_tags),
+      ingredientsText: getString(product.ingredients_text_en)
+        ?? getString(product.ingredients_text)
+        ?? undefined,
+      ingredientsTextLanguage: getString(product.ingredients_text_en)
+        ? "en"
+        : getString(product.ingredients_text)
+          ? "default"
+          : undefined,
       servingSize: getString(product.serving_size) ?? undefined,
       ukMarketMatch: isUkRelevant(product),
     },
@@ -165,4 +180,37 @@ function compact<T extends Record<string, number | undefined>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined),
   ) as T;
+}
+
+function parseIngredients(value: unknown): TOpenFoodFactsIngredient[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const parsed = value
+    .map((entry) => parseIngredient(entry))
+    .filter((entry): entry is TOpenFoodFactsIngredient => entry !== null);
+
+  return parsed.length ? parsed : undefined;
+}
+
+function parseIngredient(value: unknown): TOpenFoodFactsIngredient | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const children = parseIngredients(record.ingredients);
+  const ingredient = {
+    id: getString(record.id) ?? undefined,
+    ingredients: children,
+    percent: getNumber(record.percent),
+    text: getString(record.text) ?? undefined,
+    vegan: getString(record.vegan) ?? undefined,
+    vegetarian: getString(record.vegetarian) ?? undefined,
+  } satisfies TOpenFoodFactsIngredient;
+
+  return ingredient.id ||
+    ingredient.text ||
+    ingredient.percent !== undefined ||
+    ingredient.vegan ||
+    ingredient.vegetarian ||
+    (ingredient.ingredients?.length ?? 0) > 0
+    ? ingredient
+    : null;
 }

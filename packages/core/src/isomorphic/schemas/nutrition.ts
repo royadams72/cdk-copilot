@@ -3,6 +3,7 @@ import { z } from "zod";
 import { objectIdHex } from "./common";
 import { EdamamMeasureSchema } from "./edamam";
 import { FoodTaxonomySnapshot } from "./food_taxonomy";
+import { OpenFoodFactsSelectionSchema } from "./food_search";
 
 const MealType = z.enum(["breakfast", "lunch", "dinner", "snack", "drink"]);
 export const NutrientKey = z.enum([
@@ -40,6 +41,7 @@ const FoodItem = z.object({
   taxonomy: FoodTaxonomySnapshot.optional(),
   measures: z.array(EdamamMeasureSchema), // measures should be omitted when persisted to DB
   unit: z.string(),
+  openFoodFacts: OpenFoodFactsSelectionSchema.optional(),
 });
 
 export const FoodItemEntry = FoodItem.omit({

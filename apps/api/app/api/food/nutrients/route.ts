@@ -9,6 +9,7 @@ import {
   TEdamamMeasure,
   TEdamamNutritionLookupItem,
   TEdamamNutritionLookupResult,
+  TOpenFoodFactsIngredient,
 } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -80,6 +81,60 @@ const COFID_NUTRIENT_MAP = {
   PROCNT: { cofidKey: "protein_g", label: "Protein", unit: "g" },
 } as const;
 const COFID_ZERO_AS_MISSING_KEYS = new Set(["K", "P"]);
+const OFF_ESTIMATABLE_NUTRIENT_KEYS = [
+  "CHOCDF",
+  "FAT",
+  "FIBTG",
+  "K",
+  "NA",
+  "P",
+  "PROCNT",
+] as const;
+const INGREDIENT_MIXED_DISH_TERMS = [
+  "biryani",
+  "burger",
+  "burrito",
+  "casserole",
+  "curry",
+  "dinner",
+  "dumpling",
+  "fajita",
+  "gratin",
+  "kebab",
+  "lasagna",
+  "lasagne",
+  "meal",
+  "nugget",
+  "pasta",
+  "pie",
+  "pizza",
+  "rice",
+  "risotto",
+  "salad",
+  "sandwich",
+  "stew",
+  "sushi",
+  "taco",
+  "wrap",
+];
+const INGREDIENT_LOW_SIGNAL_TERMS = new Set([
+  "extract",
+  "extracts",
+  "flavouring",
+  "flavoring",
+  "gravy",
+  "herb",
+  "herbs",
+  "oil",
+  "sauce",
+  "seasoning",
+  "spice",
+  "spices",
+  "stock",
+  "sugar",
+  "vinegar",
+  "water",
+]);
 
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
@@ -115,7 +170,6 @@ export async function POST(req: NextRequest) {
           measureURI: EDAMAM_GRAM_MEASURE_URI,
         };
 
-        console.log("lookupItem:", lookupItem);
         console.log("resolvedLookup:", resolvedLookup);
         if (resolvedLookup) {
           resolvedMeasure = resolveMeasureInfo(resolvedLookup);
@@ -133,6 +187,13 @@ export async function POST(req: NextRequest) {
           response = alignEdamamResponseToRequestedPortion(
             response,
             lookupItem,
+          );
+        }
+        if (response) {
+          response = await enrichWithOffIngredientFallback(
+            response,
+            lookupItem,
+            params,
           );
         }
         if (response) {
@@ -169,7 +230,6 @@ async function resolveLookupItem(
   if (lookupItem.source !== "barcode") {
     return lookupItem;
   }
-  console.log("lookupItem resovle", lookupItem);
 
   const mapping = await getReviewedOffMapping(lookupItem.foodId);
   if (!mapping?.edamamMatch?.foodId) {
@@ -252,13 +312,19 @@ async function retryBarcodeNutritionLookup(
   originalLookup: NutritionLookupItem,
   params: URLSearchParams,
 ) {
-  const mainTerms = extractFallbackTerms(
-    originalLookup.foodName,
-    originalLookup.originalText,
-    originalLookup.brand,
-  );
+  const mainTerms = [
+    ...extractFallbackTerms(
+      originalLookup.foodName,
+      originalLookup.originalText,
+      originalLookup.brand,
+    ),
+    ...extractIngredientFallbackTerms(
+      originalLookup.openFoodFacts?.ingredients,
+    ),
+  ];
+  const uniqueTerms = [...new Set(mainTerms)].slice(0, 6);
 
-  for (const term of mainTerms) {
+  for (const term of uniqueTerms) {
     const hints = await fetchEdamamHints(term);
     const fallbackHint =
       hints.find((hint) =>
@@ -304,10 +370,54 @@ async function getReviewedOffMapping(barcode: string) {
   });
 }
 
+function extractIngredientFallbackTerms(
+  ingredients?: TOpenFoodFactsIngredient[],
+) {
+  if (!ingredients?.length) return [];
+
+  const flattened = flattenIngredients(ingredients)
+    .filter((ingredient) => ingredient.text || ingredient.id)
+    .sort((a, b) => {
+      const aPercent = a.percent ?? -1;
+      const bPercent = b.percent ?? -1;
+      return bPercent - aPercent;
+    })
+    .slice(0, 6);
+
+  const terms: string[] = [];
+  for (const ingredient of flattened) {
+    const text =
+      ingredient.text ?? ingredient.id?.replace(/^en:/, "").replace(/-/g, " ");
+    if (!text) continue;
+    terms.push(...extractFallbackTerms(text));
+  }
+
+  return [...new Set(terms)];
+}
+
+function flattenIngredients(
+  ingredients: TOpenFoodFactsIngredient[],
+): TOpenFoodFactsIngredient[] {
+  const flattened: TOpenFoodFactsIngredient[] = [];
+
+  for (const ingredient of ingredients) {
+    flattened.push(ingredient);
+    if (ingredient.ingredients?.length) {
+      flattened.push(...flattenIngredients(ingredient.ingredients));
+    }
+  }
+
+  return flattened;
+}
+
 async function enrichWithCofidFallback(
   response: any,
   lookupItem: NutritionLookupItem,
 ) {
+  if (!hasMissingEstimatableNutrients(response)) {
+    return response;
+  }
+
   const cofidMatch = await findBestCofidMatch(lookupItem);
   if (!cofidMatch) {
     return response;
@@ -351,6 +461,329 @@ async function enrichWithCofidFallback(
         : (caloriesFromCofid ?? response?.calories),
     totalNutrients,
   });
+}
+
+async function enrichWithOffIngredientFallback(
+  response: any,
+  lookupItem: NutritionLookupItem,
+  params: URLSearchParams,
+) {
+  if (!hasMissingEstimatableNutrients(response)) {
+    return response;
+  }
+
+  const composite = await buildOffIngredientNutritionEstimate(
+    lookupItem,
+    params,
+    resolveResponseWeight(response, lookupItem),
+  );
+  if (!composite) {
+    return response;
+  }
+
+  const totalNutrients = {
+    ...(response?.totalNutrients ?? {}),
+  } as Record<string, { label: string; quantity: number; unit: string }>;
+
+  for (const [key, entry] of Object.entries(composite.totalNutrients)) {
+    if (!shouldFillMissingNutrient(totalNutrients[key], key)) continue;
+    totalNutrients[key] = entry as {
+      label: string;
+      quantity: number;
+      unit: string;
+    };
+  }
+
+  const nextCalories = shouldFillMissingCalories(response?.calories)
+    ? (composite.calories ?? response?.calories)
+    : response?.calories;
+
+  return normalizeNutritionResponse({
+    ...response,
+    calories: nextCalories,
+    totalNutrients,
+  });
+}
+
+async function buildOffIngredientNutritionEstimate(
+  lookupItem: NutritionLookupItem,
+  params: URLSearchParams,
+  targetWeight: number | undefined,
+) {
+  const weightedIngredients = buildWeightedIngredientCandidates(
+    lookupItem.openFoodFacts?.ingredients,
+  );
+  if (!weightedIngredients.length) {
+    return null;
+  }
+
+  const matches = await Promise.all(
+    weightedIngredients.map(async (ingredient) => {
+      const hints = await fetchEdamamHints(ingredient.query);
+      const bestHint = pickBestIngredientHint(hints, ingredient.query);
+      if (!bestHint) return null;
+
+      const ingredientLookup: NutritionLookupItem = {
+        brand: bestHint.food.brand,
+        foodId: bestHint.food.foodId,
+        foodName: bestHint.food.label,
+        measures: bestHint.measures ?? [],
+        measureURI: EDAMAM_GRAM_MEASURE_URI,
+        quantity: 100,
+        source: "api",
+        unit: "g",
+      };
+      console.log(ingredient.query, ":", ingredientLookup);
+
+      const ingredientResponse = await requestNutrition(
+        ingredientLookup,
+        {
+          label: "gram",
+          measureURI: EDAMAM_GRAM_MEASURE_URI,
+        },
+        params,
+      );
+      if (!ingredientResponse) return null;
+
+      return {
+        response: ingredientResponse,
+        weight: ingredient.weight,
+      };
+    }),
+  );
+
+  const validMatches = matches.filter(
+    (
+      match,
+    ): match is {
+      response: any;
+      weight: number;
+    } => !!match,
+  );
+  if (!validMatches.length) {
+    return null;
+  }
+  type NutrientEntry = { label: string; quantity: number; unit: string };
+  const totalNutrients: Record<string, NutrientEntry> = {};
+  let calories = 0;
+
+  for (const match of validMatches) {
+    calories += (match.response?.calories ?? 0) * match.weight;
+    for (const [key, entry] of Object.entries(
+      match.response?.totalNutrients ?? {},
+    )) {
+      const nutrientEntry = entry as NutrientEntry | undefined;
+      if (!nutrientEntry || typeof nutrientEntry.quantity !== "number")
+        continue;
+      const existing = totalNutrients[key];
+      totalNutrients[key] = {
+        label: nutrientEntry.label,
+        quantity:
+          (existing?.quantity ?? 0) + nutrientEntry.quantity * match.weight,
+        unit: nutrientEntry.unit,
+      };
+    }
+  }
+
+  const portionRatio =
+    typeof targetWeight === "number" &&
+    Number.isFinite(targetWeight) &&
+    targetWeight > 0
+      ? targetWeight / 100
+      : 1;
+
+  for (const entry of Object.values(totalNutrients)) {
+    entry.quantity *= portionRatio;
+  }
+  calories *= portionRatio;
+
+  return normalizeNutritionResponse({
+    calories,
+    totalNutrients,
+  });
+}
+
+function buildWeightedIngredientCandidates(
+  ingredients?: TOpenFoodFactsIngredient[],
+) {
+  if (!ingredients?.length) return [];
+
+  const topLevel = ingredients
+    .map((ingredient, index) => ({
+      index,
+      ingredient,
+      query: normalizeIngredientQuery(
+        ingredient.text ??
+          ingredient.id?.replace(/^en:/, "").replace(/-/g, " "),
+      ),
+    }))
+    .filter((entry) => entry.query)
+    .filter((entry) => !INGREDIENT_LOW_SIGNAL_TERMS.has(entry.query));
+
+  if (!topLevel.length) return [];
+
+  const limited = topLevel.slice(0, 4);
+  const withPercent = limited.filter(
+    (entry) =>
+      typeof entry.ingredient.percent === "number" &&
+      Number.isFinite(entry.ingredient.percent) &&
+      entry.ingredient.percent > 0,
+  );
+  const knownPercentTotal = withPercent.reduce(
+    (sum, entry) => sum + (entry.ingredient.percent ?? 0),
+    0,
+  );
+
+  if (knownPercentTotal > 0) {
+    const remainingEntries = limited.filter(
+      (entry) => typeof entry.ingredient.percent !== "number",
+    );
+    const remainingShare = Math.max(0, 100 - knownPercentTotal);
+    const remainderWeights = buildFallbackIngredientWeights(
+      remainingEntries.length,
+    );
+
+    return limited
+      .map((entry) => {
+        if (typeof entry.ingredient.percent === "number") {
+          return {
+            query: entry.query,
+            weight: entry.ingredient.percent / 100,
+          };
+        }
+        const remainderIndex = remainingEntries.findIndex(
+          (candidate) => candidate.index === entry.index,
+        );
+        const remainderWeight =
+          remainderIndex >= 0 ? (remainderWeights[remainderIndex] ?? 0) : 0;
+        return {
+          query: entry.query,
+          weight: (remainingShare / 100) * remainderWeight,
+        };
+      })
+      .filter((entry) => entry.weight > 0.02);
+  }
+
+  const fallbackWeights = buildFallbackIngredientWeights(limited.length);
+  return limited.map((entry, index) => ({
+    query: entry.query,
+    weight: fallbackWeights[index] ?? 0,
+  }));
+}
+
+function buildFallbackIngredientWeights(count: number) {
+  const presets: Record<number, number[]> = {
+    1: [1],
+    2: [0.65, 0.35],
+    3: [0.5, 0.3, 0.2],
+    4: [0.45, 0.25, 0.18, 0.12],
+  };
+
+  if (presets[count]) {
+    return presets[count];
+  }
+
+  const base = Array.from({ length: count }, (_, index) => 1 / (index + 1));
+  const total = base.reduce((sum, value) => sum + value, 0);
+  return base.map((value) => value / total);
+}
+
+function normalizeIngredientQuery(value?: string) {
+  const normalized = normalizeLookupText(value)
+    .split(" ")
+    .map((token) => singularizeLookupTerm(token))
+    .filter(
+      (token) =>
+        token &&
+        token.length > 2 &&
+        !INGREDIENT_LOW_SIGNAL_TERMS.has(token) &&
+        !COFID_STOP_WORDS.has(token),
+    )
+    .slice(0, 2)
+    .join(" ");
+
+  return normalized.trim();
+}
+
+function pickBestIngredientHint(
+  hints: TEdamamFoodMeasure[],
+  ingredientQuery: string,
+) {
+  let best: TEdamamFoodMeasure | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (const hint of hints) {
+    const score = scoreIngredientHint(hint, ingredientQuery);
+    if (score > bestScore) {
+      best = hint;
+      bestScore = score;
+    }
+  }
+
+  return bestScore >= 15 ? best : null;
+}
+
+function scoreIngredientHint(
+  hint: TEdamamFoodMeasure,
+  ingredientQuery: string,
+) {
+  const label = normalizeLookupText(hint.food.label);
+  const knownAs = normalizeLookupText(hint.food.knownAs);
+  const brand = normalizeLookupText(hint.food.brand);
+  const category = normalizeLookupText(hint.food.category);
+  let score = 0;
+
+  if (label === ingredientQuery || knownAs === ingredientQuery) score += 80;
+  if (hasWord(label, ingredientQuery) || hasWord(knownAs, ingredientQuery))
+    score += 45;
+  if (!brand) score += 12;
+  if (category.includes("generic")) score += 20;
+  if (label.split(" ").length <= 3) score += 12;
+
+  for (const term of INGREDIENT_MIXED_DISH_TERMS) {
+    if (hasWord(label, term) || hasWord(knownAs, term)) {
+      score -= 35;
+    }
+  }
+
+  return score;
+}
+
+function shouldFillMissingCalories(value: unknown) {
+  return typeof value !== "number" || !Number.isFinite(value) || value <= 0;
+}
+
+function shouldFillMissingNutrient(
+  value: { quantity: number } | undefined,
+  key: string,
+) {
+  if (!value || typeof value.quantity !== "number") {
+    return true;
+  }
+
+  if (!Number.isFinite(value.quantity)) {
+    return true;
+  }
+
+  if (COFID_ZERO_AS_MISSING_KEYS.has(key)) {
+    return value.quantity <= 0;
+  }
+
+  return value.quantity < 0;
+}
+
+function hasMissingEstimatableNutrients(response: any) {
+  if (shouldFillMissingCalories(response?.calories)) {
+    return true;
+  }
+
+  const totalNutrients = response?.totalNutrients as
+    | Record<string, { quantity: number }>
+    | undefined;
+
+  return OFF_ESTIMATABLE_NUTRIENT_KEYS.some((key) =>
+    shouldFillMissingNutrient(totalNutrients?.[key], key),
+  );
 }
 
 function alignEdamamResponseToRequestedPortion(
