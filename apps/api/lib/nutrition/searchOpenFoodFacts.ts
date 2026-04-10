@@ -91,6 +91,7 @@ function toOpenFoodFactsCandidate(
   const brand = getString(product.brands)?.split(",")[0]?.trim() || undefined;
   const barcode = getString(product.code) ?? undefined;
   const nutriments = (product.nutriments ?? {}) as Record<string, unknown>;
+  const servingSize = getString(product.serving_size) ?? undefined;
 
   return {
     food: {
@@ -103,7 +104,7 @@ function toOpenFoodFactsCandidate(
       label: productName,
       nutrients: mapNutrients(nutriments),
     },
-    measures: [],
+    measures: buildMeasures(servingSize),
     metadata: {
       barcode,
       imageUrl: getString(product.image_front_small_url) ?? undefined,
@@ -117,11 +118,54 @@ function toOpenFoodFactsCandidate(
         : getString(product.ingredients_text)
           ? "default"
           : undefined,
-      servingSize: getString(product.serving_size) ?? undefined,
+      servingSize,
       ukMarketMatch: isUkRelevant(product),
     },
     provider: "open_food_facts",
   };
+}
+
+function buildMeasures(servingSize?: string) {
+  const parsedServing = parseServingSizeMeasure(servingSize);
+  return parsedServing ? [parsedServing] : [];
+}
+
+function parseServingSizeMeasure(servingSize?: string): TFoodSearchCandidate["measures"][number] | null {
+  if (!servingSize) return null;
+
+  const normalized = servingSize.trim().replace(/\s+/g, " ");
+  const match = normalized.match(
+    /^(\d+(?:\.\d+)?)\s+(.+?)\s*\((\d+(?:\.\d+)?)\s*g\)$/i,
+  );
+  if (!match) return null;
+
+  const quantity = Number.parseFloat(match[1]);
+  const label = normalizeServingLabel(match[2]);
+  const grams = Number.parseFloat(match[3]);
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    !label ||
+    !Number.isFinite(grams) ||
+    grams <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    label,
+    uri: `local://measure/${label.replace(/\s+/g, "-")}`,
+    weight: grams / quantity,
+  };
+}
+
+function normalizeServingLabel(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 function mapNutrients(nutriments: Record<string, unknown>): TSearchFoodNutrients {

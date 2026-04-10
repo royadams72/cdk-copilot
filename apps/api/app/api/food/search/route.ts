@@ -508,7 +508,11 @@ async function resolveMatchesForItem(item: TLogMealItem) {
 
   if (brandedQuery) {
     const offResults = await searchOpenFoodFacts(query);
-
+    console.log(
+      "offResults",
+      offResults.map((food) => food),
+      // offResults.map((food) => [food, food.food.nutrients]),
+    );
     const rankedOff = offResults
       .map((candidate) => ({
         candidate,

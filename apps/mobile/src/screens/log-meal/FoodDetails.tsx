@@ -232,7 +232,7 @@ export default function FoodDetails() {
 
               <Text style={logMealStyles.helperText}>
                 {portionConfig.servingWeight
-                  ? `1 serving = ${portionConfig.servingLabel} (${formatNumber(portionConfig.servingWeight)} g)`
+                  ? `1 serving = ${formatNumber(portionConfig.servingWeight)} g`
                   : "Serving weight is not available for this food yet."}
               </Text>
             </View>
@@ -267,6 +267,52 @@ export default function FoodDetails() {
                 NutritionStyles.modalButtonPrimary,
               ]}
               onPress={() => {
+                if (
+                  selectedFood &&
+                  selectedFood.groupId &&
+                  portionConfig &&
+                  groupInfo
+                ) {
+                  const nextUnit =
+                    portionConfig.mode === "gram"
+                      ? "gram"
+                      : portionConfig.servingLabel;
+                  const nextQuantity = sanitizeQuantity(
+                    portionConfig.quantity,
+                    portionConfig.mode,
+                  );
+                  const currentQuantity =
+                    groupInfo.quantity ?? selectedFood.quantity;
+                  const currentMode = isGramUnit(
+                    normalizeUnit(groupInfo.unit ?? selectedFood.unit),
+                  )
+                    ? "gram"
+                    : "serving";
+                  const currentWeight = quantityToWeight(
+                    currentQuantity,
+                    currentMode,
+                    portionConfig.servingWeight,
+                  );
+                  const nextWeight = quantityToWeight(
+                    nextQuantity,
+                    portionConfig.mode,
+                    portionConfig.servingWeight,
+                  );
+
+                  dispatch(
+                    setPortion({
+                      foodId: selectedFood.foodId,
+                      groupId: selectedFood.groupId,
+                      nutrientRatio:
+                        currentWeight > 0 && nextWeight > 0
+                          ? nextWeight / currentWeight
+                          : 1,
+                      quantity: nextQuantity,
+                      uid: selectedFood.uid,
+                      unit: nextUnit,
+                    }),
+                  );
+                }
                 dispatch(saveActiveItemToMeal());
                 router.replace("/(log-meal)/log-meal?tab=current");
               }}
@@ -324,14 +370,25 @@ function resolvePortionConfig(
   const currentMeasure = measureLookup.get(currentUnitNorm);
   const fallbackServingMeasure = findServingMeasure(measureLookup);
   const fallbackPortionMeasure = findFirstNonGramMeasure(measures);
+  const preferredPortionMeasure =
+    fallbackServingMeasure ?? fallbackPortionMeasure;
+  const shouldDefaultToServing =
+    isGramUnit(currentUnitNorm) &&
+    !currentMeasure &&
+    !!preferredPortionMeasure;
 
-  const servingMeasure = isGramUnit(currentUnitNorm)
-    ? (fallbackServingMeasure ?? fallbackPortionMeasure)
-    : (currentMeasure ?? fallbackServingMeasure ?? fallbackPortionMeasure);
+  const servingMeasure = shouldDefaultToServing
+    ? preferredPortionMeasure
+    : isGramUnit(currentUnitNorm)
+      ? preferredPortionMeasure
+      : (currentMeasure ?? preferredPortionMeasure);
 
   const servingWeight = servingMeasure?.weight;
   const servingLabel = servingMeasure?.label?.trim() || "serving";
-  const mode: PortionMode = isGramUnit(currentUnitNorm) ? "gram" : "serving";
+  const mode: PortionMode =
+    shouldDefaultToServing || !isGramUnit(currentUnitNorm)
+      ? "serving"
+      : "gram";
   const availableModes: PortionMode[] = servingWeight
     ? ["serving", "gram"]
     : mode === "gram"
