@@ -15,7 +15,6 @@ export const TaxonomyMajorGroup = z.enum([
 
 export const FoodTaxonomySource = z.enum([
   "edamam",
-  "cofid",
   "user",
   "barcode",
   "image_ai",

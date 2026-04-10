@@ -4,7 +4,7 @@
 
 ## Key design
 
-- The collection is keyed by `taxonomyKey`, not by Mongo `_id` from CoFID.
+- The collection is keyed by `taxonomyKey`, not by any upstream provider `_id`.
 - `taxonomyKey` is derived from:
   - `source`
   - `sourceFoodId`
