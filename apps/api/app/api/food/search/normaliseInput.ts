@@ -91,16 +91,16 @@ function buildDirectBreadNormalisation(
   if (!isBreadStyleQuery) return null;
 
   return {
-    mealText: input,
     items: [
       {
-        original: input,
+        food: "whole wheat bread",
         normalised: "whole wheat bread",
+        original: input,
         quantity: 1,
         unit: "slice",
-        food: "whole wheat bread",
       },
     ],
+    mealText: input,
   };
 }
 
@@ -108,6 +108,7 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
   const out: TLogMealItem[] = [];
 
   for (const item of items) {
+    console.log("item::::::", items);
     const text = item.normalised.toLowerCase().trim();
     const breadRewrite = rewriteBreadForEdamam(item);
     if (breadRewrite) {
@@ -170,8 +171,9 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
 
     // default: keep as is
     out.push({ ...item, normalised });
+    console.log("out::::::", out);
   }
-  // console.log("out2::::::", out);
+
   return out;
 }
 
@@ -210,7 +212,8 @@ function rewriteBreadForEdamam(item: TLogMealItem) {
     .join(" ")
     .toLowerCase();
 
-  const mentionsBread = /\bbread\b/.test(source) || item.normalised.toLowerCase() === "bread";
+  const mentionsBread =
+    /\bbread\b/.test(source) || item.normalised.toLowerCase() === "bread";
   if (!mentionsBread) return null;
 
   if (/\bbrown bread\b/.test(source)) {

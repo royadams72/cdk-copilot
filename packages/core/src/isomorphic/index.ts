@@ -1,5 +1,4 @@
 export * from "./schemas/auth_links";
-export * from "./schemas/base_foods";
 export * from "./schemas/edamam";
 export * from "./schemas/exercise_reference";
 export * from "./schemas/food_taxonomy";

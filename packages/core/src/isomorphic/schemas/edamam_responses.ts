@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { EdamamMeasureSchema } from "./edamam";
-import { OpenFoodFactsSelectionSchema } from "./food_search";
 
 /**
  * Generic nutrient entry: label + quantity + unit
@@ -54,7 +53,6 @@ export const EdamamNutritionLookupItemSchema = z.object({
   originalText: z.string().optional(),
   quantity: z.number(),
   unit: z.string().optional(),
-  openFoodFacts: OpenFoodFactsSelectionSchema.optional(),
 });
 
 export const EdamamResolvedMeasureSchema = z.object({

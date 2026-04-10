@@ -32,7 +32,6 @@
     "dev": "pnpm -r run dev",
     "build": "pnpm --filter @ckd/core build && pnpm --filter ./apps/api build",
     "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
-    "ingest:cofid": "tsx scripts/ingest-cofid.ts",
     "ingest:dmd": "tsx scripts/ingest-dmd.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",

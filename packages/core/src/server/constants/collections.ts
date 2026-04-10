@@ -12,7 +12,6 @@ export const COLLECTIONS = {
   AuthLinks: "auth_links",
   AuthTokens: "auth_tokens",
 
-  BaseFoods: "base_foods",
   CarePlans: "care_plans",
   CareTeams: "care_teams",
 
@@ -26,7 +25,6 @@ export const COLLECTIONS = {
 
   ClinicalReferenceRules: "clinical_reference_rules",
   ExerciseReference: "exercise_reference",
-  FoodMappings: "food_mappings",
   FoodSwapRules: "food_swap_rules",
   FoodTaxonomy: "food_taxonomy",
   LabsLedger: "labs_ledger",

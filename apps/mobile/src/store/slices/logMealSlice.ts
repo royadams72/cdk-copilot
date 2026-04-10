@@ -647,10 +647,7 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
       return {
         foodItems: sortFoodItemsForQuery(
           dedupeFoodMatches(item.matches ?? []).map<TFoodItem>((match) => {
-            const foodId =
-              match.provider === "open_food_facts"
-                ? (match.metadata?.barcode ?? match.food.foodId)
-                : match.food.foodId;
+            const foodId = match.food.foodId;
             const name = match.food.label;
             const measures = buildMeasuresForMatch(match);
             const inferredUnit =
@@ -680,29 +677,15 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
                 carbsG: match.food.nutrients.carbsG,
                 fatG: match.food.nutrients.fatG,
                 fiberG: match.food.nutrients.fiberG,
-                phosphorusMg: normalizeBarcodeMicronutrient(
-                  match.provider,
-                  match.food.nutrients.phosphorusMg,
-                ),
-                potassiumMg: normalizeBarcodeMicronutrient(
-                  match.provider,
-                  match.food.nutrients.potassiumMg,
-                ),
+                phosphorusMg: match.food.nutrients.phosphorusMg,
+                potassiumMg: match.food.nutrients.potassiumMg,
                 proteinG: match.food.nutrients.proteinG,
-                sodiumMg: normalizeBarcodeMicronutrient(
-                  match.provider,
-                  match.food.nutrients.sodiumMg,
-                ),
+                sodiumMg: match.food.nutrients.sodiumMg,
                 phosphorus_protein_ratio: undefined,
-                source:
-                  match.provider === "open_food_facts"
-                    ? "open_food_facts"
-                    : "edamam",
+                source: "edamam",
               },
               quantity: item.item.quantity,
-              openFoodFacts:
-                match.provider === "open_food_facts" ? match.metadata : undefined,
-              source: match.provider === "open_food_facts" ? "barcode" : "api",
+              source: "api",
               uid,
               unit: inferredUnit,
             };
@@ -757,49 +740,7 @@ function dedupeFoodItemsByLabel(items: TFoodItem[]) {
 }
 
 function buildMeasuresForMatch(match: TFoodSearchCandidate): TEdamamMeasure[] {
-  if (match.measures?.length) return match.measures;
-  const parsedServingMeasure = parseServingSizeMeasure(
-    match.metadata?.servingSize,
-  );
-  return parsedServingMeasure ? [parsedServingMeasure] : [];
-}
-
-function parseServingSizeMeasure(servingSize?: string): TEdamamMeasure | null {
-  if (!servingSize) return null;
-
-  const normalized = servingSize.trim().replace(/\s+/g, " ");
-  const match = normalized.match(
-    /^(\d+(?:\.\d+)?)\s+(.+?)\s*\((\d+(?:\.\d+)?)\s*g\)$/i,
-  );
-  if (!match) return null;
-
-  const quantity = Number.parseFloat(match[1]);
-  const label = match[2].trim();
-  const grams = Number.parseFloat(match[3]);
-
-  if (
-    !Number.isFinite(quantity) ||
-    quantity <= 0 ||
-    !Number.isFinite(grams) ||
-    grams <= 0 ||
-    !label
-  ) {
-    return null;
-  }
-
-  return {
-    label: normalizeServingLabel(label),
-    uri: `local://measure/${normalizeServingLabel(label).replace(/\s+/g, "-")}`,
-    weight: grams / quantity,
-  };
-}
-
-function normalizeServingLabel(label: string) {
-  return label
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, " ")
-    .replace(/\s+/g, " ");
+  return match.measures ?? [];
 }
 
 function sortFoodItemsForQuery(items: TFoodItem[], query: string) {
@@ -1178,14 +1119,4 @@ function extractNutrition(
       : null;
 
   return nutritionUpdated;
-}
-
-function normalizeBarcodeMicronutrient(
-  provider: TFoodSearchCandidate["provider"],
-  value: number | undefined,
-) {
-  if (provider === "open_food_facts" && value === 0) {
-    return undefined;
-  }
-  return value;
 }

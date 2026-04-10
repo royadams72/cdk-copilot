@@ -5,9 +5,6 @@ export const SCOPES = {
   USERS_CLINICAL_READ: "users:clinical:read",
   USERS_CLINICAL_WRITE: "users:clinical:write",
 
-  BASE_FOODS_READ: "base_foods:read",
-  BASE_FOODS_WRITE: "base_foods:write",
-
   FITPLANS_READ: "fitplans:read",
   FITPLANS_WRITE: "fitplans:write",
 
