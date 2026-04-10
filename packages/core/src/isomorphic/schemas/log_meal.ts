@@ -17,6 +17,7 @@ export const LogMealNormalisedSchema = z.object({
 export const LogMealResponseItemSchema = z.object({
   tempId: z.string(),
   item: LogMealItemSchema,
+  parsed: FoodSearchCandidateSchema.nullable().optional(),
   matches: z.array(FoodSearchCandidateSchema).nullable(),
 });
 

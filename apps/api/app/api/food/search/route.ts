@@ -41,13 +41,14 @@ export async function GET(req: NextRequest) {
 
     let searchItems: TLogMealItem[];
     if (looksBrandedQuery(rawQuery)) {
+      const parsedPackaged = parsePackagedQuery(rawQuery);
       searchItems = [
         {
-          food: rawQuery,
-          normalised: rawQuery,
+          food: parsedPackaged.food,
+          normalised: parsedPackaged.food,
           original: rawQuery,
-          quantity: 1,
-          unit: null,
+          quantity: parsedPackaged.quantity,
+          unit: parsedPackaged.unit,
         },
       ];
     } else {
@@ -58,7 +59,6 @@ export async function GET(req: NextRequest) {
         throw new Error("Normalisation failed");
       }
       searchItems = rewriteForEdamam(normalized.items);
-      console.log(searchItems);
     }
     const results = await Promise.all(searchItems.map(resolveMatchesForItem));
 
@@ -104,7 +104,10 @@ async function pickBestEdamamFood(
   );
 }
 
-async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
+async function fetchEdamamHints(query: string): Promise<{
+  hints: TEdamamFoodMeasure[];
+  parsed: TEdamamFoodMeasure[];
+}> {
   const responses = await Promise.all(
     SEARCH_CATEGORIES.map(async (category) => {
       const params = new URLSearchParams({
@@ -121,14 +124,19 @@ async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
       }
 
       const data = await res.json();
-      return [
-        ...toParsedCandidates(data?.parsed),
-        ...((data?.hints ?? []) as TEdamamFoodMeasure[]),
-      ];
+      return {
+        hints: (data?.hints ?? []) as TEdamamFoodMeasure[],
+        parsed: toParsedCandidates(data?.parsed),
+      };
     }),
   );
 
-  return dedupeHints(responses.flat());
+  const parsed = dedupeHints(responses.flatMap((response) => response.parsed));
+  const hints = dedupeHints(
+    responses.flatMap((response) => [...response.parsed, ...response.hints]),
+  );
+
+  return { hints, parsed };
 }
 
 function toParsedCandidates(parsed: unknown): TEdamamFoodMeasure[] {
@@ -140,15 +148,36 @@ function toParsedCandidates(parsed: unknown): TEdamamFoodMeasure[] {
         return null;
 
       const record = entry as {
-        food?: TEdamamFoodMeasure["food"];
+        food?: Partial<TEdamamFoodMeasure["food"]>;
         measure?: TEdamamFoodMeasure["measures"][number];
+        text?: string;
       };
       if (!record.food) return null;
 
-      return {
-        food: record.food,
+      const fallbackLabel =
+        normalizeParsedText(record.text) ||
+        normalizeParsedText(record.food.label) ||
+        normalizeParsedText(record.food.knownAs);
+      if (!fallbackLabel) return null;
+
+      const candidate: TEdamamFoodMeasure = {
+        food: {
+          category: record.food.category ?? "",
+          categoryLabel: record.food.categoryLabel ?? "",
+          foodId: record.food.foodId ?? fallbackLabel.toLowerCase(),
+          knownAs: record.food.knownAs ?? undefined,
+          label: fallbackLabel,
+          brand: record.food.brand ?? undefined,
+          foodContentsLabel: record.food.foodContentsLabel ?? undefined,
+          image: record.food.image ?? undefined,
+          nutrients:
+            (record.food.nutrients as TEdamamFoodMeasure["food"]["nutrients"]) ??
+            {},
+        },
         measures: record.measure ? [record.measure] : [],
-      } satisfies TEdamamFoodMeasure;
+      };
+
+      return candidate;
     })
     .filter((entry): entry is TEdamamFoodMeasure => entry !== null);
 }
@@ -429,7 +458,7 @@ function balanceEdamamCandidates(
   const generic = candidates.filter(
     (candidate) => !isBrandedCandidate(candidate),
   );
-  console.log("gb:", generic, branded);
+
   if (looksBrandedQuery(query)) {
     return [...branded, ...generic].slice(0, 8);
   }
@@ -545,12 +574,14 @@ function isSimpleIngredientQuery(query: string) {
 async function resolveMatchesForItem(item: TLogMealItem) {
   const tempId = makeRandomId();
   const query = item.normalised.trim();
-  const hints = await fetchEdamamHints(query);
+  const { hints, parsed } = await fetchEdamamHints(query);
   const matches = await pickBestEdamamFood(hints, query);
+  const parsedCandidate = await pickBestEdamamFood(parsed, query);
 
   return {
     item,
     matches,
+    parsed: parsedCandidate?.[0] ?? null,
     tempId,
   } satisfies TLogMealResponseItem;
 }
@@ -569,4 +600,36 @@ function hasWord(text: string, word: string) {
 
 function escapeRegex(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parsePackagedQuery(query: string) {
+  const normalized = query.trim().replace(/\s+/g, " ");
+  const match = normalized.match(
+    /\b(\d+(?:\.\d+)?)\s?(g|gram|grams|kg|kilogram|kilograms|ml|milliliter|milliliters|l|liter|liters)\b/i,
+  );
+
+  if (!match) {
+    return {
+      food: normalized,
+      quantity: 1,
+      unit: null,
+    };
+  }
+
+  const quantity = Number.parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  const food = normalized
+    .replace(match[0], " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    food: food || normalized,
+    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+    unit,
+  };
+}
+
+function normalizeParsedText(value: string | undefined) {
+  return (value ?? "").trim();
 }

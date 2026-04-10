@@ -39,7 +39,6 @@ import {
   selectItemsSummary,
   selectMeal,
   selectMealCandidate,
-  selectSearchResults,
   setActiveItem,
   setEatenAt,
 } from "@/store/slices/logMealSlice";
@@ -107,7 +106,6 @@ export default function LogMeal() {
   const eatenAtIso = useAppSelector(selectEatenAt);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const mealCandidate = useAppSelector(selectMealCandidate);
-  const searchResults = useAppSelector(selectSearchResults);
 
   const meal = useAppSelector((state) => {
     if (!mealType) return [] as TFoodItem[];
