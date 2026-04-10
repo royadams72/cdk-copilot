@@ -183,6 +183,7 @@ export async function POST(req: NextRequest) {
         if (!response && lookupItem.source === "barcode") {
           response = await retryBarcodeNutritionLookup(lookupItem, params);
         }
+
         if (response) {
           response = alignEdamamResponseToRequestedPortion(
             response,
@@ -323,6 +324,7 @@ async function retryBarcodeNutritionLookup(
     ),
   ];
   const uniqueTerms = [...new Set(mainTerms)].slice(0, 6);
+  // console.log("originalLookup.openFoodFacts:", originalLookup.openFoodFacts);
 
   for (const term of uniqueTerms) {
     const hints = await fetchEdamamHints(term);

@@ -65,10 +65,7 @@ export default function FoodDetails() {
 
   useEffect(() => {
     if (!selectedFood || !groupInfo || !selectedFood.uid) return;
-    if (
-      selectedFood.source !== "barcode" &&
-      !hasMissingCoreNutrients(selectedFood)
-    ) {
+    if (!hasMissingCoreNutrients(selectedFood)) {
       return;
     }
     if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
