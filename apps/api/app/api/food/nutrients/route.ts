@@ -183,13 +183,15 @@ export async function POST(req: NextRequest) {
         if (!response && lookupItem.source === "barcode") {
           response = await retryBarcodeNutritionLookup(lookupItem, params);
         }
-
+        console.dir("response1", response);
         if (response) {
           response = alignEdamamResponseToRequestedPortion(
             response,
             lookupItem,
           );
         }
+        // console.dir("response2", response);
+
         if (response) {
           response = await enrichWithOffIngredientFallback(
             response,
@@ -313,28 +315,22 @@ async function retryBarcodeNutritionLookup(
   originalLookup: NutritionLookupItem,
   params: URLSearchParams,
 ) {
-  const mainTerms = [
-    ...extractFallbackTerms(
-      originalLookup.foodName,
-      originalLookup.originalText,
-      originalLookup.brand,
-    ),
-    ...extractIngredientFallbackTerms(
-      originalLookup.openFoodFacts?.ingredients,
-    ),
-  ];
-  const uniqueTerms = [...new Set(mainTerms)].slice(0, 6);
-  // console.log("originalLookup.openFoodFacts:", originalLookup.openFoodFacts);
-
-  for (const term of uniqueTerms) {
-    const hints = await fetchEdamamHints(term);
+  const candidateQueries = buildBarcodeFallbackQueries(originalLookup).slice(
+    0,
+    8,
+  );
+  console.log("candidateQueries:", candidateQueries);
+  for (const query of candidateQueries) {
+    console.log("query:", query);
+    const hints = await fetchEdamamHints(query);
     const fallbackHint =
       hints.find((hint) =>
-        hasWord(normalizeLookupText(hint.food.label), term),
+        hasWord(normalizeLookupText(hint.food.label), query),
       ) ??
       hints.find((hint) =>
-        hasWord(normalizeLookupText(hint.food.knownAs), term),
+        hasWord(normalizeLookupText(hint.food.knownAs), query),
       ) ??
+      pickBestBarcodeFallbackHint(hints, originalLookup, query) ??
       null;
 
     if (!fallbackHint) continue;
@@ -347,6 +343,8 @@ async function retryBarcodeNutritionLookup(
       source: "api",
     };
     const fallbackMeasure = resolveMeasureInfo(fallbackLookup);
+    console.log("fallbackMeasure:");
+
     const response = await requestNutrition(
       fallbackLookup,
       fallbackMeasure,
@@ -358,6 +356,122 @@ async function retryBarcodeNutritionLookup(
   }
 
   return null;
+}
+
+function buildBarcodeFallbackQueries(lookupItem: NutritionLookupItem) {
+  const normalizedFoodName = normalizeLookupText(lookupItem.foodName);
+  const normalizedOriginalText = normalizeLookupText(lookupItem.originalText);
+  const normalizedBrand = normalizeLookupText(lookupItem.brand);
+  const phraseQueries = [
+    [normalizedBrand, normalizedFoodName].filter(Boolean).join(" ").trim(),
+    [normalizedBrand, normalizedOriginalText].filter(Boolean).join(" ").trim(),
+    normalizedFoodName,
+    normalizedOriginalText,
+    normalizeProductPhrase(normalizedFoodName || normalizedOriginalText),
+  ].filter(Boolean);
+  const termQueries = [
+    ...extractFallbackTerms(
+      lookupItem.foodName,
+      lookupItem.originalText,
+      lookupItem.brand,
+    ),
+    ...extractIngredientFallbackTerms(lookupItem.openFoodFacts?.ingredients),
+  ];
+
+  return [...new Set([...phraseQueries, ...termQueries])];
+}
+
+function normalizeProductPhrase(value: string) {
+  const genericStopWords = new Set([
+    "by",
+    "can",
+    "canned",
+    "in",
+    "italian",
+    "juice",
+    "organic",
+    "sainsburys",
+    "sainsbury",
+    "sauce",
+    "the",
+    "tinned",
+    "tomato",
+    "water",
+  ]);
+  const preservedPhrases = [
+    "chopped tomato",
+    "chopped tomatoes",
+    "tomato juice",
+  ];
+  const lowerValue = normalizeLookupText(value);
+  const preserved = preservedPhrases.filter((phrase) =>
+    lowerValue.includes(phrase),
+  );
+  const tokens = lowerValue
+    .split(" ")
+    .map((token) => token.trim())
+    .filter((token) => token && !genericStopWords.has(token));
+  const rebuilt = [...preserved, ...tokens]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return rebuilt || lowerValue;
+}
+
+function pickBestBarcodeFallbackHint(
+  hints: TEdamamFoodMeasure[],
+  lookupItem: NutritionLookupItem,
+  query: string,
+) {
+  const desiredText = [
+    normalizeLookupText(lookupItem.brand),
+    normalizeLookupText(lookupItem.foodName),
+    normalizeLookupText(lookupItem.originalText),
+    normalizeLookupText(query),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  let best: TEdamamFoodMeasure | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (const hint of hints) {
+    const score = scoreBarcodeFallbackHint(hint, desiredText);
+    if (score > bestScore) {
+      best = hint;
+      bestScore = score;
+    }
+  }
+
+  return bestScore >= 30 ? best : null;
+}
+
+function scoreBarcodeFallbackHint(
+  hint: TEdamamFoodMeasure,
+  desiredText: string,
+) {
+  const label = normalizeLookupText(hint.food.label);
+  const knownAs = normalizeLookupText(hint.food.knownAs);
+  const brand = normalizeLookupText(hint.food.brand);
+  const category = normalizeLookupText(hint.food.category);
+  const desiredTokens = new Set(
+    desiredText
+      .split(" ")
+      .map((token) => singularizeLookupTerm(token))
+      .filter(Boolean),
+  );
+  let score = 0;
+
+  for (const token of desiredTokens) {
+    if (hasWord(label, token) || hasWord(knownAs, token)) score += 16;
+    if (hasWord(brand, token)) score += 10;
+  }
+
+  if (category.includes("packaged")) score += 8;
+  if (label.includes("tomato") || knownAs.includes("tomato")) score += 12;
+  if (hasCoreFoodConflict(desiredTokens, `${label} ${knownAs}`)) score -= 80;
+
+  return score;
 }
 
 async function getReviewedOffMapping(barcode: string) {
@@ -1061,6 +1175,7 @@ async function findBestCofidMatch(lookupItem: NutritionLookupItem) {
   if (!best || bestScore < 20) {
     return null;
   }
+  console.log("best:", best);
 
   return best;
 }
@@ -1103,8 +1218,38 @@ function scoreCofidCandidate(
   if (/\btomato\b/.test(description) && queryTokens.includes("tomato"))
     score += 20;
   if (/\btuna\b/.test(description) && queryTokens.includes("tuna")) score += 20;
+  if (
+    hasCoreFoodConflict(new Set(queryTokens), `${description} ${searchName}`)
+  ) {
+    score -= 90;
+  }
 
   return score;
+}
+
+function hasCoreFoodConflict(queryTokens: Set<string>, candidateText: string) {
+  const coreFoodGroups = [
+    ["bean", "chickpea", "lentil", "pea"],
+    ["tomato"],
+    ["tuna", "salmon", "sardine", "mackerel"],
+    ["chicken", "turkey"],
+    ["beef", "pork", "sausage", "bacon"],
+    ["rice", "pasta", "noodle"],
+  ];
+
+  for (const group of coreFoodGroups) {
+    const queryHasGroup = group.some((term) => queryTokens.has(term));
+    if (!queryHasGroup) continue;
+
+    const candidateHasGroup = group.some((term) =>
+      hasWord(candidateText, term),
+    );
+    if (!candidateHasGroup) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function resolveResponseWeight(response: any, lookupItem: NutritionLookupItem) {
@@ -1273,6 +1418,7 @@ function normalizeLookupText(text?: string) {
     .toLowerCase()
     .replace(/\btinned\b/g, "canned")
     .replace(/\btin\b/g, "can")
+    .replace(/sainsbury'?s/g, "sainsburys")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ");
 }

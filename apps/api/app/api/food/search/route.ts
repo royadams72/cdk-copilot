@@ -9,7 +9,6 @@ import type {
   TLogMealNormalised,
   TLogMealResponseItem,
 } from "@/packages/core/src/isomorphic/schemas/log_meal";
-import { searchOpenFoodFacts } from "@/apps/api/lib/nutrition/searchOpenFoodFacts";
 import { NextRequest } from "next/server";
 import { applyPhraseRules } from "./applyPhraseRules";
 import { BRAND_MARKERS } from "./brandMarkers";
@@ -93,7 +92,7 @@ async function fetchEdamamHints(query: string): Promise<TEdamamFoodMeasure[]> {
         app_id: foodAppID,
         app_key: foodAppKey,
         ingr: query,
-        "nutrition-type": "logging",
+        "nutrition-type": "cooking",
       });
       params.append("category", category);
 
@@ -502,35 +501,8 @@ function scoreOffCandidate(candidate: TFoodSearchCandidate, query: string) {
 async function resolveMatchesForItem(item: TLogMealItem) {
   const tempId = makeRandomId();
   const query = item.normalised.trim();
-  const brandedQuery = looksBrandedQuery(query);
-
-  let matches: TFoodSearchCandidate[] | null = null;
-
-  if (brandedQuery) {
-    const offResults = await searchOpenFoodFacts(query);
-    console.log(
-      "offResults",
-      offResults.map((food) => food),
-      // offResults.map((food) => [food, food.food.nutrients]),
-    );
-    const rankedOff = offResults
-      .map((candidate) => ({
-        candidate,
-        score: scoreOffCandidate(candidate, query),
-      }))
-      .sort((a, b) => b.score - a.score)
-      .map(({ candidate }) => candidate);
-
-    if (rankedOff.length) {
-      matches = rankedOff.slice(0, 8);
-    } else {
-      const hints = await fetchEdamamHints(query);
-      matches = await pickBestEdamamFood(hints, query);
-    }
-  } else {
-    const hints = await fetchEdamamHints(query);
-    matches = await pickBestEdamamFood(hints, query);
-  }
+  const hints = await fetchEdamamHints(query);
+  const matches = await pickBestEdamamFood(hints, query);
 
   return {
     item,
