@@ -176,7 +176,10 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
 }
 
 function normaliseForEdamam(text: string): string {
-  const lower = text.toLowerCase();
+  const lower = text
+    .toLowerCase()
+    .replace(/\btinned\b/g, "canned")
+    .replace(/\btin\b/g, "can");
 
   const mentionsSeeds = /\b(seed|seeds|pepita|pepitas)\b/i.test(lower);
 
@@ -198,7 +201,7 @@ function normaliseForEdamam(text: string): string {
     }
   }
 
-  return text;
+  return lower.replace(/\s+/g, " ").trim();
 }
 
 function rewriteBreadForEdamam(item: TLogMealItem) {

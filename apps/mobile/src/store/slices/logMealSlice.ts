@@ -4,16 +4,21 @@ import { RootState } from "..";
 import { inferUnitFromMeasures } from "@/store/services/utils";
 // TODO: put these types into package
 import type {
+  TEdamamMeasure,
   TEdamamNutritionLookupResult,
   TEdamamNutritionResponse,
   TFoodItem,
   TFoodItemEntry,
-  TLogMealEdamamResponse,
-  TLogMealItem,
   TMealType,
 } from "@ckd/core";
+import type {
+  TLogMealEdamamResponse,
+  TLogMealItem,
+} from "../../../../../packages/core/src/isomorphic/schemas/log_meal";
+import type { TFoodSearchCandidate } from "../../../../../packages/core/src/isomorphic/schemas/food_search";
 
 export type ItemSummary = {
+  brand: string | undefined;
   caloriesKcal: string;
   carbsG: string;
   fatG: string;
@@ -93,6 +98,20 @@ const logMealSlice = createSlice({
   initialState,
   name: "logMeal",
   reducers: (create) => ({
+    appendFoodsToMeal: create.reducer(
+      (state, action: PayloadAction<{ foods: TFoodItem[] }>) => {
+        if (!state.activeMealType) return;
+        const nextFoods = action.payload.foods.map((food) => {
+          const nextGroup = createFoodGroup(food);
+          return nextGroup.foodItems[0];
+        });
+        state.meal[state.activeMealType] = mergeUniqueMealItems(
+          state.meal[state.activeMealType],
+          nextFoods.filter((item): item is TFoodItem => !!item),
+        );
+        state.isDirty = true;
+      },
+    ),
     applyFetchMealByDate: create.reducer(
       (
         state,
@@ -218,6 +237,13 @@ const logMealSlice = createSlice({
         state.status = "idle";
       },
     ),
+    registerFoodItem: create.reducer(
+      (state, action: PayloadAction<{ food: TFoodItem }>) => {
+        state.foodItems = mergeUniqueFoodGroups(state.foodItems, [
+          createFoodGroup(action.payload.food),
+        ]);
+      },
+    ),
     removeMealItem: create.reducer(
       (state, action: PayloadAction<{ groupId: string }>) => {
         const { groupId } = action.payload;
@@ -257,13 +283,6 @@ const logMealSlice = createSlice({
       mealItems.push(nextFood);
       state.isDirty = true;
     }),
-    registerFoodItem: create.reducer(
-      (state, action: PayloadAction<{ food: TFoodItem }>) => {
-        state.foodItems = mergeUniqueFoodGroups(state.foodItems, [
-          createFoodGroup(action.payload.food),
-        ]);
-      },
-    ),
     setActiveItem: create.reducer(
       (
         state,
@@ -324,21 +343,6 @@ const logMealSlice = createSlice({
         state.searchResults = null;
       },
     ),
-    appendFoodsToMeal: create.reducer(
-      (state, action: PayloadAction<{ foods: TFoodItem[] }>) => {
-        if (!state.activeMealType) return;
-        const nextFoods = action.payload.foods.map((food) => {
-          const nextGroup = createFoodGroup(food);
-          state.foodItems = mergeUniqueFoodGroups(state.foodItems, [nextGroup]);
-          return nextGroup.foodItems[0];
-        });
-        state.meal[state.activeMealType] = mergeUniqueMealItems(
-          state.meal[state.activeMealType],
-          nextFoods.filter((item): item is TFoodItem => !!item),
-        );
-        state.isDirty = true;
-      },
-    ),
     setPortion: create.reducer(
       (
         state,
@@ -372,7 +376,7 @@ const logMealSlice = createSlice({
           item.nutrients = Object.fromEntries(
             Object.entries(item.nutrients).map(([k, v]) => [
               k,
-              v == null ? v : v * safeRatio,
+              typeof v === "number" ? v * safeRatio : v,
             ]),
           ) as typeof item.nutrients;
 
@@ -466,7 +470,7 @@ export const selectMealItemsFromFoodItems = createSelector(
   (foodItemsArr: FoodItemsObj[] | null) => {
     return Array.isArray(foodItemsArr)
       ? foodItemsArr
-          .map((entry) => entry.foodItems[0])
+          .map((entry) => getPreferredFoodItem(entry))
           .filter((foodItem): foodItem is TFoodItem => !!foodItem)
       : [];
   },
@@ -485,18 +489,19 @@ export const selectItemsSummary = createSelector(
           item.nutrients;
         if (!uid || !foodId || !groupId) return null;
         return {
-          caloriesKcal: item.nutrients.caloriesKcal?.toString() ?? "0",
-          carbsG: carbsG?.toString() ?? "0",
-          fatG: fatG?.toString() ?? "0",
-          fiberG: fiberG?.toString() ?? "0",
+          brand: item.brand,
+          caloriesKcal: item.nutrients.caloriesKcal?.toString() ?? "",
+          carbsG: carbsG?.toString() ?? "",
+          fatG: fatG?.toString() ?? "",
+          fiberG: fiberG?.toString() ?? "",
           foodId,
           groupId,
           name,
-          phosphorusMg: phosphorusMg?.toString() ?? "0",
-          potassiumMg: potassiumMg?.toString() ?? "0",
-          proteinG: item.nutrients.proteinG?.toString() ?? "0",
+          phosphorusMg: phosphorusMg?.toString() ?? "",
+          potassiumMg: potassiumMg?.toString() ?? "",
+          proteinG: item.nutrients.proteinG?.toString() ?? "",
           quantity,
-          sodiumMg: sodiumMg?.toString() ?? "0",
+          sodiumMg: sodiumMg?.toString() ?? "",
           uid,
           unit: unit ?? "",
         } satisfies ItemSummary;
@@ -513,7 +518,8 @@ export const selectAcitveGroupSummaries = createSelector(
     if (!activeItem) return null;
     const { foodId, groupId } = activeItem;
     const entry = foodItemsArr?.find((e) => e.groupId === groupId);
-    return entry?.foodItems
+    if (!entry) return null;
+    return dedupeFoodItemsByLabel(entry?.foodItems ?? [])
       .filter((f) => f.foodId !== foodId)
       .map((food) => {
         const { uid, name, foodId, groupId } = food;
@@ -521,18 +527,19 @@ export const selectAcitveGroupSummaries = createSelector(
           food.nutrients;
         if (!foodId || !groupId) return null;
         return {
-          caloriesKcal: food.nutrients.caloriesKcal?.toString() ?? "0",
-          carbsG: carbsG?.toString() ?? "0",
-          fatG: fatG?.toString() ?? "0",
-          fiberG: fiberG?.toString() ?? "0",
+          brand: food.brand,
+          caloriesKcal: food.nutrients.caloriesKcal?.toString() ?? "",
+          carbsG: carbsG?.toString() ?? "",
+          fatG: fatG?.toString() ?? "",
+          fiberG: fiberG?.toString() ?? "",
           foodId,
           groupId,
           name,
-          phosphorusMg: phosphorusMg?.toString() ?? "0",
-          potassiumMg: potassiumMg?.toString() ?? "0",
-          proteinG: food.nutrients.proteinG?.toString() ?? "0",
+          phosphorusMg: phosphorusMg?.toString() ?? "",
+          potassiumMg: potassiumMg?.toString() ?? "",
+          proteinG: food.nutrients.proteinG?.toString() ?? "",
           quantity: entry.groupInfo.quantity,
-          sodiumMg: sodiumMg?.toString() ?? "0",
+          sodiumMg: sodiumMg?.toString() ?? "",
           uid,
           unit: entry.groupInfo.unit ?? "",
         } satisfies ItemSummary;
@@ -575,12 +582,16 @@ function applyNutritionResultsToState(
       const resolvedUnit =
         updatedGroupItems.find((item) => requestedSet.has(item.uid ?? ""))
           ?.unit ?? group.groupInfo.unit;
+      const resolvedQuantity =
+        updatedGroupItems.find((item) => requestedSet.has(item.uid ?? ""))
+          ?.quantity ?? group.groupInfo.quantity;
 
       return {
         ...group,
         foodItems: updatedGroupItems,
         groupInfo: {
           ...group.groupInfo,
+          quantity: resolvedQuantity,
           unit: resolvedUnit,
         },
       };
@@ -619,10 +630,13 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   return (
     data?.items?.map((item) => {
       const seen = new Map<string, number>();
+      const primaryMeasures = item.matches?.[0]
+        ? buildMeasuresForMatch(item.matches[0])
+        : [];
       const groupUnit =
         item.item.unit?.trim() ||
         inferUnitFromMeasures(
-          item.matches?.[0]?.measures ?? [],
+          primaryMeasures,
           item.item.unit ?? "",
           item.item.food,
           item.item.quantity,
@@ -631,14 +645,18 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
       const unitNorm = groupUnit.trim().toLowerCase();
 
       return {
-        foodItems:
-          item.matches?.map<TFoodItem>((m) => {
-            const foodId = m.food.foodId;
-            const name = m.food.label;
+        foodItems: sortFoodItemsForQuery(
+          dedupeFoodMatches(item.matches ?? []).map<TFoodItem>((match) => {
+            const foodId =
+              match.provider === "open_food_facts"
+                ? (match.metadata?.barcode ?? match.food.foodId)
+                : match.food.foodId;
+            const name = match.food.label;
+            const measures = buildMeasuresForMatch(match);
             const inferredUnit =
               item.item.unit?.trim() ||
               inferUnitFromMeasures(
-                m.measures,
+                measures,
                 item.item.unit ?? "",
                 name,
                 item.item.quantity,
@@ -652,26 +670,45 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
             const uid = `${keyBase}|${next}`;
 
             return {
+              brand: match.food.brand,
               foodId,
               groupId: item.tempId,
-              measures: m.measures,
+              measures,
               name,
               nutrients: {
-                caloriesKcal: m.food.nutrients.ENERC_KCAL,
-                fatG: m.food.nutrients.FAT,
-                carbsG: undefined,
-                fiberG: undefined,
-                phosphorusMg: undefined,
-                potassiumMg: undefined,
-                sodiumMg: undefined,
+                caloriesKcal: match.food.nutrients.caloriesKcal,
+                carbsG: match.food.nutrients.carbsG,
+                fatG: match.food.nutrients.fatG,
+                fiberG: match.food.nutrients.fiberG,
+                phosphorusMg: normalizeBarcodeMicronutrient(
+                  match.provider,
+                  match.food.nutrients.phosphorusMg,
+                ),
+                potassiumMg: normalizeBarcodeMicronutrient(
+                  match.provider,
+                  match.food.nutrients.potassiumMg,
+                ),
+                proteinG: match.food.nutrients.proteinG,
+                sodiumMg: normalizeBarcodeMicronutrient(
+                  match.provider,
+                  match.food.nutrients.sodiumMg,
+                ),
                 phosphorus_protein_ratio: undefined,
+                source:
+                  match.provider === "open_food_facts"
+                    ? "open_food_facts"
+                    : "edamam",
               },
               quantity: item.item.quantity,
-              source: "user",
+              openFoodFacts:
+                match.provider === "open_food_facts" ? match.metadata : undefined,
+              source: match.provider === "open_food_facts" ? "barcode" : "api",
               uid,
               unit: inferredUnit,
             };
-          }) ?? [],
+          }),
+          item.item.normalised,
+        ),
         groupId: item.tempId,
         groupInfo: {
           ...item.item,
@@ -682,11 +719,149 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   );
 }
 
-function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
-  if (!items?.length) return [];
-  return items
-    .map((item) => item.foodItems[0])
-    .filter((foodItem): foodItem is TFoodItem => !!foodItem);
+function dedupeFoodMatches(matches: TFoodSearchCandidate[]) {
+  const deduped = new Map<string, TFoodSearchCandidate>();
+
+  for (const match of matches) {
+    const key = [
+      match.provider,
+      normalizeFoodMatchKey(match.food.label)
+        .replace(/\bchicken burgers\b/g, "chicken burger")
+        .replace(/\bburgers\b/g, "burger")
+        .replace(/\bpatties\b/g, "patty"),
+    ].join("|");
+
+    if (!deduped.has(key)) {
+      deduped.set(key, match);
+    }
+  }
+
+  return [...deduped.values()];
+}
+
+function dedupeFoodItemsByLabel(items: TFoodItem[]) {
+  const deduped = new Map<string, TFoodItem>();
+
+  for (const item of items) {
+    const key = normalizeFoodMatchKey(item.name)
+      .replace(/\bchicken burgers\b/g, "chicken burger")
+      .replace(/\bburgers\b/g, "burger")
+      .replace(/\bpatties\b/g, "patty");
+
+    if (!deduped.has(key)) {
+      deduped.set(key, item);
+    }
+  }
+
+  return [...deduped.values()];
+}
+
+function buildMeasuresForMatch(match: TFoodSearchCandidate): TEdamamMeasure[] {
+  if (match.measures?.length) return match.measures;
+  const parsedServingMeasure = parseServingSizeMeasure(
+    match.metadata?.servingSize,
+  );
+  return parsedServingMeasure ? [parsedServingMeasure] : [];
+}
+
+function parseServingSizeMeasure(servingSize?: string): TEdamamMeasure | null {
+  if (!servingSize) return null;
+
+  const normalized = servingSize.trim().replace(/\s+/g, " ");
+  const match = normalized.match(
+    /^(\d+(?:\.\d+)?)\s+(.+?)\s*\((\d+(?:\.\d+)?)\s*g\)$/i,
+  );
+  if (!match) return null;
+
+  const quantity = Number.parseFloat(match[1]);
+  const label = match[2].trim();
+  const grams = Number.parseFloat(match[3]);
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    !Number.isFinite(grams) ||
+    grams <= 0 ||
+    !label
+  ) {
+    return null;
+  }
+
+  return {
+    label: normalizeServingLabel(label),
+    uri: `local://measure/${normalizeServingLabel(label).replace(/\s+/g, "-")}`,
+    weight: grams / quantity,
+  };
+}
+
+function normalizeServingLabel(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function sortFoodItemsForQuery(items: TFoodItem[], query: string) {
+  return [...dedupeFoodItemsByLabel(items)].sort(
+    (a, b) => scoreFoodItemForQuery(b, query) - scoreFoodItemForQuery(a, query),
+  );
+}
+
+function getPreferredFoodItem(group: FoodItemsObj) {
+  return sortFoodItemsForQuery(
+    group.foodItems ?? [],
+    group.groupInfo?.normalised ?? group.groupInfo?.food ?? "",
+  )[0];
+}
+
+function scoreFoodItemForQuery(item: TFoodItem, query: string) {
+  const normalizedQuery = normalizeFoodMatchKey(query);
+  const normalizedName = normalizeFoodMatchKey(item.name);
+  const normalizedBrand = normalizeFoodMatchKey(item.brand);
+  const combined = `${normalizedBrand} ${normalizedName}`.trim();
+  const tokens = normalizedQuery
+    .split(" ")
+    .filter(
+      (token) =>
+        token && !["with", "and", "the", "a", "an", "of"].includes(token),
+    );
+  let score = 0;
+
+  if (normalizedName === normalizedQuery) score += 200;
+  else if (normalizedName.includes(normalizedQuery)) score += 120;
+
+  for (const token of tokens) {
+    if (combined.includes(token)) score += 20;
+    else score -= 40;
+  }
+
+  if (/\bburger\b/.test(normalizedQuery)) {
+    if (/\bburger\b|\bburgers\b|\bpatty\b|\bpatties\b/.test(normalizedName)) {
+      score += 120;
+    } else {
+      score -= 160;
+    }
+
+    if (/\bbun\b|\bbread\b|\broll\b/.test(normalizedName)) {
+      score -= 220;
+    }
+  }
+
+  if (/\bchicken\b/.test(normalizedQuery)) {
+    if (/\bchicken\b/.test(normalizedName)) score += 60;
+    else score -= 160;
+  }
+
+  return score;
+}
+
+function normalizeFoodMatchKey(value: string | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 function buildGroupSignature(group: FoodItemsObj) {
@@ -698,6 +873,13 @@ function buildGroupSignature(group: FoodItemsObj) {
     .trim()
     .toLowerCase();
   return `${foodId}|${name}|${quantity}|${unit}`;
+}
+
+function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
+  if (!items?.length) return [];
+  return items
+    .map((item) => getPreferredFoodItem(item))
+    .filter((foodItem): foodItem is TFoodItem => !!foodItem);
 }
 
 function mergeUniqueFoodGroups(
@@ -851,6 +1033,10 @@ function extractNutrition(
     TEdamamNutritionResponse["totalNutrients"]
   >();
   const measureByFoodId = new Map<string, string>();
+  const weightByUid = new Map<string, number>();
+  const weightByFoodId = new Map<string, number>();
+  const parsedMeasureByUid = new Map<string, string>();
+  const parsedMeasureByFoodId = new Map<string, string>();
 
   data.forEach((result, index) => {
     const requestedUid = requestedUids[index];
@@ -858,6 +1044,9 @@ function extractNutrition(
       nutrientsByUid.set(requestedUid, result.response.totalNutrients);
       if (result.resolvedMeasure.label) {
         measureByUid.set(requestedUid, result.resolvedMeasure.label);
+      }
+      if (typeof result.response.totalWeight === "number") {
+        weightByUid.set(requestedUid, result.response.totalWeight);
       }
     }
 
@@ -867,11 +1056,34 @@ function extractNutrition(
     if (result.resolvedMeasure.label) {
       measureByFoodId.set(requestedFoodId, result.resolvedMeasure.label);
     }
+    if (typeof result.response.totalWeight === "number") {
+      weightByFoodId.set(requestedFoodId, result.response.totalWeight);
+    }
   });
 
   for (const result of data) {
     for (const ingredient of result.response.ingredients ?? []) {
       for (const parsed of ingredient.parsed ?? []) {
+        const parsedMeasureLabel =
+          typeof parsed.measure === "string" ? parsed.measure : undefined;
+        const parsedWeight =
+          typeof parsed.weight === "number" && Number.isFinite(parsed.weight)
+            ? parsed.weight
+            : undefined;
+
+        const requestedUid = requestedUids[data.indexOf(result)];
+        if (requestedUid) {
+          if (parsedMeasureLabel && !parsedMeasureByUid.has(requestedUid)) {
+            parsedMeasureByUid.set(requestedUid, parsedMeasureLabel);
+          }
+          if (
+            typeof parsedWeight === "number" &&
+            !weightByUid.has(requestedUid)
+          ) {
+            weightByUid.set(requestedUid, parsedWeight);
+          }
+        }
+
         if (!nutrientsByFoodId.has(parsed.foodId)) {
           nutrientsByFoodId.set(parsed.foodId, result.response.totalNutrients);
         }
@@ -880,6 +1092,15 @@ function extractNutrition(
           result.resolvedMeasure.label
         ) {
           measureByFoodId.set(parsed.foodId, result.resolvedMeasure.label);
+        }
+        if (parsedMeasureLabel && !parsedMeasureByFoodId.has(parsed.foodId)) {
+          parsedMeasureByFoodId.set(parsed.foodId, parsedMeasureLabel);
+        }
+        if (
+          !weightByFoodId.has(parsed.foodId) &&
+          typeof parsedWeight === "number"
+        ) {
+          weightByFoodId.set(parsed.foodId, parsedWeight);
         }
       }
     }
@@ -890,31 +1111,63 @@ function extractNutrition(
       (item.uid ? nutrientsByUid.get(item.uid) : undefined) ??
       (item.foodId ? nutrientsByFoodId.get(item.foodId) : undefined);
     if (!n) return item;
+    const resolvedUnit =
+      (item.uid ? parsedMeasureByUid.get(item.uid) : undefined) ??
+      (item.uid ? measureByUid.get(item.uid) : undefined) ??
+      parsedMeasureByFoodId.get(item.foodId) ??
+      measureByFoodId.get(item.foodId) ??
+      item.unit;
+    const resolvedWeight =
+      (item.uid ? weightByUid.get(item.uid) : undefined) ??
+      weightByFoodId.get(item.foodId);
+    const normalizedResolvedUnit = (resolvedUnit ?? "").trim().toLowerCase();
+    const shouldAdoptResolvedWeight =
+      typeof resolvedWeight === "number" &&
+      Number.isFinite(resolvedWeight) &&
+      resolvedWeight > 1 &&
+      item.quantity <= 1 &&
+      (normalizedResolvedUnit === "gram" ||
+        normalizedResolvedUnit === "grams" ||
+        normalizedResolvedUnit === "g");
     return {
       ...item,
       nutrients: {
         ...item.nutrients,
-        caloriesKcal: n.ENERC_KCAL?.quantity ?? item.nutrients.caloriesKcal,
-        carbsG: n.CHOCDF?.quantity ?? item.nutrients.carbsG,
-        fatG: n.FAT?.quantity ?? item.nutrients.fatG,
+        caloriesKcal: item.nutrients.caloriesKcal ?? n.ENERC_KCAL?.quantity,
+        carbsG: item.nutrients.carbsG ?? n.CHOCDF?.quantity,
+        fatG: item.nutrients.fatG ?? n.FAT?.quantity,
         fiberG: n.FIBTG?.quantity ?? item.nutrients.fiberG,
         phosphorus_protein_ratio: phosphorus_protein_ratio(
-          n.P?.quantity ?? item.nutrients.phosphorusMg,
-          n.PROCNT?.quantity ?? item.nutrients.proteinG,
+          item.nutrients.phosphorusMg ?? n.P?.quantity,
+          item.nutrients.proteinG ?? n.PROCNT?.quantity,
         ),
-        phosphorusMg: n.P?.quantity ?? item.nutrients.phosphorusMg,
-        potassiumMg: n.K?.quantity ?? item.nutrients.potassiumMg,
-        proteinG: n.PROCNT?.quantity ?? item.nutrients.proteinG,
-        sodiumMg: n.NA?.quantity ?? item.nutrients.sodiumMg,
+        phosphorusMg: item.nutrients.phosphorusMg ?? n.P?.quantity,
+
+        potassiumMg: item.nutrients.potassiumMg ?? n.K?.quantity,
+        proteinG: item.nutrients.proteinG ?? n.PROCNT?.quantity,
+        sodiumMg: item.nutrients.sodiumMg ?? n.NA?.quantity,
       },
-      unit:
-        (item.uid ? measureByUid.get(item.uid) : undefined) ??
-        measureByFoodId.get(item.foodId) ??
-        item.unit,
+      quantity: shouldAdoptResolvedWeight
+        ? Math.round(resolvedWeight)
+        : item.quantity,
+      unit: resolvedUnit,
     };
   };
 
-  const phosphorus_protein_ratio = (a: number, b: number): number => {
+  const phosphorus_protein_ratio = (
+    a: number | undefined,
+    b: number | undefined,
+  ): number | undefined => {
+    if (
+      typeof a !== "number" ||
+      !Number.isFinite(a) ||
+      a <= 0 ||
+      typeof b !== "number" ||
+      !Number.isFinite(b) ||
+      b <= 0
+    ) {
+      return undefined;
+    }
     return a / b;
   };
 
@@ -925,4 +1178,14 @@ function extractNutrition(
       : null;
 
   return nutritionUpdated;
+}
+
+function normalizeBarcodeMicronutrient(
+  provider: TFoodSearchCandidate["provider"],
+  value: number | undefined,
+) {
+  if (provider === "open_food_facts" && value === 0) {
+    return undefined;
+  }
+  return value;
 }

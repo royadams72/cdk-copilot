@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EdamamFoodMeasureSchema } from "./edamam";
+import { FoodSearchCandidateSchema } from "./food_search";
 
 export const LogMealItemSchema = z.object({
   original: z.string(),
@@ -17,7 +17,7 @@ export const LogMealNormalisedSchema = z.object({
 export const LogMealResponseItemSchema = z.object({
   tempId: z.string(),
   item: LogMealItemSchema,
-  matches: z.array(EdamamFoodMeasureSchema).nullable(),
+  matches: z.array(FoodSearchCandidateSchema).nullable(),
 });
 
 export const LogMealEdamamResponseSchema = z.object({

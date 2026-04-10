@@ -57,18 +57,21 @@ export default function FoodDetails() {
     return (
       nutrients.caloriesKcal == null ||
       nutrients.proteinG == null ||
-      nutrients.phosphorusMg == null ||
-      nutrients.potassiumMg == null ||
-      nutrients.sodiumMg == null
+      isBarcodeUnknownMicronutrient(food, nutrients.phosphorusMg) ||
+      isBarcodeUnknownMicronutrient(food, nutrients.potassiumMg) ||
+      isBarcodeUnknownMicronutrient(food, nutrients.sodiumMg)
     );
   };
 
   useEffect(() => {
     if (!selectedFood || !groupInfo || !selectedFood.uid) return;
-    if (!hasMissingCoreNutrients(selectedFood)) return;
+    if (!hasMissingCoreNutrients(selectedFood)) {
+      return;
+    }
     if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
 
     requestedNutritionByUidRef.current.add(selectedFood.uid);
+
     void (async () => {
       try {
         const results = await fetchNutritionData({
@@ -184,7 +187,9 @@ export default function FoodDetails() {
       >
         {selectedFood && groupInfo && portionConfig ? (
           <View style={logMealStyles.detailsWrap}>
-            <Text style={typeStyles.title}>{selectedFood.name}</Text>
+            <Text style={typeStyles.title}>
+              {buildDisplayFoodName(selectedFood.name, selectedFood.brand)}
+            </Text>
 
             <View style={logMealStyles.controlCard}>
               <View style={logMealStyles.controlRow}>
@@ -227,14 +232,20 @@ export default function FoodDetails() {
 
               <Text style={logMealStyles.helperText}>
                 {portionConfig.servingWeight
-                  ? `1 serving = ${portionConfig.servingLabel} (${formatNumber(portionConfig.servingWeight)} g)`
+                  ? `1 serving = ${formatNumber(portionConfig.servingWeight)} g`
                   : "Serving weight is not available for this food yet."}
               </Text>
             </View>
 
             <View style={logMealStyles.nutrientList}>
               {Object.entries(selectedFood.nutrients ?? {})
-                .filter(([, value]) => value !== null && value !== undefined)
+                .filter(
+                  ([key, value]) =>
+                    key !== "source" &&
+                    key !== "unit" &&
+                    value !== null &&
+                    value !== undefined,
+                )
                 .map(([key, value]) => (
                   <View key={key} style={logMealStyles.nutrientRow}>
                     <Text style={logMealStyles.nutrientLabel}>
@@ -256,6 +267,52 @@ export default function FoodDetails() {
                 NutritionStyles.modalButtonPrimary,
               ]}
               onPress={() => {
+                if (
+                  selectedFood &&
+                  selectedFood.groupId &&
+                  portionConfig &&
+                  groupInfo
+                ) {
+                  const nextUnit =
+                    portionConfig.mode === "gram"
+                      ? "gram"
+                      : portionConfig.servingLabel;
+                  const nextQuantity = sanitizeQuantity(
+                    portionConfig.quantity,
+                    portionConfig.mode,
+                  );
+                  const currentQuantity =
+                    groupInfo.quantity ?? selectedFood.quantity;
+                  const currentMode = isGramUnit(
+                    normalizeUnit(groupInfo.unit ?? selectedFood.unit),
+                  )
+                    ? "gram"
+                    : "serving";
+                  const currentWeight = quantityToWeight(
+                    currentQuantity,
+                    currentMode,
+                    portionConfig.servingWeight,
+                  );
+                  const nextWeight = quantityToWeight(
+                    nextQuantity,
+                    portionConfig.mode,
+                    portionConfig.servingWeight,
+                  );
+
+                  dispatch(
+                    setPortion({
+                      foodId: selectedFood.foodId,
+                      groupId: selectedFood.groupId,
+                      nutrientRatio:
+                        currentWeight > 0 && nextWeight > 0
+                          ? nextWeight / currentWeight
+                          : 1,
+                      quantity: nextQuantity,
+                      uid: selectedFood.uid,
+                      unit: nextUnit,
+                    }),
+                  );
+                }
                 dispatch(saveActiveItemToMeal());
                 router.replace("/(log-meal)/log-meal?tab=current");
               }}
@@ -268,27 +325,37 @@ export default function FoodDetails() {
         ) : null}
 
         {foods &&
-          foods.map((food) => (
-            <FoodCard
-              key={food.uid}
-              title={food.name}
-              subtitle={`${formatNumber(food.quantity)} ${formatMeasureUnit(food.unit)}`}
-              description={buildKnownNutrientSummary(food)}
-              onPress={() =>
-                dispatch(
-                  setActiveItem({
-                    foodId: food.foodId,
-                    groupId: food.groupId,
-                    uid: food.uid,
-                  }),
-                )
-              }
-              style={logMealStyles.listCard}
-            />
-          ))}
+          foods.map(
+            (food) =>
+              food && (
+                <FoodCard
+                  key={food.uid}
+                  title={buildDisplayFoodName(food.name, food.brand)}
+                  subtitle={`${formatNumber(food.quantity)} ${formatMeasureUnit(food.unit)}`}
+                  description={buildKnownNutrientSummary(food)}
+                  onPress={() =>
+                    dispatch(
+                      setActiveItem({
+                        foodId: food.foodId,
+                        groupId: food.groupId,
+                        uid: food.uid,
+                      }),
+                    )
+                  }
+                  style={logMealStyles.listCard}
+                />
+              ),
+          )}
       </ScrollView>
     </View>
   );
+}
+
+function buildDisplayFoodName(name: string, brand?: string) {
+  const trimmedBrand = brand?.trim();
+  if (!trimmedBrand) return name;
+  if (name.toLowerCase().includes(trimmedBrand.toLowerCase())) return name;
+  return `${name} (${trimmedBrand})`;
 }
 
 function resolvePortionConfig(
@@ -303,14 +370,25 @@ function resolvePortionConfig(
   const currentMeasure = measureLookup.get(currentUnitNorm);
   const fallbackServingMeasure = findServingMeasure(measureLookup);
   const fallbackPortionMeasure = findFirstNonGramMeasure(measures);
+  const preferredPortionMeasure =
+    fallbackServingMeasure ?? fallbackPortionMeasure;
+  const shouldDefaultToServing =
+    isGramUnit(currentUnitNorm) &&
+    !currentMeasure &&
+    !!preferredPortionMeasure;
 
-  const servingMeasure = isGramUnit(currentUnitNorm)
-    ? (fallbackServingMeasure ?? fallbackPortionMeasure)
-    : (currentMeasure ?? fallbackServingMeasure ?? fallbackPortionMeasure);
+  const servingMeasure = shouldDefaultToServing
+    ? preferredPortionMeasure
+    : isGramUnit(currentUnitNorm)
+      ? preferredPortionMeasure
+      : (currentMeasure ?? preferredPortionMeasure);
 
   const servingWeight = servingMeasure?.weight;
   const servingLabel = servingMeasure?.label?.trim() || "serving";
-  const mode: PortionMode = isGramUnit(currentUnitNorm) ? "gram" : "serving";
+  const mode: PortionMode =
+    shouldDefaultToServing || !isGramUnit(currentUnitNorm)
+      ? "serving"
+      : "gram";
   const availableModes: PortionMode[] = servingWeight
     ? ["serving", "gram"]
     : mode === "gram"
@@ -443,6 +521,13 @@ function formatNutrientValue(key: string, value: number) {
   const unit = nutrientUnits[key] ?? "";
   const formattedValue = formatNumber(value);
   return unit ? `${formattedValue} ${unit}` : formattedValue;
+}
+
+function isBarcodeUnknownMicronutrient(
+  food: NonNullable<ReturnType<typeof selectActiveItem>>,
+  value: number | undefined,
+) {
+  return value == null || (food.source === "barcode" && value === 0);
 }
 
 function buildKnownNutrientSummary(food: ItemSummary) {

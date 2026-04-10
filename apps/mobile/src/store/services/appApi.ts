@@ -17,6 +17,17 @@ type ApiEnvelope<T> = {
   ok?: boolean;
 };
 
+type RefreshResponse = {
+  data?: {
+    jwt?: string;
+    refreshToken?: string;
+  };
+  message?: string;
+  ok?: boolean;
+};
+
+let refreshPromise: Promise<boolean> | null = null;
+
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API,
   prepareHeaders: async (headers) => {
@@ -29,12 +40,61 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
+async function refreshSessionToken() {
+  const refreshToken = await SecureStore.getItemAsync("ckd_refresh");
+  if (!refreshToken) {
+    await SecureStore.deleteItemAsync("ckd_jwt");
+    return false;
+  }
+
+  const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
+    body: JSON.stringify({ refreshToken }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+
+  const refreshBody = (await refreshRes
+    .json()
+    .catch(() => null)) as RefreshResponse | null;
+  const nextJwt = refreshBody?.data?.jwt?.trim();
+  if (!refreshRes.ok || !refreshBody?.ok || !nextJwt) {
+    await SecureStore.deleteItemAsync("ckd_jwt");
+    await SecureStore.deleteItemAsync("ckd_refresh");
+    return false;
+  }
+
+  await SecureStore.setItemAsync("ckd_jwt", nextJwt);
+  const nextRefreshToken = refreshBody.data?.refreshToken?.trim();
+  if (nextRefreshToken) {
+    await SecureStore.setItemAsync("ckd_refresh", nextRefreshToken);
+  }
+
+  return true;
+}
+
+async function refreshSessionTokenOnce() {
+  if (!refreshPromise) {
+    refreshPromise = refreshSessionToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
+}
+
 const baseQueryWithEnvelope: BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  const result = await rawBaseQuery(args, api, extraOptions);
+  let result = await rawBaseQuery(args, api, extraOptions);
+  if (result.error?.status === 401) {
+    const refreshed = await refreshSessionTokenOnce();
+    if (refreshed) {
+      result = await rawBaseQuery(args, api, extraOptions);
+    }
+  }
+
   if (result.error) return result;
 
   const body = result.data as ApiEnvelope<unknown> | undefined;

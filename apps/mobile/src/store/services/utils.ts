@@ -12,12 +12,16 @@ export function setNutrientsBody({
   if (!foodItems) return;
   const items = Array.isArray(foodItems) ? foodItems : [foodItems];
   return items.map((foodItem) => {
+    const normalizedFoodName = normalizeForEdamamLookup(foodItem.name);
     return {
+      brand: foodItem.brand,
       foodId: foodItem.foodId,
-      foodName: foodItem.name,
+      foodName: normalizedFoodName,
       measures: foodItem.measures ?? [],
-      originalText: foodItem.name,
+      openFoodFacts: foodItem.openFoodFacts,
+      originalText: normalizedFoodName,
       quantity: foodItem.quantity,
+      source: foodItem.source,
       unit: sanitizeUnitForLookup(foodItem.unit),
     };
   });
@@ -159,4 +163,13 @@ function sanitizeUnitForLookup(unit?: string) {
     return undefined;
   }
   return unit;
+}
+
+function normalizeForEdamamLookup(text?: string) {
+  return (text ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\btinned\b/g, "canned")
+    .replace(/\btin\b/g, "can")
+    .replace(/\s+/g, " ");
 }

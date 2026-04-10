@@ -3,11 +3,11 @@ import {
   TEdamamNutritionLookupResult,
   TFoodItem,
   TFoodItemEntry,
-  TLogMealEdamamResponse,
   TMealType,
   TNutritionFavouriteFood,
   TNutritionFavouriteMeal,
 } from "@ckd/core";
+import type { TLogMealEdamamResponse } from "../../../../../packages/core/src/isomorphic/schemas/log_meal";
 
 import { setNutrientsBody } from "@/store/services/utils";
 import { ApiResponse } from "@/screens/dashboard/types";
