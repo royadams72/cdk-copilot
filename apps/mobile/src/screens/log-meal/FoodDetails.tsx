@@ -23,6 +23,7 @@ import {
 import { NutritionStyles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
 import { logMealStyles } from "./styles";
+import { hasMissingCoreNutrients } from "./utils";
 
 type PortionMode = "gram" | "serving";
 
@@ -51,17 +52,6 @@ export default function FoodDetails() {
     if (!groupId) return null;
     return selectGroupInfoById(groupId)(state);
   });
-
-  const hasMissingCoreNutrients = (food: NonNullable<typeof selectedFood>) => {
-    const nutrients = food.nutrients ?? {};
-    return (
-      nutrients.caloriesKcal == null ||
-      nutrients.proteinG == null ||
-      isBarcodeUnknownMicronutrient(food, nutrients.phosphorusMg) ||
-      isBarcodeUnknownMicronutrient(food, nutrients.potassiumMg) ||
-      isBarcodeUnknownMicronutrient(food, nutrients.sodiumMg)
-    );
-  };
 
   useEffect(() => {
     if (!selectedFood || !groupInfo || !selectedFood.uid) return;
@@ -373,9 +363,7 @@ function resolvePortionConfig(
   const preferredPortionMeasure =
     fallbackServingMeasure ?? fallbackPortionMeasure;
   const shouldDefaultToServing =
-    isGramUnit(currentUnitNorm) &&
-    !currentMeasure &&
-    !!preferredPortionMeasure;
+    isGramUnit(currentUnitNorm) && !currentMeasure && !!preferredPortionMeasure;
 
   const servingMeasure = shouldDefaultToServing
     ? preferredPortionMeasure
@@ -386,9 +374,7 @@ function resolvePortionConfig(
   const servingWeight = servingMeasure?.weight;
   const servingLabel = servingMeasure?.label?.trim() || "serving";
   const mode: PortionMode =
-    shouldDefaultToServing || !isGramUnit(currentUnitNorm)
-      ? "serving"
-      : "gram";
+    shouldDefaultToServing || !isGramUnit(currentUnitNorm) ? "serving" : "gram";
   const availableModes: PortionMode[] = servingWeight
     ? ["serving", "gram"]
     : mode === "gram"
@@ -521,13 +507,6 @@ function formatNutrientValue(key: string, value: number) {
   const unit = nutrientUnits[key] ?? "";
   const formattedValue = formatNumber(value);
   return unit ? `${formattedValue} ${unit}` : formattedValue;
-}
-
-function isBarcodeUnknownMicronutrient(
-  food: NonNullable<ReturnType<typeof selectActiveItem>>,
-  value: number | undefined,
-) {
-  return value == null || (food.source === "barcode" && value === 0);
 }
 
 function buildKnownNutrientSummary(food: ItemSummary) {

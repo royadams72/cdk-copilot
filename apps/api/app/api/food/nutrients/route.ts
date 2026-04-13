@@ -20,7 +20,7 @@ const SEARCH_CATEGORIES = ["packaged-foods", "generic-foods"] as const;
 
 type NutritionLookupItem = TEdamamNutritionLookupItem & {
   brand?: string;
-  source?: "user" | "barcode" | "image_ai" | "api";
+  source?: "user" | "image_ai" | "api";
 };
 
 export async function POST(req: NextRequest) {

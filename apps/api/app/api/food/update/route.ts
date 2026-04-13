@@ -90,7 +90,6 @@ export async function POST(req: NextRequest) {
       const fallbackUid = `${entryId}:${index}`;
       const source =
         rest.source === "user" ||
-        rest.source === "barcode" ||
         rest.source === "image_ai" ||
         rest.source === "api"
           ? rest.source

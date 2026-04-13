@@ -34,7 +34,7 @@
               "nutrients": { "bsonType": "object" },
               "brand": { "bsonType": "string" },
               "preparation": { "bsonType": "string" },
-              "source": { "enum": ["user", "barcode", "image_ai", "api"] },
+              "source": { "enum": ["user", "image_ai", "api"] },
               "taxonomy": {
                 "bsonType": "object",
                 "required": [

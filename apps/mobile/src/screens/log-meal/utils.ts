@@ -19,3 +19,14 @@ export function mapForSaveOrUpdate(
   }
   return payload;
 }
+
+export const hasMissingCoreNutrients = (food: TFoodItem) => {
+  const nutrients = food.nutrients ?? {};
+  return (
+    nutrients.caloriesKcal == null ||
+    nutrients.proteinG == null ||
+    nutrients.phosphorusMg == null ||
+    nutrients.potassiumMg == null ||
+    nutrients.sodiumMg == null
+  );
+};

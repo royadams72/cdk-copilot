@@ -36,7 +36,7 @@ const FoodItem = z.object({
   quantity: z.number().nonnegative().max(600),
   preparation: z.string().optional(), // "grilled", "boiled", etc.
   nutrients: Nutrients, // per this portion
-  source: z.enum(["user", "barcode", "image_ai", "api"]).default("user"),
+  source: z.enum(["user", "image_ai", "api"]).default("user"),
   taxonomy: FoodTaxonomySnapshot.optional(),
   measures: z.array(EdamamMeasureSchema), // measures should be omitted when persisted to DB
   unit: z.string(),

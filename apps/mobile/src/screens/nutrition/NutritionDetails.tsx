@@ -1092,7 +1092,7 @@ function capitalize(value: string) {
 }
 
 // Helper types and functions for meal item coercion
-type AllowedItemSource = "user" | "barcode" | "image_ai" | "api";
+type AllowedItemSource = "user" | "image_ai" | "api";
 
 type ExpectedNutrients = {
   caloriesKcal?: number;
@@ -1124,12 +1124,7 @@ function coerceLoggedMealItem(item: {
 }
 
 function normalizeSource(value?: string): AllowedItemSource {
-  if (
-    value === "user" ||
-    value === "barcode" ||
-    value === "image_ai" ||
-    value === "api"
-  ) {
+  if (value === "user" || value === "image_ai" || value === "api") {
     return value;
   }
   return "user";

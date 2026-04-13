@@ -540,7 +540,6 @@ export function deriveTaxonomySource(
   const nutrientSource = normalizeFoodName(item.nutrients?.source);
   if (nutrientSource.includes("edamam")) return "edamam";
   if (item.source === "api") return "edamam";
-  if (item.source === "barcode") return "barcode";
   if (item.source === "image_ai") return "image_ai";
   if (item.source === "user") return "user";
   return "unknown";

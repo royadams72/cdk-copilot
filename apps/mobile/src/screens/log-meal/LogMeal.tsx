@@ -58,7 +58,7 @@ import {
   useUpdateMealDataMutation,
 } from "@/store/services/logMealApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
-import { mapForSaveOrUpdate } from "./utils";
+import { hasMissingCoreNutrients, mapForSaveOrUpdate } from "./utils";
 
 type LogMealTab = "current" | "foods" | "meals";
 
@@ -927,17 +927,6 @@ function formatMealValue(value: string | number | null | undefined) {
   return rounded.toFixed(1);
 }
 
-function hasMissingCoreNutrients(item: TFoodItem) {
-  const nutrients = item.nutrients ?? {};
-  return (
-    nutrients.caloriesKcal == null ||
-    nutrients.proteinG == null ||
-    isBarcodeUnknownMicronutrient(item, nutrients.phosphorusMg) ||
-    isBarcodeUnknownMicronutrient(item, nutrients.potassiumMg) ||
-    isBarcodeUnknownMicronutrient(item, nutrients.sodiumMg)
-  );
-}
-
 function buildMealNutrientPart(
   label: string,
   value: string | number | null | undefined,
@@ -946,13 +935,6 @@ function buildMealNutrientPart(
   const formattedValue = formatMealValue(value);
   if (!formattedValue) return "";
   return `${label} ${formattedValue}${unit}`;
-}
-
-function isBarcodeUnknownMicronutrient(
-  item: TFoodItem,
-  value: number | undefined,
-) {
-  return value == null || (item.source === "barcode" && value === 0);
 }
 
 function buildFoodKey(item: Pick<TFoodItemEntry, "foodId" | "name">) {
