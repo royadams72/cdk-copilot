@@ -78,6 +78,18 @@ const createEmptyMeals = (): Record<TMealType, TFoodItem[]> => ({
   snack: [],
 });
 
+function inferMealTypeFromIso(value: string | null | undefined): TMealType {
+  const date = value ? new Date(value) : new Date();
+  const hour = Number.isNaN(date.getTime())
+    ? new Date().getHours()
+    : date.getHours();
+
+  if (hour >= 5 && hour < 11) return "breakfast";
+  if (hour >= 11 && hour < 16) return "lunch";
+  if (hour >= 16 && hour < 22) return "dinner";
+  return "snack";
+}
+
 const initialState: logMealState = {
   activeItem: null,
   activeItems: null,
@@ -139,6 +151,9 @@ const logMealSlice = createSlice({
       ) => {
         state.status = "succeeded";
         const incomingGroups = mapFoodItems(action.payload.results);
+        if (!state.activeMealType) {
+          state.activeMealType = inferMealTypeFromIso(state.eatenAt);
+        }
         state.foodItems = mergeUniqueFoodGroups(
           state.foodItems,
           incomingGroups,
@@ -630,8 +645,16 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
   return (
     data?.items?.map((item) => {
       const seen = new Map<string, number>();
-      const primaryMeasures = item.matches?.[0]
-        ? buildMeasuresForMatch(item.matches[0])
+      const selectedMatch = item.matches?.[0] ?? item.parsed ?? null;
+      const alternativeMatches = dedupeFoodMatches(item.matches ?? []).filter(
+        (match) =>
+          !selectedMatch || match.food.foodId !== selectedMatch.food.foodId,
+      );
+      const orderedMatches = selectedMatch
+        ? [selectedMatch, ...alternativeMatches]
+        : alternativeMatches;
+      const primaryMeasures = selectedMatch
+        ? buildMeasuresForMatch(selectedMatch)
         : [];
       const groupUnit =
         item.item.unit?.trim() ||
@@ -645,8 +668,7 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
       const unitNorm = groupUnit.trim().toLowerCase();
 
       return {
-        foodItems: sortFoodItemsForQuery(
-          dedupeFoodMatches(item.matches ?? []).map<TFoodItem>((match) => {
+        foodItems: orderedMatches.map<TFoodItem>((match) => {
             const foodId = match.food.foodId;
             const name = match.food.label;
             const measures = buildMeasuresForMatch(match);
@@ -690,8 +712,6 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
               unit: inferredUnit,
             };
           }),
-          item.item.normalised,
-        ),
         groupId: item.tempId,
         groupInfo: {
           ...item.item,
@@ -750,10 +770,7 @@ function sortFoodItemsForQuery(items: TFoodItem[], query: string) {
 }
 
 function getPreferredFoodItem(group: FoodItemsObj) {
-  return sortFoodItemsForQuery(
-    group.foodItems ?? [],
-    group.groupInfo?.normalised ?? group.groupInfo?.food ?? "",
-  )[0];
+  return group.foodItems?.[0];
 }
 
 function scoreFoodItemForQuery(item: TFoodItem, query: string) {
@@ -1062,6 +1079,10 @@ function extractNutrition(
       (item.uid ? weightByUid.get(item.uid) : undefined) ??
       weightByFoodId.get(item.foodId);
     const normalizedResolvedUnit = (resolvedUnit ?? "").trim().toLowerCase();
+    const resolvedMeasure = item.measures?.find(
+      (measure) =>
+        (measure.label ?? "").trim().toLowerCase() === normalizedResolvedUnit,
+    );
     const shouldAdoptResolvedWeight =
       typeof resolvedWeight === "number" &&
       Number.isFinite(resolvedWeight) &&
@@ -1070,6 +1091,21 @@ function extractNutrition(
       (normalizedResolvedUnit === "gram" ||
         normalizedResolvedUnit === "grams" ||
         normalizedResolvedUnit === "g");
+    const shouldConvertResolvedWeightToServings =
+      typeof resolvedWeight === "number" &&
+      Number.isFinite(resolvedWeight) &&
+      resolvedWeight > 0 &&
+      normalizedResolvedUnit !== "gram" &&
+      normalizedResolvedUnit !== "grams" &&
+      normalizedResolvedUnit !== "g" &&
+      typeof resolvedMeasure?.weight === "number" &&
+      Number.isFinite(resolvedMeasure.weight) &&
+      resolvedMeasure.weight > 0;
+    const nextQuantity = shouldAdoptResolvedWeight
+      ? Math.round(resolvedWeight)
+      : shouldConvertResolvedWeightToServings
+        ? Math.round((resolvedWeight / resolvedMeasure.weight) * 100) / 100
+        : item.quantity;
     return {
       ...item,
       nutrients: {
@@ -1083,14 +1119,11 @@ function extractNutrition(
           item.nutrients.proteinG ?? n.PROCNT?.quantity,
         ),
         phosphorusMg: item.nutrients.phosphorusMg ?? n.P?.quantity,
-
         potassiumMg: item.nutrients.potassiumMg ?? n.K?.quantity,
         proteinG: item.nutrients.proteinG ?? n.PROCNT?.quantity,
         sodiumMg: item.nutrients.sodiumMg ?? n.NA?.quantity,
       },
-      quantity: shouldAdoptResolvedWeight
-        ? Math.round(resolvedWeight)
-        : item.quantity,
+      quantity: nextQuantity,
       unit: resolvedUnit,
     };
   };

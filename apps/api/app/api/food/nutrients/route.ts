@@ -165,11 +165,7 @@ async function requestNutrition(
   }
 
   const response = normalizeNutritionResponse(await res.json());
-  const parsedCount = response.ingredients?.reduce(
-    (sum: number, ingredient: any) => sum + (ingredient?.parsed?.length ?? 0),
-    0,
-  );
-  if (!parsedCount) {
+  if (!hasUsableNutritionResponse(response)) {
     return null;
   }
 
@@ -520,6 +516,27 @@ function normalizeNutritionResponse(response: any) {
     totalNutrients: roundNutrientMap(response?.totalNutrients),
     totalWeight: roundNumber(response?.totalWeight),
   };
+}
+
+function hasUsableNutritionResponse(response: any) {
+  const parsedCount = Array.isArray(response?.ingredients)
+    ? response.ingredients.reduce(
+        (sum: number, ingredient: any) => sum + (ingredient?.parsed?.length ?? 0),
+        0,
+      )
+    : 0;
+
+  if (parsedCount > 0) return true;
+
+  const nutrientEntries = response?.totalNutrients;
+  if (!nutrientEntries || typeof nutrientEntries !== "object") return false;
+
+  return Object.values(nutrientEntries).some(
+    (entry: any) =>
+      typeof entry?.quantity === "number" &&
+      Number.isFinite(entry.quantity) &&
+      entry.quantity > 0,
+  );
 }
 
 function roundNutrientMap(
