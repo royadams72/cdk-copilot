@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { EdamamMeasureSchema } from "./edamam";
+import {
+  IngredientCandidateSchema,
+  NutrientEstimateSchema,
+} from "./nutrient_estimation";
 
 /**
  * Generic nutrient entry: label + quantity + unit
@@ -48,6 +52,8 @@ export const EdamamNutritionLookupItemSchema = z.object({
   foodName: z.string().optional(),
   source: z.enum(["user", "image_ai", "api"]).optional(),
   brand: z.string().optional(),
+  foodContentsLabel: z.string().optional(),
+  ingredientCandidates: z.array(IngredientCandidateSchema).optional(),
   measures: z.array(EdamamMeasureSchema).default([]),
   measureURI: z.string().optional(),
   originalText: z.string().optional(),
@@ -64,6 +70,7 @@ export const EdamamResolvedMeasureSchema = z.object({
 export const EdamamNutritionLookupResultSchema = z.object({
   requestedFoodId: z.string(),
   resolvedMeasure: EdamamResolvedMeasureSchema,
+  estimate: NutrientEstimateSchema.optional(),
   response: EdamamNutritionResponseSchema,
 });
 

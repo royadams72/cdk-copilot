@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Picker } from "@react-native-picker/picker";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import type { TEdamamMeasure } from "@ckd/core";
+import type { TNutrientEstimate } from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
 
 import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
@@ -32,6 +34,10 @@ type PickerOption = {
   value: string;
 };
 
+type NutrientsWithEstimate = {
+  estimate?: TNutrientEstimate;
+};
+
 const SERVING_STEP = 0.05;
 const GRAM_MIN = 1;
 const GRAM_MAX = 500;
@@ -43,6 +49,9 @@ export default function FoodDetails() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [fetchNutritionData] = useFetchNutritionDataMutation();
+  const [activeEstimateNutrientKey, setActiveEstimateNutrientKey] = useState<
+    string | null
+  >(null);
   const selectedFood = useAppSelector(selectActiveItem);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const foods = useAppSelector(selectAcitveGroupSummaries);
@@ -168,6 +177,13 @@ export default function FoodDetails() {
     if (!portionConfig || !groupInfo) return [];
     return buildQuantityOptions(portionConfig.mode, groupInfo.quantity);
   }, [groupInfo, portionConfig]);
+  const estimate = (selectedFood?.nutrients as NutrientsWithEstimate | undefined)
+    ?.estimate;
+  const estimatedKeys = estimate?.nutrientKeys ?? [];
+  const activeEstimateRows = (estimate?.breakdown ?? []).filter(
+    (row: TNutrientEstimate["breakdown"][number]) =>
+      row.nutrientKey === activeEstimateNutrientKey,
+  );
 
   return (
     <View style={NutritionStyles.container}>
@@ -228,19 +244,49 @@ export default function FoodDetails() {
             </View>
 
             <View style={logMealStyles.nutrientList}>
+              {estimate?.warning ? (
+                <View style={logMealStyles.estimateBanner}>
+                  <MaterialIcons
+                    color="#b45309"
+                    name="info-outline"
+                    size={18}
+                  />
+                  <Text style={logMealStyles.estimateBannerText}>
+                    {estimate.warning}
+                  </Text>
+                </View>
+              ) : null}
               {Object.entries(selectedFood.nutrients ?? {})
                 .filter(
                   ([key, value]) =>
                     key !== "source" &&
                     key !== "unit" &&
+                    key !== "estimate" &&
                     value !== null &&
                     value !== undefined,
                 )
                 .map(([key, value]) => (
                   <View key={key} style={logMealStyles.nutrientRow}>
-                    <Text style={logMealStyles.nutrientLabel}>
-                      {formatNutrientLabel(key)}
-                    </Text>
+                    <View style={logMealStyles.nutrientLabelWrap}>
+                      <Text style={logMealStyles.nutrientLabel}>
+                        {formatNutrientLabel(key)}
+                      </Text>
+                      {estimatedKeys.includes(
+                        key as "phosphorusMg" | "potassiumMg",
+                      ) ? (
+                        <TouchableOpacity
+                          accessibilityLabel={`View ${formatNutrientLabel(key)} estimate`}
+                          onPress={() => setActiveEstimateNutrientKey(key)}
+                          style={logMealStyles.estimateIconButton}
+                        >
+                          <MaterialIcons
+                            color="#0f766e"
+                            name="info-outline"
+                            size={18}
+                          />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                     <Text style={logMealStyles.nutrientValue}>
                       {formatNutrientValue(
                         key,
@@ -337,6 +383,67 @@ export default function FoodDetails() {
               ),
           )}
       </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={Boolean(activeEstimateNutrientKey)}
+        onRequestClose={() => setActiveEstimateNutrientKey(null)}
+      >
+        <View style={logMealStyles.modalBackdrop}>
+          <View style={logMealStyles.modalCard}>
+            <View style={logMealStyles.modalHeader}>
+              <Text style={logMealStyles.modalTitle}>
+                {activeEstimateNutrientKey
+                  ? `${formatNutrientLabel(activeEstimateNutrientKey)} estimate`
+                  : "Estimate"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setActiveEstimateNutrientKey(null)}
+                style={logMealStyles.modalCloseButton}
+              >
+                <MaterialIcons color="#475569" name="close" size={20} />
+              </TouchableOpacity>
+            </View>
+
+            {estimate?.warning ? (
+              <Text style={logMealStyles.modalWarning}>{estimate.warning}</Text>
+            ) : null}
+
+            <ScrollView style={logMealStyles.modalBody}>
+              {activeEstimateRows.map((row: TNutrientEstimate["breakdown"][number], index: number) => (
+                <View key={`${row.ingredient}:${index}`} style={logMealStyles.modalRow}>
+                  <Text style={logMealStyles.modalIngredient}>
+                    {row.ingredient} ({formatNumber(row.assignedPercent)}%)
+                  </Text>
+                  <Text style={logMealStyles.modalFormula}>
+                    {formatNumber(row.mgPer100g)} mg per 100g x{" "}
+                    {formatNumber(row.ingredientWeightG)} g / 100 ={" "}
+                    {formatNumber(row.amountMg)} mg
+                  </Text>
+                  {row.matchedFood ? (
+                    <Text style={logMealStyles.modalMatchedFood}>
+                      Matched as {row.matchedFood}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+
+              {!activeEstimateRows.length ? (
+                <Text style={logMealStyles.modalEmptyText}>
+                  No ingredient estimate breakdown is available for this nutrient.
+                </Text>
+              ) : null}
+
+              {estimate?.missingIngredients?.length ? (
+                <Text style={logMealStyles.modalMissingText}>
+                  Missing ingredients: {estimate.missingIngredients.join(", ")}
+                </Text>
+              ) : null}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

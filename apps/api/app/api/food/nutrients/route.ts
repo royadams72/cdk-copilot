@@ -6,9 +6,14 @@ import {
   TEdamamFoodMeasure,
   TEdamamMeasure,
   TEdamamNutritionLookupItem,
-  TEdamamNutritionLookupResult,
 } from "@ckd/core";
 import { NextRequest } from "next/server";
+import type { TEdamamNutritionLookupResult } from "@/packages/core/src/isomorphic/schemas/edamam_responses";
+import type {
+  TEstimatedNutrientKey,
+  TIngredientCandidate,
+  TNutrientEstimate,
+} from "@/packages/core/src/isomorphic/schemas/nutrient_estimation";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
 const foodUri = process.env.EDAMAM_API_FOOD_URI || "";
@@ -20,7 +25,14 @@ const SEARCH_CATEGORIES = ["packaged-foods", "generic-foods"] as const;
 
 type NutritionLookupItem = TEdamamNutritionLookupItem & {
   brand?: string;
+  foodContentsLabel?: string;
+  ingredientCandidates?: TIngredientCandidate[];
   source?: "user" | "image_ai" | "api";
+};
+
+type EstimateIngredient = {
+  name: string;
+  percent?: number;
 };
 
 export async function POST(req: NextRequest) {
@@ -46,6 +58,14 @@ export async function POST(req: NextRequest) {
       app_id: foodAppID,
       app_key: foodAppKey,
     });
+    const ingredientLookupCache = new Map<
+      string,
+      Promise<{
+        foodLabel: string;
+        phosphorusMgPer100g?: number;
+        potassiumMgPer100g?: number;
+      } | null>
+    >();
 
     const results = await Promise.all(
       lookupItems.map(async (lookupItem: NutritionLookupItem) => {
@@ -71,8 +91,18 @@ export async function POST(req: NextRequest) {
         }
 
         response = alignEdamamResponseToRequestedPortion(response, lookupItem);
+        const estimate = await estimateMissingNutrients({
+          cache: ingredientLookupCache,
+          lookupItem,
+          params,
+          response,
+        });
+        if (estimate) {
+          response = applyEstimatedNutrientsToResponse(response, estimate);
+        }
 
         return {
+          estimate: estimate ?? undefined,
           requestedFoodId: lookupItem.foodId,
           resolvedMeasure,
           response,
@@ -137,7 +167,9 @@ function buildLookupQueries(lookupItem: NutritionLookupItem) {
     [normalizedBrand, normalizedOriginal].filter(Boolean).join(" ").trim(),
     normalizedFoodName,
     normalizedOriginal,
-  ].filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);
+  ].filter(
+    (value, index, all) => Boolean(value) && all.indexOf(value) === index,
+  );
 }
 
 async function requestNutrition(
@@ -153,6 +185,7 @@ async function requestNutrition(
       quantity: lookupItem.quantity,
     },
   ];
+  // console.log("ingredients:", ingredients);
 
   const res = await fetch(`${nutrientsUri}?${params.toString()}`, {
     body: JSON.stringify({ ingredients }),
@@ -213,7 +246,8 @@ function toParsedCandidates(parsed: unknown): TEdamamFoodMeasure[] {
 
   return parsed
     .map((entry) => {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+      if (!entry || typeof entry !== "object" || Array.isArray(entry))
+        return null;
 
       const record = entry as {
         food?: TEdamamFoodMeasure["food"];
@@ -270,7 +304,9 @@ function scoreFallbackHint(hint: TEdamamFoodMeasure, desiredText: string) {
   }
 
   if (category.includes("packaged")) score += 8;
-  if (normalizeLookupText(hint.food.label) === normalizeLookupText(desiredText)) {
+  if (
+    normalizeLookupText(hint.food.label) === normalizeLookupText(desiredText)
+  ) {
     score += 40;
   }
 
@@ -453,6 +489,451 @@ function resolveRequestedPortionWeight(lookupItem: NutritionLookupItem) {
   return undefined;
 }
 
+async function estimateMissingNutrients({
+  cache,
+  lookupItem,
+  params,
+  response,
+}: {
+  cache: Map<
+    string,
+    Promise<{
+      foodLabel: string;
+      phosphorusMgPer100g?: number;
+      potassiumMgPer100g?: number;
+    } | null>
+  >;
+  lookupItem: NutritionLookupItem;
+  params: URLSearchParams;
+  response: any;
+}): Promise<TNutrientEstimate | null> {
+  if (!isEligibleForEstimatedNutrients(lookupItem)) {
+    return null;
+  }
+
+  const missingKeys = getEstimateTargetKeys(response);
+  if (!missingKeys.length) return null;
+
+  const ingredientCandidates = getEstimateIngredientCandidates(lookupItem);
+  if (!ingredientCandidates.length) {
+    return {
+      breakdown: [],
+      missingIngredients: [],
+      nutrientKeys: [],
+      warning:
+        "Some nutrients cannot be estimated or calculated, please input ingredients separately.",
+    };
+  }
+
+  const totalWeight =
+    resolveRequestedPortionWeight(lookupItem) ??
+    resolveEdamamResponseWeight(response);
+  if (
+    typeof totalWeight !== "number" ||
+    !Number.isFinite(totalWeight) ||
+    totalWeight <= 0
+  ) {
+    return {
+      breakdown: [],
+      missingIngredients: ingredientCandidates.map(
+        (candidate) => candidate.name,
+      ),
+      nutrientKeys: [],
+      warning:
+        "Some nutrients cannot be estimated or calculated, please input ingredients separately.",
+    };
+  }
+
+  const allocatedIngredients =
+    allocateIngredientPercentages(ingredientCandidates);
+  const currentFoodLookup = buildCurrentFoodIngredientLookup(
+    lookupItem,
+    response,
+    totalWeight,
+  );
+  const breakdown: TNutrientEstimate["breakdown"] = [];
+  const missingIngredients: string[] = [];
+  const estimatedKeys = new Set<TEstimatedNutrientKey>();
+
+  for (const candidate of allocatedIngredients) {
+    const ingredientLookup = isSameIngredientAsCurrentFood(
+      candidate.name,
+      currentFoodLookup?.foodLabel ?? lookupItem.foodName ?? lookupItem.originalText,
+    )
+      ? currentFoodLookup
+      : await lookupIngredientNutrients(candidate.name, params, cache);
+    if (!ingredientLookup) {
+      missingIngredients.push(candidate.name);
+      continue;
+    }
+
+    const ingredientWeightG = roundNumber(
+      (totalWeight * candidate.percent) / 100,
+    );
+    if (ingredientWeightG <= 0) continue;
+    console.log(
+      `[ingredient-estimate] ${candidate.name} ${roundNumber(
+        candidate.percent,
+      )}% = ${ingredientWeightG}g of ${roundNumber(totalWeight)}g`,
+    );
+
+    for (const nutrientKey of missingKeys) {
+      const mgPer100g =
+        nutrientKey === "phosphorusMg"
+          ? ingredientLookup.phosphorusMgPer100g
+          : ingredientLookup.potassiumMgPer100g;
+      if (
+        typeof mgPer100g !== "number" ||
+        !Number.isFinite(mgPer100g) ||
+        mgPer100g <= 0
+      ) {
+        continue;
+      }
+
+      breakdown.push({
+        amountMg: roundNumber((mgPer100g * ingredientWeightG) / 100),
+        assignedPercent: roundNumber(candidate.percent),
+        ingredient: candidate.name,
+        ingredientWeightG,
+        matchedFood: ingredientLookup.foodLabel,
+        mgPer100g: roundNumber(mgPer100g),
+        nutrientKey,
+      });
+      estimatedKeys.add(nutrientKey);
+    }
+  }
+
+  if (!breakdown.length) {
+    return {
+      breakdown: [],
+      missingIngredients: uniqueStrings([
+        ...missingIngredients,
+        ...ingredientCandidates.map((candidate) => candidate.name),
+      ]),
+      nutrientKeys: [],
+      warning:
+        "Some nutrients cannot be estimated or calculated, please input ingredients separately.",
+    };
+  }
+
+  const unresolvedKeys = missingKeys.filter((key) => !estimatedKeys.has(key));
+  const warning =
+    unresolvedKeys.length || missingIngredients.length
+      ? "Estimated from ingredients. Some nutrients could not be fully estimated."
+      : "Estimated from ingredients.";
+
+  return {
+    breakdown,
+    missingIngredients: uniqueStrings(missingIngredients),
+    nutrientKeys: [...estimatedKeys],
+    warning,
+  };
+}
+
+function getEstimateTargetKeys(response: any): TEstimatedNutrientKey[] {
+  const phosphorus = response?.totalNutrients?.P?.quantity;
+  const potassium = response?.totalNutrients?.K?.quantity;
+  const missing: TEstimatedNutrientKey[] = [];
+
+  if (
+    typeof phosphorus !== "number" ||
+    !Number.isFinite(phosphorus) ||
+    phosphorus <= 0
+  ) {
+    missing.push("phosphorusMg");
+  }
+
+  if (
+    typeof potassium !== "number" ||
+    !Number.isFinite(potassium) ||
+    potassium <= 0
+  ) {
+    missing.push("potassiumMg");
+  }
+
+  return missing;
+}
+
+function isEligibleForEstimatedNutrients(lookupItem: NutritionLookupItem) {
+  return Boolean(
+    lookupItem.brand?.trim() ||
+    lookupItem.foodContentsLabel?.trim() ||
+    lookupItem.ingredientCandidates?.length,
+  );
+}
+
+function getEstimateIngredientCandidates(lookupItem: NutritionLookupItem) {
+  const explicitCandidates = Array.isArray(lookupItem.ingredientCandidates)
+    ? lookupItem.ingredientCandidates
+    : [];
+  if (explicitCandidates.length) {
+    return explicitCandidates
+      .map((candidate: TIngredientCandidate) => ({
+        name: normalizeEstimateIngredientName(candidate.name),
+        percent: candidate.percent,
+      }))
+      .filter((candidate: EstimateIngredient) => candidate.name);
+  }
+
+  if (!lookupItem.foodContentsLabel?.trim()) return [];
+
+  return lookupItem.foodContentsLabel
+    .split(/[;,]/)
+    .map((segment: string) => segment.trim())
+    .filter(Boolean)
+    .flatMap((segment: string) => {
+      const percentMatch = segment.match(/(\d+(?:\.\d+)?)\s*%/);
+      const normalizedName = normalizeEstimateIngredientName(
+        segment.replace(/\([^)]*\)/g, " ").replace(/(\d+(?:\.\d+)?)\s*%/g, " "),
+      );
+      if (!normalizedName) return [];
+
+      return [
+        {
+          name: normalizedName,
+          percent: percentMatch
+            ? Number.parseFloat(percentMatch[1])
+            : undefined,
+        } satisfies EstimateIngredient,
+      ];
+    });
+}
+
+function allocateIngredientPercentages(candidates: EstimateIngredient[]) {
+  const knownTotal = candidates.reduce(
+    (sum, candidate) =>
+      typeof candidate.percent === "number" &&
+      Number.isFinite(candidate.percent)
+        ? sum + Math.max(0, candidate.percent)
+        : sum,
+    0,
+  );
+  const unknownCount = candidates.filter(
+    (candidate) =>
+      typeof candidate.percent !== "number" ||
+      !Number.isFinite(candidate.percent),
+  ).length;
+
+  if (knownTotal > 100 && knownTotal > 0) {
+    const ratio = 100 / knownTotal;
+    return candidates.map((candidate) => ({
+      ...candidate,
+      percent:
+        typeof candidate.percent === "number" &&
+        Number.isFinite(candidate.percent)
+          ? candidate.percent * ratio
+          : 0,
+    }));
+  }
+
+  const remaining = Math.max(0, 100 - knownTotal);
+  const unknownShare = unknownCount > 0 ? remaining / unknownCount : 0;
+
+  return candidates.map((candidate) => ({
+    ...candidate,
+    percent:
+      typeof candidate.percent === "number" &&
+      Number.isFinite(candidate.percent)
+        ? candidate.percent
+        : unknownShare,
+  }));
+}
+
+function buildCurrentFoodIngredientLookup(
+  lookupItem: NutritionLookupItem,
+  response: any,
+  totalWeight: number,
+) {
+  if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+    return null;
+  }
+
+  const phosphorus = response?.totalNutrients?.P?.quantity;
+  const potassium = response?.totalNutrients?.K?.quantity;
+
+  return {
+    foodLabel: lookupItem.foodName ?? lookupItem.originalText ?? lookupItem.foodId,
+    phosphorusMgPer100g:
+      typeof phosphorus === "number" && Number.isFinite(phosphorus) && phosphorus > 0
+        ? roundNumber((phosphorus / totalWeight) * 100)
+        : undefined,
+    potassiumMgPer100g:
+      typeof potassium === "number" && Number.isFinite(potassium) && potassium > 0
+        ? roundNumber((potassium / totalWeight) * 100)
+        : undefined,
+  };
+}
+
+async function lookupIngredientNutrients(
+  ingredientName: string,
+  params: URLSearchParams,
+  cache: Map<
+    string,
+    Promise<{
+      foodLabel: string;
+      phosphorusMgPer100g?: number;
+      potassiumMgPer100g?: number;
+    } | null>
+  >,
+) {
+  const cacheKey = normalizeLookupText(ingredientName);
+  if (!cache.has(cacheKey)) {
+    cache.set(
+      cacheKey,
+      (async () => {
+        const candidates = await fetchEdamamCandidates(ingredientName);
+        const bestHint = pickBestIngredientHint(candidates, ingredientName);
+        if (!bestHint) return null;
+
+        const lookupItem: NutritionLookupItem = {
+          foodId: bestHint.food.foodId,
+          foodName: ingredientName,
+          measures: bestHint.measures ?? [],
+          quantity: 100,
+          source: "api",
+          unit: "gram",
+        };
+        const response = await requestNutrition(
+          lookupItem,
+          {
+            label: "gram",
+            measureURI: EDAMAM_GRAM_MEASURE_URI,
+          },
+          params,
+        );
+        if (!response) return null;
+
+        const aligned = alignEdamamResponseToRequestedPortion(
+          response,
+          lookupItem,
+        );
+        return {
+          foodLabel: bestHint.food.label,
+          phosphorusMgPer100g: aligned?.totalNutrients?.P?.quantity,
+          potassiumMgPer100g: aligned?.totalNutrients?.K?.quantity,
+        };
+      })(),
+    );
+  }
+
+  return cache.get(cacheKey) ?? null;
+}
+
+function isSameIngredientAsCurrentFood(
+  ingredientName: string,
+  currentFoodName: string | undefined,
+) {
+  const normalizedIngredient = normalizeLookupText(ingredientName);
+  const normalizedCurrentFood = normalizeLookupText(currentFoodName);
+  if (!normalizedIngredient || !normalizedCurrentFood) return false;
+
+  return (
+    normalizedIngredient === normalizedCurrentFood ||
+    hasWord(normalizedCurrentFood, normalizedIngredient) ||
+    hasWord(normalizedIngredient, normalizedCurrentFood)
+  );
+}
+
+function pickBestIngredientHint(
+  hints: TEdamamFoodMeasure[],
+  ingredientName: string,
+) {
+  const desired = normalizeLookupText(ingredientName);
+  let best: TEdamamFoodMeasure | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (const hint of hints) {
+    const label = normalizeLookupText(hint.food.label);
+    const knownAs = normalizeLookupText(hint.food.knownAs);
+    const brand = normalizeLookupText(hint.food.brand);
+    const category = normalizeLookupText(hint.food.category);
+    let score = 0;
+
+    if (label === desired || knownAs === desired) score += 120;
+    if (hasWord(label, desired) || hasWord(knownAs, desired)) score += 40;
+    for (const token of desired.split(" ").filter(Boolean)) {
+      if (hasWord(label, token) || hasWord(knownAs, token)) score += 18;
+      if (hasWord(brand, token)) score -= 20;
+    }
+
+    if (category.includes("generic")) score += 35;
+    if (category.includes("packaged")) score -= 45;
+    if (brand) score -= 15;
+
+    if (score > bestScore) {
+      best = hint;
+      bestScore = score;
+    }
+  }
+
+  return bestScore >= 20 ? best : null;
+}
+
+function applyEstimatedNutrientsToResponse(
+  response: any,
+  estimate: TNutrientEstimate,
+) {
+  if (!estimate.nutrientKeys.length) return response;
+
+  const totalsByKey = estimate.breakdown.reduce(
+    (
+      acc: { phosphorusMg: number; potassiumMg: number },
+      row: TNutrientEstimate["breakdown"][number],
+    ) => {
+      acc[row.nutrientKey] += row.amountMg;
+      return acc;
+    },
+    { phosphorusMg: 0, potassiumMg: 0 },
+  );
+  const nextTotalNutrients = {
+    ...(response?.totalNutrients ?? {}),
+  };
+
+  if (
+    estimate.nutrientKeys.includes("phosphorusMg") &&
+    totalsByKey.phosphorusMg > 0
+  ) {
+    nextTotalNutrients.P = {
+      label: "Phosphorus",
+      quantity: roundNumber(totalsByKey.phosphorusMg),
+      unit: "mg",
+    };
+  }
+
+  if (
+    estimate.nutrientKeys.includes("potassiumMg") &&
+    totalsByKey.potassiumMg > 0
+  ) {
+    nextTotalNutrients.K = {
+      label: "Potassium",
+      quantity: roundNumber(totalsByKey.potassiumMg),
+      unit: "mg",
+    };
+  }
+
+  return normalizeNutritionResponse({
+    ...response,
+    totalNutrients: nextTotalNutrients,
+  });
+}
+
+function normalizeEstimateIngredientName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\bcooked\b/g, " ")
+    .replace(/\bprepared\b/g, " ")
+    .replace(/\bboneless\b/g, " ")
+    .replace(/\bskinless\b/g, " ")
+    .replace(/\bbreast fillet\b/g, "chicken")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
 function resolveEdamamResponseWeight(response: any) {
   if (
     typeof response?.totalWeight === "number" &&
@@ -496,6 +977,8 @@ function scaleNutrientMap(
 }
 
 function normalizeNutritionResponse(response: any) {
+  // console.log("response", response);
+
   return {
     ...response,
     calories: roundNumber(response?.calories),
@@ -521,7 +1004,8 @@ function normalizeNutritionResponse(response: any) {
 function hasUsableNutritionResponse(response: any) {
   const parsedCount = Array.isArray(response?.ingredients)
     ? response.ingredients.reduce(
-        (sum: number, ingredient: any) => sum + (ingredient?.parsed?.length ?? 0),
+        (sum: number, ingredient: any) =>
+          sum + (ingredient?.parsed?.length ?? 0),
         0,
       )
     : 0;

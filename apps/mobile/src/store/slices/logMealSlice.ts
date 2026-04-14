@@ -5,7 +5,6 @@ import { inferUnitFromMeasures } from "@/store/services/utils";
 // TODO: put these types into package
 import type {
   TEdamamMeasure,
-  TEdamamNutritionLookupResult,
   TEdamamNutritionResponse,
   TFoodItem,
   TFoodItemEntry,
@@ -16,6 +15,19 @@ import type {
   TLogMealItem,
 } from "../../../../../packages/core/src/isomorphic/schemas/log_meal";
 import type { TFoodSearchCandidate } from "../../../../../packages/core/src/isomorphic/schemas/food_search";
+import type {
+  TIngredientCandidate,
+  TNutrientEstimate,
+} from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
+import type { TEdamamNutritionLookupResult as TEdamamNutritionLookupResultSource } from "../../../../../packages/core/src/isomorphic/schemas/edamam_responses";
+
+type FoodItemWithEstimateContext = TFoodItem & {
+  foodContentsLabel?: string;
+  ingredientCandidates?: TIngredientCandidate[];
+  nutrients: TFoodItem["nutrients"] & {
+    estimate?: TNutrientEstimate;
+  };
+};
 
 export type ItemSummary = {
   brand: string | undefined;
@@ -189,7 +201,7 @@ const logMealSlice = createSlice({
         state,
         action: PayloadAction<{
           requestedUids: string[];
-          results: TEdamamNutritionLookupResult[];
+          results: TEdamamNutritionLookupResultSource[];
         }>,
       ) => {
         applyNutritionResultsToState(
@@ -394,6 +406,17 @@ const logMealSlice = createSlice({
               typeof v === "number" ? v * safeRatio : v,
             ]),
           ) as typeof item.nutrients;
+          const itemWithEstimate = item as FoodItemWithEstimateContext;
+          if (itemWithEstimate.nutrients.estimate) {
+            itemWithEstimate.nutrients.estimate = {
+              ...itemWithEstimate.nutrients.estimate,
+              breakdown: itemWithEstimate.nutrients.estimate.breakdown.map((row) => ({
+                ...row,
+                amountMg: row.amountMg * safeRatio,
+                ingredientWeightG: row.ingredientWeightG * safeRatio,
+              })),
+            };
+          }
 
           item.quantity = quantity;
           item.unit = normalizedUnit;
@@ -572,7 +595,7 @@ function findGroupById(groupId: string, state: any): FoodItemsObj {
 
 function applyNutritionResultsToState(
   state: RootState["logMeal"],
-  results: TEdamamNutritionLookupResult[],
+  results: TEdamamNutritionLookupResultSource[],
   requestedUids: string[],
 ) {
   state.status = "succeeded";
@@ -691,7 +714,12 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
             return {
               brand: match.food.brand,
               foodId,
+              foodContentsLabel: match.food.foodContentsLabel,
               groupId: item.tempId,
+              ingredientCandidates: mergeIngredientCandidates(
+                item.parsed?.food.label,
+                match.food.ingredientCandidates,
+              ),
               measures,
               name,
               nutrients: {
@@ -710,7 +738,7 @@ function mapFoodItems(data: TLogMealEdamamResponse): FoodItemsObj[] | null {
               source: "api",
               uid,
               unit: inferredUnit,
-            };
+            } as FoodItemWithEstimateContext;
           }),
         groupId: item.tempId,
         groupInfo: {
@@ -822,6 +850,55 @@ function normalizeFoodMatchKey(value: string | undefined) {
     .replace(/\s+/g, " ");
 }
 
+function mergeIngredientCandidates(
+  parsedLabel: string | undefined,
+  candidates:
+    | {
+        name: string;
+        percent?: number;
+        source?: "parsed" | "label";
+      }[]
+    | undefined,
+) {
+  const merged = new Map<
+    string,
+    { name: string; percent?: number; source?: "parsed" | "label" }
+  >();
+
+  const addCandidate = (candidate: {
+    name: string;
+    percent?: number;
+    source?: "parsed" | "label";
+  }) => {
+    const key = normalizeFoodMatchKey(candidate.name);
+    if (!key) return;
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, candidate);
+      return;
+    }
+
+    merged.set(key, {
+      ...existing,
+      percent:
+        typeof existing.percent === "number"
+          ? existing.percent
+          : candidate.percent,
+      source: existing.source === "parsed" ? "parsed" : candidate.source,
+    });
+  };
+
+  if (parsedLabel?.trim()) {
+    addCandidate({ name: parsedLabel.trim(), source: "parsed" });
+  }
+
+  for (const candidate of candidates ?? []) {
+    addCandidate(candidate);
+  }
+
+  return [...merged.values()];
+}
+
 function buildGroupSignature(group: FoodItemsObj) {
   const first = group.foodItems?.[0];
   const name = (first?.name ?? "").trim().toLowerCase();
@@ -831,6 +908,27 @@ function buildGroupSignature(group: FoodItemsObj) {
     .trim()
     .toLowerCase();
   return `${foodId}|${name}|${quantity}|${unit}`;
+}
+
+function resolveLookupNutrient(
+  currentValue: number | undefined,
+  lookedUpValue: number | undefined,
+) {
+  if (
+    typeof currentValue === "number" &&
+    Number.isFinite(currentValue) &&
+    currentValue > 0
+  ) {
+    return currentValue;
+  }
+  if (
+    typeof lookedUpValue === "number" &&
+    Number.isFinite(lookedUpValue) &&
+    lookedUpValue > 0
+  ) {
+    return lookedUpValue;
+  }
+  return currentValue ?? lookedUpValue;
 }
 
 function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
@@ -975,7 +1073,7 @@ function mergeEntryIntoState(
 
 function extractNutrition(
   activeItems: TFoodItem[] | TFoodItem | null,
-  data: TEdamamNutritionLookupResult[],
+  data: TEdamamNutritionLookupResultSource[],
   requestedUids: string[] = [],
 ): TFoodItem[] | TFoodItem | null {
   if (Array.isArray(activeItems) && !activeItems?.length) return null;
@@ -985,11 +1083,13 @@ function extractNutrition(
     string,
     TEdamamNutritionResponse["totalNutrients"]
   >();
+  const estimateByUid = new Map<string, TNutrientEstimate | undefined>();
   const measureByUid = new Map<string, string>();
   const nutrientsByFoodId = new Map<
     string,
     TEdamamNutritionResponse["totalNutrients"]
   >();
+  const estimateByFoodId = new Map<string, TNutrientEstimate | undefined>();
   const measureByFoodId = new Map<string, string>();
   const weightByUid = new Map<string, number>();
   const weightByFoodId = new Map<string, number>();
@@ -1000,6 +1100,9 @@ function extractNutrition(
     const requestedUid = requestedUids[index];
     if (requestedUid && !nutrientsByUid.has(requestedUid)) {
       nutrientsByUid.set(requestedUid, result.response.totalNutrients);
+      if (result.estimate) {
+        estimateByUid.set(requestedUid, result.estimate);
+      }
       if (result.resolvedMeasure.label) {
         measureByUid.set(requestedUid, result.resolvedMeasure.label);
       }
@@ -1011,6 +1114,9 @@ function extractNutrition(
     const requestedFoodId = result.requestedFoodId;
     if (!requestedFoodId || nutrientsByFoodId.has(requestedFoodId)) return;
     nutrientsByFoodId.set(requestedFoodId, result.response.totalNutrients);
+    if (result.estimate) {
+      estimateByFoodId.set(requestedFoodId, result.estimate);
+    }
     if (result.resolvedMeasure.label) {
       measureByFoodId.set(requestedFoodId, result.resolvedMeasure.label);
     }
@@ -1065,19 +1171,31 @@ function extractNutrition(
   }
 
   const returnNutrition = (item: TFoodItem) => {
+    const itemWithEstimate = item as FoodItemWithEstimateContext;
+    const originalUnit = (item.unit ?? "").trim().toLowerCase();
+    const shouldPreserveExplicitWeightUnit =
+      ["g", "gram", "grams", "ml", "milliliter", "milliliters", "l", "liter", "liters"].includes(
+        originalUnit,
+      ) && item.quantity > 1;
     const n =
       (item.uid ? nutrientsByUid.get(item.uid) : undefined) ??
       (item.foodId ? nutrientsByFoodId.get(item.foodId) : undefined);
     if (!n) return item;
-    const resolvedUnit =
-      (item.uid ? parsedMeasureByUid.get(item.uid) : undefined) ??
-      (item.uid ? measureByUid.get(item.uid) : undefined) ??
-      parsedMeasureByFoodId.get(item.foodId) ??
-      measureByFoodId.get(item.foodId) ??
-      item.unit;
+    const estimate =
+      (item.uid ? estimateByUid.get(item.uid) : undefined) ??
+      estimateByFoodId.get(item.foodId);
+    const resolvedUnit = shouldPreserveExplicitWeightUnit
+      ? item.unit
+      : (item.uid ? parsedMeasureByUid.get(item.uid) : undefined) ??
+        (item.uid ? measureByUid.get(item.uid) : undefined) ??
+        parsedMeasureByFoodId.get(item.foodId) ??
+        measureByFoodId.get(item.foodId) ??
+        item.unit;
     const resolvedWeight =
-      (item.uid ? weightByUid.get(item.uid) : undefined) ??
-      weightByFoodId.get(item.foodId);
+      shouldPreserveExplicitWeightUnit
+        ? item.quantity
+        : (item.uid ? weightByUid.get(item.uid) : undefined) ??
+          weightByFoodId.get(item.foodId);
     const normalizedResolvedUnit = (resolvedUnit ?? "").trim().toLowerCase();
     const resolvedMeasure = item.measures?.find(
       (measure) =>
@@ -1101,11 +1219,21 @@ function extractNutrition(
       typeof resolvedMeasure?.weight === "number" &&
       Number.isFinite(resolvedMeasure.weight) &&
       resolvedMeasure.weight > 0;
-    const nextQuantity = shouldAdoptResolvedWeight
+    const nextQuantity = shouldPreserveExplicitWeightUnit
+      ? item.quantity
+      : shouldAdoptResolvedWeight
       ? Math.round(resolvedWeight)
       : shouldConvertResolvedWeightToServings
         ? Math.round((resolvedWeight / resolvedMeasure.weight) * 100) / 100
         : item.quantity;
+    const phosphorusMg = resolveLookupNutrient(
+      item.nutrients.phosphorusMg,
+      n.P?.quantity,
+    );
+    const potassiumMg = resolveLookupNutrient(
+      item.nutrients.potassiumMg,
+      n.K?.quantity,
+    );
     return {
       ...item,
       nutrients: {
@@ -1115,13 +1243,14 @@ function extractNutrition(
         fatG: item.nutrients.fatG ?? n.FAT?.quantity,
         fiberG: n.FIBTG?.quantity ?? item.nutrients.fiberG,
         phosphorus_protein_ratio: phosphorus_protein_ratio(
-          item.nutrients.phosphorusMg ?? n.P?.quantity,
+          phosphorusMg,
           item.nutrients.proteinG ?? n.PROCNT?.quantity,
         ),
-        phosphorusMg: item.nutrients.phosphorusMg ?? n.P?.quantity,
-        potassiumMg: item.nutrients.potassiumMg ?? n.K?.quantity,
+        phosphorusMg,
+        potassiumMg,
         proteinG: item.nutrients.proteinG ?? n.PROCNT?.quantity,
         sodiumMg: item.nutrients.sodiumMg ?? n.NA?.quantity,
+        estimate: estimate ?? itemWithEstimate.nutrients.estimate,
       },
       quantity: nextQuantity,
       unit: resolvedUnit,

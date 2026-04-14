@@ -267,6 +267,13 @@ function sanitiseNutrients(nutrients: unknown) {
   if (typeof input.unit === "string" && input.unit.trim().length > 0) {
     (out as Record<string, string | number>).unit = input.unit.trim();
   }
+  if (
+    input.estimate &&
+    typeof input.estimate === "object" &&
+    !Array.isArray(input.estimate)
+  ) {
+    (out as Record<string, unknown>).estimate = input.estimate;
+  }
 
   return out;
 }

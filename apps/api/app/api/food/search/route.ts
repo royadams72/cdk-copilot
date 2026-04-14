@@ -12,6 +12,7 @@ import type {
 import { NextRequest } from "next/server";
 import { applyPhraseRules } from "./applyPhraseRules";
 import { BRAND_MARKERS } from "./brandMarkers";
+import { buildIngredientCandidates } from "./ingredientCandidates";
 import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
       ];
     } else {
       const normalized = (await normaliseInput(rawQuery)) as TLogMealNormalised;
-      console.log("normalized:", normalized);
+      // console.log("normalized:", normalized);
 
       if (!Array.isArray(normalized?.items) || normalized.items.length === 0) {
         throw new Error("Normalisation failed");
@@ -89,6 +90,11 @@ async function pickBestEdamamFood(
     scored.map(({ hint }) => ({
       food: {
         ...hint.food,
+        foodContentsLabel: hint.food.foodContentsLabel,
+        ingredientCandidates: buildIngredientCandidates(
+          hint.food.foodContentsLabel,
+          item,
+        ),
         nutrients: {
           caloriesKcal: hint.food.nutrients.ENERC_KCAL,
           carbsG: hint.food.nutrients.CHOCDF,
@@ -171,8 +177,8 @@ function toParsedCandidates(parsed: unknown): TEdamamFoodMeasure[] {
           foodContentsLabel: record.food.foodContentsLabel ?? undefined,
           image: record.food.image ?? undefined,
           nutrients:
-            (record.food.nutrients as TEdamamFoodMeasure["food"]["nutrients"]) ??
-            {},
+            (record.food
+              .nutrients as TEdamamFoodMeasure["food"]["nutrients"]) ?? {},
         },
         measures: record.measure ? [record.measure] : [],
       };
@@ -545,32 +551,6 @@ function isSimpleIngredientQuery(query: string) {
   return tokens.length > 0 && tokens.length <= 3;
 }
 
-// function scoreOffCandidate(candidate: TFoodSearchCandidate, query: string) {
-//   const normalizedQuery = normalizeSearchText(query);
-//   const label = normalizeSearchText(candidate.food.label);
-//   const brand = normalizeSearchText(candidate.food.brand ?? "");
-//   // console.log("brand:", brand);
-
-//   const combined = [brand, label].filter(Boolean).join(" ");
-//   const tokens = normalizedQuery.split(" ").filter(Boolean);
-//   let score = 0;
-
-//   if (brand && normalizedQuery.includes(brand)) score += 90;
-//   if (label === normalizedQuery) score += 110;
-//   else if (label.includes(normalizedQuery)) score += 50;
-//   if (candidate.metadata?.ukMarketMatch) score += 24;
-
-//   for (const token of tokens) {
-//     if (hasWord(combined, token)) score += 14;
-//   }
-
-//   if (tokens.length > 1 && tokens.every((token) => hasWord(combined, token))) {
-//     score += 30;
-//   }
-
-//   return score;
-// }
-
 async function resolveMatchesForItem(item: TLogMealItem) {
   const tempId = makeRandomId();
   const query = item.normalised.trim();
@@ -618,10 +598,7 @@ function parsePackagedQuery(query: string) {
 
   const quantity = Number.parseFloat(match[1]);
   const unit = match[2].toLowerCase();
-  const food = normalized
-    .replace(match[0], " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const food = normalized.replace(match[0], " ").replace(/\s+/g, " ").trim();
 
   return {
     food: food || normalized,
