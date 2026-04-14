@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { EdamamMeasureSchema } from "./edamam";
+import { IngredientCandidateSchema } from "./nutrient_estimation";
 
 export const FoodSearchProvider = z.enum(["edamam"]);
 
@@ -23,6 +24,8 @@ export const FoodSearchCandidateSchema = z.object({
     brand: z.string().optional(),
     category: z.string().optional(),
     categoryLabel: z.string().optional(),
+    foodContentsLabel: z.string().optional(),
+    ingredientCandidates: z.array(IngredientCandidateSchema).optional(),
     image: z.string().optional(),
     nutrients: SearchFoodNutrientsSchema,
   }),

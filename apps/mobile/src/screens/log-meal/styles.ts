@@ -223,6 +223,32 @@ export const logMealStyles = StyleSheet.create({
     fontSize: 13,
     color: "#64748b",
   },
+  estimateBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#fffbeb",
+    borderBottomWidth: 1,
+    borderBottomColor: "#fde68a",
+  },
+  estimateBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#92400e",
+    fontWeight: "600",
+  },
+  estimateIconButton: {
+    padding: 2,
+  },
+  nutrientLabelWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 12,
+  },
   nutrientList: {
     borderRadius: 14,
     borderWidth: 1,
@@ -231,11 +257,9 @@ export const logMealStyles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   nutrientLabel: {
-    flex: 1,
     fontSize: 15,
     fontWeight: "600",
     color: "#334155",
-    paddingRight: 12,
   },
   nutrientRow: {
     flexDirection: "row",
@@ -257,5 +281,78 @@ export const logMealStyles = StyleSheet.create({
     borderColor: "#cbd5e1",
     overflow: "hidden",
     backgroundColor: "#fff",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.42)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalCard: {
+    maxHeight: "78%",
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    padding: 18,
+    gap: 14,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+  },
+  modalWarning: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#92400e",
+    fontWeight: "600",
+  },
+  modalBody: {
+    maxHeight: 360,
+  },
+  modalRow: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    gap: 4,
+  },
+  modalIngredient: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  modalFormula: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#334155",
+  },
+  modalMatchedFood: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+  modalEmptyText: {
+    fontSize: 14,
+    color: "#475569",
+  },
+  modalMissingText: {
+    marginTop: 12,
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#92400e",
+    fontWeight: "600",
   },
 });

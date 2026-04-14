@@ -8,6 +8,7 @@ export * from "./schemas/labs";
 export * from "./schemas/measurements";
 export * from "./schemas/medications";
 export * from "./schemas/nutrition";
+export * from "./schemas/nutrient_estimation";
 export * from "./schemas/nutrition_favourites";
 export * from "./schemas/patient_goals";
 export * from "./schemas/patients";

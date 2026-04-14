@@ -3,6 +3,12 @@ import {
   TEdamamNutritionLookupItem,
   TFoodItem,
 } from "@ckd/core";
+import type { TIngredientCandidate } from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
+
+type FoodItemWithEstimateContext = TFoodItem & {
+  foodContentsLabel?: string;
+  ingredientCandidates?: TIngredientCandidate[];
+};
 
 export function setNutrientsBody({
   foodItems,
@@ -10,13 +16,15 @@ export function setNutrientsBody({
   foodItems: TFoodItem[] | TFoodItem | null;
 }): TEdamamNutritionLookupItem[] | undefined {
   if (!foodItems) return;
-  const items = Array.isArray(foodItems) ? foodItems : [foodItems];
+  const items = (Array.isArray(foodItems) ? foodItems : [foodItems]) as FoodItemWithEstimateContext[];
   return items.map((foodItem) => {
     const normalizedFoodName = normalizeForEdamamLookup(foodItem.name);
     return {
       brand: foodItem.brand,
       foodId: foodItem.foodId,
       foodName: normalizedFoodName,
+      foodContentsLabel: foodItem.foodContentsLabel,
+      ingredientCandidates: foodItem.ingredientCandidates,
       measures: foodItem.measures ?? [],
       originalText: normalizedFoodName,
       quantity: foodItem.quantity,

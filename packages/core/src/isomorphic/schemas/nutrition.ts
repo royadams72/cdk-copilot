@@ -3,6 +3,10 @@ import { z } from "zod";
 import { objectIdHex } from "./common";
 import { EdamamMeasureSchema } from "./edamam";
 import { FoodTaxonomySnapshot } from "./food_taxonomy";
+import {
+  IngredientCandidateSchema,
+  NutrientEstimateSchema,
+} from "./nutrient_estimation";
 
 const MealType = z.enum(["breakfast", "lunch", "dinner", "snack", "drink"]);
 export const NutrientKey = z.enum([
@@ -23,6 +27,7 @@ const Nutrients = z.object({
   potassiumMg: z.number().nonnegative().max(10000).optional(),
   proteinG: z.number().nonnegative().max(300).optional(),
   sodiumMg: z.number().nonnegative().max(20000).optional(),
+  estimate: NutrientEstimateSchema.optional(),
   source: z.string().optional(),
   unit: z.string().optional(),
 });
@@ -33,10 +38,12 @@ const FoodItem = z.object({
   foodId: z.string(), // your DB or external ID
   groupId: z.string().optional(), // groupId should be omitted when persisted to DB
   brand: z.string().optional(),
+  foodContentsLabel: z.string().optional(),
+  ingredientCandidates: z.array(IngredientCandidateSchema).optional(),
   quantity: z.number().nonnegative().max(600),
   preparation: z.string().optional(), // "grilled", "boiled", etc.
   nutrients: Nutrients, // per this portion
-  source: z.enum(["user", "barcode", "image_ai", "api"]).default("user"),
+  source: z.enum(["user", "image_ai", "api"]).default("user"),
   taxonomy: FoodTaxonomySnapshot.optional(),
   measures: z.array(EdamamMeasureSchema), // measures should be omitted when persisted to DB
   unit: z.string(),
