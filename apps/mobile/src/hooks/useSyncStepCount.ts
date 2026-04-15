@@ -11,11 +11,17 @@ export function useSyncStepCount(stepsToday: number | null, isReady: boolean) {
     const roundedSteps = Math.round(stepsToday);
     if (lastSyncedRef.current === roundedSteps) return;
 
-    lastSyncedRef.current = roundedSteps;
     void createMeasurement({
       count: roundedSteps,
       kind: "steps",
       measuredAt: new Date().toISOString(),
-    });
+    })
+      .unwrap()
+      .then(() => {
+        lastSyncedRef.current = roundedSteps;
+      })
+      .catch((error) => {
+        console.log("Step sync failed", error);
+      });
   }, [createMeasurement, isReady, stepsToday]);
 }

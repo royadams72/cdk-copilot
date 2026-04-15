@@ -217,6 +217,11 @@ export function useStepCount(goal = 10000) {
       if (Platform.OS === "android") {
         try {
           await applyAndroidState();
+          if (!interval) {
+            interval = setInterval(() => {
+              void applyAndroidState();
+            }, 60_000);
+          }
         } catch {
           if (mounted) {
             setCanRequestPermission(false);

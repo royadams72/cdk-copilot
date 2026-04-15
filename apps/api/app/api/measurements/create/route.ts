@@ -227,32 +227,56 @@ export async function POST(req: NextRequest) {
     if (kind === "steps") {
       const dayStart = startOfUtcDay(measuredAtRaw);
       const dayEnd = addDays(dayStart, 1);
-      const result = await db.collection(COLLECTIONS.MeasurementsLedger).updateOne(
-        {
-          kind: "steps",
-          measuredAt: { $gte: dayStart, $lt: dayEnd },
-          patientId: payload.patientId,
-          source: "patient",
+      const filter = {
+        kind: "steps",
+        measuredAt: { $gte: dayStart, $lt: dayEnd },
+        patientId: payload.patientId,
+        source: "patient",
+      };
+      const update = {
+        $set: {
+          count: payload.count,
+          measuredAt: payload.measuredAt,
+          orgId: payload.orgId,
+          receivedAt: payload.receivedAt,
+          updatedAt: payload.updatedAt,
+          updatedBy: payload.updatedBy,
         },
-        {
+        $setOnInsert: {
+          createdAt: payload.createdAt,
+          createdBy: payload.createdBy,
+          kind: "steps",
+          patientId: payload.patientId,
+          source: payload.source,
+        },
+      };
+
+      let result: any = null;
+      try {
+        result = await db
+          .collection(COLLECTIONS.MeasurementsLedger)
+          .updateOne(filter, update, { upsert: true });
+      } catch (err: any) {
+        if (err?.code !== 121) throw err;
+        const fallbackUpdate = {
           $set: {
             count: payload.count,
             measuredAt: payload.measuredAt,
             orgId: payload.orgId,
             receivedAt: payload.receivedAt,
-            updatedAt: payload.updatedAt,
             updatedBy: payload.updatedBy,
           },
           $setOnInsert: {
-            createdAt: payload.createdAt,
             createdBy: payload.createdBy,
             kind: "steps",
             patientId: payload.patientId,
             source: payload.source,
           },
-        },
-        { upsert: true },
-      );
+        };
+        result = await db
+          .collection(COLLECTIONS.MeasurementsLedger)
+          .updateOne(filter, fallbackUpdate, { upsert: true });
+      }
 
       return ok(
         {
