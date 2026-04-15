@@ -1,15 +1,9 @@
 import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 
+import { ANDROID_HEALTH_RECORD_PERMISSIONS } from "@/lib/healthConnectPermissions";
 import { useCreateMeasurementMutation } from "@/store/services/dashboardApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
-
-const HEALTH_RECORD_PERMISSIONS = [
-  { accessType: "read", recordType: "BloodPressure" },
-  { accessType: "read", recordType: "ExerciseSession" },
-  { accessType: "read", recordType: "HeartRate" },
-  { accessType: "read", recordType: "SleepSession" },
-] as const;
 
 type HealthRecordType =
   | "BloodPressure"
@@ -232,7 +226,7 @@ export function useSyncHealthConnectMeasurements(enabled: boolean) {
           ),
         );
 
-        for (const permission of HEALTH_RECORD_PERMISSIONS) {
+        for (const permission of ANDROID_HEALTH_RECORD_PERMISSIONS) {
           if (
             !granted.has(`${permission.accessType}:${permission.recordType}`)
           ) {

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import {
+  ANDROID_HEALTH_PERMISSIONS,
+  ANDROID_STEP_PERMISSION,
+} from "@/lib/healthConnectPermissions";
+
 type StepStatus =
   | "idle"
   | "unsupported"
@@ -10,19 +15,6 @@ type StepStatus =
   | "health-connect-update-required"
   | "ready"
   | "error";
-
-const ANDROID_STEP_PERMISSION = {
-  accessType: "read",
-  recordType: "Steps",
-} as const;
-
-const ANDROID_HEALTH_PERMISSIONS = [
-  { accessType: "read", recordType: "BloodPressure" },
-  { accessType: "read", recordType: "ExerciseSession" },
-  { accessType: "read", recordType: "HeartRate" },
-  { accessType: "read", recordType: "SleepSession" },
-  ANDROID_STEP_PERMISSION,
-] as const;
 
 type StepDebug = {
   aggregateTotal: number;
