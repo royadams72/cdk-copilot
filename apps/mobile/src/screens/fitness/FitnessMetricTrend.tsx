@@ -18,7 +18,9 @@ import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { CreateMeasurementArgs } from "@/store/services/types";
 import { Card } from "../dashboard/components/Card";
+import { useCreateMeasurementMutation } from "@/store/services/dashboardApi";
 
 type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
 
@@ -207,6 +209,7 @@ export default function FitnessMetricTrend() {
 
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
+  const [createMeasurement] = useCreateMeasurementMutation();
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -506,7 +509,7 @@ export default function FitnessMetricTrend() {
 
     try {
       setSaving(true);
-      const payload: Record<string, unknown> = { kind };
+      let payload: CreateMeasurementArgs;
 
       if (kind === "exercise") {
         if (!selectedExercise) {
@@ -516,12 +519,13 @@ export default function FitnessMetricTrend() {
         if (!Number.isFinite(value) || value <= 0) {
           throw new Error("Enter valid exercise minutes");
         }
-        payload.durationMin = Math.round(value);
-        payload.exerciseId = selectedExercise.exerciseId;
-        payload.measuredAt = dateToMeasuredAtIso(measuredDate);
-      }
-
-      if (kind === "sleep") {
+        payload = {
+          durationMin: Math.round(value),
+          exerciseId: selectedExercise.exerciseId,
+          kind: "exercise",
+          measuredAt: dateToMeasuredAtIso(measuredDate),
+        };
+      } else if (kind === "sleep") {
         const sleepToAt = combineDateAndTime(measuredDate, sleepToTime);
         let sleepFromAt = combineDateAndTime(measuredDate, sleepFromTime);
         if (sleepFromAt.getTime() >= sleepToAt.getTime()) {
@@ -533,29 +537,28 @@ export default function FitnessMetricTrend() {
         if (durationMin <= 0) {
           throw new Error("Sleep 'to' time must be after 'from' time");
         }
-        payload.durationMin = durationMin;
-        payload.sleepFromAt = sleepFromAt.toISOString();
-        payload.sleepToAt = sleepToAt.toISOString();
-        payload.measuredAt = sleepToAt.toISOString();
-      }
-
-      if (kind === "blood_pressure") {
+        payload = {
+          durationMin,
+          kind: "sleep",
+          measuredAt: sleepToAt.toISOString(),
+          sleepFromAt: sleepFromAt.toISOString(),
+          sleepToAt: sleepToAt.toISOString(),
+        };
+      } else if (kind === "blood_pressure") {
         if (bpSystolic <= bpDiastolic) {
           throw new Error("Systolic must be greater than diastolic");
         }
-        payload.systolicMmHg = bpSystolic;
-        payload.diastolicMmHg = bpDiastolic;
-        payload.measuredAt = dateToMeasuredAtIso(measuredDate);
+        payload = {
+          diastolicMmHg: bpDiastolic,
+          kind: "blood_pressure",
+          measuredAt: dateToMeasuredAtIso(measuredDate),
+          systolicMmHg: bpSystolic,
+        };
+      } else {
+        return;
       }
 
-      const res = await authFetch(`${API}/api/measurements/create`, {
-        body: JSON.stringify(payload),
-        method: "POST",
-      });
-      const body: any = await res.json().catch(() => null);
-      if (!res.ok || !body?.ok) {
-        throw new Error(body?.message ?? "Failed to save reading");
-      }
+      await createMeasurement(payload).unwrap();
 
       setExerciseMinutes("");
       setModalOpen(false);

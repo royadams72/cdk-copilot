@@ -20,6 +20,7 @@ import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function Dashboard() {
   );
   const { percentOfGoal, requestAccess, status: stepStatus, stepsToday } =
     useStepCount(10000);
+  useSyncStepCount(stepsToday, stepStatus === "ready");
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(

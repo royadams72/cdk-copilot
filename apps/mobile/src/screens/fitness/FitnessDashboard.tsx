@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 
 import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
 import {
@@ -206,6 +207,7 @@ export default function FitnessDashboard() {
     status: stepStatus,
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
+  useSyncStepCount(stepsToday, stepStatus === "ready");
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",
