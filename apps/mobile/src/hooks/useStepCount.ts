@@ -16,6 +16,52 @@ const ANDROID_STEP_PERMISSION = {
   recordType: "Steps",
 } as const;
 
+type StepDebug = {
+  aggregateTotal: number;
+  groupedError: boolean;
+  groupedTotal: number | null;
+  originTotals: Record<string, number>;
+};
+
+async function readStepTotalsByOrigin(
+  healthConnect: typeof import("react-native-health-connect"),
+  timeRangeFilter: {
+    endTime: string;
+    operator: "between";
+    startTime: string;
+  },
+) {
+  let pageToken: string | undefined;
+  const originTotals: Record<string, number> = {};
+
+  do {
+    const result = await healthConnect.readRecords("Steps", {
+      ascendingOrder: true,
+      pageSize: 1000,
+      pageToken,
+      timeRangeFilter,
+    });
+
+    for (const record of result.records) {
+      const origin = record.metadata?.dataOrigin ?? "unknown";
+      originTotals[origin] =
+        (originTotals[origin] ?? 0) + Math.max(0, Math.round(record.count ?? 0));
+    }
+
+    pageToken = result.pageToken;
+  } while (pageToken);
+
+  return originTotals;
+}
+
+function selectStepTotalFromOrigins(
+  aggregateTotal: number,
+  originTotals: Record<string, number>,
+) {
+  const highestOriginTotal = Math.max(0, ...Object.values(originTotals));
+  return Math.max(aggregateTotal, highestOriginTotal);
+}
+
 async function loadAndroidStepState() {
   const healthConnect = await import("react-native-health-connect");
   const sdkStatus = await healthConnect.getSdkStatus();
@@ -25,6 +71,8 @@ async function loadAndroidStepState() {
   ) {
     return {
       canRequestPermission: false,
+      dataOrigins: [],
+      debug: null as StepDebug | null,
       status: "health-connect-unavailable" as const,
       stepsToday: null,
     };
@@ -36,6 +84,8 @@ async function loadAndroidStepState() {
   ) {
     return {
       canRequestPermission: false,
+      dataOrigins: [],
+      debug: null as StepDebug | null,
       status: "health-connect-update-required" as const,
       stepsToday: null,
     };
@@ -45,6 +95,8 @@ async function loadAndroidStepState() {
   if (!initialized) {
     return {
       canRequestPermission: false,
+      dataOrigins: [],
+      debug: null as StepDebug | null,
       status: "error" as const,
       stepsToday: null,
     };
@@ -60,6 +112,8 @@ async function loadAndroidStepState() {
   if (!hasStepAccess) {
     return {
       canRequestPermission: true,
+      dataOrigins: [],
+      debug: null as StepDebug | null,
       status: "permission-required" as const,
       stepsToday: null,
     };
@@ -67,20 +121,62 @@ async function loadAndroidStepState() {
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
+  const timeRangeFilter = {
+    operator: "between" as const,
+    startTime: startOfDay.toISOString(),
+    endTime: new Date().toISOString(),
+  };
 
   const aggregate = await healthConnect.aggregateRecord({
     recordType: "Steps",
-    timeRangeFilter: {
-      operator: "between",
-      startTime: startOfDay.toISOString(),
-      endTime: new Date().toISOString(),
-    },
+    timeRangeFilter,
   });
+  const aggregateTotal = Math.max(0, Math.round(aggregate.COUNT_TOTAL ?? 0));
+  const originTotals = await readStepTotalsByOrigin(
+    healthConnect,
+    timeRangeFilter,
+  );
+  let groupedTotal: number | null = null;
+  let groupedError = false;
+
+  try {
+    const dailyAggregate = await healthConnect.aggregateGroupByPeriod({
+      recordType: "Steps",
+      timeRangeFilter,
+      timeRangeSlicer: {
+        length: 1,
+        period: "DAYS",
+      },
+    });
+    groupedTotal = dailyAggregate.reduce(
+      (total, group) =>
+        total + Math.max(0, Math.round(group.result.COUNT_TOTAL ?? 0)),
+      0,
+    );
+  } catch {
+    groupedError = true;
+  }
 
   return {
     canRequestPermission: true,
+    dataOrigins:
+      Object.keys(originTotals).length > 0
+        ? Object.keys(originTotals)
+        : aggregate.dataOrigins ?? [],
+    debug: {
+      aggregateTotal,
+      groupedError,
+      groupedTotal,
+      originTotals,
+    },
     status: "ready" as const,
-    stepsToday: aggregate.COUNT_TOTAL ?? 0,
+    stepsToday:
+      typeof groupedTotal === "number"
+        ? Math.max(
+            selectStepTotalFromOrigins(aggregateTotal, originTotals),
+            groupedTotal,
+          )
+        : selectStepTotalFromOrigins(aggregateTotal, originTotals),
   };
 }
 
@@ -88,6 +184,13 @@ export function useStepCount(goal = 10000) {
   const [status, setStatus] = useState<StepStatus>("idle");
   const [stepsToday, setStepsToday] = useState<number | null>(null);
   const [canRequestPermission, setCanRequestPermission] = useState(false);
+  const [dataOrigins, setDataOrigins] = useState<string[]>([]);
+  const [debug, setDebug] = useState<{
+    aggregateTotal: number;
+    groupedError: boolean;
+    groupedTotal: number | null;
+    originTotals: Record<string, number>;
+  } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -99,6 +202,8 @@ export function useStepCount(goal = 10000) {
       const result = await loadAndroidStepState();
       if (!mounted) return;
       setCanRequestPermission(result.canRequestPermission);
+      setDataOrigins(result.dataOrigins);
+      setDebug(result.debug);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
     };
@@ -209,6 +314,8 @@ export function useStepCount(goal = 10000) {
 
       const result = await loadAndroidStepState();
       setCanRequestPermission(result.canRequestPermission);
+      setDataOrigins(result.dataOrigins);
+      setDebug(result.debug);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
     } catch {
@@ -223,6 +330,8 @@ export function useStepCount(goal = 10000) {
 
   return {
     goal,
+    dataOrigins,
+    debug,
     percentOfGoal,
     requestAccess,
     status,

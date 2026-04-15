@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
+import { useStepCount } from "@/hooks/useStepCount";
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
 import {
@@ -22,6 +23,7 @@ import {
 type MetricCard = {
   kind: MeasurementKind;
   label: string;
+  onPress?: () => void;
   progressLabel?: string;
   progressPercent?: number;
   subtext: string;
@@ -137,11 +139,73 @@ function toCard(
   };
 }
 
+function stepStatusLabel(status: ReturnType<typeof useStepCount>["status"]) {
+  switch (status) {
+    case "permission-required":
+      return "Allow Health Connect access to show today's stored steps.";
+    case "permission-denied":
+      return "Step access was denied. Tap to allow Health Connect access.";
+    case "health-connect-unavailable":
+      return "Health Connect is not available on this device.";
+    case "health-connect-update-required":
+      return "Update Health Connect to read stored steps.";
+    case "error":
+      return "Could not load step data from Health Connect.";
+    default:
+      return "Today from Health Connect";
+  }
+}
+
+function formatStepOrigins(dataOrigins: string[]) {
+  if (!dataOrigins.length) return "Today from Health Connect";
+
+  return `Today from Health Connect: ${dataOrigins
+    .map(formatHealthConnectOrigin)
+    .join(", ")}`;
+}
+
+function formatHealthConnectOrigin(origin: string) {
+  if (origin.includes("shealth")) return "Samsung Health";
+  if (origin.includes("google.android.apps.fitness")) return "Google Fit";
+  if (origin.includes("fitbit")) return "Fitbit";
+  if (origin.includes("garmin")) return "Garmin";
+  if (origin.includes("withings")) return "Withings";
+  if (origin.includes("oneplus")) return "OnePlus";
+
+  return origin.split(".").at(-1) ?? origin;
+}
+
+function formatOriginTotals(originTotals: Record<string, number>) {
+  const entries = Object.entries(originTotals);
+  if (!entries.length) return "";
+
+  return entries
+    .map(([origin, total]) => `${formatHealthConnectOrigin(origin)} ${total}`)
+    .join(", ");
+}
+
+function getStepSubtext(
+  status: ReturnType<typeof useStepCount>["status"],
+  dataOrigins: string[],
+) {
+  return status === "ready"
+    ? formatStepOrigins(dataOrigins)
+    : stepStatusLabel(status);
+}
+
 export default function FitnessDashboard() {
   const router = useRouter();
   const { data, error, isFetching, isLoading, refetch } =
     useGetLatestMeasurementsQuery(undefined);
   const { data: targetsData } = useGetTargetsQuery("lifestyle");
+  const {
+    dataOrigins: stepDataOrigins,
+    debug: stepDebug,
+    percentOfGoal,
+    requestAccess,
+    status: stepStatus,
+    stepsToday,
+  } = useStepCount(STEPS_DAILY_TARGET);
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",
@@ -162,13 +226,43 @@ export default function FitnessDashboard() {
 
   const cards = useMemo(() => {
     const byKind = new Map(items.map((item) => [item.kind, item]));
+    const stepProgress =
+      percentOfGoal === null ? undefined : Math.round(percentOfGoal * 100);
+    const stepsCard: MetricCard = {
+      kind: "steps",
+      label: "Steps",
+      onPress:
+        stepStatus === "permission-required" || stepStatus === "permission-denied"
+          ? requestAccess
+          : undefined,
+      progressLabel:
+        typeof stepProgress === "number"
+          ? `${stepProgress}% of ${stepsTarget.toLocaleString()} daily target`
+          : undefined,
+      progressPercent: stepProgress,
+      subtext: getStepSubtext(stepStatus, stepDataOrigins),
+      value:
+        typeof stepsToday === "number"
+          ? `${Math.round(stepsToday).toLocaleString()} steps`
+          : "No step access",
+    };
+
     return [
-      toCard("steps", byKind.get("steps"), stepsTarget),
+      stepsCard,
       toCard("exercise", byKind.get("exercise")),
       toCard("blood_pressure", byKind.get("blood_pressure")),
       toCard("sleep", byKind.get("sleep")),
     ];
-  }, [items, stepsTarget]);
+  }, [
+    items,
+    percentOfGoal,
+    requestAccess,
+    stepDataOrigins,
+    stepDebug,
+    stepStatus,
+    stepsTarget,
+    stepsToday,
+  ]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -238,11 +332,13 @@ export default function FitnessDashboard() {
           cards.map((card) => (
             <TouchableOpacity
               key={card.kind}
-              onPress={() =>
-                router.push({
-                  params: { kind: card.kind, label: card.label },
-                  pathname: "/(fitness)/metric-trend",
-                })
+              onPress={
+                card.onPress ??
+                (() =>
+                  router.push({
+                    params: { kind: card.kind, label: card.label },
+                    pathname: "/(fitness)/metric-trend",
+                  }))
               }
             >
               <Card>
@@ -251,6 +347,19 @@ export default function FitnessDashboard() {
                   {card.value}
                 </ThemedText>
                 <ThemedText style={{ opacity: 0.7 }}>{card.subtext}</ThemedText>
+                {card.kind === "steps" && stepDebug ? (
+                  <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
+                    Health Connect debug: aggregate {stepDebug.aggregateTotal}
+                    {typeof stepDebug.groupedTotal === "number"
+                      ? `, grouped ${stepDebug.groupedTotal}`
+                      : stepDebug.groupedError
+                        ? ", grouped failed"
+                        : ""}
+                    {Object.keys(stepDebug.originTotals).length > 0
+                      ? `, sources ${formatOriginTotals(stepDebug.originTotals)}`
+                      : ""}
+                  </ThemedText>
+                ) : null}
                 {typeof card.progressPercent === "number" ? (
                   <View style={{ gap: 6, marginTop: 8 }}>
                     <View
@@ -277,7 +386,9 @@ export default function FitnessDashboard() {
                   </View>
                 ) : null}
                 <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                  {card.kind === "steps"
+                  {card.onPress
+                    ? "Allow step access"
+                    : card.kind === "steps"
                     ? "View trend"
                     : "View trend and add reading"}
                 </ThemedText>
