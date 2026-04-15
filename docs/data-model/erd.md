@@ -45,6 +45,10 @@ erDiagram
     ObjectId _id PK
     ObjectId patientId FK
     string kind
+    string source
+    object provider
+    string externalRecordId
+    object device
     date measuredAt
   }
 

@@ -40,6 +40,24 @@
 - **Type:** numeric observation payload
 - **Notes:** observed fact only, never a target/goal
 
+### measurements.source
+
+- **Location:** `measurements_ledger.source`
+- **Type:** enum `patient|device|api|provider`
+- **Notes:** `patient` means manual user entry; `provider` means imported through a broker/integration such as Health Connect; `device` is for direct device integrations.
+
+### measurements.provider
+
+- **Location:** `measurements_ledger.provider`
+- **Type:** object `{ packageName, displayName? }`
+- **Notes:** identifies the upstream app/provider for imported data. For Health Connect, `packageName` is the contributing data origin package.
+
+### measurements.externalRecordId
+
+- **Location:** `measurements_ledger.externalRecordId`
+- **Type:** string
+- **Notes:** stable dedupe key for imported/provider records. Use the upstream record id when available; for generated daily summaries use a deterministic key such as `health-connect:{packageName}:steps:{YYYY-MM-DD}`.
+
 ### clinical reference rule
 
 - **Location:** `clinical_reference_rules`

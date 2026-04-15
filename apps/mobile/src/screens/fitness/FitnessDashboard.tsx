@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 
 import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
@@ -57,6 +58,8 @@ function toCard(
       label:
         kind === "blood_pressure"
           ? "Blood pressure"
+          : kind === "heart_rate"
+            ? "Heart rate"
           : kind === "exercise"
             ? "Exercise"
             : kind === "sleep"
@@ -110,7 +113,7 @@ function toCard(
       progressPercent: percent,
       subtext: formatDateTime(doc.measuredAt),
       value:
-        mins !== null && kcal !== null
+        mins !== null && kcal !== null && kcal > 0
           ? `${mins} min • ${kcal} kcal`
           : mins !== null
             ? `${mins} min`
@@ -125,6 +128,17 @@ function toCard(
       value:
         typeof doc.durationMin === "number"
           ? `${Math.round(doc.durationMin)} min`
+          : "No data",
+    };
+  }
+  if (doc.kind === "heart_rate") {
+    return {
+      kind: "heart_rate",
+      label: "Heart rate",
+      subtext: formatDateTime(doc.measuredAt),
+      value:
+        typeof doc.bpm === "number"
+          ? `${Math.round(doc.bpm)} bpm`
           : "No data",
     };
   }
@@ -143,9 +157,9 @@ function toCard(
 function stepStatusLabel(status: ReturnType<typeof useStepCount>["status"]) {
   switch (status) {
     case "permission-required":
-      return "Allow Health Connect access to show today's stored steps.";
+      return "Allow Health Connect access to show phone or watch health readings.";
     case "permission-denied":
-      return "Step access was denied. Tap to allow Health Connect access.";
+      return "Health Connect access was denied. Tap to allow stored health readings.";
     case "health-connect-unavailable":
       return "Health Connect is not available on this device.";
     case "health-connect-update-required":
@@ -204,10 +218,14 @@ export default function FitnessDashboard() {
     debug: stepDebug,
     percentOfGoal,
     requestAccess,
+    selectedDataOrigin,
     status: stepStatus,
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
-  useSyncStepCount(stepsToday, stepStatus === "ready");
+  useSyncStepCount(stepsToday, stepStatus === "ready", {
+    providerPackageName: selectedDataOrigin,
+  });
+  useSyncHealthConnectMeasurements(true);
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",
@@ -251,6 +269,7 @@ export default function FitnessDashboard() {
 
     return [
       stepsCard,
+      toCard("heart_rate", byKind.get("heart_rate")),
       toCard("exercise", byKind.get("exercise")),
       toCard("blood_pressure", byKind.get("blood_pressure")),
       toCard("sleep", byKind.get("sleep")),
@@ -307,7 +326,7 @@ export default function FitnessDashboard() {
         <View style={{ gap: 4 }}>
           <ThemedText type="title">Fitness dashboard</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
-            Latest readings for activity, blood pressure, and sleep.
+            Latest readings for heart rate, activity, blood pressure, and sleep.
           </ThemedText>
         </View>
 

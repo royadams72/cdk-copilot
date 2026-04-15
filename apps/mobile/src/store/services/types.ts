@@ -28,47 +28,85 @@ export type NutritionTrendData = {
   targets: Partial<Record<NutrientKey, number>>;
 };
 
-export type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
+export type MeasurementKind =
+  | "steps"
+  | "exercise"
+  | "sleep"
+  | "blood_pressure"
+  | "heart_rate";
+export type MeasurementSource = "patient" | "device" | "api" | "provider";
+export type MeasurementProvider = {
+  displayName?: string;
+  packageName: string;
+};
+export type MeasurementDevice = {
+  externalId?: string;
+  name?: string;
+  platform?: string;
+};
+
+export type MeasurementProvenanceArgs = {
+  device?: MeasurementDevice;
+  externalRecordId?: string;
+  provider?: MeasurementProvider;
+  source?: MeasurementSource;
+};
 
 export type MeasurementLatest = {
   count?: number;
   diastolicMmHg?: number;
+  device?: MeasurementDevice;
   durationMin?: number;
   exercise?: {
     caloriesKcal?: number;
     durationMin?: number;
     name?: string;
+    title?: string;
   };
+  externalRecordId?: string;
+  bpm?: number;
   kind: MeasurementKind;
   measuredAt?: string;
+  provider?: MeasurementProvider;
+  source?: MeasurementSource;
   systolicMmHg?: number;
 };
 
 export type CreateMeasurementArgs =
-  | {
+  | ({
       count: number;
       kind: "steps";
       measuredAt?: string;
-    }
-  | {
+    } & MeasurementProvenanceArgs)
+  | ({
       durationMin: number;
       exerciseId: string;
+      caloriesKcal?: number;
+      category?: string;
+      exerciseTitle?: string;
+      intensity?: "light" | "moderate" | "vigorous";
       kind: "exercise";
+      met?: number;
       measuredAt?: string;
-    }
-  | {
+    } & MeasurementProvenanceArgs)
+  | ({
       durationMin: number;
       kind: "sleep";
       measuredAt?: string;
       sleepFromAt: string;
       sleepToAt: string;
-    }
-  | {
+    } & MeasurementProvenanceArgs)
+  | ({
       diastolicMmHg: number;
       kind: "blood_pressure";
       measuredAt?: string;
       systolicMmHg: number;
-    };
+    } & MeasurementProvenanceArgs)
+  | ({
+      bpm: number;
+      kind: "heart_rate";
+      measuredAt?: string;
+    } & MeasurementProvenanceArgs);
 
 export type TargetDomain = "renal" | "lifestyle";
 export type TargetDefinitionValue = {

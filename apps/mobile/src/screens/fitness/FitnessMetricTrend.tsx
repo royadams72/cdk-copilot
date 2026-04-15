@@ -22,7 +22,12 @@ import { CreateMeasurementArgs } from "@/store/services/types";
 import { Card } from "../dashboard/components/Card";
 import { useCreateMeasurementMutation } from "@/store/services/dashboardApi";
 
-type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
+type MeasurementKind =
+  | "steps"
+  | "exercise"
+  | "sleep"
+  | "blood_pressure"
+  | "heart_rate";
 
 type TrendPoint = {
   date: string;
@@ -125,6 +130,7 @@ function combineDateAndTime(date: Date, time: Date) {
 function metricUnit(kind: MeasurementKind) {
   if (kind === "steps") return "steps";
   if (kind === "blood_pressure") return "mmHg";
+  if (kind === "heart_rate") return "bpm";
   if (kind === "exercise") return "min";
   return "hours";
 }
@@ -132,6 +138,7 @@ function metricUnit(kind: MeasurementKind) {
 function addLabel(kind: MeasurementKind) {
   if (kind === "exercise") return "Add exercise";
   if (kind === "sleep") return "Add sleep";
+  if (kind === "heart_rate") return "Add heart rate";
   return "Add BP";
 }
 
@@ -209,6 +216,7 @@ export default function FitnessMetricTrend() {
 
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
+  const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [createMeasurement] = useCreateMeasurementMutation();
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
@@ -223,6 +231,7 @@ export default function FitnessMetricTrend() {
 
   const systolicOptions = useMemo(() => numberRange(90, 220), []);
   const diastolicOptions = useMemo(() => numberRange(50, 140), []);
+  const heartRateOptions = useMemo(() => numberRange(35, 220), []);
 
   const selectedExercise = useMemo(() => {
     for (const category of exerciseCatalog) {
@@ -554,6 +563,15 @@ export default function FitnessMetricTrend() {
           measuredAt: dateToMeasuredAtIso(measuredDate),
           systolicMmHg: bpSystolic,
         };
+      } else if (kind === "heart_rate") {
+        if (!Number.isFinite(heartRateBpm) || heartRateBpm <= 0) {
+          throw new Error("Enter a valid heart rate");
+        }
+        payload = {
+          bpm: Math.round(heartRateBpm),
+          kind: "heart_rate",
+          measuredAt: dateToMeasuredAtIso(measuredDate),
+        };
       } else {
         return;
       }
@@ -589,7 +607,8 @@ export default function FitnessMetricTrend() {
           {kind === "exercise" &&
           latestPoint &&
           typeof latestPoint.value === "number" &&
-          Number.isFinite(latestPoint.value) ? (
+          Number.isFinite(latestPoint.value) &&
+          latestPoint.value > 0 ? (
             <ThemedText style={{ opacity: 0.7 }}>
               Latest burn: {Math.round(latestPoint.value)} kcal
               {typeof latestPoint?.value2 === "number"
@@ -858,6 +877,35 @@ export default function FitnessMetricTrend() {
                             );
                           }
 
+                          if (kind === "heart_rate") {
+                            const bpm =
+                              typeof entry.value === "number"
+                                ? Math.round(entry.value)
+                                : null;
+                            return (
+                              <Card
+                                key={`${entry.measuredAt}-${idx}`}
+                                style={{
+                                  borderRadius: 10,
+                                  gap: 3,
+                                  padding: 10,
+                                }}
+                              >
+                                <ThemedText
+                                  type="defaultSemiBold"
+                                  style={{ fontSize: 18 }}
+                                >
+                                  {bpm ?? "--"} bpm
+                                </ThemedText>
+                                <ThemedText
+                                  style={{ fontSize: 12, opacity: 0.72 }}
+                                >
+                                  {time}
+                                </ThemedText>
+                              </Card>
+                            );
+                          }
+
                           if (kind === "exercise") {
                             const kcal =
                               typeof entry.value === "number"
@@ -889,8 +937,10 @@ export default function FitnessMetricTrend() {
                                   {time}
                                 </ThemedText>
                                 <ThemedText style={{ fontSize: 13 }}>
-                                  {kcal ?? "--"} kcal
-                                  {mins !== null ? ` in ${mins} min` : ""}
+                                  {mins !== null ? `${mins} min` : "-- min"}
+                                  {kcal !== null && kcal > 0
+                                    ? ` • ${kcal} kcal`
+                                    : ""}
                                 </ThemedText>
                               </Card>
                             );
@@ -1179,6 +1229,34 @@ export default function FitnessMetricTrend() {
               </>
             ) : null}
 
+            {kind === "heart_rate" ? (
+              <>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Heart rate (bpm)
+                </ThemedText>
+                <View
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                  }}
+                >
+                  <Picker
+                    selectedValue={heartRateBpm}
+                    onValueChange={(value) => setHeartRateBpm(Number(value))}
+                  >
+                    {heartRateOptions.map((value) => (
+                      <Picker.Item
+                        key={`hr-${value}`}
+                        label={`${value}`}
+                        value={value}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </>
+            ) : null}
+
             {kind === "sleep" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
@@ -1234,6 +1312,7 @@ export default function FitnessMetricTrend() {
             ) : null}
 
             {kind === "blood_pressure" ||
+            kind === "heart_rate" ||
             kind === "sleep" ||
             kind === "exercise" ? (
               <>

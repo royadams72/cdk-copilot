@@ -62,7 +62,8 @@ export async function GET(req: NextRequest) {
       kind !== "steps" &&
       kind !== "exercise" &&
       kind !== "sleep" &&
-      kind !== "blood_pressure"
+      kind !== "blood_pressure" &&
+      kind !== "heart_rate"
     ) {
       return bad("Invalid kind", undefined, 400);
     }
@@ -135,6 +136,7 @@ export async function GET(req: NextRequest) {
         value = asNumber(doc.systolicMmHg);
         value2 = asNumber(doc.diastolicMmHg);
       }
+      if (kind === "heart_rate") value = asNumber(doc.bpm);
 
       const dayEntries = entriesByDay.get(key) ?? [];
       dayEntries.push({
