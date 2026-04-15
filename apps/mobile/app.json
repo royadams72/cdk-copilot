@@ -27,7 +27,11 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.ckdcopilot.ckdapp",
-      "permissions": ["ACTIVITY_RECOGNITION", "POST_NOTIFICATIONS"],
+      "permissions": [
+        "ACTIVITY_RECOGNITION",
+        "POST_NOTIFICATIONS",
+        "android.permission.health.READ_STEPS"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",

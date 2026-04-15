@@ -32,6 +32,18 @@ function asDate(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function startOfUtcDay(date: Date) {
+  const start = new Date(date);
+  start.setUTCHours(0, 0, 0, 0);
+  return start;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
 function formatMongoValidationMessage(err: any) {
   if (!err || err?.code !== 121) return err?.message || "Server error";
   const details = err?.errInfo?.details;
@@ -210,6 +222,45 @@ export async function POST(req: NextRequest) {
       payload.diastolicMmHg = Math.round(diastolicMmHg);
       const pulseBpm = asNumber(body.pulseBpm);
       if (pulseBpm !== null) payload.pulseBpm = Math.round(pulseBpm);
+    }
+
+    if (kind === "steps") {
+      const dayStart = startOfUtcDay(measuredAtRaw);
+      const dayEnd = addDays(dayStart, 1);
+      const result = await db.collection(COLLECTIONS.MeasurementsLedger).updateOne(
+        {
+          kind: "steps",
+          measuredAt: { $gte: dayStart, $lt: dayEnd },
+          patientId: payload.patientId,
+          source: "patient",
+        },
+        {
+          $set: {
+            count: payload.count,
+            measuredAt: payload.measuredAt,
+            orgId: payload.orgId,
+            receivedAt: payload.receivedAt,
+            updatedAt: payload.updatedAt,
+            updatedBy: payload.updatedBy,
+          },
+          $setOnInsert: {
+            createdAt: payload.createdAt,
+            createdBy: payload.createdBy,
+            kind: "steps",
+            patientId: payload.patientId,
+            source: payload.source,
+          },
+        },
+        { upsert: true },
+      );
+
+      return ok(
+        {
+          id: result.upsertedId?.toString() ?? null,
+          updated: result.matchedCount > 0,
+        },
+        result.upsertedCount ? 201 : 200,
+      );
     }
 
     const candidates: Array<Record<string, unknown>> = [payload];

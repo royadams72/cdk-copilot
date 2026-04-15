@@ -1,102 +1,27 @@
 import { TWeeklyNutritionInsight } from "@ckd/core";
 import type {
   DashboardData,
-  FoodHighlight,
-  NutrientKey,
   NutritionDailyPoint,
-  NutritionMetricKey,
   NutritionTrendChunk,
 } from "@/screens/dashboard/types";
+import {
+  DashboardQueryData,
+  DashboardScope,
+  CreateMeasurementArgs,
+  MeasurementLatest,
+  NutritionTrendChunkArgs,
+  NutritionTrendData,
+  RunWeeklyNutritionInsightArgs,
+  TargetDomain,
+  TargetItem,
+  TargetsResponse,
+  UpdateTargetArgs,
+  WeeklyNutritionInsightResponse,
+} from "./types";
 
 import { appApi } from "./appApi";
+
 export { toQueryErrorMessage } from "./appApi";
-
-export type DashboardScope = "today" | "all";
-export type DashboardQueryData = Omit<DashboardData, "patientId">;
-export type NutritionTrendChunkArgs = {
-  before?: string;
-  days?: number;
-  reset?: boolean;
-};
-
-export type NutritionTrendData = {
-  dailySeries: NutritionDailyPoint[];
-  foodHighlightsByDate: Record<
-    string,
-    Record<NutritionMetricKey, FoodHighlight[]>
-  >;
-  hasMore: boolean;
-  mealsByDate: NutritionTrendChunk["nutrition"]["mealsByDate"];
-  nextBefore: string | null;
-  targets: Partial<Record<NutrientKey, number>>;
-};
-
-export type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
-
-export type MeasurementLatest = {
-  count?: number;
-  diastolicMmHg?: number;
-  durationMin?: number;
-  exercise?: {
-    caloriesKcal?: number;
-    durationMin?: number;
-    name?: string;
-  };
-  kind: MeasurementKind;
-  measuredAt?: string;
-  systolicMmHg?: number;
-};
-
-export type TargetDomain = "renal" | "lifestyle";
-export type TargetDefinitionValue = {
-  type: "range" | "max" | "min" | "exact";
-  basis?: "perDay" | "perKgPerDay" | null;
-  high?: number | null;
-  low?: number | null;
-  value?: number | null;
-};
-
-export type TargetItem = {
-  derivedFrom?: {
-    matchedAt?: string;
-    ruleId: string;
-    version: number;
-  } | null;
-  domain: TargetDomain;
-  effective: TargetDefinitionValue;
-  key: string;
-  metric: string;
-  override?: TargetDefinitionValue | null;
-  overrideMeta?: {
-    reason?: string | null;
-    setAt: string;
-    setBy: {
-      actorType: "user" | "clinician" | "system";
-      displayName?: string | null;
-      principalId: string;
-    };
-  } | null;
-  recommended: TargetDefinitionValue;
-  unit: string;
-};
-
-export type TargetsResponse = {
-  items: TargetItem[];
-  updatedAt: string | null;
-  weightKg?: number | null;
-};
-
-export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
-export type RunWeeklyNutritionInsightArgs = {
-  referenceDate?: string;
-};
-
-export type UpdateTargetArgs = {
-  clearOverride?: boolean;
-  metric: string;
-  override?: TargetDefinitionValue;
-  reason?: string;
-};
 
 export const dashboardApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -114,6 +39,17 @@ export const dashboardApi = appApi.injectEndpoints({
       providesTags: [{ id: "latest", type: "Fitness" as const }],
       query: () => "/api/measurements/latest",
     }),
+    createMeasurement: builder.mutation<unknown, CreateMeasurementArgs>({
+      invalidatesTags: [
+        { id: "latest", type: "Fitness" as const },
+        { id: "today", type: "Dashboard" as const },
+      ],
+      query: (body) => ({
+        body,
+        method: "POST",
+        url: "/api/measurements/create",
+      }),
+    }),
     getLatestWeeklyNutritionInsight: builder.query<
       WeeklyNutritionInsightResponse,
       void
@@ -123,21 +59,6 @@ export const dashboardApi = appApi.injectEndpoints({
       transformResponse: (response: {
         insight: TWeeklyNutritionInsight | null;
       }) => response?.insight ?? null,
-    }),
-    runWeeklyNutritionInsight: builder.mutation<
-      TWeeklyNutritionInsight,
-      RunWeeklyNutritionInsightArgs | void
-    >({
-      invalidatesTags: [
-        { id: "today", type: "Dashboard" as const },
-        { id: "all", type: "Dashboard" as const },
-        { id: "weekly-summary", type: "Dashboard" as const },
-      ],
-      query: (body) => ({
-        body: body ?? {},
-        method: "POST",
-        url: "/api/nutrition/weekly-summary/run",
-      }),
     }),
     getNutritionTrendChunk: builder.query<
       NutritionTrendData,
@@ -186,6 +107,21 @@ export const dashboardApi = appApi.injectEndpoints({
       query: (domain) =>
         domain ? `/api/targets?domain=${domain}` : "/api/targets",
     }),
+    runWeeklyNutritionInsight: builder.mutation<
+      TWeeklyNutritionInsight,
+      RunWeeklyNutritionInsightArgs | void
+    >({
+      invalidatesTags: [
+        { id: "today", type: "Dashboard" as const },
+        { id: "all", type: "Dashboard" as const },
+        { id: "weekly-summary", type: "Dashboard" as const },
+      ],
+      query: (body) => ({
+        body: body ?? {},
+        method: "POST",
+        url: "/api/nutrition/weekly-summary/run",
+      }),
+    }),
     updateTarget: builder.mutation<
       { metric: string; target: TargetItem; updated: boolean },
       UpdateTargetArgs
@@ -210,6 +146,7 @@ export const dashboardApi = appApi.injectEndpoints({
 });
 
 export const {
+  useCreateMeasurementMutation,
   useGetDashboardQuery,
   useGetLatestMeasurementsQuery,
   useGetLatestWeeklyNutritionInsightQuery,

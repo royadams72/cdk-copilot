@@ -25,8 +25,8 @@ import { NutritionStyles } from "./styles";
 import { useAppDispatch } from "@/store/hooks";
 import {
   toQueryErrorMessage,
-  useGetNutritionTrendChunkQuery,
   useGetLatestWeeklyNutritionInsightQuery,
+  useGetNutritionTrendChunkQuery,
   useLazyGetNutritionTrendChunkQuery,
 } from "@/store/services/dashboardApi";
 
@@ -42,7 +42,6 @@ import type {
   NutrientKey,
   NutritionDailyPoint,
 } from "../dashboard/types";
-import { RatioCard } from "../dashboard/components/RatioCard";
 import { AccordionCard } from "../dashboard/components/AccordionCard";
 
 const CHART_HEIGHT = 240;
@@ -60,7 +59,8 @@ export default function NutritionDetails() {
     error: trendQueryError,
     isLoading: isTrendLoading,
   } = useGetNutritionTrendChunkQuery({ days: chartRequestDays });
-  const { data: latestWeeklyInsight } = useGetLatestWeeklyNutritionInsightQuery();
+  const { data: latestWeeklyInsight } =
+    useGetLatestWeeklyNutritionInsightQuery();
   const [loadTrendChunk] = useLazyGetNutritionTrendChunkQuery();
   const [requestError, setRequestError] = useState<unknown>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -504,32 +504,36 @@ export default function NutritionDetails() {
                   : 7;
               return (
                 <>
-            <View style={NutritionStyles.cardHeader}>
-              <ThemedText type="defaultSemiBold">Weekly nutrition alert</ThemedText>
-              <ThemedText style={NutritionStyles.helperText}>
-                {latestWeeklyInsight.weekStart} to {latestWeeklyInsight.weekEnd}
-              </ThemedText>
-              <ThemedText style={NutritionStyles.helperText}>
-                Logged days: {loggedDays} | Mode:{" "}
-                {analysisMode.replace(/_/g, " ")}
-              </ThemedText>
-            </View>
-            <ThemedText style={NutritionStyles.helperText}>
-              {latestWeeklyInsight.humanMessage}
-            </ThemedText>
-            {latestWeeklyInsight.findings.slice(0, 2).map((finding) => (
-              <View key={finding.type}>
-                <ThemedText style={NutritionStyles.helperText}>
-                  {finding.type.replace(/_/g, " ")}: {finding.actual} / {finding.target}
-                </ThemedText>
-                {finding.topContributors?.[0] ? (
+                  <View style={NutritionStyles.cardHeader}>
+                    <ThemedText type="defaultSemiBold">
+                      Weekly nutrition alert
+                    </ThemedText>
+                    <ThemedText style={NutritionStyles.helperText}>
+                      {latestWeeklyInsight.weekStart} to{" "}
+                      {latestWeeklyInsight.weekEnd}
+                    </ThemedText>
+                    <ThemedText style={NutritionStyles.helperText}>
+                      Logged days: {loggedDays} | Mode:{" "}
+                      {analysisMode.replace(/_/g, " ")}
+                    </ThemedText>
+                  </View>
                   <ThemedText style={NutritionStyles.helperText}>
-                    {finding.topContributors[0].food} contributed{" "}
-                    {finding.topContributors[0].contribution}%.
+                    {latestWeeklyInsight.humanMessage}
                   </ThemedText>
-                ) : null}
-              </View>
-            ))}
+                  {latestWeeklyInsight.findings.slice(0, 2).map((finding) => (
+                    <View key={finding.type}>
+                      <ThemedText style={NutritionStyles.helperText}>
+                        {finding.type.replace(/_/g, " ")}: {finding.actual} /{" "}
+                        {finding.target}
+                      </ThemedText>
+                      {finding.topContributors?.[0] ? (
+                        <ThemedText style={NutritionStyles.helperText}>
+                          {finding.topContributors[0].food} contributed{" "}
+                          {finding.topContributors[0].contribution}%.
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                  ))}
                 </>
               );
             })()}
@@ -616,12 +620,17 @@ export default function NutritionDetails() {
                         x: point.chartX,
                       }))}
                     />
-                    <View style={NutritionStyles.chartTouchLayer} pointerEvents="box-none">
+                    <View
+                      style={NutritionStyles.chartTouchLayer}
+                      pointerEvents="box-none"
+                    >
                       {chartPoints.map((point) => (
                         <Pressable
                           key={`hit-${point.index}`}
                           onPress={() => {
-                            setSelectedDayKey(chartSeries[point.index]?.date ?? null);
+                            setSelectedDayKey(
+                              chartSeries[point.index]?.date ?? null,
+                            );
                             setShowAddForSelectedDay(true);
                           }}
                           style={[
@@ -754,7 +763,6 @@ export default function NutritionDetails() {
             </ThemedText>
           </Card>
         ) : null}
-        {trendData && <RatioCard ratio={chartRatio} />}
       </ScrollView>
       <Modal
         transparent
