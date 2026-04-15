@@ -9,7 +9,22 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
-type Kind = "steps" | "exercise" | "sleep" | "blood_pressure";
+type Kind =
+  | "steps"
+  | "exercise"
+  | "sleep"
+  | "blood_pressure"
+  | "heart_rate";
+type Source = "patient" | "device" | "api" | "provider";
+type DeviceMeta = {
+  externalId?: string;
+  name?: string;
+  platform?: string;
+};
+type ProviderMeta = {
+  displayName?: string;
+  packageName: string;
+};
 type ExerciseReferenceDoc = {
   category: string;
   exerciseId: string;
@@ -32,6 +47,43 @@ function asDate(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function asSource(value: unknown): Source {
+  return value === "device" || value === "api" || value === "provider"
+    ? value
+    : "patient";
+}
+
+function asDeviceMeta(value: unknown): DeviceMeta | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  const device: DeviceMeta = {};
+  const externalId = asTrimmedString(input.externalId);
+  const name = asTrimmedString(input.name);
+  const platform = asTrimmedString(input.platform);
+  if (externalId) device.externalId = externalId;
+  if (name) device.name = name;
+  if (platform) device.platform = platform;
+  return Object.keys(device).length ? device : null;
+}
+
+function asProviderMeta(value: unknown): ProviderMeta | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  const packageName = asTrimmedString(input.packageName);
+  if (!packageName) return null;
+
+  const provider: ProviderMeta = { packageName };
+  const displayName = asTrimmedString(input.displayName);
+  if (displayName) provider.displayName = displayName;
+  return provider;
+}
+
 function startOfUtcDay(date: Date) {
   const start = new Date(date);
   start.setUTCHours(0, 0, 0, 0);
@@ -42,6 +94,122 @@ function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
+}
+
+function providerUpsertFilter(payload: Record<string, unknown>) {
+  if (
+    !payload.externalRecordId ||
+    typeof payload.externalRecordId !== "string"
+  ) {
+    return null;
+  }
+  return {
+    externalRecordId: payload.externalRecordId,
+    kind: payload.kind,
+    orgId: payload.orgId,
+    patientId: payload.patientId,
+    source: payload.source,
+  };
+}
+
+async function saveMeasurement(
+  db: Db,
+  payload: Record<string, unknown>,
+): Promise<{ id: string | null; status: number; updated: boolean }> {
+  const filter = providerUpsertFilter(payload);
+  if (filter) {
+    const setFields = { ...payload };
+    delete setFields.createdAt;
+    delete setFields.createdBy;
+    delete setFields.kind;
+    delete setFields.patientId;
+
+    const update = {
+      $set: setFields,
+      $setOnInsert: {
+        createdAt: payload.createdAt,
+        createdBy: payload.createdBy,
+        kind: payload.kind,
+        patientId: payload.patientId,
+      },
+    };
+
+    let result: any = null;
+    try {
+      result = await db
+        .collection(COLLECTIONS.MeasurementsLedger)
+        .updateOne(filter, update, { upsert: true });
+    } catch (err: any) {
+      if (err?.code !== 121) throw err;
+      const fallbackSetFields = { ...setFields };
+      delete fallbackSetFields.updatedAt;
+      const fallbackSetOnInsert = { ...update.$setOnInsert };
+      delete fallbackSetOnInsert.createdAt;
+      result = await db.collection(COLLECTIONS.MeasurementsLedger).updateOne(
+        filter,
+        {
+          $set: fallbackSetFields,
+          $setOnInsert: fallbackSetOnInsert,
+        },
+        { upsert: true },
+      );
+    }
+
+    return {
+      id: result.upsertedId?.toString() ?? null,
+      status: result.upsertedCount ? 201 : 200,
+      updated: result.matchedCount > 0,
+    };
+  }
+
+  const candidates: Array<Record<string, unknown>> = [payload];
+
+  // Backward-compatibility: some environments still validate exercise as
+  // { durationMin, caloriesKcal } only.
+  if (
+    payload.kind === "exercise" &&
+    payload.exercise &&
+    typeof payload.exercise === "object"
+  ) {
+    const legacyExercise = payload.exercise as Record<string, unknown>;
+    candidates.push({
+      ...payload,
+      exercise: {
+        durationMin: legacyExercise.durationMin,
+        caloriesKcal: legacyExercise.caloriesKcal,
+      },
+    });
+  }
+
+  // Compatibility retry for environments where validator disallows createdAt/updatedAt.
+  const auditStripped = candidates.map((candidate) => {
+    const fallback = { ...candidate };
+    delete fallback.createdAt;
+    delete fallback.updatedAt;
+    return fallback;
+  });
+  candidates.push(...auditStripped);
+
+  let result: any = null;
+  let lastErr: any = null;
+  for (const candidate of candidates) {
+    try {
+      result = await db
+        .collection(COLLECTIONS.MeasurementsLedger)
+        .insertOne(candidate);
+      break;
+    } catch (err: any) {
+      lastErr = err;
+      if (err?.code !== 121) throw err;
+    }
+  }
+  if (!result) throw lastErr ?? new Error("Failed to save measurement");
+
+  return {
+    id: result.insertedId.toString(),
+    status: 201,
+    updated: false,
+  };
 }
 
 function formatMongoValidationMessage(err: any) {
@@ -104,7 +272,8 @@ export async function POST(req: NextRequest) {
       kind !== "steps" &&
       kind !== "exercise" &&
       kind !== "sleep" &&
-      kind !== "blood_pressure"
+      kind !== "blood_pressure" &&
+      kind !== "heart_rate"
     ) {
       return bad("Invalid kind", undefined, 400);
     }
@@ -115,6 +284,11 @@ export async function POST(req: NextRequest) {
       return bad("Invalid measuredAt", undefined, 400);
     }
 
+    const source = asSource(body.source);
+    const provider = asProviderMeta(body.provider);
+    const externalRecordId = asTrimmedString(body.externalRecordId);
+    const device = asDeviceMeta(body.device);
+
     const db = await getDb();
     const now = new Date();
     const payload: Record<string, unknown> = {
@@ -123,12 +297,15 @@ export async function POST(req: NextRequest) {
       orgId: caller.orgId ?? "org_demo",
       measuredAt: measuredAtRaw,
       receivedAt: new Date(),
-      source: "patient",
+      source,
       createdAt: now,
       updatedAt: now,
       createdBy: caller.principalId,
       updatedBy: caller.principalId,
     };
+    if (provider) payload.provider = provider;
+    if (externalRecordId) payload.externalRecordId = externalRecordId;
+    if (device) payload.device = device;
 
     if (kind === "steps") {
       const count = asNumber(body.count);
@@ -159,54 +336,77 @@ export async function POST(req: NextRequest) {
       const durationMin = asNumber(body.durationMin);
       const exerciseId =
         typeof body.exerciseId === "string" ? body.exerciseId.trim() : "";
-      if (!exerciseId) return bad("exerciseId is required", undefined, 400);
       if (durationMin === null || durationMin <= 0) {
         return bad("Invalid durationMin", undefined, 400);
       }
 
-      const exerciseRef = await db
-        .collection<ExerciseReferenceDoc>(COLLECTIONS.ExerciseReference)
-        .findOne(
-          { exerciseId },
-          {
-            projection: {
-              _id: 0,
-              category: 1,
-              exerciseId: 1,
-              intensity: 1,
-              met: 1,
-              name: 1,
+      if (source === "provider") {
+        const title =
+          asTrimmedString(body.exerciseTitle) ??
+          asTrimmedString(body.name) ??
+          "Imported exercise";
+        payload.exercise = {
+          exerciseId: exerciseId || "health_connect_exercise",
+          title,
+          name: title,
+          category: asTrimmedString(body.category) ?? "health_connect",
+          intensity:
+            body.intensity === "light" ||
+            body.intensity === "moderate" ||
+            body.intensity === "vigorous"
+              ? body.intensity
+              : "moderate",
+          met: asNumber(body.met) ?? 1,
+          durationMin: Math.round(durationMin),
+          caloriesKcal: Math.max(0, Math.round(asNumber(body.caloriesKcal) ?? 0)),
+        };
+      } else {
+        if (!exerciseId) return bad("exerciseId is required", undefined, 400);
+
+        const exerciseRef = await db
+          .collection<ExerciseReferenceDoc>(COLLECTIONS.ExerciseReference)
+          .findOne(
+            { exerciseId },
+            {
+              projection: {
+                _id: 0,
+                category: 1,
+                exerciseId: 1,
+                intensity: 1,
+                met: 1,
+                name: 1,
+              },
             },
-          },
-        );
-      if (!exerciseRef) {
-        return bad("Unknown exerciseId", undefined, 400);
-      }
+          );
+        if (!exerciseRef) {
+          return bad("Unknown exerciseId", undefined, 400);
+        }
 
-      const weightKg = await resolveWeightKg(
-        db,
-        new ObjectId(caller.patientId),
-      );
-      if (!weightKg) {
-        return bad(
-          "Weight is required to calculate calories. Please add your weight first.",
-          undefined,
-          400,
+        const weightKg = await resolveWeightKg(
+          db,
+          new ObjectId(caller.patientId),
         );
-      }
+        if (!weightKg) {
+          return bad(
+            "Weight is required to calculate calories. Please add your weight first.",
+            undefined,
+            400,
+          );
+        }
 
-      const caloriesKcal =
-        exerciseRef.met * weightKg * (Math.round(durationMin) / 60);
-      payload.exercise = {
-        exerciseId: exerciseRef.exerciseId,
-        title: exerciseRef.name,
-        name: exerciseRef.name,
-        category: exerciseRef.category,
-        intensity: exerciseRef.intensity,
-        met: exerciseRef.met,
-        durationMin: Math.round(durationMin),
-        caloriesKcal: Math.round(caloriesKcal),
-      };
+        const caloriesKcal =
+          exerciseRef.met * weightKg * (Math.round(durationMin) / 60);
+        payload.exercise = {
+          exerciseId: exerciseRef.exerciseId,
+          title: exerciseRef.name,
+          name: exerciseRef.name,
+          category: exerciseRef.category,
+          intensity: exerciseRef.intensity,
+          met: exerciseRef.met,
+          durationMin: Math.round(durationMin),
+          caloriesKcal: Math.round(caloriesKcal),
+        };
+      }
     }
     if (kind === "blood_pressure") {
       const systolicMmHg = asNumber(body.systolicMmHg);
@@ -223,32 +423,58 @@ export async function POST(req: NextRequest) {
       const pulseBpm = asNumber(body.pulseBpm);
       if (pulseBpm !== null) payload.pulseBpm = Math.round(pulseBpm);
     }
+    if (kind === "heart_rate") {
+      const bpm = asNumber(body.bpm);
+      if (bpm === null || bpm <= 0) return bad("Invalid bpm", undefined, 400);
+      payload.bpm = Math.round(bpm);
+    }
 
     if (kind === "steps") {
       const dayStart = startOfUtcDay(measuredAtRaw);
       const dayEnd = addDays(dayStart, 1);
-      const filter = {
-        kind: "steps",
-        measuredAt: { $gte: dayStart, $lt: dayEnd },
-        patientId: payload.patientId,
-        source: "patient",
+      const filter =
+        provider && externalRecordId
+          ? {
+              externalRecordId,
+              kind: "steps",
+              orgId: payload.orgId,
+              patientId: payload.patientId,
+              source: payload.source,
+            }
+          : {
+              kind: "steps",
+              measuredAt: { $gte: dayStart, $lt: dayEnd },
+              orgId: payload.orgId,
+              patientId: payload.patientId,
+              source: payload.source,
+            };
+      const setFields: Record<string, unknown> = {
+        count: payload.count,
+        measuredAt: payload.measuredAt,
+        orgId: payload.orgId,
+        receivedAt: payload.receivedAt,
+        updatedAt: payload.updatedAt,
+        updatedBy: payload.updatedBy,
       };
+      const setOnInsertFields: Record<string, unknown> = {
+        createdAt: payload.createdAt,
+        createdBy: payload.createdBy,
+        kind: "steps",
+        patientId: payload.patientId,
+        source: payload.source,
+      };
+      if (provider) {
+        setFields.provider = provider;
+      }
+      if (externalRecordId) {
+        setFields.externalRecordId = externalRecordId;
+      }
+      if (device) {
+        setFields.device = device;
+      }
       const update = {
-        $set: {
-          count: payload.count,
-          measuredAt: payload.measuredAt,
-          orgId: payload.orgId,
-          receivedAt: payload.receivedAt,
-          updatedAt: payload.updatedAt,
-          updatedBy: payload.updatedBy,
-        },
-        $setOnInsert: {
-          createdAt: payload.createdAt,
-          createdBy: payload.createdBy,
-          kind: "steps",
-          patientId: payload.patientId,
-          source: payload.source,
-        },
+        $set: setFields,
+        $setOnInsert: setOnInsertFields,
       };
 
       let result: any = null;
@@ -258,20 +484,13 @@ export async function POST(req: NextRequest) {
           .updateOne(filter, update, { upsert: true });
       } catch (err: any) {
         if (err?.code !== 121) throw err;
+        const fallbackSetFields = { ...setFields };
+        delete fallbackSetFields.updatedAt;
+        const fallbackSetOnInsertFields = { ...setOnInsertFields };
+        delete fallbackSetOnInsertFields.createdAt;
         const fallbackUpdate = {
-          $set: {
-            count: payload.count,
-            measuredAt: payload.measuredAt,
-            orgId: payload.orgId,
-            receivedAt: payload.receivedAt,
-            updatedBy: payload.updatedBy,
-          },
-          $setOnInsert: {
-            createdBy: payload.createdBy,
-            kind: "steps",
-            patientId: payload.patientId,
-            source: payload.source,
-          },
+          $set: fallbackSetFields,
+          $setOnInsert: fallbackSetOnInsertFields,
         };
         result = await db
           .collection(COLLECTIONS.MeasurementsLedger)
@@ -287,44 +506,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const candidates: Array<Record<string, unknown>> = [payload];
-
-    // Backward-compatibility: some environments still validate exercise as
-    // { durationMin, caloriesKcal } only.
-    if (kind === "exercise" && payload.exercise && typeof payload.exercise === "object") {
-      const legacyExercise = payload.exercise as Record<string, unknown>;
-      candidates.push({
-        ...payload,
-        exercise: {
-          durationMin: legacyExercise.durationMin,
-          caloriesKcal: legacyExercise.caloriesKcal,
-        },
-      });
-    }
-
-    // Compatibility retry for environments where validator disallows createdAt/updatedAt.
-    const auditStripped = candidates.map((candidate) => {
-      const fallback = { ...candidate };
-      delete fallback.createdAt;
-      delete fallback.updatedAt;
-      return fallback;
-    });
-    candidates.push(...auditStripped);
-
-    let result: any = null;
-    let lastErr: any = null;
-    for (const candidate of candidates) {
-      try {
-        result = await db.collection(COLLECTIONS.MeasurementsLedger).insertOne(candidate);
-        break;
-      } catch (err: any) {
-        lastErr = err;
-        if (err?.code !== 121) throw err;
-      }
-    }
-    if (!result) throw lastErr ?? new Error("Failed to save measurement");
-
-    return ok({ id: result.insertedId.toString() }, 201);
+    const result = await saveMeasurement(db, payload);
+    return ok({ id: result.id, updated: result.updated }, result.status);
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(formatMongoValidationMessage(err), undefined, status);

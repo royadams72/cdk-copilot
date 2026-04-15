@@ -2,15 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
-  Platform,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
@@ -21,157 +16,38 @@ import { authFetch } from "@/lib/authFetch";
 import { CreateMeasurementArgs } from "@/store/services/types";
 import { Card } from "../dashboard/components/Card";
 import { useCreateMeasurementMutation } from "@/store/services/dashboardApi";
-
-type MeasurementKind = "steps" | "exercise" | "sleep" | "blood_pressure";
-
-type TrendPoint = {
-  date: string;
-  measuredAt: string;
-  value: number | null;
-  value2: number | null;
-};
-
-type DayEntry = {
-  exerciseId?: string;
-  exerciseName?: string;
-  exerciseTitle?: string;
-  measuredAt: string;
-  sleepFromAt?: string;
-  sleepToAt?: string;
-  value: number | null;
-  value2: number | null;
-};
-
-type ChartPoint = {
-  barX: number;
-  date: string;
-  hasValue: boolean;
-  label: string;
-  value: number | null;
-  x: number;
-  y: number;
-  y2?: number;
-};
-
-type ExerciseRefItem = {
-  category: string;
-  exerciseId: string;
-  intensity: "light" | "moderate" | "vigorous";
-  met: number;
-  name: string;
-};
-
-type ExerciseRefCategory = {
-  category: string;
-  items: ExerciseRefItem[];
-};
-
-const CHART_WIDTH = 330;
-const CHART_HEIGHT = 210;
-const CHART_PAD = 28;
-const BAR_WIDTH = 12;
-const GROUP_GAP = 4;
-const SLOT_GAP = 16;
-
-const BP_TARGET_SYSTOLIC = 120;
-const BP_TARGET_DIASTOLIC = 80;
-const SLEEP_TARGET_MIN = 8 * 60;
-const EXERCISE_TARGET_MIN = 30;
-
-function formatDayLabel(value: string) {
-  const date = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getDate()}/${date.getMonth() + 1}`;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function dateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function formatDateLabel(date: Date) {
-  return date.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatTimeLabel(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--:--";
-  return date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function combineDateAndTime(date: Date, time: Date) {
-  const value = new Date(date);
-  value.setHours(
-    time.getHours(),
-    time.getMinutes(),
-    time.getSeconds(),
-    time.getMilliseconds(),
-  );
-  return value;
-}
-
-function metricUnit(kind: MeasurementKind) {
-  if (kind === "steps") return "steps";
-  if (kind === "blood_pressure") return "mmHg";
-  if (kind === "exercise") return "min";
-  return "hours";
-}
-
-function addLabel(kind: MeasurementKind) {
-  if (kind === "exercise") return "Add exercise";
-  if (kind === "sleep") return "Add sleep";
-  return "Add BP";
-}
-
-function formatMinutes(total: number) {
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return `${h}h ${m}m`;
-}
-
-function formatYAxisValue(kind: MeasurementKind, value: number) {
-  if (kind !== "sleep") return value.toFixed(0);
-  const hours = value / 60;
-  if (Number.isInteger(hours)) return `${hours}`;
-  return hours.toFixed(1);
-}
-
-function dateToMeasuredAtIso(date: Date) {
-  const value = new Date(date);
-  const hasExplicitTime =
-    value.getHours() !== 0 ||
-    value.getMinutes() !== 0 ||
-    value.getSeconds() !== 0 ||
-    value.getMilliseconds() !== 0;
-
-  if (!hasExplicitTime) {
-    const now = new Date();
-    value.setHours(
-      now.getHours(),
-      now.getMinutes(),
-      now.getSeconds(),
-      now.getMilliseconds(),
-    );
-  }
-
-  return value.toISOString();
-}
-
-function numberRange(min: number, max: number) {
-  return Array.from({ length: max - min + 1 }, (_, idx) => min + idx);
-}
+import { AddMeasurementModal } from "./AddMeasurementModal";
+import type {
+  ChartPoint,
+  DayEntry,
+  ExerciseRefCategory,
+  MeasurementKind,
+  TrendPoint,
+} from "./metricTrendTypes";
+import {
+  addDays,
+  addLabel,
+  BAR_WIDTH,
+  BP_TARGET_DIASTOLIC,
+  BP_TARGET_SYSTOLIC,
+  CHART_HEIGHT,
+  CHART_PAD,
+  CHART_WIDTH,
+  combineDateAndTime,
+  dateKey,
+  dateToMeasuredAtIso,
+  EXERCISE_TARGET_MIN,
+  formatDateLabel,
+  formatDayLabel,
+  formatMinutes,
+  formatTimeLabel,
+  formatYAxisValue,
+  GROUP_GAP,
+  metricUnit,
+  numberRange,
+  SLEEP_TARGET_MIN,
+  SLOT_GAP,
+} from "./metricTrendUtils";
 
 export default function FitnessMetricTrend() {
   const router = useRouter();
@@ -209,6 +85,7 @@ export default function FitnessMetricTrend() {
 
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
+  const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [createMeasurement] = useCreateMeasurementMutation();
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
@@ -223,6 +100,7 @@ export default function FitnessMetricTrend() {
 
   const systolicOptions = useMemo(() => numberRange(90, 220), []);
   const diastolicOptions = useMemo(() => numberRange(50, 140), []);
+  const heartRateOptions = useMemo(() => numberRange(35, 220), []);
 
   const selectedExercise = useMemo(() => {
     for (const category of exerciseCatalog) {
@@ -554,6 +432,15 @@ export default function FitnessMetricTrend() {
           measuredAt: dateToMeasuredAtIso(measuredDate),
           systolicMmHg: bpSystolic,
         };
+      } else if (kind === "heart_rate") {
+        if (!Number.isFinite(heartRateBpm) || heartRateBpm <= 0) {
+          throw new Error("Enter a valid heart rate");
+        }
+        payload = {
+          bpm: Math.round(heartRateBpm),
+          kind: "heart_rate",
+          measuredAt: dateToMeasuredAtIso(measuredDate),
+        };
       } else {
         return;
       }
@@ -589,7 +476,8 @@ export default function FitnessMetricTrend() {
           {kind === "exercise" &&
           latestPoint &&
           typeof latestPoint.value === "number" &&
-          Number.isFinite(latestPoint.value) ? (
+          Number.isFinite(latestPoint.value) &&
+          latestPoint.value > 0 ? (
             <ThemedText style={{ opacity: 0.7 }}>
               Latest burn: {Math.round(latestPoint.value)} kcal
               {typeof latestPoint?.value2 === "number"
@@ -858,6 +746,35 @@ export default function FitnessMetricTrend() {
                             );
                           }
 
+                          if (kind === "heart_rate") {
+                            const bpm =
+                              typeof entry.value === "number"
+                                ? Math.round(entry.value)
+                                : null;
+                            return (
+                              <Card
+                                key={`${entry.measuredAt}-${idx}`}
+                                style={{
+                                  borderRadius: 10,
+                                  gap: 3,
+                                  padding: 10,
+                                }}
+                              >
+                                <ThemedText
+                                  type="defaultSemiBold"
+                                  style={{ fontSize: 18 }}
+                                >
+                                  {bpm ?? "--"} bpm
+                                </ThemedText>
+                                <ThemedText
+                                  style={{ fontSize: 12, opacity: 0.72 }}
+                                >
+                                  {time}
+                                </ThemedText>
+                              </Card>
+                            );
+                          }
+
                           if (kind === "exercise") {
                             const kcal =
                               typeof entry.value === "number"
@@ -889,8 +806,10 @@ export default function FitnessMetricTrend() {
                                   {time}
                                 </ThemedText>
                                 <ThemedText style={{ fontSize: 13 }}>
-                                  {kcal ?? "--"} kcal
-                                  {mins !== null ? ` in ${mins} min` : ""}
+                                  {mins !== null ? `${mins} min` : "-- min"}
+                                  {kcal !== null && kcal > 0
+                                    ? ` • ${kcal} kcal`
+                                    : ""}
                                 </ThemedText>
                               </Card>
                             );
@@ -995,345 +914,44 @@ export default function FitnessMetricTrend() {
         ) : null}
       </ScrollView>
 
-      <Modal
-        visible={modalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalOpen(false)}
-      >
-        <View
-          style={{
-            alignItems: "center",
-            backgroundColor: "rgba(15,23,42,0.45)",
-            flex: 1,
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "white",
-              borderRadius: 12,
-              gap: 10,
-              maxHeight: kind === "exercise" ? "88%" : undefined,
-              maxWidth: 360,
-              minHeight: kind === "exercise" ? 520 : undefined,
-              padding: 16,
-              width: "100%",
-            }}
-          >
-            <ThemedText type="defaultSemiBold">{addLabel(kind)}</ThemedText>
-
-            {kind === "exercise" ? (
-              <>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Exercise type
-                </ThemedText>
-                {exerciseCatalogLoading ? (
-                  <View style={{ alignItems: "center", paddingVertical: 10 }}>
-                    <ActivityIndicator />
-                  </View>
-                ) : null}
-                {exerciseCatalogError ? (
-                  <ThemedText style={{ color: "#b91c1c", fontSize: 12 }}>
-                    {exerciseCatalogError}
-                  </ThemedText>
-                ) : null}
-
-                <ScrollView style={{ maxHeight: 220 }}>
-                  {exerciseCatalog.map((category) => {
-                    const isOpen = !!openCategories[category.category];
-                    return (
-                      <View key={category.category} style={{ marginBottom: 8 }}>
-                        <TouchableOpacity
-                          onPress={() =>
-                            setOpenCategories((prev) => ({
-                              ...prev,
-                              [category.category]: !isOpen,
-                            }))
-                          }
-                          style={{
-                            backgroundColor: "#F1F5F9",
-                            borderRadius: 8,
-                            paddingHorizontal: 10,
-                            paddingVertical: 8,
-                          }}
-                        >
-                          <ThemedText style={{ fontWeight: "700" }}>
-                            {isOpen ? "▾" : "▸"} {category.category}
-                          </ThemedText>
-                        </TouchableOpacity>
-                        {isOpen ? (
-                          <View style={{ gap: 6, marginTop: 6 }}>
-                            {category.items.map((item) => {
-                              const isSelected =
-                                selectedExerciseId === item.exerciseId;
-                              return (
-                                <TouchableOpacity
-                                  key={item.exerciseId}
-                                  onPress={() =>
-                                    setSelectedExerciseId(item.exerciseId)
-                                  }
-                                  style={{
-                                    borderColor: isSelected
-                                      ? "#2563EB"
-                                      : "#CBD5E1",
-                                    borderRadius: 8,
-                                    borderWidth: 1,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 8,
-                                  }}
-                                >
-                                  <ThemedText style={{ fontWeight: "600" }}>
-                                    {item.name}
-                                  </ThemedText>
-                                  <ThemedText
-                                    style={{ fontSize: 12, opacity: 0.7 }}
-                                  >
-                                    {item.met.toFixed(1)} MET • {item.intensity}
-                                  </ThemedText>
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-                        ) : null}
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-
-                {selectedExercise ? (
-                  <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                    Selected: {selectedExercise.name} (
-                    {selectedExercise.met.toFixed(1)} MET)
-                  </ThemedText>
-                ) : null}
-
-                <TextInput
-                  value={exerciseMinutes}
-                  onChangeText={(text) =>
-                    setExerciseMinutes(text.replace(/[^0-9]/g, ""))
-                  }
-                  placeholder="Duration (minutes)"
-                  keyboardType="number-pad"
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                  }}
-                />
-              </>
-            ) : null}
-
-            {kind === "blood_pressure" ? (
-              <>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Systolic (mmHg)
-                </ThemedText>
-                <View
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                  }}
-                >
-                  <Picker
-                    selectedValue={bpSystolic}
-                    onValueChange={(value) => setBpSystolic(Number(value))}
-                  >
-                    {systolicOptions.map((value) => (
-                      <Picker.Item
-                        key={`sys-${value}`}
-                        label={`${value}`}
-                        value={value}
-                      />
-                    ))}
-                  </Picker>
-                </View>
-
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Diastolic (mmHg)
-                </ThemedText>
-                <View
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                  }}
-                >
-                  <Picker
-                    selectedValue={bpDiastolic}
-                    onValueChange={(value) => setBpDiastolic(Number(value))}
-                  >
-                    {diastolicOptions.map((value) => (
-                      <Picker.Item
-                        key={`dia-${value}`}
-                        label={`${value}`}
-                        value={value}
-                      />
-                    ))}
-                  </Picker>
-                </View>
-              </>
-            ) : null}
-
-            {kind === "sleep" ? (
-              <>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Sleep from
-                </ThemedText>
-                <TouchableOpacity
-                  onPress={() => setShowSleepFromPicker(true)}
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <ThemedText>
-                    {formatTimeLabel(sleepFromTime.toISOString())}
-                  </ThemedText>
-                </TouchableOpacity>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Sleep to
-                </ThemedText>
-                <TouchableOpacity
-                  onPress={() => setShowSleepToPicker(true)}
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <ThemedText>
-                    {formatTimeLabel(sleepToTime.toISOString())}
-                  </ThemedText>
-                </TouchableOpacity>
-                <View
-                  style={{
-                    backgroundColor: "#F8FAFC",
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                  }}
-                >
-                  <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
-                    If "from" is later than "to", it will be saved as overnight
-                    sleep.
-                  </ThemedText>
-                </View>
-              </>
-            ) : null}
-
-            {kind === "blood_pressure" ||
-            kind === "sleep" ||
-            kind === "exercise" ? (
-              <>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Date (defaults to today)
-                </ThemedText>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <ThemedText>{formatDateLabel(measuredDate)}</ThemedText>
-                </TouchableOpacity>
-              </>
-            ) : null}
-
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 8,
-                justifyContent: "flex-end",
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => setModalOpen(false)}
-                style={{ padding: 8 }}
-              >
-                <ThemedText style={{ fontWeight: "600" }}>Cancel</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={onSave}
-                disabled={saving}
-                style={{
-                  backgroundColor: "#2563EB",
-                  borderRadius: 8,
-                  opacity: saving ? 0.65 : 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                }}
-              >
-                <ThemedText style={{ color: "white", fontWeight: "700" }}>
-                  {saving ? "Saving..." : "Save"}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {showDatePicker ? (
-        <DateTimePicker
-          value={measuredDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          maximumDate={new Date()}
-          onChange={(event, selectedDate) => {
-            if (Platform.OS !== "ios") {
-              setShowDatePicker(false);
-            }
-            if (event.type === "set" && selectedDate) {
-              setMeasuredDate(selectedDate);
-            }
-          }}
-        />
-      ) : null}
-      {showSleepFromPicker ? (
-        <DateTimePicker
-          value={sleepFromTime}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) => {
-            if (Platform.OS !== "ios") {
-              setShowSleepFromPicker(false);
-            }
-            if (event.type === "set" && selectedDate) {
-              setSleepFromTime(selectedDate);
-            }
-          }}
-        />
-      ) : null}
-      {showSleepToPicker ? (
-        <DateTimePicker
-          value={sleepToTime}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) => {
-            if (Platform.OS !== "ios") {
-              setShowSleepToPicker(false);
-            }
-            if (event.type === "set" && selectedDate) {
-              setSleepToTime(selectedDate);
-            }
-          }}
-        />
-      ) : null}
+      <AddMeasurementModal
+        bpDiastolic={bpDiastolic}
+        bpSystolic={bpSystolic}
+        diastolicOptions={diastolicOptions}
+        exerciseCatalog={exerciseCatalog}
+        exerciseCatalogError={exerciseCatalogError}
+        exerciseCatalogLoading={exerciseCatalogLoading}
+        exerciseMinutes={exerciseMinutes}
+        heartRateBpm={heartRateBpm}
+        heartRateOptions={heartRateOptions}
+        kind={kind}
+        measuredDate={measuredDate}
+        modalOpen={modalOpen}
+        onSave={onSave}
+        openCategories={openCategories}
+        saving={saving}
+        selectedExercise={selectedExercise}
+        selectedExerciseId={selectedExerciseId}
+        setBpDiastolic={setBpDiastolic}
+        setBpSystolic={setBpSystolic}
+        setExerciseMinutes={setExerciseMinutes}
+        setHeartRateBpm={setHeartRateBpm}
+        setMeasuredDate={setMeasuredDate}
+        setModalOpen={setModalOpen}
+        setOpenCategories={setOpenCategories}
+        setSelectedExerciseId={setSelectedExerciseId}
+        setShowDatePicker={setShowDatePicker}
+        setShowSleepFromPicker={setShowSleepFromPicker}
+        setShowSleepToPicker={setShowSleepToPicker}
+        setSleepFromTime={setSleepFromTime}
+        setSleepToTime={setSleepToTime}
+        showDatePicker={showDatePicker}
+        showSleepFromPicker={showSleepFromPicker}
+        showSleepToPicker={showSleepToPicker}
+        sleepFromTime={sleepFromTime}
+        sleepToTime={sleepToTime}
+        systolicOptions={systolicOptions}
+      />
     </View>
   );
 }

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import {
+  ANDROID_HEALTH_PERMISSIONS,
+  ANDROID_STEP_PERMISSION,
+} from "@/lib/healthConnectPermissions";
+
 type StepStatus =
   | "idle"
   | "unsupported"
@@ -11,16 +16,12 @@ type StepStatus =
   | "ready"
   | "error";
 
-const ANDROID_STEP_PERMISSION = {
-  accessType: "read",
-  recordType: "Steps",
-} as const;
-
 type StepDebug = {
   aggregateTotal: number;
   groupedError: boolean;
   groupedTotal: number | null;
   originTotals: Record<string, number>;
+  selectedDataOrigin: string | null;
 };
 
 async function readStepTotalsByOrigin(
@@ -58,8 +59,20 @@ function selectStepTotalFromOrigins(
   aggregateTotal: number,
   originTotals: Record<string, number>,
 ) {
-  const highestOriginTotal = Math.max(0, ...Object.values(originTotals));
-  return Math.max(aggregateTotal, highestOriginTotal);
+  let selectedDataOrigin: string | null = null;
+  let highestOriginTotal = 0;
+
+  for (const [origin, total] of Object.entries(originTotals)) {
+    if (total > highestOriginTotal) {
+      highestOriginTotal = total;
+      selectedDataOrigin = origin;
+    }
+  }
+
+  return {
+    selectedDataOrigin,
+    total: Math.max(aggregateTotal, highestOriginTotal),
+  };
 }
 
 async function loadAndroidStepState() {
@@ -73,6 +86,7 @@ async function loadAndroidStepState() {
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      selectedDataOrigin: null,
       status: "health-connect-unavailable" as const,
       stepsToday: null,
     };
@@ -86,6 +100,7 @@ async function loadAndroidStepState() {
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      selectedDataOrigin: null,
       status: "health-connect-update-required" as const,
       stepsToday: null,
     };
@@ -97,6 +112,7 @@ async function loadAndroidStepState() {
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      selectedDataOrigin: null,
       status: "error" as const,
       stepsToday: null,
     };
@@ -114,6 +130,7 @@ async function loadAndroidStepState() {
       canRequestPermission: true,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      selectedDataOrigin: null,
       status: "permission-required" as const,
       stepsToday: null,
     };
@@ -157,6 +174,12 @@ async function loadAndroidStepState() {
     groupedError = true;
   }
 
+  const selected = selectStepTotalFromOrigins(aggregateTotal, originTotals);
+  const stepsToday =
+    typeof groupedTotal === "number"
+      ? Math.max(selected.total, groupedTotal)
+      : selected.total;
+
   return {
     canRequestPermission: true,
     dataOrigins:
@@ -168,15 +191,11 @@ async function loadAndroidStepState() {
       groupedError,
       groupedTotal,
       originTotals,
+      selectedDataOrigin: selected.selectedDataOrigin,
     },
+    selectedDataOrigin: selected.selectedDataOrigin,
     status: "ready" as const,
-    stepsToday:
-      typeof groupedTotal === "number"
-        ? Math.max(
-            selectStepTotalFromOrigins(aggregateTotal, originTotals),
-            groupedTotal,
-          )
-        : selectStepTotalFromOrigins(aggregateTotal, originTotals),
+    stepsToday,
   };
 }
 
@@ -185,11 +204,13 @@ export function useStepCount(goal = 10000) {
   const [stepsToday, setStepsToday] = useState<number | null>(null);
   const [canRequestPermission, setCanRequestPermission] = useState(false);
   const [dataOrigins, setDataOrigins] = useState<string[]>([]);
+  const [selectedDataOrigin, setSelectedDataOrigin] = useState<string | null>(null);
   const [debug, setDebug] = useState<{
     aggregateTotal: number;
     groupedError: boolean;
     groupedTotal: number | null;
     originTotals: Record<string, number>;
+    selectedDataOrigin: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -204,6 +225,7 @@ export function useStepCount(goal = 10000) {
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
+      setSelectedDataOrigin(result.selectedDataOrigin);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
     };
@@ -225,6 +247,7 @@ export function useStepCount(goal = 10000) {
         } catch {
           if (mounted) {
             setCanRequestPermission(false);
+            setSelectedDataOrigin(null);
             setStatus("error");
           }
         }
@@ -265,6 +288,7 @@ export function useStepCount(goal = 10000) {
           const result = await Pedometer.getStepCountAsync(startOfDay, now);
           if (!mounted) return;
           setStepsToday(result.steps ?? 0);
+          setSelectedDataOrigin("expo-sensors.pedometer");
           setStatus("ready");
         };
 
@@ -303,9 +327,9 @@ export function useStepCount(goal = 10000) {
 
     try {
       const healthConnect = await import("react-native-health-connect");
-      const grantedPermissions = await healthConnect.requestPermission([
-        ANDROID_STEP_PERMISSION,
-      ]);
+      const grantedPermissions = await healthConnect.requestPermission(
+        [...ANDROID_HEALTH_PERMISSIONS],
+      );
       const hasStepAccess = grantedPermissions.some(
         (permission) =>
           permission.accessType === ANDROID_STEP_PERMISSION.accessType &&
@@ -321,6 +345,7 @@ export function useStepCount(goal = 10000) {
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
+      setSelectedDataOrigin(result.selectedDataOrigin);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
     } catch {
@@ -339,6 +364,7 @@ export function useStepCount(goal = 10000) {
     debug,
     percentOfGoal,
     requestAccess,
+    selectedDataOrigin,
     status,
     stepsToday,
   };

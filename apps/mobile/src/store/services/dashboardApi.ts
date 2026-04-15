@@ -22,6 +22,14 @@ import {
 import { appApi } from "./appApi";
 
 export { toQueryErrorMessage } from "./appApi";
+export type {
+  CreateMeasurementArgs,
+  MeasurementKind,
+  MeasurementLatest,
+  TargetDefinitionValue,
+  TargetDomain,
+  TargetItem,
+} from "./types";
 
 export const dashboardApi = appApi.injectEndpoints({
   endpoints: (builder) => ({

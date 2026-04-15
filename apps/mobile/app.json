@@ -30,6 +30,10 @@
       "permissions": [
         "ACTIVITY_RECOGNITION",
         "POST_NOTIFICATIONS",
+        "android.permission.health.READ_BLOOD_PRESSURE",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_STEPS"
       ],
       "intentFilters": [

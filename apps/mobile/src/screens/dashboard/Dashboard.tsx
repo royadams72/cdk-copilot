@@ -21,6 +21,7 @@ import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -30,9 +31,17 @@ export default function Dashboard() {
       refetchOnMountOrArgChange: true,
     },
   );
-  const { percentOfGoal, requestAccess, status: stepStatus, stepsToday } =
-    useStepCount(10000);
-  useSyncStepCount(stepsToday, stepStatus === "ready");
+  const {
+    percentOfGoal,
+    requestAccess,
+    selectedDataOrigin,
+    status: stepStatus,
+    stepsToday,
+  } = useStepCount(10000);
+  useSyncStepCount(stepsToday, stepStatus === "ready", {
+    providerPackageName: selectedDataOrigin,
+  });
+  useSyncHealthConnectMeasurements(true);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(
@@ -239,9 +248,9 @@ function getHealthStatusMessage(
 ) {
   switch (stepStatus) {
     case "permission-required":
-      return "Grant Health Connect access so the app can read your phone or watch step history even after the app has been closed.";
+      return "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
     case "permission-denied":
-      return "Health Connect access was denied. Allow it to show your stored daily steps on the dashboard.";
+      return "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
     case "health-connect-unavailable":
       return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";
     case "health-connect-update-required":

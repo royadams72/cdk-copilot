@@ -12,9 +12,18 @@ const DeviceMeta = z
   })
   .strict();
 
+const ProviderMeta = z
+  .object({
+    displayName: z.string().min(1).optional(),
+    packageName: z.string().min(1),
+  })
+  .strict();
+
 const Base = z.object({
+  createdAt: z.date().optional(),
   createdBy: PrincipalId,
   device: DeviceMeta.optional(),
+  externalRecordId: z.string().min(1).optional(),
   kind: z.enum([
     "weight",
     "blood_pressure",
@@ -27,8 +36,10 @@ const Base = z.object({
   notes: z.string().min(1).optional(),
   orgId: z.string().min(1),
   patientId: objectIdHex,
+  provider: ProviderMeta.optional(),
   receivedAt: z.date(),
   source: Source,
+  updatedAt: z.date().optional(),
   updatedBy: PrincipalId,
 });
 
