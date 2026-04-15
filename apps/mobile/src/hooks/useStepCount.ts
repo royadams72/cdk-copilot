@@ -1,25 +1,123 @@
 import { useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 type StepStatus =
   | "idle"
   | "unsupported"
+  | "permission-required"
   | "permission-denied"
+  | "health-connect-unavailable"
+  | "health-connect-update-required"
   | "ready"
   | "error";
+
+const ANDROID_STEP_PERMISSION = {
+  accessType: "read",
+  recordType: "Steps",
+} as const;
+
+async function loadAndroidStepState() {
+  const healthConnect = await import("react-native-health-connect");
+  const sdkStatus = await healthConnect.getSdkStatus();
+
+  if (
+    sdkStatus === healthConnect.SdkAvailabilityStatus.SDK_UNAVAILABLE
+  ) {
+    return {
+      canRequestPermission: false,
+      status: "health-connect-unavailable" as const,
+      stepsToday: null,
+    };
+  }
+
+  if (
+    sdkStatus ===
+    healthConnect.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
+  ) {
+    return {
+      canRequestPermission: false,
+      status: "health-connect-update-required" as const,
+      stepsToday: null,
+    };
+  }
+
+  const initialized = await healthConnect.initialize();
+  if (!initialized) {
+    return {
+      canRequestPermission: false,
+      status: "error" as const,
+      stepsToday: null,
+    };
+  }
+
+  const grantedPermissions = await healthConnect.getGrantedPermissions();
+  const hasStepAccess = grantedPermissions.some(
+    (permission) =>
+      permission.accessType === ANDROID_STEP_PERMISSION.accessType &&
+      permission.recordType === ANDROID_STEP_PERMISSION.recordType,
+  );
+
+  if (!hasStepAccess) {
+    return {
+      canRequestPermission: true,
+      status: "permission-required" as const,
+      stepsToday: null,
+    };
+  }
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const aggregate = await healthConnect.aggregateRecord({
+    recordType: "Steps",
+    timeRangeFilter: {
+      operator: "between",
+      startTime: startOfDay.toISOString(),
+      endTime: new Date().toISOString(),
+    },
+  });
+
+  return {
+    canRequestPermission: true,
+    status: "ready" as const,
+    stepsToday: aggregate.COUNT_TOTAL ?? 0,
+  };
+}
 
 export function useStepCount(goal = 10000) {
   const [status, setStatus] = useState<StepStatus>("idle");
   const [stepsToday, setStepsToday] = useState<number | null>(null);
+  const [canRequestPermission, setCanRequestPermission] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     let interval: ReturnType<typeof setInterval> | null = null;
     let watchSubscription: { remove: () => void } | null = null;
+    let appStateSubscription: { remove: () => void } | null = null;
+
+    const applyAndroidState = async () => {
+      const result = await loadAndroidStepState();
+      if (!mounted) return;
+      setCanRequestPermission(result.canRequestPermission);
+      setStatus(result.status);
+      setStepsToday(result.stepsToday);
+    };
 
     const load = async () => {
       if (Platform.OS === "web") {
         if (mounted) setStatus("unsupported");
+        return;
+      }
+
+      if (Platform.OS === "android") {
+        try {
+          await applyAndroidState();
+        } catch {
+          if (mounted) {
+            setCanRequestPermission(false);
+            setStatus("error");
+          }
+        }
         return;
       }
 
@@ -76,12 +174,47 @@ export function useStepCount(goal = 10000) {
 
     void load();
 
+    appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void load();
+      }
+    });
+
     return () => {
       mounted = false;
       if (interval) clearInterval(interval);
+      appStateSubscription?.remove();
       watchSubscription?.remove();
     };
   }, []);
+
+  const requestAccess = async () => {
+    if (Platform.OS !== "android" || !canRequestPermission) return;
+
+    try {
+      const healthConnect = await import("react-native-health-connect");
+      const grantedPermissions = await healthConnect.requestPermission([
+        ANDROID_STEP_PERMISSION,
+      ]);
+      const hasStepAccess = grantedPermissions.some(
+        (permission) =>
+          permission.accessType === ANDROID_STEP_PERMISSION.accessType &&
+          permission.recordType === ANDROID_STEP_PERMISSION.recordType,
+      );
+
+      if (!hasStepAccess) {
+        setStatus("permission-denied");
+        return;
+      }
+
+      const result = await loadAndroidStepState();
+      setCanRequestPermission(result.canRequestPermission);
+      setStatus(result.status);
+      setStepsToday(result.stepsToday);
+    } catch {
+      setStatus("error");
+    }
+  };
 
   const percentOfGoal = useMemo(() => {
     if (stepsToday === null || goal <= 0) return null;
@@ -91,6 +224,7 @@ export function useStepCount(goal = 10000) {
   return {
     goal,
     percentOfGoal,
+    requestAccess,
     status,
     stepsToday,
   };

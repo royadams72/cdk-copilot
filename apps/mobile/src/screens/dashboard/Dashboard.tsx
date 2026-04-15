@@ -29,13 +29,15 @@ export default function Dashboard() {
       refetchOnMountOrArgChange: true,
     },
   );
-  const { percentOfGoal, stepsToday } = useStepCount(10000);
+  const { percentOfGoal, requestAccess, status: stepStatus, stepsToday } =
+    useStepCount(10000);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(
     error,
     "We couldn't refresh your dashboard.",
   );
+  const healthSubtitle = getHealthSubtitle(stepStatus);
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -115,8 +117,8 @@ export default function Dashboard() {
 
           {error && data && <InlineError message={errorMessage} />}
 
-          {data?.nutrition.radials?.length ? (
-            <>
+          <>
+            {data?.nutrition.radials?.length ? (
               <Pressable
                 style={styles.selectableCard}
                 onPress={() => router.push("/(nutrition)/nutrition-details")}
@@ -128,35 +130,59 @@ export default function Dashboard() {
                   title="Nutrition"
                 />
               </Pressable>
+            ) : null}
 
-              <Pressable
-                style={styles.selectableCard}
-                onPress={() => router.push("/(fitness)/fitness-details")}
-              >
-                <StackedRadialsCard
-                  centerLabel="Health"
-                  radials={healthRadials}
-                  subtitle="Daily activity"
-                  title="Health"
-                />
-              </Pressable>
+            <Pressable
+              style={styles.selectableCard}
+              onPress={() => router.push("/(fitness)/fitness-details")}
+            >
+              <StackedRadialsCard
+                centerLabel="Health"
+                radials={healthRadials}
+                subtitle={healthSubtitle}
+                title="Health"
+              />
+            </Pressable>
 
-              <Pressable
-                style={styles.selectableCard}
-                onPress={() => router.push("/(dashboard)/meds-labs")}
-              >
-                <Card>
-                  <ThemedText type="defaultSemiBold">Meds/Labs</ThemedText>
-                  <ThemedText style={styles.helperText}>
-                    {data.medications.activeCount} active medications
-                  </ThemedText>
-                  <ThemedText style={styles.helperText}>
-                    {data.labs.recent.length} recent lab results
-                  </ThemedText>
-                </Card>
-              </Pressable>
-            </>
-          ) : null}
+            {stepStatus !== "ready" && stepStatus !== "idle" ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Step tracking setup
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  {getHealthStatusMessage(stepStatus)}
+                </ThemedText>
+                {(stepStatus === "permission-required" ||
+                  stepStatus === "permission-denied") && (
+                  <Pressable
+                    style={styles.primaryActionButton}
+                    onPress={() => {
+                      void requestAccess();
+                    }}
+                  >
+                    <ThemedText style={styles.primaryActionText}>
+                      Allow step access
+                    </ThemedText>
+                  </Pressable>
+                )}
+              </Card>
+            ) : null}
+
+            <Pressable
+              style={styles.selectableCard}
+              onPress={() => router.push("/(dashboard)/meds-labs")}
+            >
+              <Card>
+                <ThemedText type="defaultSemiBold">Meds/Labs</ThemedText>
+                <ThemedText style={styles.helperText}>
+                  {data?.medications.activeCount ?? 0} active medications
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  {data?.labs.recent.length ?? 0} recent lab results
+                </ThemedText>
+              </Card>
+            </Pressable>
+          </>
         </>
       )}
     </ScrollView>
@@ -185,4 +211,42 @@ function InlineError({ message }: { message: string }) {
       <ThemedText style={styles.helperText}>Pull down to retry.</ThemedText>
     </Card>
   );
+}
+
+function getHealthSubtitle(stepStatus: ReturnType<typeof useStepCount>["status"]) {
+  switch (stepStatus) {
+    case "ready":
+      return "Today's step total";
+    case "permission-required":
+      return "Connect Health Connect";
+    case "permission-denied":
+      return "Step access denied";
+    case "health-connect-unavailable":
+      return "Health Connect unavailable";
+    case "health-connect-update-required":
+      return "Update Health Connect";
+    case "error":
+      return "Couldn't load step data";
+    default:
+      return "Daily activity";
+  }
+}
+
+function getHealthStatusMessage(
+  stepStatus: ReturnType<typeof useStepCount>["status"],
+) {
+  switch (stepStatus) {
+    case "permission-required":
+      return "Grant Health Connect access so the app can read your phone or watch step history even after the app has been closed.";
+    case "permission-denied":
+      return "Health Connect access was denied. Allow it to show your stored daily steps on the dashboard.";
+    case "health-connect-unavailable":
+      return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";
+    case "health-connect-update-required":
+      return "Health Connect needs an update before this app can read steps.";
+    case "unsupported":
+      return "Step tracking is not supported on this device.";
+    default:
+      return "We couldn't load stored step data right now.";
+  }
 }

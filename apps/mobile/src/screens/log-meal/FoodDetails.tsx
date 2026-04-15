@@ -177,8 +177,9 @@ export default function FoodDetails() {
     if (!portionConfig || !groupInfo) return [];
     return buildQuantityOptions(portionConfig.mode, groupInfo.quantity);
   }, [groupInfo, portionConfig]);
-  const estimate = (selectedFood?.nutrients as NutrientsWithEstimate | undefined)
-    ?.estimate;
+  const estimate = (
+    selectedFood?.nutrients as NutrientsWithEstimate | undefined
+  )?.estimate;
   const estimatedKeys = estimate?.nutrientKeys ?? [];
   const activeEstimateRows = (estimate?.breakdown ?? []).filter(
     (row: TNutrientEstimate["breakdown"][number]) =>
@@ -290,7 +291,11 @@ export default function FoodDetails() {
                     <Text style={logMealStyles.nutrientValue}>
                       {formatNutrientValue(
                         key,
-                        typeof value === "string" ? Number(value) : value,
+                        typeof value === "number"
+                          ? value
+                          : typeof value === "string"
+                            ? Number(value)
+                            : 0,
                       )}
                     </Text>
                   </View>
@@ -411,27 +416,36 @@ export default function FoodDetails() {
             ) : null}
 
             <ScrollView style={logMealStyles.modalBody}>
-              {activeEstimateRows.map((row: TNutrientEstimate["breakdown"][number], index: number) => (
-                <View key={`${row.ingredient}:${index}`} style={logMealStyles.modalRow}>
-                  <Text style={logMealStyles.modalIngredient}>
-                    {row.ingredient} ({formatNumber(row.assignedPercent)}%)
-                  </Text>
-                  <Text style={logMealStyles.modalFormula}>
-                    {formatNumber(row.mgPer100g)} mg per 100g x{" "}
-                    {formatNumber(row.ingredientWeightG)} g / 100 ={" "}
-                    {formatNumber(row.amountMg)} mg
-                  </Text>
-                  {row.matchedFood ? (
-                    <Text style={logMealStyles.modalMatchedFood}>
-                      Matched as {row.matchedFood}
+              {activeEstimateRows.map(
+                (
+                  row: TNutrientEstimate["breakdown"][number],
+                  index: number,
+                ) => (
+                  <View
+                    key={`${row.ingredient}:${index}`}
+                    style={logMealStyles.modalRow}
+                  >
+                    <Text style={logMealStyles.modalIngredient}>
+                      {row.ingredient} ({formatNumber(row.assignedPercent)}%)
                     </Text>
-                  ) : null}
-                </View>
-              ))}
+                    <Text style={logMealStyles.modalFormula}>
+                      {formatNumber(row.mgPer100g)} mg per 100g x{" "}
+                      {formatNumber(row.ingredientWeightG)} g / 100 ={" "}
+                      {formatNumber(row.amountMg)} mg
+                    </Text>
+                    {row.matchedFood ? (
+                      <Text style={logMealStyles.modalMatchedFood}>
+                        Matched as {row.matchedFood}
+                      </Text>
+                    ) : null}
+                  </View>
+                ),
+              )}
 
               {!activeEstimateRows.length ? (
                 <Text style={logMealStyles.modalEmptyText}>
-                  No ingredient estimate breakdown is available for this nutrient.
+                  No ingredient estimate breakdown is available for this
+                  nutrient.
                 </Text>
               ) : null}
 
