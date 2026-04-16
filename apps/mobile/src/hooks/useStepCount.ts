@@ -20,6 +20,7 @@ type StepDebug = {
   aggregateTotal: number;
   groupedError: boolean;
   groupedTotal: number | null;
+  originError: boolean;
   originTotals: Record<string, number>;
   selectedDataOrigin: string | null;
 };
@@ -38,34 +39,33 @@ function permissionKey(permission: { accessType: string; recordType: string }) {
   return `${permission.accessType}:${permission.recordType}`;
 }
 
-async function readStepTotalsByOrigin(
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+async function readTodayStepTotalsByOrigin(
   healthConnect: typeof import("react-native-health-connect"),
   timeRangeFilter: {
     endTime: string;
     operator: "between";
     startTime: string;
   },
+  dataOrigins: string[],
 ) {
-  let pageToken: string | undefined;
   const originTotals: Record<string, number> = {};
 
-  do {
-    const result = await healthConnect.readRecords("Steps", {
-      ascendingOrder: true,
-      pageSize: 1000,
-      pageToken,
+  for (const origin of dataOrigins) {
+    const aggregate = await healthConnect.aggregateRecord({
+      dataOriginFilter: [origin],
+      recordType: "Steps",
       timeRangeFilter,
     });
-
-    for (const record of result.records) {
-      const origin = record.metadata?.dataOrigin ?? "unknown";
-      originTotals[origin] =
-        (originTotals[origin] ?? 0) +
-        Math.max(0, Math.round(record.count ?? 0));
-    }
-
-    pageToken = result.pageToken;
-  } while (pageToken);
+    originTotals[origin] = Math.max(
+      0,
+      Math.round(aggregate.COUNT_TOTAL ?? 0),
+    );
+  }
 
   return originTotals;
 }
@@ -76,17 +76,28 @@ function selectStepTotalFromOrigins(
 ) {
   let selectedDataOrigin: string | null = null;
   let highestOriginTotal = 0;
+  let preferredDataOrigin: string | null = null;
+  let preferredOriginTotal = 0;
 
   for (const [origin, total] of Object.entries(originTotals)) {
     if (total > highestOriginTotal) {
       highestOriginTotal = total;
       selectedDataOrigin = origin;
     }
+
+    // Prefer app-provided sources over the generic Android on-device source.
+    if (origin !== "android" && total > preferredOriginTotal) {
+      preferredOriginTotal = total;
+      preferredDataOrigin = origin;
+    }
   }
 
   return {
-    selectedDataOrigin,
-    total: Math.max(aggregateTotal, highestOriginTotal),
+    selectedDataOrigin: preferredDataOrigin ?? selectedDataOrigin,
+    total:
+      preferredDataOrigin !== null
+        ? Math.max(aggregateTotal, preferredOriginTotal)
+        : Math.max(aggregateTotal, highestOriginTotal),
   };
 }
 
@@ -161,8 +172,11 @@ async function loadAndroidStepState() {
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setHours(23, 59, 59, 999);
   const timeRangeFilter = {
-    endTime: new Date().toISOString(),
+    endTime: endOfDay.toISOString(),
     operator: "between" as const,
     startTime: startOfDay.toISOString(),
   };
@@ -172,20 +186,36 @@ async function loadAndroidStepState() {
     timeRangeFilter,
   });
   const aggregateTotal = Math.max(0, Math.round(aggregate.COUNT_TOTAL ?? 0));
-  const originTotals = await readStepTotalsByOrigin(
-    healthConnect,
-    timeRangeFilter,
-  );
+  let originTotals: Record<string, number> = {};
+  let originError = false;
+
+  try {
+    originTotals = await readTodayStepTotalsByOrigin(
+      healthConnect,
+      timeRangeFilter,
+      aggregate.dataOrigins ?? [],
+    );
+  } catch (error) {
+    originError = true;
+    console.log("Health Connect step origin read failed", {
+      endTime: endOfDay.toISOString(),
+      error: toErrorMessage(error),
+      now: now.toISOString(),
+      startOfDay: startOfDay.toISOString(),
+      aggregateDataOrigins: aggregate.dataOrigins ?? [],
+      originAggregateTimeRangeFilter: timeRangeFilter,
+    });
+  }
   let groupedTotal: number | null = null;
   let groupedError = false;
 
   try {
-    const dailyAggregate = await healthConnect.aggregateGroupByPeriod({
+    const dailyAggregate = await healthConnect.aggregateGroupByDuration({
       recordType: "Steps",
       timeRangeFilter,
       timeRangeSlicer: {
+        duration: "DAYS",
         length: 1,
-        period: "DAYS",
       },
     });
     groupedTotal = dailyAggregate.reduce(
@@ -193,8 +223,13 @@ async function loadAndroidStepState() {
         total + Math.max(0, Math.round(group.result.COUNT_TOTAL ?? 0)),
       0,
     );
-  } catch {
+  } catch (error) {
     groupedError = true;
+    console.log("Health Connect grouped step aggregate failed", {
+      error: toErrorMessage(error),
+      now: now.toISOString(),
+      timeRangeFilter,
+    });
   }
 
   const selected = selectStepTotalFromOrigins(aggregateTotal, originTotals);
@@ -211,6 +246,7 @@ async function loadAndroidStepState() {
         : (aggregate.dataOrigins ?? []),
     debug: {
       aggregateTotal,
+      originError,
       groupedError,
       groupedTotal,
       originTotals,
@@ -238,6 +274,7 @@ export function useStepCount(goal = 10000) {
     aggregateTotal: number;
     groupedError: boolean;
     groupedTotal: number | null;
+    originError: boolean;
     originTotals: Record<string, number>;
     selectedDataOrigin: string | null;
   } | null>(null);
@@ -274,7 +311,10 @@ export function useStepCount(goal = 10000) {
               void applyAndroidState();
             }, 60_000);
           }
-        } catch {
+        } catch (error) {
+          console.log("Health Connect step load failed", {
+            error: toErrorMessage(error),
+          });
           if (mounted) {
             setCanRequestPermission(false);
             setDataOrigins([]);
@@ -334,7 +374,10 @@ export function useStepCount(goal = 10000) {
         interval = setInterval(() => {
           void refreshTodaySteps();
         }, 60_000);
-      } catch {
+      } catch (error) {
+        console.log("iOS pedometer step load failed", {
+          error: toErrorMessage(error),
+        });
         if (mounted) setStatus("error");
       }
     };
@@ -388,7 +431,10 @@ export function useStepCount(goal = 10000) {
       setSelectedDataOrigin(result.selectedDataOrigin);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
-    } catch {
+    } catch (error) {
+      console.log("Health Connect permission request failed", {
+        error: toErrorMessage(error),
+      });
       setStatus("error");
     }
   };
