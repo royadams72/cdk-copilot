@@ -202,7 +202,12 @@ function formatOriginTotals(originTotals: Record<string, number>) {
 function getStepSubtext(
   status: ReturnType<typeof useStepCount>["status"],
   dataOrigins: string[],
+  hasMissingHealthPermissions: boolean,
 ) {
+  if (status === "ready" && hasMissingHealthPermissions) {
+    return "Steps are connected. Allow more Health Connect access for heart rate, exercise, sleep, and blood pressure.";
+  }
+
   return status === "ready"
     ? formatStepOrigins(dataOrigins)
     : stepStatusLabel(status);
@@ -216,6 +221,7 @@ export default function FitnessDashboard() {
   const {
     dataOrigins: stepDataOrigins,
     debug: stepDebug,
+    missingHealthPermissions,
     percentOfGoal,
     requestAccess,
     selectedDataOrigin,
@@ -233,6 +239,7 @@ export default function FitnessDashboard() {
   const items = data ?? [];
   const loading = isLoading && items.length === 0;
   const refreshing = isFetching && items.length > 0;
+  const hasMissingHealthPermissions = missingHealthPermissions.length > 0;
 
   const stepsTarget = useMemo(() => {
     const stepsTargetItem = targetsData?.items.find(
@@ -252,7 +259,9 @@ export default function FitnessDashboard() {
       kind: "steps",
       label: "Steps",
       onPress:
-        stepStatus === "permission-required" || stepStatus === "permission-denied"
+        stepStatus === "permission-required" ||
+        stepStatus === "permission-denied" ||
+        hasMissingHealthPermissions
           ? requestAccess
           : undefined,
       progressLabel:
@@ -260,7 +269,11 @@ export default function FitnessDashboard() {
           ? `${stepProgress}% of ${stepsTarget.toLocaleString()} daily target`
           : undefined,
       progressPercent: stepProgress,
-      subtext: getStepSubtext(stepStatus, stepDataOrigins),
+      subtext: getStepSubtext(
+        stepStatus,
+        stepDataOrigins,
+        hasMissingHealthPermissions,
+      ),
       value:
         typeof stepsToday === "number"
           ? `${Math.round(stepsToday).toLocaleString()} steps`
@@ -278,6 +291,7 @@ export default function FitnessDashboard() {
     items,
     percentOfGoal,
     requestAccess,
+    hasMissingHealthPermissions,
     stepDataOrigins,
     stepDebug,
     stepStatus,
@@ -408,7 +422,9 @@ export default function FitnessDashboard() {
                 ) : null}
                 <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
                   {card.onPress
-                    ? "Allow step access"
+                    ? hasMissingHealthPermissions
+                      ? "Allow more Health Connect access"
+                      : "Allow step access"
                     : card.kind === "steps"
                     ? "View trend"
                     : "View trend and add reading"}

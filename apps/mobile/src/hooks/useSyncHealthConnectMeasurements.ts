@@ -9,20 +9,22 @@ type HealthRecordType =
   | "BloodPressure"
   | "ExerciseSession"
   | "HeartRate"
+  | "RestingHeartRate"
   | "SleepSession";
 
 type HealthMetadata = {
+  id?: string;
   clientRecordId?: string;
   dataOrigin?: string;
   device?: {
+    type?: number;
     manufacturer?: string;
     model?: string;
-    type?: number;
   };
-  id?: string;
 };
 
 type HealthRecord = {
+  beatsPerMinute?: number;
   caloriesKcal?: number;
   diastolic?: { inMillimetersOfMercury?: number; value?: number };
   endTime?: string;
@@ -37,7 +39,7 @@ type HealthRecord = {
 
 function startOfRecentWindow() {
   const start = new Date();
-  start.setDate(start.getDate() - 7);
+  start.setDate(start.getDate() - 30);
   start.setHours(0, 0, 0, 0);
   return start;
 }
@@ -62,7 +64,11 @@ function externalRecordId(
   return `health-connect:${origin}:${recordType}:${fallbackTime}`;
 }
 
-function provenance(recordType: HealthRecordType, record: HealthRecord, time: string) {
+function provenance(
+  recordType: HealthRecordType,
+  record: HealthRecord,
+  time: string,
+) {
   const packageName = providerPackageName(record.metadata);
   const manufacturer = record.metadata?.device?.manufacturer?.trim();
   const model = record.metadata?.device?.model?.trim();
@@ -87,7 +93,10 @@ function provenance(recordType: HealthRecordType, record: HealthRecord, time: st
   };
 }
 
-function pressureValue(value?: { inMillimetersOfMercury?: number; value?: number }) {
+function pressureValue(value?: {
+  inMillimetersOfMercury?: number;
+  value?: number;
+}) {
   return value?.inMillimetersOfMercury ?? value?.value ?? null;
 }
 
@@ -141,6 +150,17 @@ function toMeasurementPayloads(
         bpm: Math.round(sample.beatsPerMinute),
         kind: "heart_rate",
         measuredAt: sample.time,
+      });
+      continue;
+    }
+
+    if (recordType === "RestingHeartRate") {
+      if (!record.time || !record.beatsPerMinute) continue;
+      payloads.push({
+        ...provenance(recordType, record, record.time),
+        bpm: Math.round(record.beatsPerMinute),
+        kind: "heart_rate",
+        measuredAt: record.time,
       });
       continue;
     }
@@ -221,8 +241,7 @@ export function useSyncHealthConnectMeasurements(enabled: boolean) {
         const grantedPermissions = await healthConnect.getGrantedPermissions();
         const granted = new Set(
           grantedPermissions.map(
-            (permission) =>
-              `${permission.accessType}:${permission.recordType}`,
+            (permission) => `${permission.accessType}:${permission.recordType}`,
           ),
         );
 
@@ -234,15 +253,33 @@ export function useSyncHealthConnectMeasurements(enabled: boolean) {
           }
 
           const recordType = permission.recordType as HealthRecordType;
-          const records = await readRecentRecords(healthConnect, recordType);
-          const payloads = toMeasurementPayloads(recordType, records);
 
-          for (const payload of payloads) {
-            if (!payload.externalRecordId) continue;
-            const syncKey = `${payload.externalRecordId}:${payload.measuredAt}`;
-            if (syncedRef.current.has(syncKey)) continue;
-            await createMeasurement(payload).unwrap();
-            syncedRef.current.add(syncKey);
+          try {
+            const records = await readRecentRecords(healthConnect, recordType);
+            const payloads = toMeasurementPayloads(recordType, records);
+
+            for (const payload of payloads) {
+              if (!payload.externalRecordId) continue;
+              const syncKey = `${payload.externalRecordId}:${payload.measuredAt}`;
+              if (syncedRef.current.has(syncKey)) continue;
+
+              try {
+                await createMeasurement(payload).unwrap();
+                syncedRef.current.add(syncKey);
+              } catch (error) {
+                console.log("Health Connect record sync failed", {
+                  error,
+                  externalRecordId: payload.externalRecordId,
+                  kind: payload.kind,
+                  measuredAt: payload.measuredAt,
+                });
+              }
+            }
+          } catch (error) {
+            console.log("Health Connect record read failed", {
+              error,
+              recordType,
+            });
           }
         }
       } catch (error) {
@@ -254,9 +291,12 @@ export function useSyncHealthConnectMeasurements(enabled: boolean) {
     const interval = setInterval(() => {
       void sync();
     }, 5 * 60_000);
-    const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void sync();
-    });
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (state) => {
+        if (state === "active") void sync();
+      },
+    );
 
     return () => {
       cancelled = true;
