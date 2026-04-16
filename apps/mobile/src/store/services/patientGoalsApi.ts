@@ -26,7 +26,9 @@ const patientGoalsApi = appApi.injectEndpoints({
       }),
     }),
   }),
-  overrideExisting: false,
+  // Expo/Metro can re-evaluate injected endpoint modules during Fast Refresh
+  // or after switching branches with a stale bundle graph.
+  overrideExisting: __DEV__,
 });
 
 export const {
