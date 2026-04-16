@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { useCreateMeasurementMutation } from "@/store/services/dashboardApi";
+import { useCreateMeasurementMutation } from "@/store/services/measurementsApi";
 
 function localDateKey(date: Date) {
   const year = date.getFullYear();

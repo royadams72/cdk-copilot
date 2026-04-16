@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 
 import { ANDROID_HEALTH_RECORD_PERMISSIONS } from "@/lib/healthConnectPermissions";
-import { useCreateMeasurementMutation } from "@/store/services/dashboardApi";
+import { useCreateMeasurementMutation } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
 
 type HealthRecordType =

@@ -16,11 +16,11 @@ import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
 import {
   type MeasurementKind,
-  type MeasurementLatest,
   toQueryErrorMessage,
-  useGetLatestMeasurementsQuery,
   useGetTargetsQuery,
 } from "@/store/services/dashboardApi";
+import { useGetLatestMeasurementsQuery } from "@/store/services/measurementsApi";
+import type { MeasurementLatest } from "@/store/services/types";
 
 type MetricCard = {
   kind: MeasurementKind;

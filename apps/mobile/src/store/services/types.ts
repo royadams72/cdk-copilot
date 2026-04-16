@@ -72,6 +72,46 @@ export type MeasurementLatest = {
   systolicMmHg?: number;
 };
 
+export type MeasurementTrendPoint = {
+  date: string;
+  measuredAt: string;
+  value: number | null;
+  value2: number | null;
+};
+
+export type MeasurementDayEntry = {
+  exerciseId?: string;
+  exerciseName?: string;
+  exerciseTitle?: string;
+  measuredAt: string;
+  sleepFromAt?: string;
+  sleepToAt?: string;
+  value: number | null;
+  value2: number | null;
+};
+
+export type MeasurementHistoryResponse = {
+  entriesByDate: Record<string, MeasurementDayEntry[]>;
+  points: MeasurementTrendPoint[];
+};
+
+export type ExerciseRefItem = {
+  category: string;
+  exerciseId: string;
+  intensity: "light" | "moderate" | "vigorous";
+  met: number;
+  name: string;
+};
+
+export type ExerciseRefCategory = {
+  category: string;
+  items: ExerciseRefItem[];
+};
+
+export type ExerciseReferenceResponse = {
+  categories: ExerciseRefCategory[];
+};
+
 export type CreateMeasurementArgs =
   | ({
       count: number;
