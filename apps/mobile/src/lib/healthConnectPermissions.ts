@@ -7,6 +7,7 @@ export const ANDROID_HEALTH_RECORD_PERMISSIONS = [
   { accessType: "read", recordType: "BloodPressure" },
   { accessType: "read", recordType: "ExerciseSession" },
   { accessType: "read", recordType: "HeartRate" },
+  { accessType: "read", recordType: "RestingHeartRate" },
   { accessType: "read", recordType: "SleepSession" },
 ] as const;
 

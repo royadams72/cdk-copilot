@@ -7,8 +7,6 @@ import type {
 import {
   DashboardQueryData,
   DashboardScope,
-  CreateMeasurementArgs,
-  MeasurementLatest,
   NutritionTrendChunkArgs,
   NutritionTrendData,
   RunWeeklyNutritionInsightArgs,
@@ -23,9 +21,7 @@ import { appApi } from "./appApi";
 
 export { toQueryErrorMessage } from "./appApi";
 export type {
-  CreateMeasurementArgs,
   MeasurementKind,
-  MeasurementLatest,
   TargetDefinitionValue,
   TargetDomain,
   TargetItem,
@@ -42,21 +38,6 @@ export const dashboardApi = appApi.injectEndpoints({
         const { patientId: _patientId, ...safeResponse } = response;
         return safeResponse;
       },
-    }),
-    getLatestMeasurements: builder.query<MeasurementLatest[], void>({
-      providesTags: [{ id: "latest", type: "Fitness" as const }],
-      query: () => "/api/measurements/latest",
-    }),
-    createMeasurement: builder.mutation<unknown, CreateMeasurementArgs>({
-      invalidatesTags: [
-        { id: "latest", type: "Fitness" as const },
-        { id: "today", type: "Dashboard" as const },
-      ],
-      query: (body) => ({
-        body,
-        method: "POST",
-        url: "/api/measurements/create",
-      }),
     }),
     getLatestWeeklyNutritionInsight: builder.query<
       WeeklyNutritionInsightResponse,
@@ -154,9 +135,7 @@ export const dashboardApi = appApi.injectEndpoints({
 });
 
 export const {
-  useCreateMeasurementMutation,
   useGetDashboardQuery,
-  useGetLatestMeasurementsQuery,
   useGetLatestWeeklyNutritionInsightQuery,
   useGetNutritionTrendChunkQuery,
   useGetTargetsQuery,

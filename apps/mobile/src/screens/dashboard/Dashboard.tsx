@@ -32,6 +32,7 @@ export default function Dashboard() {
     },
   );
   const {
+    missingHealthPermissions,
     percentOfGoal,
     requestAccess,
     selectedDataOrigin,
@@ -49,6 +50,7 @@ export default function Dashboard() {
     "We couldn't refresh your dashboard.",
   );
   const healthSubtitle = getHealthSubtitle(stepStatus);
+  const hasMissingHealthPermissions = missingHealthPermissions.length > 0;
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -155,16 +157,21 @@ export default function Dashboard() {
               />
             </Pressable>
 
-            {stepStatus !== "ready" && stepStatus !== "idle" ? (
+            {stepStatus !== "idle" &&
+            (stepStatus !== "ready" || hasMissingHealthPermissions) ? (
               <Card>
                 <ThemedText type="defaultSemiBold">
-                  Step tracking setup
+                  Health Connect setup
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
-                  {getHealthStatusMessage(stepStatus)}
+                  {getHealthStatusMessage(
+                    stepStatus,
+                    hasMissingHealthPermissions,
+                  )}
                 </ThemedText>
                 {(stepStatus === "permission-required" ||
-                  stepStatus === "permission-denied") && (
+                  stepStatus === "permission-denied" ||
+                  hasMissingHealthPermissions) && (
                   <Pressable
                     style={styles.primaryActionButton}
                     onPress={() => {
@@ -172,7 +179,9 @@ export default function Dashboard() {
                     }}
                   >
                     <ThemedText style={styles.primaryActionText}>
-                      Allow step access
+                      {hasMissingHealthPermissions
+                        ? "Allow more Health Connect access"
+                        : "Allow step access"}
                     </ThemedText>
                   </Pressable>
                 )}
@@ -245,7 +254,12 @@ function getHealthSubtitle(stepStatus: ReturnType<typeof useStepCount>["status"]
 
 function getHealthStatusMessage(
   stepStatus: ReturnType<typeof useStepCount>["status"],
+  hasMissingHealthPermissions = false,
 ) {
+  if (hasMissingHealthPermissions && stepStatus === "ready") {
+    return "Steps are connected, but Health Connect access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too.";
+  }
+
   switch (stepStatus) {
     case "permission-required":
       return "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
