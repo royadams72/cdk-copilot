@@ -3,6 +3,9 @@ import { useEffect, useRef } from "react";
 import type { StepActivitySummary } from "@/hooks/useStepCount";
 import { useCreateMeasurementMutation } from "@/store/services/measurementsApi";
 
+let lastSyncedStepKey: string | null = null;
+let inFlightStepKey: string | null = null;
+
 function localDateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -20,7 +23,7 @@ export function useSyncStepCount(
   options: StepSyncOptions = {},
 ) {
   const [createMeasurement] = useCreateMeasurementMutation();
-  const lastSyncedRef = useRef<string | null>(null);
+  const lastAttemptedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isReady || typeof stepsToday !== "number" || stepsToday < 0) return;
@@ -36,7 +39,15 @@ export function useSyncStepCount(
       distanceMeters: summary?.distanceMeters ?? null,
       externalRecordId,
     });
-    if (lastSyncedRef.current === syncKey) return;
+    if (
+      lastAttemptedRef.current === syncKey ||
+      lastSyncedStepKey === syncKey ||
+      inFlightStepKey === syncKey
+    ) {
+      return;
+    }
+    lastAttemptedRef.current = syncKey;
+    inFlightStepKey = syncKey;
 
     void createMeasurement({
       averageSpeedKph: summary?.averageSpeedKph ?? undefined,
@@ -54,10 +65,15 @@ export function useSyncStepCount(
     })
       .unwrap()
       .then(() => {
-        lastSyncedRef.current = syncKey;
+        lastSyncedStepKey = syncKey;
       })
       .catch((error) => {
         console.log("Step sync failed", error);
+      })
+      .finally(() => {
+        if (inFlightStepKey === syncKey) {
+          inFlightStepKey = null;
+        }
       });
   }, [createMeasurement, isReady, options.summary, stepsToday]);
 }

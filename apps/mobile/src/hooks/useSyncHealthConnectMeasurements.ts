@@ -5,6 +5,15 @@ import { ANDROID_HEALTH_RECORD_PERMISSIONS } from "@/lib/healthConnectPermission
 import { useCreateMeasurementMutation } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
 
+const FAILED_SYNC_RETRY_MS = 10 * 60_000;
+const MAX_UPLOADS_PER_SYNC = 5;
+const MIN_SYNC_INTERVAL_MS = 60_000;
+
+const syncedMeasurementKeys = new Set<string>();
+const failedMeasurementRetryAt = new Map<string, number>();
+let healthConnectSyncPromise: Promise<void> | null = null;
+let lastHealthConnectSyncStartedAt = 0;
+
 type HealthRecordType =
   | "BloodPressure"
   | "ExerciseSession"
@@ -225,81 +234,122 @@ async function readRecentRecords(
 
 export function useSyncHealthConnectMeasurements(enabled: boolean) {
   const [createMeasurement] = useCreateMeasurementMutation();
-  const syncedRef = useRef<Set<string>>(new Set());
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     if (!enabled || Platform.OS !== "android") return;
 
     let cancelled = false;
+    mountedRef.current = true;
 
-    const sync = async () => {
-      try {
-        const healthConnect = await import("react-native-health-connect");
-        const initialized = await healthConnect.initialize();
-        if (!initialized || cancelled) return;
-
-        const grantedPermissions = await healthConnect.getGrantedPermissions();
-        const granted = new Set(
-          grantedPermissions.map(
-            (permission) => `${permission.accessType}:${permission.recordType}`,
-          ),
-        );
-
-        for (const permission of ANDROID_HEALTH_RECORD_PERMISSIONS) {
-          if (
-            !granted.has(`${permission.accessType}:${permission.recordType}`)
-          ) {
-            continue;
-          }
-
-          const recordType = permission.recordType as HealthRecordType;
-
-          try {
-            const records = await readRecentRecords(healthConnect, recordType);
-            const payloads = toMeasurementPayloads(recordType, records);
-
-            for (const payload of payloads) {
-              if (!payload.externalRecordId) continue;
-              const syncKey = `${payload.externalRecordId}:${payload.measuredAt}`;
-              if (syncedRef.current.has(syncKey)) continue;
-
-              try {
-                await createMeasurement(payload).unwrap();
-                syncedRef.current.add(syncKey);
-              } catch (error) {
-                console.log("Health Connect record sync failed", {
-                  error,
-                  externalRecordId: payload.externalRecordId,
-                  kind: payload.kind,
-                  measuredAt: payload.measuredAt,
-                });
-              }
-            }
-          } catch (error) {
-            console.log("Health Connect record read failed", {
-              error,
-              recordType,
-            });
-          }
-        }
-      } catch (error) {
-        console.log("Health Connect sync failed", error);
+    const sync = async (reason: "mount" | "interval" | "active") => {
+      const now = Date.now();
+      if (
+        healthConnectSyncPromise ||
+        now - lastHealthConnectSyncStartedAt < MIN_SYNC_INTERVAL_MS
+      ) {
+        return healthConnectSyncPromise;
       }
+
+      lastHealthConnectSyncStartedAt = now;
+
+      healthConnectSyncPromise = (async () => {
+        let uploads = 0;
+
+        try {
+          const healthConnect = await import("react-native-health-connect");
+          const initialized = await healthConnect.initialize();
+          if (!initialized || cancelled || !mountedRef.current) return;
+
+          const grantedPermissions = await healthConnect.getGrantedPermissions();
+          const granted = new Set(
+            grantedPermissions.map(
+              (permission) => `${permission.accessType}:${permission.recordType}`,
+            ),
+          );
+
+          for (const permission of ANDROID_HEALTH_RECORD_PERMISSIONS) {
+            if (
+              !granted.has(`${permission.accessType}:${permission.recordType}`) ||
+              uploads >= MAX_UPLOADS_PER_SYNC
+            ) {
+              continue;
+            }
+
+            const recordType = permission.recordType as HealthRecordType;
+
+            try {
+              const records = await readRecentRecords(healthConnect, recordType);
+              const payloads = toMeasurementPayloads(recordType, records)
+                .sort((a, b) =>
+                  String(b.measuredAt ?? "").localeCompare(String(a.measuredAt ?? "")),
+                );
+
+              for (const payload of payloads) {
+                if (!payload.externalRecordId || uploads >= MAX_UPLOADS_PER_SYNC) {
+                  continue;
+                }
+
+                const syncKey = `${payload.externalRecordId}:${payload.measuredAt}`;
+                const retryAfter = failedMeasurementRetryAt.get(syncKey) ?? 0;
+
+                if (
+                  syncedMeasurementKeys.has(syncKey) ||
+                  retryAfter > Date.now()
+                ) {
+                  continue;
+                }
+
+                try {
+                  await createMeasurement(payload).unwrap();
+                  syncedMeasurementKeys.add(syncKey);
+                  failedMeasurementRetryAt.delete(syncKey);
+                  uploads += 1;
+                } catch (error) {
+                  failedMeasurementRetryAt.set(
+                    syncKey,
+                    Date.now() + FAILED_SYNC_RETRY_MS,
+                  );
+                  console.log("Health Connect record sync failed", {
+                    error,
+                    externalRecordId: payload.externalRecordId,
+                    kind: payload.kind,
+                    measuredAt: payload.measuredAt,
+                    reason,
+                  });
+                }
+              }
+            } catch (error) {
+              console.log("Health Connect record read failed", {
+                error,
+                recordType,
+              });
+            }
+          }
+        } catch (error) {
+          console.log("Health Connect sync failed", error);
+        } finally {
+          healthConnectSyncPromise = null;
+        }
+      })();
+
+      return healthConnectSyncPromise;
     };
 
-    void sync();
+    void sync("mount");
     const interval = setInterval(() => {
-      void sync();
+      void sync("interval");
     }, 5 * 60_000);
     const appStateSubscription = AppState.addEventListener(
       "change",
       (state) => {
-        if (state === "active") void sync();
+        if (state === "active") void sync("active");
       },
     );
 
     return () => {
       cancelled = true;
+      mountedRef.current = false;
       clearInterval(interval);
       appStateSubscription.remove();
     };

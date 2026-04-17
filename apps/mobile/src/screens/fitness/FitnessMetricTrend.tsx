@@ -67,7 +67,7 @@ export default function FitnessMetricTrend() {
   const label = typeof params.label === "string" ? params.label : "Trend";
 
   const [saving, setSaving] = useState(false);
-  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSleepFromPicker, setShowSleepFromPicker] = useState(false);
@@ -307,17 +307,11 @@ export default function FitnessMetricTrend() {
     return numeric.length ? numeric[numeric.length - 1] : null;
   }, [points]);
 
-  const selectedChartPoint = useMemo(() => {
-    if (selectedBarIndex === null) return null;
-    if (selectedBarIndex < 0 || selectedBarIndex >= chart.points.length) {
-      return null;
-    }
-    return chart.points[selectedBarIndex];
-  }, [chart.points, selectedBarIndex]);
-
-  const selectedDateKey = selectedChartPoint
-    ? selectedChartPoint.date
-    : (chart.points[chart.points.length - 1]?.date ?? null);
+  const selectedBarIndex = useMemo(() => {
+    if (!selectedDateKey) return null;
+    const index = chart.points.findIndex((point) => point.date === selectedDateKey);
+    return index >= 0 ? index : null;
+  }, [chart.points, selectedDateKey]);
 
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
@@ -336,8 +330,19 @@ export default function FitnessMetricTrend() {
   }, [kind, modalOpen]);
 
   useEffect(() => {
-    setSelectedBarIndex(null);
-  }, [kind, points, entriesByDate]);
+    const latestDate = chart.points[chart.points.length - 1]?.date ?? null;
+    if (!latestDate) {
+      setSelectedDateKey(null);
+      return;
+    }
+
+    setSelectedDateKey((current) => {
+      if (!current) return latestDate;
+      return chart.points.some((point) => point.date === current)
+        ? current
+        : latestDate;
+    });
+  }, [chart.points, kind]);
 
   const onSave = useCallback(async () => {
     if (kind === "steps") return;
@@ -507,7 +512,13 @@ export default function FitnessMetricTrend() {
                   kind={kind}
                   points={chart.points}
                   selectedBarIndex={selectedBarIndex}
-                  setSelectedBarIndex={setSelectedBarIndex}
+                  setSelectedBarIndex={(index) => {
+                    const nextDate =
+                      typeof index === "number"
+                        ? chart.points[index]?.date ?? null
+                        : null;
+                    setSelectedDateKey(nextDate);
+                  }}
                   targetLines={chart.targetLines}
                   yMax={chart.yMax}
                   yMin={chart.yMin}
