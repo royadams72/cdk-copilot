@@ -21,7 +21,11 @@ import { Card } from "../dashboard/components/Card";
 import { AddMeasurementModal } from "./AddMeasurementModal";
 import { MetricBarChart } from "./components/MetricBarChart";
 import { MetricDayEntries } from "./components/MetricDayEntries";
-import type { ChartPoint, MeasurementKind, TrendPoint } from "./metricTrendTypes";
+import type {
+  ChartPoint,
+  MeasurementKind,
+  TrendPoint,
+} from "./metricTrendTypes";
 import {
   addDays,
   addLabel,
@@ -36,12 +40,16 @@ import {
   dateToMeasuredAtIso,
   EXERCISE_TARGET_MIN,
   formatDayLabel,
+  formatDistanceValue,
   formatMinutes,
+  formatStepMetric,
+  getStepSummaryFromEntries,
   GROUP_GAP,
   metricUnit,
   numberRange,
   SLEEP_TARGET_MIN,
   SLOT_GAP,
+  sortEntriesForTrendDay,
 } from "./metricTrendUtils";
 
 type TrendChart = {
@@ -107,7 +115,8 @@ export default function FitnessMetricTrend() {
   const points = history?.points ?? [];
   const entriesByDate = history?.entriesByDate ?? {};
   const exerciseCatalog = exerciseReference?.categories ?? [];
-  const loading = isHistoryLoading || isHistoryFetching;
+  const loading = isHistoryLoading && !history;
+  const refreshing = isHistoryFetching && !!history;
   const error = historyError
     ? toQueryErrorMessage(historyError, "Failed to load trend")
     : null;
@@ -312,13 +321,13 @@ export default function FitnessMetricTrend() {
 
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
-    const entries = entriesByDate[selectedDateKey] ?? [];
-    return entries
-      .slice()
-      .sort((a, b) =>
-        a.measuredAt === b.measuredAt ? 0 : a.measuredAt < b.measuredAt ? 1 : -1,
-      );
-  }, [entriesByDate, selectedDateKey]);
+    return sortEntriesForTrendDay(kind, entriesByDate[selectedDateKey] ?? []);
+  }, [entriesByDate, kind, selectedDateKey]);
+
+  const selectedStepSummary = useMemo(() => {
+    if (kind !== "steps") return null;
+    return getStepSummaryFromEntries(selectedDayEntries);
+  }, [kind, selectedDayEntries]);
 
   useEffect(() => {
     setMeasuredDate(new Date());
@@ -466,6 +475,10 @@ export default function FitnessMetricTrend() {
           </ThemedText>
         )}
 
+        {refreshing ? (
+          <ThemedText style={{ opacity: 0.6 }}>Refreshing latest readings…</ThemedText>
+        ) : null}
+
         {loading ? (
           <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>
             <ActivityIndicator size="large" />
@@ -499,6 +512,10 @@ export default function FitnessMetricTrend() {
                   yMax={chart.yMax}
                   yMin={chart.yMin}
                 />
+
+                {kind === "steps" && selectedStepSummary ? (
+                  <StepSummary summary={selectedStepSummary} />
+                ) : null}
 
                 {selectedDateKey ? (
                   <MetricDayEntries
@@ -577,6 +594,72 @@ export default function FitnessMetricTrend() {
         sleepToTime={sleepToTime}
         systolicOptions={systolicOptions}
       />
+    </View>
+  );
+}
+
+function StepSummary({
+  summary,
+}: {
+  summary: {
+    averageSpeedKph: number | null;
+    caloriesKcal: number | null;
+    distanceMeters: number | null;
+    steps: number | null;
+  };
+}) {
+  const items = [
+    {
+      label: "Steps",
+      value: formatStepMetric(summary.steps),
+    },
+    {
+      label: "Distance",
+      value: formatDistanceValue(summary.distanceMeters),
+    },
+    {
+      label: "Calories",
+      value: formatStepMetric(summary.caloriesKcal, { suffix: "kcal" }),
+    },
+    {
+      label: "Avg speed",
+      value: formatStepMetric(summary.averageSpeedKph, {
+        digits: 1,
+        suffix: "km/h",
+      }),
+    },
+  ];
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+        marginTop: 12,
+      }}
+    >
+      {items.map((item) => (
+        <View
+          key={item.label}
+          style={{
+            backgroundColor: "#F8FAFC",
+            borderColor: "#E2E8F0",
+            borderRadius: 10,
+            borderWidth: 1,
+            minWidth: "47%",
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+          }}
+        >
+          <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+            {item.label}
+          </ThemedText>
+          <ThemedText type="defaultSemiBold" style={{ fontSize: 18 }}>
+            {item.value}
+          </ThemedText>
+        </View>
+      ))}
     </View>
   );
 }

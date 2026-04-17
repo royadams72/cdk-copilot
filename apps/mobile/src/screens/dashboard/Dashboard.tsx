@@ -35,13 +35,11 @@ export default function Dashboard() {
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
-    selectedDataOrigin,
     status: stepStatus,
+    stepSummary,
     stepsToday,
   } = useStepCount(10000);
-  useSyncStepCount(stepsToday, stepStatus === "ready", {
-    providerPackageName: selectedDataOrigin,
-  });
+  useSyncStepCount(stepsToday, stepStatus === "ready", { summary: stepSummary });
   useSyncHealthConnectMeasurements(true);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;

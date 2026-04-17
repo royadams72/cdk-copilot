@@ -311,6 +311,18 @@ export async function POST(req: NextRequest) {
       const count = asNumber(body.count);
       if (count === null || count < 0) return bad("Invalid count", undefined, 400);
       payload.count = Math.round(count);
+      const distanceMeters = asNumber(body.distanceMeters);
+      const caloriesKcal = asNumber(body.caloriesKcal);
+      const averageSpeedKph = asNumber(body.averageSpeedKph);
+      if (distanceMeters !== null && distanceMeters >= 0) {
+        payload.distanceMeters = distanceMeters;
+      }
+      if (caloriesKcal !== null && caloriesKcal >= 0) {
+        payload.caloriesKcal = caloriesKcal;
+      }
+      if (averageSpeedKph !== null && averageSpeedKph >= 0) {
+        payload.averageSpeedKph = averageSpeedKph;
+      }
     }
     if (kind === "sleep") {
       const sleepFromAt = asDate(body.sleepFromAt);
@@ -471,6 +483,15 @@ export async function POST(req: NextRequest) {
       }
       if (device) {
         setFields.device = device;
+      }
+      if (typeof payload.distanceMeters === "number") {
+        setFields.distanceMeters = payload.distanceMeters;
+      }
+      if (typeof payload.caloriesKcal === "number") {
+        setFields.caloriesKcal = payload.caloriesKcal;
+      }
+      if (typeof payload.averageSpeedKph === "number") {
+        setFields.averageSpeedKph = payload.averageSpeedKph;
       }
       const update = {
         $set: setFields,

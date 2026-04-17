@@ -10,6 +10,9 @@ import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
 type MeasurementDoc = {
+  averageSpeedKph?: number;
+  caloriesKcal?: number;
+  distanceMeters?: number;
   kind:
     | "weight"
     | "blood_pressure"
@@ -34,6 +37,11 @@ type MeasurementDoc = {
     caloriesKcal?: number;
     durationMin?: number;
   };
+  steps?: {
+    averageSpeedKph?: number;
+    caloriesKcal?: number;
+    distanceMeters?: number;
+  };
 };
 
 const MAX_DOCS = 5000;
@@ -44,6 +52,14 @@ function dayKey(date: Date) {
 
 function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function firstNumber(...values: unknown[]) {
+  for (const value of values) {
+    const numeric = asNumber(value);
+    if (numeric !== null) return numeric;
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest) {
@@ -77,15 +93,19 @@ export async function GET(req: NextRequest) {
         {
           projection: {
             _id: 0,
+            averageSpeedKph: 1,
             bpm: 1,
+            caloriesKcal: 1,
             count: 1,
             diastolicMmHg: 1,
+            distanceMeters: 1,
             durationMin: 1,
             exercise: 1,
             kind: 1,
             measuredAt: 1,
             sleepFromAt: 1,
             sleepToAt: 1,
+            steps: 1,
             systolicMmHg: 1,
             valueKg: 1,
           },
@@ -101,6 +121,9 @@ export async function GET(req: NextRequest) {
         measuredAt: string;
         value: number | null;
         value2: number | null;
+        averageSpeedKph?: number | null;
+        caloriesKcal?: number | null;
+        distanceMeters?: number | null;
         sleepFromAt?: string;
         sleepToAt?: string;
         exerciseId?: string;
@@ -140,6 +163,18 @@ export async function GET(req: NextRequest) {
 
       const dayEntries = entriesByDay.get(key) ?? [];
       dayEntries.push({
+        averageSpeedKph:
+          kind === "steps"
+            ? firstNumber(doc.averageSpeedKph, doc.steps?.averageSpeedKph)
+            : undefined,
+        caloriesKcal:
+          kind === "steps"
+            ? firstNumber(doc.caloriesKcal, doc.steps?.caloriesKcal)
+            : undefined,
+        distanceMeters:
+          kind === "steps"
+            ? firstNumber(doc.distanceMeters, doc.steps?.distanceMeters)
+            : undefined,
         measuredAt: doc.measuredAt.toISOString(),
         value,
         value2,
@@ -176,6 +211,9 @@ export async function GET(req: NextRequest) {
           measuredAt: string;
           value: number | null;
           value2: number | null;
+          averageSpeedKph?: number | null;
+          caloriesKcal?: number | null;
+          distanceMeters?: number | null;
           sleepFromAt?: string;
           sleepToAt?: string;
           exerciseId?: string;
@@ -215,7 +253,14 @@ export async function GET(req: NextRequest) {
             ? numericValue.reduce((sum, item) => sum + item, 0)
             : null;
         } else if (kind === "steps") {
-          value = numericValue.length ? Math.max(...numericValue) : null;
+          const preferredEntry =
+            entries.find(
+              (entry) =>
+                typeof entry.distanceMeters === "number" ||
+                typeof entry.caloriesKcal === "number" ||
+                typeof entry.averageSpeedKph === "number",
+            ) ?? latestEntry;
+          value = preferredEntry?.value ?? null;
         } else {
           value = latestEntry?.value ?? null;
           value2 = latestEntry?.value2 ?? null;

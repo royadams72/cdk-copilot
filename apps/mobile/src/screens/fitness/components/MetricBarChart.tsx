@@ -10,6 +10,7 @@ import {
   CHART_HEIGHT,
   CHART_PAD,
   formatYAxisValue,
+  SLOT_GAP,
 } from "../metricTrendUtils";
 
 type TargetLine = {
@@ -143,6 +144,18 @@ export function MetricBarChart({
                 stroke={line.color}
                 strokeDasharray="6 4"
                 strokeWidth={1.5}
+              />
+            ))}
+
+            {points.map((point, idx) => (
+              <Rect
+                key={`${point.x}-hit-${idx}`}
+                x={point.x - (BAR_WIDTH + SLOT_GAP) / 2}
+                y={CHART_PAD}
+                width={BAR_WIDTH + SLOT_GAP}
+                height={CHART_HEIGHT - CHART_PAD * 2}
+                fill="transparent"
+                onPress={() => setSelectedBarIndex(idx)}
               />
             ))}
 

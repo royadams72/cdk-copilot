@@ -65,7 +65,10 @@ const HeartRate = z.object({
   kind: z.literal("heart_rate"),
 });
 const Steps = z.object({
+  averageSpeedKph: z.number().nonnegative().optional(),
+  caloriesKcal: z.number().nonnegative().optional(),
   count: z.number().int().min(0),
+  distanceMeters: z.number().nonnegative().optional(),
   kind: z.literal("steps"),
 });
 const Sleep = z.object({

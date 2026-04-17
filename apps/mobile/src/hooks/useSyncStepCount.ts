@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import type { StepActivitySummary } from "@/hooks/useStepCount";
 import { useCreateMeasurementMutation } from "@/store/services/measurementsApi";
 
 function localDateKey(date: Date) {
@@ -9,12 +10,8 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function displayNameFromPackageName(packageName: string) {
-  return packageName.split(".").filter(Boolean).at(-1) ?? packageName;
-}
-
 type StepSyncOptions = {
-  providerPackageName?: string | null;
+  summary?: StepActivitySummary | null;
 };
 
 export function useSyncStepCount(
@@ -30,20 +27,28 @@ export function useSyncStepCount(
     const roundedSteps = Math.round(stepsToday);
     const now = new Date();
     const dateKey = localDateKey(now);
-    const packageName =
-      options.providerPackageName?.trim() || "android.healthconnect.aggregate";
-    const externalRecordId = `health-connect:${packageName}:steps:${dateKey}`;
-    const syncKey = `${externalRecordId}:${roundedSteps}`;
+    const externalRecordId = `health-connect:steps:${dateKey}`;
+    const summary = options.summary;
+    const syncKey = JSON.stringify({
+      averageSpeedKph: summary?.averageSpeedKph ?? null,
+      caloriesKcal: summary?.caloriesKcal ?? null,
+      count: roundedSteps,
+      distanceMeters: summary?.distanceMeters ?? null,
+      externalRecordId,
+    });
     if (lastSyncedRef.current === syncKey) return;
 
     void createMeasurement({
+      averageSpeedKph: summary?.averageSpeedKph ?? undefined,
+      caloriesKcal: summary?.caloriesKcal ?? undefined,
       count: roundedSteps,
+      distanceMeters: summary?.distanceMeters ?? undefined,
       externalRecordId,
       kind: "steps",
       measuredAt: now.toISOString(),
       provider: {
-        displayName: displayNameFromPackageName(packageName),
-        packageName,
+        displayName: "Health Connect",
+        packageName: "android.healthconnect",
       },
       source: "provider",
     })
@@ -54,5 +59,5 @@ export function useSyncStepCount(
       .catch((error) => {
         console.log("Step sync failed", error);
       });
-  }, [createMeasurement, isReady, options.providerPackageName, stepsToday]);
+  }, [createMeasurement, isReady, options.summary, stepsToday]);
 }

@@ -1,4 +1,4 @@
-import type { MeasurementKind } from "./metricTrendTypes";
+import type { DayEntry, MeasurementKind } from "./metricTrendTypes";
 
 export const CHART_WIDTH = 330;
 export const CHART_HEIGHT = 210;
@@ -107,4 +107,68 @@ export function dateToMeasuredAtIso(date: Date) {
 
 export function numberRange(min: number, max: number) {
   return Array.from({ length: max - min + 1 }, (_, idx) => min + idx);
+}
+
+export function sortEntriesForTrendDay(
+  kind: MeasurementKind,
+  entries: DayEntry[],
+) {
+  const sorted = entries
+    .slice()
+    .sort((a, b) =>
+      a.measuredAt === b.measuredAt ? 0 : a.measuredAt < b.measuredAt ? 1 : -1,
+    );
+
+  if (kind !== "steps") {
+    return sorted;
+  }
+
+  const preferred =
+    sorted.find(
+      (entry) =>
+        typeof entry.distanceMeters === "number" ||
+        typeof entry.caloriesKcal === "number" ||
+        typeof entry.averageSpeedKph === "number",
+    ) ?? sorted[0];
+
+  return preferred ? [preferred] : [];
+}
+
+export function getStepSummaryFromEntries(entries: DayEntry[]) {
+  const preferred =
+    entries.find(
+      (entry) =>
+        typeof entry.distanceMeters === "number" ||
+        typeof entry.caloriesKcal === "number" ||
+        typeof entry.averageSpeedKph === "number",
+    ) ?? entries[0];
+
+  return {
+    averageSpeedKph: preferred?.averageSpeedKph ?? null,
+    caloriesKcal: preferred?.caloriesKcal ?? null,
+    distanceMeters: preferred?.distanceMeters ?? null,
+    steps:
+      typeof preferred?.value === "number" && Number.isFinite(preferred.value)
+        ? preferred.value
+        : null,
+  };
+}
+
+export function formatDistanceValue(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(2)} km`;
+  }
+  return `${Math.round(value)} m`;
+}
+
+export function formatStepMetric(
+  value: number | null,
+  options?: { digits?: number; suffix?: string },
+) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  const digits = options?.digits ?? 0;
+  const rounded =
+    digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
+  return options?.suffix ? `${rounded} ${options.suffix}` : rounded;
 }

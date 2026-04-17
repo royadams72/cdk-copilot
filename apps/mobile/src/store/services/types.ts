@@ -53,9 +53,12 @@ export type MeasurementProvenanceArgs = {
 };
 
 export type MeasurementLatest = {
+  averageSpeedKph?: number;
+  caloriesKcal?: number;
   count?: number;
   diastolicMmHg?: number;
   device?: MeasurementDevice;
+  distanceMeters?: number;
   durationMin?: number;
   exercise?: {
     caloriesKcal?: number;
@@ -80,6 +83,9 @@ export type MeasurementTrendPoint = {
 };
 
 export type MeasurementDayEntry = {
+  averageSpeedKph?: number | null;
+  caloriesKcal?: number | null;
+  distanceMeters?: number | null;
   exerciseId?: string;
   exerciseName?: string;
   exerciseTitle?: string;
@@ -114,7 +120,10 @@ export type ExerciseReferenceResponse = {
 
 export type CreateMeasurementArgs =
   | ({
+      averageSpeedKph?: number;
+      caloriesKcal?: number;
       count: number;
+      distanceMeters?: number;
       kind: "steps";
       measuredAt?: string;
     } & MeasurementProvenanceArgs)

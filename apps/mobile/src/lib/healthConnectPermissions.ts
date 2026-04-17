@@ -3,6 +3,12 @@ export const ANDROID_STEP_PERMISSION = {
   recordType: "Steps",
 } as const;
 
+export const ANDROID_STEP_AGGREGATE_PERMISSIONS = [
+  { accessType: "read", recordType: "Distance" },
+  { accessType: "read", recordType: "Speed" },
+  { accessType: "read", recordType: "TotalCaloriesBurned" },
+] as const;
+
 export const ANDROID_HEALTH_RECORD_PERMISSIONS = [
   { accessType: "read", recordType: "BloodPressure" },
   { accessType: "read", recordType: "ExerciseSession" },
@@ -13,5 +19,6 @@ export const ANDROID_HEALTH_RECORD_PERMISSIONS = [
 
 export const ANDROID_HEALTH_PERMISSIONS = [
   ...ANDROID_HEALTH_RECORD_PERMISSIONS,
+  ...ANDROID_STEP_AGGREGATE_PERMISSIONS,
   ANDROID_STEP_PERMISSION,
 ] as const;

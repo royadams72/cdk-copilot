@@ -224,13 +224,11 @@ export default function FitnessDashboard() {
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
-    selectedDataOrigin,
     status: stepStatus,
+    stepSummary,
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
-  useSyncStepCount(stepsToday, stepStatus === "ready", {
-    providerPackageName: selectedDataOrigin,
-  });
+  useSyncStepCount(stepsToday, stepStatus === "ready", { summary: stepSummary });
   useSyncHealthConnectMeasurements(true);
   const errorMessage = toQueryErrorMessage(
     error,
