@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { StepActivitySummary } from "@/hooks/useStepCount";
+import type { StepActivitySummary } from "@/lib/healthConnectStepSummary";
 import { useCreateMeasurementMutation } from "@/store/services/measurementsApi";
 
 let lastSyncedStepKey: string | null = null;

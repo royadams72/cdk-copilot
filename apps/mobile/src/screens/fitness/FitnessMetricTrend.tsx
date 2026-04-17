@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   TouchableOpacity,
   View,
@@ -9,6 +10,10 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
+import {
+  readHealthConnectStepSummaryForDate,
+  type StepActivitySummary,
+} from "@/lib/healthConnectStepSummary";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateMeasurementMutation,
@@ -74,6 +79,10 @@ export default function FitnessMetricTrend() {
   const [showSleepToPicker, setShowSleepToPicker] = useState(false);
   const [measuredDate, setMeasuredDate] = useState(new Date());
   const [exerciseMinutes, setExerciseMinutes] = useState("");
+  const [healthConnectStepSummary, setHealthConnectStepSummary] =
+    useState<StepActivitySummary | null>(null);
+  const [persistingHealthConnectStepSummary, setPersistingHealthConnectStepSummary] =
+    useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
     {},
   );
@@ -324,6 +333,160 @@ export default function FitnessMetricTrend() {
   }, [kind, selectedDayEntries]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadHealthConnectStepSummary = async () => {
+      if (
+        kind !== "steps" ||
+        Platform.OS !== "android" ||
+        !selectedDateKey ||
+        !selectedStepSummary
+      ) {
+        setHealthConnectStepSummary(null);
+        return;
+      }
+
+      const needsFallback =
+        selectedStepSummary.distanceMeters === null ||
+        selectedStepSummary.averageSpeedKph === null ||
+        selectedStepSummary.caloriesKcal === null;
+      if (!needsFallback) {
+        setHealthConnectStepSummary(null);
+        return;
+      }
+
+      const date = new Date(`${selectedDateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        setHealthConnectStepSummary(null);
+        return;
+      }
+
+      try {
+        const result = await readHealthConnectStepSummaryForDate(date);
+        if (!cancelled) {
+          setHealthConnectStepSummary(result);
+        }
+      } catch (error) {
+        console.log("Health Connect historical step summary failed", {
+          date: selectedDateKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        if (!cancelled) {
+          setHealthConnectStepSummary(null);
+        }
+      }
+    };
+
+    void loadHealthConnectStepSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, selectedDateKey, selectedStepSummary]);
+
+  const resolvedStepSummary = useMemo(() => {
+    if (kind !== "steps" || !selectedStepSummary) {
+      return null;
+    }
+
+    return {
+      averageSpeedKph:
+        selectedStepSummary.averageSpeedKph ??
+        healthConnectStepSummary?.averageSpeedKph ??
+        null,
+      caloriesKcal:
+        selectedStepSummary.caloriesKcal ??
+        healthConnectStepSummary?.caloriesKcal ??
+        null,
+      distanceMeters:
+        selectedStepSummary.distanceMeters ??
+        healthConnectStepSummary?.distanceMeters ??
+        null,
+      steps: selectedStepSummary.steps ?? healthConnectStepSummary?.steps ?? null,
+    } satisfies StepActivitySummary;
+  }, [healthConnectStepSummary, kind, selectedStepSummary]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const persistHistoricalStepSummary = async () => {
+      if (
+        kind !== "steps" ||
+        Platform.OS !== "android" ||
+        !selectedDateKey ||
+        !selectedStepSummary ||
+        !healthConnectStepSummary
+      ) {
+        return;
+      }
+
+      const hasBackfillMetric =
+        healthConnectStepSummary.distanceMeters !== null ||
+        healthConnectStepSummary.averageSpeedKph !== null ||
+        healthConnectStepSummary.caloriesKcal !== null;
+      if (!hasBackfillMetric) {
+        return;
+      }
+
+      const needsPersist =
+        (selectedStepSummary.distanceMeters === null &&
+          healthConnectStepSummary.distanceMeters !== null) ||
+        (selectedStepSummary.averageSpeedKph === null &&
+          healthConnectStepSummary.averageSpeedKph !== null) ||
+        (selectedStepSummary.caloriesKcal === null &&
+          healthConnectStepSummary.caloriesKcal !== null);
+      if (!needsPersist) {
+        return;
+      }
+
+      const count =
+        selectedStepSummary.steps ?? healthConnectStepSummary.steps ?? null;
+      if (count === null) {
+        return;
+      }
+
+      try {
+        setPersistingHealthConnectStepSummary(true);
+        await createMeasurement({
+          averageSpeedKph: healthConnectStepSummary.averageSpeedKph ?? undefined,
+          caloriesKcal: healthConnectStepSummary.caloriesKcal ?? undefined,
+          count: Math.max(0, Math.round(count)),
+          distanceMeters: healthConnectStepSummary.distanceMeters ?? undefined,
+          externalRecordId: `health-connect:steps:${selectedDateKey}`,
+          kind: "steps",
+          measuredAt: `${selectedDateKey}T12:00:00.000Z`,
+          provider: {
+            displayName: "Health Connect",
+            packageName: "android.healthconnect",
+          },
+          source: "provider",
+        }).unwrap();
+      } catch (error) {
+        console.log("Health Connect historical step summary persist failed", {
+          date: selectedDateKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        if (!cancelled) {
+          setPersistingHealthConnectStepSummary(false);
+        }
+      }
+    };
+
+    void persistHistoricalStepSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    createMeasurement,
+    healthConnectStepSummary,
+    kind,
+    selectedDateKey,
+    selectedStepSummary,
+  ]);
+
+  useEffect(() => {
     setMeasuredDate(new Date());
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
@@ -524,8 +687,15 @@ export default function FitnessMetricTrend() {
                   yMin={chart.yMin}
                 />
 
-                {kind === "steps" && selectedStepSummary ? (
-                  <StepSummary summary={selectedStepSummary} />
+                {kind === "steps" && resolvedStepSummary ? (
+                  <>
+                    <StepSummary summary={resolvedStepSummary} />
+                    {persistingHealthConnectStepSummary ? (
+                      <ThemedText style={{ marginTop: 8, opacity: 0.6 }}>
+                        Saving Health Connect step details...
+                      </ThemedText>
+                    ) : null}
+                  </>
                 ) : null}
 
                 {selectedDateKey ? (
