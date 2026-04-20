@@ -2,7 +2,10 @@ import { Platform } from "react-native";
 import { ExerciseType } from "react-native-health-connect";
 
 import { loadAndroidStepState } from "@/lib/healthConnectStepSummary";
-import { ANDROID_HEALTH_RECORD_PERMISSIONS } from "@/lib/healthConnectPermissions";
+import {
+  ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
+  ANDROID_HEALTH_RECORD_PERMISSIONS,
+} from "@/lib/healthConnectPermissions";
 import { store } from "@/store";
 import { measurementsApi } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
@@ -283,6 +286,31 @@ async function readRecentRecords(
   return records;
 }
 
+export async function hasHealthConnectBackgroundReadPermission() {
+  if (Platform.OS !== "android") {
+    return false;
+  }
+
+  try {
+    const healthConnect = await import("react-native-health-connect");
+    const initialized = await healthConnect.initialize();
+    if (!initialized) {
+      return false;
+    }
+
+    const grantedPermissions = await healthConnect.getGrantedPermissions();
+    return grantedPermissions.some(
+      (permission) =>
+        permission.accessType ===
+          ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType &&
+        permission.recordType ===
+          ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType,
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function syncTodayStepMeasurement(
   reason: "active" | "background-task" | "background" | "interval" | "mount",
   options: { force?: boolean } = {},
@@ -343,6 +371,13 @@ export async function syncRecentHealthConnectMeasurements(
   options: { force?: boolean } = {},
 ) {
   if (Platform.OS !== "android") return;
+
+  if (reason === "background-task") {
+    const canReadInBackground = await hasHealthConnectBackgroundReadPermission();
+    if (!canReadInBackground) {
+      return;
+    }
+  }
 
   const now = Date.now();
   if (

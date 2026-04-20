@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppState, Platform } from "react-native";
 
 import {
+  ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
   ANDROID_HEALTH_PERMISSIONS,
   ANDROID_STEP_PERMISSION,
 } from "@/lib/healthConnectPermissions";
@@ -34,6 +35,7 @@ export function useStepCount(goal = 10000) {
     null,
   );
   const [debug, setDebug] = useState<StepDebug | null>(null);
+  const [backgroundReadGranted, setBackgroundReadGranted] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -52,6 +54,13 @@ export function useStepCount(goal = 10000) {
       setSummary(result.summary);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
+      setBackgroundReadGranted(
+        result.missingHealthPermissions.every(
+          (permission) =>
+            permission !==
+            `${ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType}:${ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType}`,
+        ),
+      );
     };
 
     const load = async () => {
@@ -190,11 +199,44 @@ export function useStepCount(goal = 10000) {
       setSummary(result.summary);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
+      setBackgroundReadGranted(
+        grantedPermissions.some(
+          (permission) =>
+            permission.accessType ===
+              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType &&
+            permission.recordType ===
+              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType,
+        ),
+      );
     } catch (error) {
       console.log("Health Connect permission request failed", {
         error: toErrorMessage(error),
       });
       setStatus("error");
+    }
+  };
+
+  const requestBackgroundReadAccess = async () => {
+    if (Platform.OS !== "android") return;
+
+    try {
+      const healthConnect = await import("react-native-health-connect");
+      const grantedPermissions = await healthConnect.requestPermission([
+        ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
+      ]);
+      setBackgroundReadGranted(
+        grantedPermissions.some(
+          (permission) =>
+            permission.accessType ===
+              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType &&
+            permission.recordType ===
+              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType,
+        ),
+      );
+    } catch (error) {
+      console.log("Health Connect background read permission request failed", {
+        error: toErrorMessage(error),
+      });
     }
   };
 
@@ -204,12 +246,14 @@ export function useStepCount(goal = 10000) {
   }, [goal, stepsToday]);
 
   return {
+    backgroundReadGranted,
     dataOrigins,
     debug,
     goal,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
+    requestBackgroundReadAccess,
     selectedDataOrigin,
     stepSummary: summary,
     status,

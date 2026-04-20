@@ -219,11 +219,13 @@ export default function FitnessDashboard() {
     useGetLatestMeasurementsQuery(undefined);
   const { data: targetsData } = useGetTargetsQuery("lifestyle");
   const {
+    backgroundReadGranted,
     dataOrigins: stepDataOrigins,
     debug: stepDebug,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
+    requestBackgroundReadAccess,
     status: stepStatus,
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
@@ -356,6 +358,29 @@ export default function FitnessDashboard() {
             <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
             <TouchableOpacity onPress={refetch} style={{ marginTop: 6 }}>
               <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
+            </TouchableOpacity>
+          </Card>
+        ) : null}
+
+        {!loading && stepStatus === "ready" && !backgroundReadGranted ? (
+          <Card>
+            <ThemedText type="defaultSemiBold">
+              Background Health Connect sync
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Allow background Health Connect access if you want steps,
+              exercise, sleep, heart rate, and blood pressure to sync when the
+              app is not open.
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => {
+                void requestBackgroundReadAccess();
+              }}
+              style={{ marginTop: 8 }}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>
+                Allow background health access
+              </ThemedText>
             </TouchableOpacity>
           </Card>
         ) : null}

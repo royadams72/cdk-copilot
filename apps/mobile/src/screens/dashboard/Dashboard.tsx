@@ -32,9 +32,11 @@ export default function Dashboard() {
     },
   );
   const {
+    backgroundReadGranted,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
+    requestBackgroundReadAccess,
     status: stepStatus,
     stepsToday,
   } = useStepCount(10000);
@@ -182,6 +184,29 @@ export default function Dashboard() {
                     </ThemedText>
                   </Pressable>
                 )}
+              </Card>
+            ) : null}
+
+            {stepStatus === "ready" && !backgroundReadGranted ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Background Health Connect sync
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Allow background Health Connect access if you want steps,
+                  exercise, sleep, heart rate, and blood pressure to sync when
+                  the app is not open.
+                </ThemedText>
+                <Pressable
+                  style={styles.primaryActionButton}
+                  onPress={() => {
+                    void requestBackgroundReadAccess();
+                  }}
+                >
+                  <ThemedText style={styles.primaryActionText}>
+                    Allow background health access
+                  </ThemedText>
+                </Pressable>
               </Card>
             ) : null}
 
