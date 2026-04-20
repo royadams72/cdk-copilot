@@ -14,7 +14,8 @@
       "bundleIdentifier": "com.ckdcopilot.ckdapp",
       "associatedDomains": ["applinks:ckd.app"],
       "infoPlist": {
-        "NSMotionUsageDescription": "CKD Copilot uses motion data to count your daily steps."
+        "NSMotionUsageDescription": "CKD Copilot uses motion data to count your daily steps.",
+        "UIBackgroundModes": ["processing"]
       }
     },
     "android": {

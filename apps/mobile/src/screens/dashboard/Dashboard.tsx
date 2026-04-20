@@ -36,10 +36,9 @@ export default function Dashboard() {
     percentOfGoal,
     requestAccess,
     status: stepStatus,
-    stepSummary,
     stepsToday,
   } = useStepCount(10000);
-  useSyncStepCount(stepsToday, stepStatus === "ready", { summary: stepSummary });
+  useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(true);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
@@ -211,7 +210,7 @@ export function ErrorState({ message }: { message: string }) {
   return (
     <Card>
       <ThemedText type="defaultSemiBold">
-        We couldn't load your dashboard
+        We couldn&apos;t load your dashboard
       </ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
       <ThemedText style={styles.helperText}>
@@ -224,7 +223,7 @@ export function ErrorState({ message }: { message: string }) {
 function InlineError({ message }: { message: string }) {
   return (
     <Card>
-      <ThemedText type="defaultSemiBold">Couldn't refresh</ThemedText>
+      <ThemedText type="defaultSemiBold">Couldn&apos;t refresh</ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
       <ThemedText style={styles.helperText}>Pull down to retry.</ThemedText>
     </Card>

@@ -79,10 +79,16 @@ function roundMetric(value: number | null) {
 }
 
 function dayTimeRange(date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
+  const start = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
   return {
     endTime: end.toISOString(),
     operator: "between" as const,
@@ -359,6 +365,206 @@ export async function readHealthConnectStepSummaryForDate(date: Date) {
     distanceMeters: aggregateSummary.distanceMeters,
     steps: selected.total,
   } satisfies StepActivitySummary;
+}
+
+function bucketHourlyStepValues(
+  records: { count?: number; endTime: string; startTime: string }[],
+  dayStart: Date,
+  nextDayStartMs: number,
+) {
+  const hourly = Array.from({ length: 24 }, () => 0);
+
+  for (const record of records) {
+    const start = new Date(record.startTime);
+    const end = new Date(record.endTime);
+    const count =
+      typeof record.count === "number" && Number.isFinite(record.count)
+        ? Math.max(0, record.count)
+        : 0;
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      count <= 0
+    ) {
+      continue;
+    }
+
+    const startMs = start.getTime();
+    if (startMs >= nextDayStartMs) {
+      break;
+    }
+
+    const endMs = end.getTime();
+    const durationMs = Math.max(1, endMs - startMs);
+
+    for (let hour = 0; hour < 24; hour += 1) {
+      const bucketStart = new Date(dayStart);
+      bucketStart.setHours(hour, 0, 0, 0);
+      const bucketEnd = new Date(bucketStart);
+      bucketEnd.setHours(hour + 1, 0, 0, 0);
+
+      const overlapStart = Math.max(startMs, bucketStart.getTime());
+      const overlapEnd = Math.min(endMs, bucketEnd.getTime());
+      const overlapMs = overlapEnd - overlapStart;
+      if (overlapMs <= 0) {
+        continue;
+      }
+
+      hourly[hour] += count * (overlapMs / durationMs);
+    }
+  }
+
+  return hourly.map((value) => Math.round(value));
+}
+
+function hasFlatHourlyDistribution(values: number[]) {
+  const nonZero = values.filter((value) => value > 0);
+  if (nonZero.length < 12) {
+    return false;
+  }
+
+  return nonZero.every((value) => value === nonZero[0]);
+}
+
+async function readHourlyStepAggregateFallback(
+  healthConnect: typeof import("react-native-health-connect"),
+  date: Date,
+) {
+  const groups = await healthConnect.aggregateGroupByDuration({
+    recordType: "Steps",
+    timeRangeFilter: dayTimeRange(date),
+    timeRangeSlicer: {
+      duration: "HOURS",
+      length: 1,
+    },
+  });
+
+  const hourly = Array.from({ length: 24 }, () => 0);
+  for (const group of groups) {
+    const groupStart = new Date(group.startTime);
+    if (Number.isNaN(groupStart.getTime())) {
+      continue;
+    }
+
+    hourly[groupStart.getHours()] = Math.max(
+      0,
+      Math.round(group.result.COUNT_TOTAL ?? 0),
+    );
+  }
+
+  return hourly;
+}
+
+type BoundedAfterTimeRangeFilter = {
+  operator: "after";
+  startTime: string;
+  endTime: string;
+};
+
+export async function readHealthConnectHourlyStepsForDate(date: Date) {
+  const healthConnect = await import("react-native-health-connect");
+  const sdkStatus = await healthConnect.getSdkStatus();
+  if (
+    sdkStatus === healthConnect.SdkAvailabilityStatus.SDK_UNAVAILABLE ||
+    sdkStatus ===
+      healthConnect.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
+  ) {
+    return null;
+  }
+
+  const initialized = await healthConnect.initialize();
+  if (!initialized) {
+    return null;
+  }
+
+  const grantedPermissions = await healthConnect.getGrantedPermissions();
+  const hasStepAccess = grantedPermissions.some(
+    (permission) =>
+      permission.accessType === ANDROID_STEP_PERMISSION.accessType &&
+      permission.recordType === ANDROID_STEP_PERMISSION.recordType,
+  );
+  if (!hasStepAccess) {
+    return null;
+  }
+
+  const dayStart = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const dayStartIso = dayStart.toISOString();
+  const nextDayStartMs = nextDayStart.getTime();
+
+  const nextDayStartIso = nextDayStart.toISOString();
+
+  console.log("HC hourly steps v5 request", {
+    date: date.toISOString(),
+    dayStartIso,
+    nextDayStartIso,
+    operator: "after",
+    pageSize: 5000,
+  });
+
+  const boundedTimeRangeFilter: BoundedAfterTimeRangeFilter = {
+    endTime: nextDayStartIso,
+    operator: "after",
+    startTime: dayStartIso,
+  };
+
+  try {
+    const result = await healthConnect.readRecords("Steps", {
+      ascendingOrder: true,
+      pageSize: 5000,
+      timeRangeFilter:
+        boundedTimeRangeFilter as unknown as Parameters<
+          typeof healthConnect.readRecords<"Steps">
+        >[1]["timeRangeFilter"],
+    });
+
+    const hourly = bucketHourlyStepValues(
+      result.records,
+      dayStart,
+      nextDayStartMs,
+    );
+    if (hasFlatHourlyDistribution(hourly)) {
+      console.log("HC hourly steps v4 unavailable-flat-records", {
+        date: date.toISOString(),
+        hourly,
+      });
+      return null;
+    }
+
+    return hourly;
+  } catch (error) {
+    console.log("HC hourly steps raw read failed v5", {
+      date: date.toISOString(),
+      error: toErrorMessage(error),
+    });
+  }
+
+  try {
+    const hourly = await readHourlyStepAggregateFallback(healthConnect, date);
+    if (hasFlatHourlyDistribution(hourly)) {
+      console.log("HC hourly steps v5 unavailable-flat-aggregate", {
+        date: date.toISOString(),
+        hourly,
+      });
+      return null;
+    }
+
+    return hourly;
+  } catch (error) {
+    console.log("HC hourly steps aggregate fallback failed v5", {
+      date: date.toISOString(),
+      error: toErrorMessage(error),
+    });
+    return null;
+  }
 }
 
 export async function loadAndroidStepState() {

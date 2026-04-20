@@ -225,10 +225,9 @@ export default function FitnessDashboard() {
     percentOfGoal,
     requestAccess,
     status: stepStatus,
-    stepSummary,
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
-  useSyncStepCount(stepsToday, stepStatus === "ready", { summary: stepSummary });
+  useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(true);
   const errorMessage = toQueryErrorMessage(
     error,

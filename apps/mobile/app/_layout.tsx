@@ -8,6 +8,7 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 
 import { syncPushToken } from "@/lib/pushNotifications";
+import { registerHealthConnectBackgroundTaskAsync } from "@/lib/healthConnectBackgroundTask";
 import { store, persistor } from "@/store";
 
 const LightNavigationTheme = {
@@ -28,6 +29,7 @@ export default function RootLayout() {
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync("#FFFFFF");
     syncPushToken();
+    void registerHealthConnectBackgroundTaskAsync();
 
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {

@@ -11,6 +11,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import {
+  readHealthConnectHourlyStepsForDate,
   readHealthConnectStepSummaryForDate,
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
@@ -26,6 +27,7 @@ import { Card } from "../dashboard/components/Card";
 import { AddMeasurementModal } from "./AddMeasurementModal";
 import { MetricBarChart } from "./components/MetricBarChart";
 import { MetricDayEntries } from "./components/MetricDayEntries";
+import { MetricHourlyBarChart } from "./components/MetricHourlyBarChart";
 import type {
   ChartPoint,
   MeasurementKind,
@@ -60,10 +62,35 @@ import {
 type TrendChart = {
   chartWidth: number;
   points: ChartPoint[];
-  targetLines: Array<{ color: string; label: string; y: number }>;
+  targetLines: { color: string; label: string; y: number }[];
   yMax: number;
   yMin: number;
 };
+
+function buildHeartRateHourlyValues(
+  entries: { measuredAt: string; value: number | null }[],
+) {
+  const buckets = Array.from({ length: 24 }, () => [] as number[]);
+
+  for (const entry of entries) {
+    if (typeof entry.value !== "number" || !Number.isFinite(entry.value)) {
+      continue;
+    }
+    const time = new Date(entry.measuredAt);
+    if (Number.isNaN(time.getTime())) {
+      continue;
+    }
+    buckets[time.getHours()].push(entry.value);
+  }
+
+  return buckets.map((bucket) => {
+    if (!bucket.length) {
+      return null;
+    }
+    const total = bucket.reduce((sum, value) => sum + value, 0);
+    return Math.round(total / bucket.length);
+  });
+}
 
 export default function FitnessMetricTrend() {
   const router = useRouter();
@@ -81,8 +108,9 @@ export default function FitnessMetricTrend() {
   const [exerciseMinutes, setExerciseMinutes] = useState("");
   const [healthConnectStepSummary, setHealthConnectStepSummary] =
     useState<StepActivitySummary | null>(null);
-  const [persistingHealthConnectStepSummary, setPersistingHealthConnectStepSummary] =
-    useState(false);
+  const [hourlyStepValues, setHourlyStepValues] = useState<(number | null)[]>(
+    [],
+  );
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
     {},
   );
@@ -332,6 +360,18 @@ export default function FitnessMetricTrend() {
     return getStepSummaryFromEntries(selectedDayEntries);
   }, [kind, selectedDayEntries]);
 
+  const isSelectedToday = useMemo(() => {
+    if (!selectedDateKey) {
+      return false;
+    }
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}-${String(now.getDate()).padStart(2, "0")}`;
+    return selectedDateKey === todayKey;
+  }, [selectedDateKey]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -340,7 +380,8 @@ export default function FitnessMetricTrend() {
         kind !== "steps" ||
         Platform.OS !== "android" ||
         !selectedDateKey ||
-        !selectedStepSummary
+        !selectedStepSummary ||
+        !isSelectedToday
       ) {
         setHealthConnectStepSummary(null);
         return;
@@ -382,7 +423,7 @@ export default function FitnessMetricTrend() {
     return () => {
       cancelled = true;
     };
-  }, [kind, selectedDateKey, selectedStepSummary]);
+  }, [isSelectedToday, kind, selectedDateKey, selectedStepSummary]);
 
   const resolvedStepSummary = useMemo(() => {
     if (kind !== "steps" || !selectedStepSummary) {
@@ -406,85 +447,57 @@ export default function FitnessMetricTrend() {
     } satisfies StepActivitySummary;
   }, [healthConnectStepSummary, kind, selectedStepSummary]);
 
+  const heartRateHourlyValues = useMemo(() => {
+    if (kind !== "heart_rate") {
+      return [];
+    }
+    return buildHeartRateHourlyValues(selectedDayEntries);
+  }, [kind, selectedDayEntries]);
+
   useEffect(() => {
     let cancelled = false;
 
-    const persistHistoricalStepSummary = async () => {
+    const loadHourlySteps = async () => {
       if (
         kind !== "steps" ||
         Platform.OS !== "android" ||
         !selectedDateKey ||
-        !selectedStepSummary ||
-        !healthConnectStepSummary
+        !isSelectedToday
       ) {
+        setHourlyStepValues([]);
         return;
       }
 
-      const hasBackfillMetric =
-        healthConnectStepSummary.distanceMeters !== null ||
-        healthConnectStepSummary.averageSpeedKph !== null ||
-        healthConnectStepSummary.caloriesKcal !== null;
-      if (!hasBackfillMetric) {
-        return;
-      }
-
-      const needsPersist =
-        (selectedStepSummary.distanceMeters === null &&
-          healthConnectStepSummary.distanceMeters !== null) ||
-        (selectedStepSummary.averageSpeedKph === null &&
-          healthConnectStepSummary.averageSpeedKph !== null) ||
-        (selectedStepSummary.caloriesKcal === null &&
-          healthConnectStepSummary.caloriesKcal !== null);
-      if (!needsPersist) {
-        return;
-      }
-
-      const count =
-        selectedStepSummary.steps ?? healthConnectStepSummary.steps ?? null;
-      if (count === null) {
+      const date = new Date(`${selectedDateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        setHourlyStepValues([]);
         return;
       }
 
       try {
-        setPersistingHealthConnectStepSummary(true);
-        await createMeasurement({
-          averageSpeedKph: healthConnectStepSummary.averageSpeedKph ?? undefined,
-          caloriesKcal: healthConnectStepSummary.caloriesKcal ?? undefined,
-          count: Math.max(0, Math.round(count)),
-          distanceMeters: healthConnectStepSummary.distanceMeters ?? undefined,
-          externalRecordId: `health-connect:steps:${selectedDateKey}`,
-          kind: "steps",
-          measuredAt: `${selectedDateKey}T12:00:00.000Z`,
-          provider: {
-            displayName: "Health Connect",
-            packageName: "android.healthconnect",
-          },
-          source: "provider",
-        }).unwrap();
+        const values = await readHealthConnectHourlyStepsForDate(date);
+        if (!cancelled) {
+          setHourlyStepValues(
+            values?.map((value) => (value > 0 ? value : null)) ?? [],
+          );
+        }
       } catch (error) {
-        console.log("Health Connect historical step summary persist failed", {
+        console.log("Health Connect hourly steps read failed v5", {
           date: selectedDateKey,
           error: error instanceof Error ? error.message : String(error),
         });
-      } finally {
         if (!cancelled) {
-          setPersistingHealthConnectStepSummary(false);
+          setHourlyStepValues([]);
         }
       }
     };
 
-    void persistHistoricalStepSummary();
+    void loadHourlySteps();
 
     return () => {
       cancelled = true;
     };
-  }, [
-    createMeasurement,
-    healthConnectStepSummary,
-    kind,
-    selectedDateKey,
-    selectedStepSummary,
-  ]);
+  }, [isSelectedToday, kind, selectedDateKey]);
 
   useEffect(() => {
     setMeasuredDate(new Date());
@@ -688,17 +701,49 @@ export default function FitnessMetricTrend() {
                 />
 
                 {kind === "steps" && resolvedStepSummary ? (
-                  <>
-                    <StepSummary summary={resolvedStepSummary} />
-                    {persistingHealthConnectStepSummary ? (
-                      <ThemedText style={{ marginTop: 8, opacity: 0.6 }}>
-                        Saving Health Connect step details...
-                      </ThemedText>
-                    ) : null}
-                  </>
+                  <StepSummary summary={resolvedStepSummary} />
                 ) : null}
 
-                {selectedDateKey ? (
+                {selectedDateKey && kind === "steps" ? (
+                  hourlyStepValues.length ? (
+                    <MetricHourlyBarChart
+                      emptyLabel="No step activity recorded for this day."
+                      formatSelectedValue={(value) =>
+                        typeof value === "number"
+                          ? `${Math.round(value).toLocaleString()} steps`
+                          : "--"
+                      }
+                      label="Hourly steps"
+                      values={hourlyStepValues}
+                    />
+                  ) : isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                    <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                      Hourly step breakdown is unavailable for this source.
+                    </ThemedText>
+                  ) : !isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                    <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                      Hourly step breakdown is only available for today.
+                    </ThemedText>
+                  ) : null
+                ) : null}
+
+                {selectedDateKey &&
+                kind === "heart_rate" &&
+                heartRateHourlyValues.length ? (
+                  <MetricHourlyBarChart
+                    color="#DC2626"
+                    emptyLabel="No heart rate readings for this day."
+                    formatSelectedValue={(value) =>
+                      typeof value === "number" ? `${Math.round(value)} bpm` : "--"
+                    }
+                    label="Hourly heart rate"
+                    values={heartRateHourlyValues}
+                  />
+                ) : null}
+
+                {selectedDateKey &&
+                kind !== "steps" &&
+                kind !== "heart_rate" ? (
                   <MetricDayEntries
                     kind={kind}
                     selectedDateKey={selectedDateKey}

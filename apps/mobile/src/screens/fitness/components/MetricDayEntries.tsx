@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { ExerciseType } from "react-native-health-connect";
 
 import { ThemedText } from "@/components/themed-text";
 
@@ -15,6 +16,42 @@ type Props = {
   selectedDateKey: string;
   selectedDayEntries: DayEntry[];
 };
+
+const EXERCISE_TYPE_LABELS = Object.entries(ExerciseType).reduce<
+  Record<number, string>
+>((acc, [key, value]) => {
+  if (typeof value !== "number") {
+    return acc;
+  }
+  acc[value] = key
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  return acc;
+}, {});
+
+function exerciseEntryName(entry: DayEntry) {
+  const title = entry.exerciseTitle?.trim();
+  if (title && title.toLowerCase() !== "imported exercise") {
+    return title;
+  }
+
+  const name = entry.exerciseName?.trim();
+  if (name && name.toLowerCase() !== "imported exercise") {
+    return name;
+  }
+
+  const match = entry.exerciseId?.match(/^health_connect_(\d+)$/);
+  if (match) {
+    const exerciseType = Number(match[1]);
+    if (Number.isFinite(exerciseType)) {
+      return EXERCISE_TYPE_LABELS[exerciseType] ?? "Exercise";
+    }
+  }
+
+  return "Exercise";
+}
 
 export function MetricDayEntries({
   kind,
@@ -86,10 +123,7 @@ export function MetricDayEntries({
                 typeof entry.value === "number" ? Math.round(entry.value) : null;
               const mins =
                 typeof entry.value2 === "number" ? Math.round(entry.value2) : null;
-              const name =
-                entry.exerciseTitle?.trim() ||
-                entry.exerciseName?.trim() ||
-                "Exercise";
+              const name = exerciseEntryName(entry);
               return (
                 <Card
                   key={`${entry.measuredAt}-${idx}`}
