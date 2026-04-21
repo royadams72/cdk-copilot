@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
       kind !== "steps" &&
       kind !== "exercise" &&
       kind !== "sleep" &&
+      kind !== "weight" &&
       kind !== "blood_pressure" &&
       kind !== "heart_rate"
     ) {
@@ -138,6 +139,7 @@ export async function GET(req: NextRequest) {
       let value: number | null = null;
       let value2: number | null = null;
       if (kind === "steps") value = asNumber(doc.count);
+      if (kind === "weight") value = asNumber(doc.valueKg);
       if (kind === "sleep") {
         const durationFromField = asNumber(doc.durationMin);
         if (durationFromField !== null) {

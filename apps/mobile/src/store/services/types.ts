@@ -32,6 +32,7 @@ export type MeasurementKind =
   | "steps"
   | "exercise"
   | "sleep"
+  | "weight"
   | "blood_pressure"
   | "heart_rate";
 export type MeasurementSource = "patient" | "device" | "api" | "provider";
@@ -73,6 +74,7 @@ export type MeasurementLatest = {
   provider?: MeasurementProvider;
   source?: MeasurementSource;
   systolicMmHg?: number;
+  valueKg?: number;
 };
 
 export type MeasurementTrendPoint = {
@@ -144,6 +146,11 @@ export type CreateMeasurementArgs =
       measuredAt?: string;
       sleepFromAt: string;
       sleepToAt: string;
+    } & MeasurementProvenanceArgs)
+  | ({
+      kind: "weight";
+      measuredAt?: string;
+      valueKg: number;
     } & MeasurementProvenanceArgs)
   | ({
       diastolicMmHg: number;

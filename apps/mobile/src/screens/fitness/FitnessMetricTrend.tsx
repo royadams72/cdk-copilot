@@ -48,7 +48,6 @@ import {
   EXERCISE_TARGET_MIN,
   formatDayLabel,
   formatDistanceValue,
-  formatMinutes,
   formatStepMetric,
   getStepSummaryFromEntries,
   GROUP_GAP,
@@ -118,6 +117,7 @@ export default function FitnessMetricTrend() {
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
   const [heartRateBpm, setHeartRateBpm] = useState(72);
+  const [weightKg, setWeightKg] = useState("");
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -304,26 +304,26 @@ export default function FitnessMetricTrend() {
     if (kind === "blood_pressure") {
       targetLines.push({
         color: "#2563EB",
-        label: `Target systolic ${BP_TARGET_SYSTOLIC}`,
+        label: `${BP_TARGET_SYSTOLIC}`,
         y: toY(BP_TARGET_SYSTOLIC),
       });
       targetLines.push({
         color: "#F97316",
-        label: `Target diastolic ${BP_TARGET_DIASTOLIC}`,
+        label: `${BP_TARGET_DIASTOLIC}`,
         y: toY(BP_TARGET_DIASTOLIC),
       });
     }
     if (kind === "sleep") {
       targetLines.push({
         color: "#0F766E",
-        label: `Target ${formatMinutes(SLEEP_TARGET_MIN)}`,
+        label: "8 h",
         y: toY(SLEEP_TARGET_MIN),
       });
     }
     if (kind === "exercise") {
       targetLines.push({
         color: "#0F766E",
-        label: `Target ${EXERCISE_TARGET_MIN} min`,
+        label: `${EXERCISE_TARGET_MIN}`,
         y: toY(EXERCISE_TARGET_MIN),
       });
     }
@@ -501,6 +501,7 @@ export default function FitnessMetricTrend() {
 
   useEffect(() => {
     setMeasuredDate(new Date());
+    setWeightKg("");
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
   }, [kind, modalOpen]);
@@ -579,6 +580,16 @@ export default function FitnessMetricTrend() {
           kind: "heart_rate",
           measuredAt: dateToMeasuredAtIso(measuredDate),
         };
+      } else if (kind === "weight") {
+        const value = Number(weightKg);
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new Error("Enter a valid weight");
+        }
+        payload = {
+          kind: "weight",
+          measuredAt: dateToMeasuredAtIso(measuredDate),
+          valueKg: Math.round(value * 10) / 10,
+        };
       } else {
         return;
       }
@@ -603,6 +614,7 @@ export default function FitnessMetricTrend() {
     bpSystolic,
     bpDiastolic,
     heartRateBpm,
+    weightKg,
     createMeasurement,
     refetchHistory,
   ]);
@@ -696,8 +708,6 @@ export default function FitnessMetricTrend() {
                     setSelectedDateKey(nextDate);
                   }}
                   targetLines={chart.targetLines}
-                  yMax={chart.yMax}
-                  yMin={chart.yMin}
                 />
 
                 {kind === "steps" && resolvedStepSummary ? (
@@ -813,12 +823,14 @@ export default function FitnessMetricTrend() {
         setShowSleepToPicker={setShowSleepToPicker}
         setSleepFromTime={setSleepFromTime}
         setSleepToTime={setSleepToTime}
+        setWeightKg={setWeightKg}
         showDatePicker={showDatePicker}
         showSleepFromPicker={showSleepFromPicker}
         showSleepToPicker={showSleepToPicker}
         sleepFromTime={sleepFromTime}
         sleepToTime={sleepToTime}
         systolicOptions={systolicOptions}
+        weightKg={weightKg}
       />
     </View>
   );

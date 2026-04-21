@@ -7,7 +7,7 @@ import { Card } from "../../dashboard/components/Card";
 import type { DayEntry, MeasurementKind } from "../metricTrendTypes";
 import {
   formatDateLabel,
-  formatMinutes,
+  formatSleepHours,
   formatTimeLabel,
 } from "../metricTrendUtils";
 
@@ -161,7 +161,27 @@ export function MetricDayEntries({
                   </ThemedText>
                   <ThemedText style={{ fontSize: 13 }}>To {toTime}</ThemedText>
                   <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
-                    {mins !== null ? formatMinutes(mins) : "--"}
+                    {formatSleepHours(mins)}
+                  </ThemedText>
+                </Card>
+              );
+            }
+
+            if (kind === "weight") {
+              const weight =
+                typeof entry.value === "number"
+                  ? Math.round(entry.value * 10) / 10
+                  : null;
+              return (
+                <Card
+                  key={`${entry.measuredAt}-${idx}`}
+                  style={{ borderRadius: 10, gap: 3, padding: 10 }}
+                >
+                  <ThemedText type="defaultSemiBold">
+                    {weight !== null ? `${weight} kg` : "--"}
+                  </ThemedText>
+                  <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+                    {time}
                   </ThemedText>
                 </Card>
               );

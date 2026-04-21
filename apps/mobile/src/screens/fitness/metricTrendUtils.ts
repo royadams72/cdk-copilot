@@ -61,27 +61,22 @@ export function metricUnit(kind: MeasurementKind) {
   if (kind === "blood_pressure") return "mmHg";
   if (kind === "heart_rate") return "bpm";
   if (kind === "exercise") return "min";
+  if (kind === "weight") return "kg";
   return "hours";
 }
 
 export function addLabel(kind: MeasurementKind) {
   if (kind === "exercise") return "Add exercise";
   if (kind === "sleep") return "Add sleep";
+  if (kind === "weight") return "Add weight";
   if (kind === "heart_rate") return "Add heart rate";
   return "Add BP";
 }
 
-export function formatMinutes(total: number) {
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return `${h}h ${m}m`;
-}
-
-export function formatYAxisValue(kind: MeasurementKind, value: number) {
-  if (kind !== "sleep") return value.toFixed(0);
-  const hours = value / 60;
-  if (Number.isInteger(hours)) return `${hours}`;
-  return hours.toFixed(1);
+export function formatSleepHours(total: number | null) {
+  if (typeof total !== "number" || !Number.isFinite(total)) return "--";
+  const hours = Math.round((total / 60) * 10) / 10;
+  return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)} h`;
 }
 
 export function dateToMeasuredAtIso(date: Date) {

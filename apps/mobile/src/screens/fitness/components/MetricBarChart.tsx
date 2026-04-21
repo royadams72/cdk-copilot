@@ -1,17 +1,11 @@
+import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
-import { ThemedText } from "@/components/themed-text";
 
 import type { ChartPoint, MeasurementKind } from "../metricTrendTypes";
-import {
-  BAR_WIDTH,
-  CHART_HEIGHT,
-  CHART_PAD,
-  formatYAxisValue,
-  SLOT_GAP,
-} from "../metricTrendUtils";
+import { BAR_WIDTH, CHART_HEIGHT, CHART_PAD, SLOT_GAP } from "../metricTrendUtils";
 
 type TargetLine = {
   color: string;
@@ -26,8 +20,6 @@ type Props = {
   selectedBarIndex: number | null;
   setSelectedBarIndex: (value: number | null) => void;
   targetLines: TargetLine[];
-  yMax: number;
-  yMin: number;
 };
 
 export function MetricBarChart({
@@ -37,44 +29,25 @@ export function MetricBarChart({
   selectedBarIndex,
   setSelectedBarIndex,
   targetLines,
-  yMax,
-  yMin,
 }: Props) {
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: false });
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [chartWidth, kind, points.length]);
+
   return (
     <View style={{ position: "relative" }}>
-      <View
-        pointerEvents="none"
-        style={{
-          backgroundColor: "white",
-          bottom: 0,
-          justifyContent: "space-between",
-          left: 0,
-          paddingBottom: CHART_PAD - 2,
-          paddingTop: CHART_PAD + 4,
-          position: "absolute",
-          top: 0,
-          width: CHART_PAD,
-          zIndex: 1,
-        }}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
       >
-        <View
-          style={{
-            backgroundColor: "rgba(100,116,139,0.6)",
-            bottom: CHART_PAD,
-            left: CHART_PAD - 1,
-            position: "absolute",
-            top: CHART_PAD,
-            width: 1,
-          }}
-        />
-        <ThemedText style={{ color: "#475569", fontSize: 11 }}>
-          {formatYAxisValue(kind, yMax)}
-        </ThemedText>
-        <ThemedText style={{ color: "#475569", fontSize: 11 }}>
-          {formatYAxisValue(kind, yMin)}
-        </ThemedText>
-      </View>
-      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false}>
         {kind === "blood_pressure" ? (
           <TrendLineChart
             width={chartWidth}

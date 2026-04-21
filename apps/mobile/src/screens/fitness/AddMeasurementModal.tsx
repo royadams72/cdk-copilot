@@ -56,12 +56,14 @@ type Props = {
   setShowSleepToPicker: (value: boolean) => void;
   setSleepFromTime: (value: Date) => void;
   setSleepToTime: (value: Date) => void;
+  setWeightKg: (value: string) => void;
   showDatePicker: boolean;
   showSleepFromPicker: boolean;
   showSleepToPicker: boolean;
   sleepFromTime: Date;
   sleepToTime: Date;
   systolicOptions: number[];
+  weightKg: string;
 };
 
 export function AddMeasurementModal({
@@ -95,12 +97,14 @@ export function AddMeasurementModal({
   setShowSleepToPicker,
   setSleepFromTime,
   setSleepToTime,
+  setWeightKg,
   showDatePicker,
   showSleepFromPicker,
   showSleepToPicker,
   sleepFromTime,
   sleepToTime,
   systolicOptions,
+  weightKg,
 }: Props) {
   return (
     <>
@@ -313,6 +317,34 @@ export function AddMeasurementModal({
                     ))}
                   </Picker>
                 </View>
+              </>
+            ) : null}
+
+            {kind === "weight" ? (
+              <>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Weight (kg)
+                </ThemedText>
+                <TextInput
+                  value={weightKg}
+                  onChangeText={(text) =>
+                    setWeightKg(
+                      text
+                        .replace(",", ".")
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/^(\d*\.?\d{0,1}).*$/, "$1"),
+                    )
+                  }
+                  placeholder="e.g. 72.4"
+                  keyboardType="decimal-pad"
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                  }}
+                />
               </>
             ) : null}
 

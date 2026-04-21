@@ -23,6 +23,7 @@ import {
 } from "@/store/services/dashboardApi";
 import { useGetLatestMeasurementsQuery } from "@/store/services/measurementsApi";
 import type { MeasurementLatest } from "@/store/services/types";
+import { formatSleepHours } from "./metricTrendUtils";
 
 type MetricCard = {
   kind: MeasurementKind;
@@ -66,6 +67,8 @@ function toCard(
             ? "Exercise"
             : kind === "sleep"
               ? "Sleep"
+              : kind === "weight"
+                ? "Weight"
               : "Steps",
       subtext: "No reading yet",
       value: "No data",
@@ -129,7 +132,18 @@ function toCard(
       subtext: formatDateTime(doc.measuredAt),
       value:
         typeof doc.durationMin === "number"
-          ? `${Math.round(doc.durationMin)} min`
+          ? formatSleepHours(doc.durationMin)
+          : "No data",
+    };
+  }
+  if (doc.kind === "weight") {
+    return {
+      kind: "weight",
+      label: "Weight",
+      subtext: formatDateTime(doc.measuredAt),
+      value:
+        typeof doc.valueKg === "number"
+          ? `${Math.round(doc.valueKg * 10) / 10} kg`
           : "No data",
     };
   }
@@ -301,6 +315,7 @@ export default function FitnessDashboard() {
 
     return [
       stepsCard,
+      toCard("weight", byKind.get("weight")),
       toCard("heart_rate", byKind.get("heart_rate")),
       toCard("exercise", byKind.get("exercise")),
       toCard("blood_pressure", byKind.get("blood_pressure")),
@@ -359,7 +374,7 @@ export default function FitnessDashboard() {
         <View style={{ gap: 4 }}>
           <ThemedText type="title">Fitness dashboard</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
-            Latest readings for heart rate, activity, blood pressure, and sleep.
+            Latest readings for weight, heart rate, activity, blood pressure, and sleep.
           </ThemedText>
         </View>
 

@@ -13,6 +13,7 @@ type Kind =
   | "steps"
   | "exercise"
   | "sleep"
+  | "weight"
   | "blood_pressure"
   | "heart_rate";
 type Source = "patient" | "device" | "api" | "provider";
@@ -272,6 +273,7 @@ export async function POST(req: NextRequest) {
       kind !== "steps" &&
       kind !== "exercise" &&
       kind !== "sleep" &&
+      kind !== "weight" &&
       kind !== "blood_pressure" &&
       kind !== "heart_rate"
     ) {
@@ -323,6 +325,33 @@ export async function POST(req: NextRequest) {
       if (averageSpeedKph !== null && averageSpeedKph >= 0) {
         payload.averageSpeedKph = averageSpeedKph;
       }
+      if (
+        typeof payload.distanceMeters === "number" ||
+        typeof payload.caloriesKcal === "number" ||
+        typeof payload.averageSpeedKph === "number"
+      ) {
+        payload.steps = {
+          averageSpeedKph:
+            typeof payload.averageSpeedKph === "number"
+              ? payload.averageSpeedKph
+              : undefined,
+          caloriesKcal:
+            typeof payload.caloriesKcal === "number"
+              ? payload.caloriesKcal
+              : undefined,
+          distanceMeters:
+            typeof payload.distanceMeters === "number"
+              ? payload.distanceMeters
+              : undefined,
+        };
+      }
+    }
+    if (kind === "weight") {
+      const valueKg = asNumber(body.valueKg);
+      if (valueKg === null || valueKg <= 0) {
+        return bad("Invalid valueKg", undefined, 400);
+      }
+      payload.valueKg = Math.round(valueKg * 10) / 10;
     }
     if (kind === "sleep") {
       const sleepFromAt = asDate(body.sleepFromAt);
@@ -493,6 +522,9 @@ export async function POST(req: NextRequest) {
       if (typeof payload.averageSpeedKph === "number") {
         setFields.averageSpeedKph = payload.averageSpeedKph;
       }
+      if (payload.steps && typeof payload.steps === "object") {
+        setFields.steps = payload.steps;
+      }
       const update = {
         $set: setFields,
         $setOnInsert: setOnInsertFields,
@@ -507,6 +539,7 @@ export async function POST(req: NextRequest) {
         if (err?.code !== 121) throw err;
         const fallbackSetFields = { ...setFields };
         delete fallbackSetFields.updatedAt;
+        delete fallbackSetFields.steps;
         const fallbackSetOnInsertFields = { ...setOnInsertFields };
         delete fallbackSetOnInsertFields.createdAt;
         const fallbackUpdate = {
