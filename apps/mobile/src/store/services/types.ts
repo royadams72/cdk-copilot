@@ -9,6 +9,7 @@ import {
 import { TWeeklyNutritionInsight } from "@ckd/core";
 
 export type DashboardScope = "today" | "all";
+export type UserUnits = "metric" | "imperial";
 export type DashboardQueryData = Omit<DashboardData, "patientId">;
 export type NutritionTrendChunkArgs = {
   before?: string;
@@ -204,6 +205,9 @@ export type TargetsResponse = {
 };
 
 export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
+export type CurrentUserSettingsResponse = {
+  units: UserUnits;
+};
 export type RunWeeklyNutritionInsightArgs = {
   referenceDate?: string;
 };

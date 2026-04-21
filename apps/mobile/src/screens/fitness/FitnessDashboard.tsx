@@ -23,7 +23,12 @@ import {
 } from "@/store/services/dashboardApi";
 import { useGetLatestMeasurementsQuery } from "@/store/services/measurementsApi";
 import type { MeasurementLatest } from "@/store/services/types";
-import { formatSleepHours } from "./metricTrendUtils";
+import { useGetCurrentUserSettingsQuery } from "@/store/services/userApi";
+import {
+  formatSleepHours,
+  formatWeightValue,
+  weightUnitFromUserUnits,
+} from "./metricTrendUtils";
 
 type MetricCard = {
   kind: MeasurementKind;
@@ -54,6 +59,7 @@ function toCard(
   kind: MeasurementKind,
   doc?: MeasurementLatest,
   stepsTarget: number = STEPS_DAILY_TARGET,
+  weightDisplayUnit: "kg" | "lb" = "kg",
 ): MetricCard {
   if (!doc) {
     return {
@@ -143,7 +149,7 @@ function toCard(
       subtext: formatDateTime(doc.measuredAt),
       value:
         typeof doc.valueKg === "number"
-          ? `${Math.round(doc.valueKg * 10) / 10} kg`
+          ? formatWeightValue(doc.valueKg, weightDisplayUnit)
           : "No data",
     };
   }
@@ -233,6 +239,7 @@ export default function FitnessDashboard() {
   const router = useRouter();
   const { data, error, isFetching, isLoading, refetch } =
     useGetLatestMeasurementsQuery(undefined);
+  const { data: currentUserSettings } = useGetCurrentUserSettingsQuery();
   const { data: targetsData } = useGetTargetsQuery("lifestyle");
   const {
     backgroundReadGranted,
@@ -255,6 +262,9 @@ export default function FitnessDashboard() {
   const loading = isLoading && items.length === 0;
   const refreshing = isFetching && items.length > 0;
   const hasMissingHealthPermissions = missingHealthPermissions.length > 0;
+  const weightDisplayUnit = weightUnitFromUserUnits(
+    currentUserSettings?.units ?? "metric",
+  );
 
   const handleTriggerBackgroundTask = async () => {
     try {
@@ -315,13 +325,19 @@ export default function FitnessDashboard() {
 
     return [
       stepsCard,
-      toCard("weight", byKind.get("weight")),
-      toCard("heart_rate", byKind.get("heart_rate")),
-      toCard("exercise", byKind.get("exercise")),
-      toCard("blood_pressure", byKind.get("blood_pressure")),
-      toCard("sleep", byKind.get("sleep")),
+      toCard("weight", byKind.get("weight"), stepsTarget, weightDisplayUnit),
+      toCard("heart_rate", byKind.get("heart_rate"), stepsTarget, weightDisplayUnit),
+      toCard("exercise", byKind.get("exercise"), stepsTarget, weightDisplayUnit),
+      toCard(
+        "blood_pressure",
+        byKind.get("blood_pressure"),
+        stepsTarget,
+        weightDisplayUnit,
+      ),
+      toCard("sleep", byKind.get("sleep"), stepsTarget, weightDisplayUnit),
     ];
   }, [
+    currentUserSettings?.units,
     items,
     percentOfGoal,
     requestAccess,
@@ -331,6 +347,7 @@ export default function FitnessDashboard() {
     stepStatus,
     stepsTarget,
     stepsToday,
+    weightDisplayUnit,
   ]);
 
   return (

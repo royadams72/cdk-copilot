@@ -9,12 +9,15 @@ import {
   formatDateLabel,
   formatSleepHours,
   formatTimeLabel,
+  formatWeightValue,
+  type WeightUnit,
 } from "../metricTrendUtils";
 
 type Props = {
   kind: MeasurementKind;
   selectedDateKey: string;
   selectedDayEntries: DayEntry[];
+  weightUnit?: WeightUnit;
 };
 
 const EXERCISE_TYPE_LABELS = Object.entries(ExerciseType).reduce<
@@ -57,6 +60,7 @@ export function MetricDayEntries({
   kind,
   selectedDateKey,
   selectedDayEntries,
+  weightUnit = "kg",
 }: Props) {
   return (
     <View
@@ -168,17 +172,13 @@ export function MetricDayEntries({
             }
 
             if (kind === "weight") {
-              const weight =
-                typeof entry.value === "number"
-                  ? Math.round(entry.value * 10) / 10
-                  : null;
               return (
                 <Card
                   key={`${entry.measuredAt}-${idx}`}
                   style={{ borderRadius: 10, gap: 3, padding: 10 }}
                 >
                   <ThemedText type="defaultSemiBold">
-                    {weight !== null ? `${weight} kg` : "--"}
+                    {formatWeightValue(entry.value, weightUnit)}
                   </ThemedText>
                   <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
                     {time}

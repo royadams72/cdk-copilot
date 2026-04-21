@@ -6,11 +6,13 @@ export const CHART_PAD = 28;
 export const BAR_WIDTH = 12;
 export const GROUP_GAP = 4;
 export const SLOT_GAP = 16;
+export const KG_TO_LB = 2.2046226218;
 
 export const BP_TARGET_SYSTOLIC = 120;
 export const BP_TARGET_DIASTOLIC = 80;
 export const SLEEP_TARGET_MIN = 8 * 60;
 export const EXERCISE_TARGET_MIN = 30;
+export type WeightUnit = "kg" | "lb";
 
 export function formatDayLabel(value: string) {
   const date = new Date(`${value}T12:00:00`);
@@ -65,6 +67,10 @@ export function metricUnit(kind: MeasurementKind) {
   return "hours";
 }
 
+export function weightUnitFromUserUnits(units: "metric" | "imperial"): WeightUnit {
+  return units === "imperial" ? "lb" : "kg";
+}
+
 export function addLabel(kind: MeasurementKind) {
   if (kind === "exercise") return "Add exercise";
   if (kind === "sleep") return "Add sleep";
@@ -77,6 +83,27 @@ export function formatSleepHours(total: number | null) {
   if (typeof total !== "number" || !Number.isFinite(total)) return "--";
   const hours = Math.round((total / 60) * 10) / 10;
   return `${Number.isInteger(hours) ? hours.toFixed(0) : hours.toFixed(1)} h`;
+}
+
+export function convertKgToLb(valueKg: number) {
+  return valueKg * KG_TO_LB;
+}
+
+export function convertLbToKg(valueLb: number) {
+  return valueLb / KG_TO_LB;
+}
+
+export function formatWeightValue(
+  valueKg: number | null | undefined,
+  unit: WeightUnit,
+) {
+  if (typeof valueKg !== "number" || !Number.isFinite(valueKg) || valueKg <= 0) {
+    return "--";
+  }
+
+  const value =
+    unit === "lb" ? Math.round(convertKgToLb(valueKg)) : Math.round(valueKg * 10) / 10;
+  return `${value} ${unit}`;
 }
 
 export function dateToMeasuredAtIso(date: Date) {

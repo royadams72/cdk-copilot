@@ -21,6 +21,7 @@ import {
   addLabel,
   formatDateLabel,
   formatTimeLabel,
+  type WeightUnit,
 } from "./metricTrendUtils";
 
 type Props = {
@@ -56,14 +57,17 @@ type Props = {
   setShowSleepToPicker: (value: boolean) => void;
   setSleepFromTime: (value: Date) => void;
   setSleepToTime: (value: Date) => void;
-  setWeightKg: (value: string) => void;
+  setWeightUnit: (value: WeightUnit) => void;
+  setWeightValue: (value: number) => void;
   showDatePicker: boolean;
   showSleepFromPicker: boolean;
   showSleepToPicker: boolean;
   sleepFromTime: Date;
   sleepToTime: Date;
   systolicOptions: number[];
-  weightKg: string;
+  weightOptions: number[];
+  weightUnit: WeightUnit;
+  weightValue: number;
 };
 
 export function AddMeasurementModal({
@@ -97,14 +101,17 @@ export function AddMeasurementModal({
   setShowSleepToPicker,
   setSleepFromTime,
   setSleepToTime,
-  setWeightKg,
+  setWeightUnit,
+  setWeightValue,
   showDatePicker,
   showSleepFromPicker,
   showSleepToPicker,
   sleepFromTime,
   sleepToTime,
   systolicOptions,
-  weightKg,
+  weightOptions,
+  weightUnit,
+  weightValue,
 }: Props) {
   return (
     <>
@@ -323,28 +330,52 @@ export function AddMeasurementModal({
             {kind === "weight" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Weight (kg)
+                  Unit
                 </ThemedText>
-                <TextInput
-                  value={weightKg}
-                  onChangeText={(text) =>
-                    setWeightKg(
-                      text
-                        .replace(",", ".")
-                        .replace(/[^0-9.]/g, "")
-                        .replace(/^(\d*\.?\d{0,1}).*$/, "$1"),
-                    )
-                  }
-                  placeholder="e.g. 72.4"
-                  keyboardType="decimal-pad"
+                <View
                   style={{
                     borderColor: "#CBD5E1",
                     borderRadius: 8,
                     borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
                   }}
-                />
+                >
+                  <Picker
+                    selectedValue={weightUnit}
+                    onValueChange={(value) =>
+                      setWeightUnit(value as WeightUnit)
+                    }
+                  >
+                    <Picker.Item label="kg" value="kg" />
+                    <Picker.Item label="lbs" value="lb" />
+                  </Picker>
+                </View>
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Weight ({weightUnit === "lb" ? "lbs" : "kg"})
+                </ThemedText>
+                <View
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                  }}
+                >
+                  <Picker
+                    selectedValue={weightValue}
+                    onValueChange={(value) => setWeightValue(Number(value))}
+                  >
+                    {weightOptions.map((value) => (
+                      <Picker.Item
+                        key={`weight-${value}`}
+                        label={
+                          weightUnit === "lb"
+                            ? `${Math.round(value)}`
+                            : value.toFixed(1)
+                        }
+                        value={value}
+                      />
+                    ))}
+                  </Picker>
+                </View>
               </>
             ) : null}
 
