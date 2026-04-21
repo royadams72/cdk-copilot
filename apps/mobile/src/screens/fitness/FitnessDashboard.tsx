@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -12,6 +13,7 @@ import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
+import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
 import {
@@ -240,6 +242,24 @@ export default function FitnessDashboard() {
   const refreshing = isFetching && items.length > 0;
   const hasMissingHealthPermissions = missingHealthPermissions.length > 0;
 
+  const handleTriggerBackgroundTask = async () => {
+    try {
+      const triggered =
+        await triggerHealthConnectBackgroundTaskForTestingAsync();
+      Alert.alert(
+        triggered ? "Background task triggered" : "Background task unavailable",
+        triggered
+          ? "The Health Connect background worker was triggered for testing."
+          : "Background task testing is unavailable on this build or device.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Background task failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
+
   const stepsTarget = useMemo(() => {
     const stepsTargetItem = targetsData?.items.find(
       (item) =>
@@ -380,6 +400,34 @@ export default function FitnessDashboard() {
             >
               <ThemedText style={{ fontWeight: "700" }}>
                 Allow background health access
+              </ThemedText>
+            </TouchableOpacity>
+            {__DEV__ ? (
+              <ThemedText style={{ marginTop: 8, opacity: 0.7 }}>
+                Debug: background read permission is missing.
+              </ThemedText>
+            ) : null}
+          </Card>
+        ) : null}
+
+        {!loading && __DEV__ ? (
+          <Card>
+            <ThemedText type="defaultSemiBold">Dev: Background sync</ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Trigger the Health Connect background worker immediately for testing.
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Background read permission:{" "}
+              {backgroundReadGranted ? "granted" : "missing"}
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => {
+                void handleTriggerBackgroundTask();
+              }}
+              style={{ marginTop: 8 }}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>
+                Run background sync now
               </ThemedText>
             </TouchableOpacity>
           </Card>

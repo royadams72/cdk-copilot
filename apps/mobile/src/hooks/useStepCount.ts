@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AppState, Platform } from "react-native";
+import { Alert, AppState, Platform } from "react-native";
 
 import {
   ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
@@ -54,13 +54,7 @@ export function useStepCount(goal = 10000) {
       setSummary(result.summary);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
-      setBackgroundReadGranted(
-        result.missingHealthPermissions.every(
-          (permission) =>
-            permission !==
-            `${ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType}:${ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType}`,
-        ),
-      );
+      setBackgroundReadGranted(result.backgroundReadGranted);
     };
 
     const load = async () => {
@@ -199,15 +193,7 @@ export function useStepCount(goal = 10000) {
       setSummary(result.summary);
       setStatus(result.status);
       setStepsToday(result.stepsToday);
-      setBackgroundReadGranted(
-        grantedPermissions.some(
-          (permission) =>
-            permission.accessType ===
-              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType &&
-            permission.recordType ===
-              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType,
-        ),
-      );
+      setBackgroundReadGranted(result.backgroundReadGranted);
     } catch (error) {
       console.log("Health Connect permission request failed", {
         error: toErrorMessage(error),
@@ -221,22 +207,59 @@ export function useStepCount(goal = 10000) {
 
     try {
       const healthConnect = await import("react-native-health-connect");
-      const grantedPermissions = await healthConnect.requestPermission([
+      await healthConnect.requestPermission([
         ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
       ]);
-      setBackgroundReadGranted(
-        grantedPermissions.some(
-          (permission) =>
-            permission.accessType ===
-              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.accessType &&
-            permission.recordType ===
-              ANDROID_HEALTH_BACKGROUND_READ_PERMISSION.recordType,
-        ),
-      );
+      const result = await loadAndroidStepState();
+      setCanRequestPermission(result.canRequestPermission);
+      setDataOrigins(result.dataOrigins);
+      setDebug(result.debug);
+      setMissingHealthPermissions(result.missingHealthPermissions);
+      setSelectedDataOrigin(result.selectedDataOrigin);
+      setSummary(result.summary);
+      setStatus(result.status);
+      setStepsToday(result.stepsToday);
+      setBackgroundReadGranted(result.backgroundReadGranted);
+
+      if (!result.backgroundReadGranted) {
+        Alert.alert(
+          "Background access still missing",
+          "Health Connect did not grant background access yet. You can enable it manually in Health Connect settings under Additional access.",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Open Health Connect",
+              onPress: () => {
+                healthConnect.openHealthConnectSettings();
+              },
+            },
+          ],
+        );
+      }
     } catch (error) {
       console.log("Health Connect background read permission request failed", {
         error: toErrorMessage(error),
       });
+      Alert.alert(
+        "Could not request background access",
+        "Open Health Connect settings and enable background access manually.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Open Health Connect",
+            onPress: async () => {
+              const healthConnect = await import("react-native-health-connect");
+              healthConnect.openHealthConnectSettings();
+            },
+          },
+        ],
+      );
     }
   };
 

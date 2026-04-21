@@ -6,11 +6,15 @@ import { syncRecentHealthConnectMeasurements, syncTodayStepMeasurement } from "@
 
 const HEALTH_CONNECT_BACKGROUND_TASK = "health-connect-sync";
 
+async function runHealthConnectBackgroundTaskAsync() {
+  await syncTodayStepMeasurement("background-task", { force: true });
+  await syncRecentHealthConnectMeasurements("background-task", { force: true });
+}
+
 if (!TaskManager.isTaskDefined(HEALTH_CONNECT_BACKGROUND_TASK)) {
   TaskManager.defineTask(HEALTH_CONNECT_BACKGROUND_TASK, async () => {
     try {
-      await syncTodayStepMeasurement("background-task", { force: true });
-      await syncRecentHealthConnectMeasurements("background-task", { force: true });
+      await runHealthConnectBackgroundTaskAsync();
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch (error) {
       console.log("Health Connect background task failed", error);
@@ -33,5 +37,13 @@ export async function registerHealthConnectBackgroundTaskAsync() {
     minimumInterval: 15,
   });
 
+  return true;
+}
+
+export async function triggerHealthConnectBackgroundTaskForTestingAsync() {
+  if (!__DEV__ || Platform.OS !== "android") {
+    return false;
+  }
+  await runHealthConnectBackgroundTaskAsync();
   return true;
 }

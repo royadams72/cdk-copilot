@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +23,7 @@ import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
+import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -54,6 +56,26 @@ export default function Dashboard() {
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const handleTriggerBackgroundTask = useCallback(() => {
+    void (async () => {
+      try {
+        const triggered =
+          await triggerHealthConnectBackgroundTaskForTestingAsync();
+        Alert.alert(
+          triggered ? "Background task triggered" : "Background task unavailable",
+          triggered
+            ? "The Health Connect background worker was triggered for testing."
+            : "Background task testing is unavailable on this build or device.",
+        );
+      } catch (error) {
+        Alert.alert(
+          "Background task failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    })();
+  }, []);
 
   const rangeSummary = useMemo(() => {
     if (!data) return "";
@@ -205,6 +227,34 @@ export default function Dashboard() {
                 >
                   <ThemedText style={styles.primaryActionText}>
                     Allow background health access
+                  </ThemedText>
+                </Pressable>
+                {__DEV__ ? (
+                  <ThemedText style={styles.helperText}>
+                    Debug: background read permission is missing.
+                  </ThemedText>
+                ) : null}
+              </Card>
+            ) : null}
+
+            {__DEV__ ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Dev: Background sync
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Trigger the Health Connect background worker immediately for testing.
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Background read permission:{" "}
+                  {backgroundReadGranted ? "granted" : "missing"}
+                </ThemedText>
+                <Pressable
+                  style={styles.primaryActionButton}
+                  onPress={handleTriggerBackgroundTask}
+                >
+                  <ThemedText style={styles.primaryActionText}>
+                    Run background sync now
                   </ThemedText>
                 </Pressable>
               </Card>

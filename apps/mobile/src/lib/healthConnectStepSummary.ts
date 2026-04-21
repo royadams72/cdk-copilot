@@ -33,6 +33,7 @@ export type StepActivitySummary = {
 };
 
 export type AndroidStepState = {
+  backgroundReadGranted: boolean;
   canRequestPermission: boolean;
   dataOrigins: string[];
   debug: StepDebug | null;
@@ -373,6 +374,7 @@ function bucketHourlyStepValues(
   nextDayStartMs: number,
 ) {
   const hourly = Array.from({ length: 24 }, () => 0);
+  const longRecordThresholdMs = 2 * 60 * 60 * 1000;
 
   for (const record of records) {
     const start = new Date(record.startTime);
@@ -397,6 +399,14 @@ function bucketHourlyStepValues(
     const endMs = end.getTime();
     const durationMs = Math.max(1, endMs - startMs);
 
+    if (durationMs >= longRecordThresholdMs) {
+      const anchorTime = new Date(Math.min(endMs, nextDayStartMs - 1));
+      if (!Number.isNaN(anchorTime.getTime())) {
+        hourly[anchorTime.getHours()] += count;
+      }
+      continue;
+    }
+
     for (let hour = 0; hour < 24; hour += 1) {
       const bucketStart = new Date(dayStart);
       bucketStart.setHours(hour, 0, 0, 0);
@@ -415,6 +425,20 @@ function bucketHourlyStepValues(
   }
 
   return hourly.map((value) => Math.round(value));
+}
+
+function clampTodayFutureHours(date: Date, hourly: number[]) {
+  const now = new Date();
+  const isToday =
+    now.getFullYear() === date.getFullYear() &&
+    now.getMonth() === date.getMonth() &&
+    now.getDate() === date.getDate();
+
+  if (!isToday) {
+    return hourly;
+  }
+
+  return hourly.map((value, hour) => (hour > now.getHours() ? 0 : value));
 }
 
 function hasFlatHourlyDistribution(values: number[]) {
@@ -526,10 +550,13 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
         >[1]["timeRangeFilter"],
     });
 
-    const hourly = bucketHourlyStepValues(
-      result.records,
-      dayStart,
-      nextDayStartMs,
+    const hourly = clampTodayFutureHours(
+      date,
+      bucketHourlyStepValues(
+        result.records,
+        dayStart,
+        nextDayStartMs,
+      ),
     );
     if (hasFlatHourlyDistribution(hourly)) {
       console.log("HC hourly steps v4 unavailable-flat-records", {
@@ -548,7 +575,10 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
   }
 
   try {
-    const hourly = await readHourlyStepAggregateFallback(healthConnect, date);
+    const hourly = clampTodayFutureHours(
+      date,
+      await readHourlyStepAggregateFallback(healthConnect, date),
+    );
     if (hasFlatHourlyDistribution(hourly)) {
       console.log("HC hourly steps v5 unavailable-flat-aggregate", {
         date: date.toISOString(),
@@ -573,6 +603,7 @@ export async function loadAndroidStepState() {
 
   if (sdkStatus === healthConnect.SdkAvailabilityStatus.SDK_UNAVAILABLE) {
     return {
+      backgroundReadGranted: false,
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
@@ -589,6 +620,7 @@ export async function loadAndroidStepState() {
     healthConnect.SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
   ) {
     return {
+      backgroundReadGranted: false,
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
@@ -603,6 +635,7 @@ export async function loadAndroidStepState() {
   const initialized = await healthConnect.initialize();
   if (!initialized) {
     return {
+      backgroundReadGranted: false,
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
@@ -617,6 +650,11 @@ export async function loadAndroidStepState() {
   const grantedPermissions = await healthConnect.getGrantedPermissions();
   const grantedPermissionKeys = grantedPermissions.map(permissionKey);
   const grantedPermissionKeySet = new Set(grantedPermissionKeys);
+  const backgroundReadGranted = grantedPermissions.some(
+    (permission) =>
+      permission.accessType === "read" &&
+      permission.recordType === "BackgroundAccessPermission",
+  );
   const requestedPermissionKeys = ANDROID_HEALTH_PERMISSIONS.map(permissionKey);
   const missingHealthPermissions = requestedPermissionKeys.filter(
     (key) => !grantedPermissionKeys.includes(key),
@@ -630,6 +668,7 @@ export async function loadAndroidStepState() {
 
   if (!hasStepAccess) {
     return {
+      backgroundReadGranted,
       canRequestPermission: true,
       dataOrigins: [],
       debug: null as StepDebug | null,
@@ -724,6 +763,7 @@ export async function loadAndroidStepState() {
   }
 
   return {
+    backgroundReadGranted,
     canRequestPermission: true,
     dataOrigins:
       Object.keys(originTotals).length > 0
