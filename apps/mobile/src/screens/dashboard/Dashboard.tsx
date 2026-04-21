@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +23,7 @@ import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
+import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -32,16 +34,15 @@ export default function Dashboard() {
     },
   );
   const {
+    backgroundReadGranted,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
-    selectedDataOrigin,
+    requestBackgroundReadAccess,
     status: stepStatus,
     stepsToday,
   } = useStepCount(10000);
-  useSyncStepCount(stepsToday, stepStatus === "ready", {
-    providerPackageName: selectedDataOrigin,
-  });
+  useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(true);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
@@ -55,6 +56,26 @@ export default function Dashboard() {
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const handleTriggerBackgroundTask = useCallback(() => {
+    void (async () => {
+      try {
+        const triggered =
+          await triggerHealthConnectBackgroundTaskForTestingAsync();
+        Alert.alert(
+          triggered ? "Background task triggered" : "Background task unavailable",
+          triggered
+            ? "The Health Connect background worker was triggered for testing."
+            : "Background task testing is unavailable on this build or device.",
+        );
+      } catch (error) {
+        Alert.alert(
+          "Background task failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    })();
+  }, []);
 
   const rangeSummary = useMemo(() => {
     if (!data) return "";
@@ -188,6 +209,57 @@ export default function Dashboard() {
               </Card>
             ) : null}
 
+            {stepStatus === "ready" && !backgroundReadGranted ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Background Health Connect sync
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Allow background Health Connect access if you want steps,
+                  exercise, sleep, heart rate, and blood pressure to sync when
+                  the app is not open.
+                </ThemedText>
+                <Pressable
+                  style={styles.primaryActionButton}
+                  onPress={() => {
+                    void requestBackgroundReadAccess();
+                  }}
+                >
+                  <ThemedText style={styles.primaryActionText}>
+                    Allow background health access
+                  </ThemedText>
+                </Pressable>
+                {__DEV__ ? (
+                  <ThemedText style={styles.helperText}>
+                    Debug: background read permission is missing.
+                  </ThemedText>
+                ) : null}
+              </Card>
+            ) : null}
+
+            {__DEV__ ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Dev: Background sync
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Trigger the Health Connect background worker immediately for testing.
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Background read permission:{" "}
+                  {backgroundReadGranted ? "granted" : "missing"}
+                </ThemedText>
+                <Pressable
+                  style={styles.primaryActionButton}
+                  onPress={handleTriggerBackgroundTask}
+                >
+                  <ThemedText style={styles.primaryActionText}>
+                    Run background sync now
+                  </ThemedText>
+                </Pressable>
+              </Card>
+            ) : null}
+
             <Pressable
               style={styles.selectableCard}
               onPress={() => router.push("/(dashboard)/meds-labs")}
@@ -213,7 +285,7 @@ export function ErrorState({ message }: { message: string }) {
   return (
     <Card>
       <ThemedText type="defaultSemiBold">
-        We couldn't load your dashboard
+        We couldn&apos;t load your dashboard
       </ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
       <ThemedText style={styles.helperText}>
@@ -226,7 +298,7 @@ export function ErrorState({ message }: { message: string }) {
 function InlineError({ message }: { message: string }) {
   return (
     <Card>
-      <ThemedText type="defaultSemiBold">Couldn't refresh</ThemedText>
+      <ThemedText type="defaultSemiBold">Couldn&apos;t refresh</ThemedText>
       <ThemedText style={styles.helperText}>{message}</ThemedText>
       <ThemedText style={styles.helperText}>Pull down to retry.</ThemedText>
     </Card>

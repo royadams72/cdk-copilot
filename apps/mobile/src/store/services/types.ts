@@ -32,6 +32,7 @@ export type MeasurementKind =
   | "steps"
   | "exercise"
   | "sleep"
+  | "weight"
   | "blood_pressure"
   | "heart_rate";
 export type MeasurementSource = "patient" | "device" | "api" | "provider";
@@ -53,9 +54,12 @@ export type MeasurementProvenanceArgs = {
 };
 
 export type MeasurementLatest = {
+  averageSpeedKph?: number;
+  caloriesKcal?: number;
   count?: number;
   diastolicMmHg?: number;
   device?: MeasurementDevice;
+  distanceMeters?: number;
   durationMin?: number;
   exercise?: {
     caloriesKcal?: number;
@@ -70,6 +74,7 @@ export type MeasurementLatest = {
   provider?: MeasurementProvider;
   source?: MeasurementSource;
   systolicMmHg?: number;
+  valueKg?: number;
 };
 
 export type MeasurementTrendPoint = {
@@ -80,6 +85,9 @@ export type MeasurementTrendPoint = {
 };
 
 export type MeasurementDayEntry = {
+  averageSpeedKph?: number | null;
+  caloriesKcal?: number | null;
+  distanceMeters?: number | null;
   exerciseId?: string;
   exerciseName?: string;
   exerciseTitle?: string;
@@ -114,7 +122,10 @@ export type ExerciseReferenceResponse = {
 
 export type CreateMeasurementArgs =
   | ({
+      averageSpeedKph?: number;
+      caloriesKcal?: number;
       count: number;
+      distanceMeters?: number;
       kind: "steps";
       measuredAt?: string;
     } & MeasurementProvenanceArgs)
@@ -135,6 +146,11 @@ export type CreateMeasurementArgs =
       measuredAt?: string;
       sleepFromAt: string;
       sleepToAt: string;
+    } & MeasurementProvenanceArgs)
+  | ({
+      kind: "weight";
+      measuredAt?: string;
+      valueKg: number;
     } & MeasurementProvenanceArgs)
   | ({
       diastolicMmHg: number;

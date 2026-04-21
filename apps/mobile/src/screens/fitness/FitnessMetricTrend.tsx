@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   TouchableOpacity,
   View,
@@ -9,6 +10,11 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
+import {
+  readHealthConnectHourlyStepsForDate,
+  readHealthConnectStepSummaryForDate,
+  type StepActivitySummary,
+} from "@/lib/healthConnectStepSummary";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateMeasurementMutation,
@@ -21,7 +27,12 @@ import { Card } from "../dashboard/components/Card";
 import { AddMeasurementModal } from "./AddMeasurementModal";
 import { MetricBarChart } from "./components/MetricBarChart";
 import { MetricDayEntries } from "./components/MetricDayEntries";
-import type { ChartPoint, MeasurementKind, TrendPoint } from "./metricTrendTypes";
+import { MetricHourlyBarChart } from "./components/MetricHourlyBarChart";
+import type {
+  ChartPoint,
+  MeasurementKind,
+  TrendPoint,
+} from "./metricTrendTypes";
 import {
   addDays,
   addLabel,
@@ -36,21 +47,49 @@ import {
   dateToMeasuredAtIso,
   EXERCISE_TARGET_MIN,
   formatDayLabel,
-  formatMinutes,
+  formatDistanceValue,
+  formatStepMetric,
+  getStepSummaryFromEntries,
   GROUP_GAP,
   metricUnit,
   numberRange,
   SLEEP_TARGET_MIN,
   SLOT_GAP,
+  sortEntriesForTrendDay,
 } from "./metricTrendUtils";
 
 type TrendChart = {
   chartWidth: number;
   points: ChartPoint[];
-  targetLines: Array<{ color: string; label: string; y: number }>;
+  targetLines: { color: string; label: string; y: number }[];
   yMax: number;
   yMin: number;
 };
+
+function buildHeartRateHourlyValues(
+  entries: { measuredAt: string; value: number | null }[],
+) {
+  const buckets = Array.from({ length: 24 }, () => [] as number[]);
+
+  for (const entry of entries) {
+    if (typeof entry.value !== "number" || !Number.isFinite(entry.value)) {
+      continue;
+    }
+    const time = new Date(entry.measuredAt);
+    if (Number.isNaN(time.getTime())) {
+      continue;
+    }
+    buckets[time.getHours()].push(entry.value);
+  }
+
+  return buckets.map((bucket) => {
+    if (!bucket.length) {
+      return null;
+    }
+    const total = bucket.reduce((sum, value) => sum + value, 0);
+    return Math.round(total / bucket.length);
+  });
+}
 
 export default function FitnessMetricTrend() {
   const router = useRouter();
@@ -59,13 +98,18 @@ export default function FitnessMetricTrend() {
   const label = typeof params.label === "string" ? params.label : "Trend";
 
   const [saving, setSaving] = useState(false);
-  const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSleepFromPicker, setShowSleepFromPicker] = useState(false);
   const [showSleepToPicker, setShowSleepToPicker] = useState(false);
   const [measuredDate, setMeasuredDate] = useState(new Date());
   const [exerciseMinutes, setExerciseMinutes] = useState("");
+  const [healthConnectStepSummary, setHealthConnectStepSummary] =
+    useState<StepActivitySummary | null>(null);
+  const [hourlyStepValues, setHourlyStepValues] = useState<(number | null)[]>(
+    [],
+  );
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
     {},
   );
@@ -73,6 +117,7 @@ export default function FitnessMetricTrend() {
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
   const [heartRateBpm, setHeartRateBpm] = useState(72);
+  const [weightKg, setWeightKg] = useState("");
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -107,7 +152,8 @@ export default function FitnessMetricTrend() {
   const points = history?.points ?? [];
   const entriesByDate = history?.entriesByDate ?? {};
   const exerciseCatalog = exerciseReference?.categories ?? [];
-  const loading = isHistoryLoading || isHistoryFetching;
+  const loading = isHistoryLoading && !history;
+  const refreshing = isHistoryFetching && !!history;
   const error = historyError
     ? toQueryErrorMessage(historyError, "Failed to load trend")
     : null;
@@ -258,26 +304,26 @@ export default function FitnessMetricTrend() {
     if (kind === "blood_pressure") {
       targetLines.push({
         color: "#2563EB",
-        label: `Target systolic ${BP_TARGET_SYSTOLIC}`,
+        label: `${BP_TARGET_SYSTOLIC}`,
         y: toY(BP_TARGET_SYSTOLIC),
       });
       targetLines.push({
         color: "#F97316",
-        label: `Target diastolic ${BP_TARGET_DIASTOLIC}`,
+        label: `${BP_TARGET_DIASTOLIC}`,
         y: toY(BP_TARGET_DIASTOLIC),
       });
     }
     if (kind === "sleep") {
       targetLines.push({
         color: "#0F766E",
-        label: `Target ${formatMinutes(SLEEP_TARGET_MIN)}`,
+        label: "8 h",
         y: toY(SLEEP_TARGET_MIN),
       });
     }
     if (kind === "exercise") {
       targetLines.push({
         color: "#0F766E",
-        label: `Target ${EXERCISE_TARGET_MIN} min`,
+        label: `${EXERCISE_TARGET_MIN}`,
         y: toY(EXERCISE_TARGET_MIN),
       });
     }
@@ -298,37 +344,182 @@ export default function FitnessMetricTrend() {
     return numeric.length ? numeric[numeric.length - 1] : null;
   }, [points]);
 
-  const selectedChartPoint = useMemo(() => {
-    if (selectedBarIndex === null) return null;
-    if (selectedBarIndex < 0 || selectedBarIndex >= chart.points.length) {
-      return null;
-    }
-    return chart.points[selectedBarIndex];
-  }, [chart.points, selectedBarIndex]);
-
-  const selectedDateKey = selectedChartPoint
-    ? selectedChartPoint.date
-    : (chart.points[chart.points.length - 1]?.date ?? null);
+  const selectedBarIndex = useMemo(() => {
+    if (!selectedDateKey) return null;
+    const index = chart.points.findIndex((point) => point.date === selectedDateKey);
+    return index >= 0 ? index : null;
+  }, [chart.points, selectedDateKey]);
 
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
-    const entries = entriesByDate[selectedDateKey] ?? [];
-    return entries
-      .slice()
-      .sort((a, b) =>
-        a.measuredAt === b.measuredAt ? 0 : a.measuredAt < b.measuredAt ? 1 : -1,
-      );
-  }, [entriesByDate, selectedDateKey]);
+    return sortEntriesForTrendDay(kind, entriesByDate[selectedDateKey] ?? []);
+  }, [entriesByDate, kind, selectedDateKey]);
+
+  const selectedStepSummary = useMemo(() => {
+    if (kind !== "steps") return null;
+    return getStepSummaryFromEntries(selectedDayEntries);
+  }, [kind, selectedDayEntries]);
+
+  const isSelectedToday = useMemo(() => {
+    if (!selectedDateKey) {
+      return false;
+    }
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}-${String(now.getDate()).padStart(2, "0")}`;
+    return selectedDateKey === todayKey;
+  }, [selectedDateKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHealthConnectStepSummary = async () => {
+      if (
+        kind !== "steps" ||
+        Platform.OS !== "android" ||
+        !selectedDateKey ||
+        !selectedStepSummary ||
+        !isSelectedToday
+      ) {
+        setHealthConnectStepSummary(null);
+        return;
+      }
+
+      const needsFallback =
+        selectedStepSummary.distanceMeters === null ||
+        selectedStepSummary.averageSpeedKph === null ||
+        selectedStepSummary.caloriesKcal === null;
+      if (!needsFallback) {
+        setHealthConnectStepSummary(null);
+        return;
+      }
+
+      const date = new Date(`${selectedDateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        setHealthConnectStepSummary(null);
+        return;
+      }
+
+      try {
+        const result = await readHealthConnectStepSummaryForDate(date);
+        if (!cancelled) {
+          setHealthConnectStepSummary(result);
+        }
+      } catch (error) {
+        console.log("Health Connect historical step summary failed", {
+          date: selectedDateKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        if (!cancelled) {
+          setHealthConnectStepSummary(null);
+        }
+      }
+    };
+
+    void loadHealthConnectStepSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSelectedToday, kind, selectedDateKey, selectedStepSummary]);
+
+  const resolvedStepSummary = useMemo(() => {
+    if (kind !== "steps" || !selectedStepSummary) {
+      return null;
+    }
+
+    return {
+      averageSpeedKph:
+        selectedStepSummary.averageSpeedKph ??
+        healthConnectStepSummary?.averageSpeedKph ??
+        null,
+      caloriesKcal:
+        selectedStepSummary.caloriesKcal ??
+        healthConnectStepSummary?.caloriesKcal ??
+        null,
+      distanceMeters:
+        selectedStepSummary.distanceMeters ??
+        healthConnectStepSummary?.distanceMeters ??
+        null,
+      steps: selectedStepSummary.steps ?? healthConnectStepSummary?.steps ?? null,
+    } satisfies StepActivitySummary;
+  }, [healthConnectStepSummary, kind, selectedStepSummary]);
+
+  const heartRateHourlyValues = useMemo(() => {
+    if (kind !== "heart_rate") {
+      return [];
+    }
+    return buildHeartRateHourlyValues(selectedDayEntries);
+  }, [kind, selectedDayEntries]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHourlySteps = async () => {
+      if (
+        kind !== "steps" ||
+        Platform.OS !== "android" ||
+        !selectedDateKey ||
+        !isSelectedToday
+      ) {
+        setHourlyStepValues([]);
+        return;
+      }
+
+      const date = new Date(`${selectedDateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        setHourlyStepValues([]);
+        return;
+      }
+
+      try {
+        const values = await readHealthConnectHourlyStepsForDate(date);
+        if (!cancelled) {
+          setHourlyStepValues(
+            values?.map((value) => (value > 0 ? value : null)) ?? [],
+          );
+        }
+      } catch (error) {
+        console.log("Health Connect hourly steps read failed v5", {
+          date: selectedDateKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        if (!cancelled) {
+          setHourlyStepValues([]);
+        }
+      }
+    };
+
+    void loadHourlySteps();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSelectedToday, kind, selectedDateKey]);
 
   useEffect(() => {
     setMeasuredDate(new Date());
+    setWeightKg("");
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
   }, [kind, modalOpen]);
 
   useEffect(() => {
-    setSelectedBarIndex(null);
-  }, [kind, points, entriesByDate]);
+    const latestDate = chart.points[chart.points.length - 1]?.date ?? null;
+    if (!latestDate) {
+      setSelectedDateKey(null);
+      return;
+    }
+
+    setSelectedDateKey((current) => {
+      if (!current) return latestDate;
+      return chart.points.some((point) => point.date === current)
+        ? current
+        : latestDate;
+    });
+  }, [chart.points, kind]);
 
   const onSave = useCallback(async () => {
     if (kind === "steps") return;
@@ -389,6 +580,16 @@ export default function FitnessMetricTrend() {
           kind: "heart_rate",
           measuredAt: dateToMeasuredAtIso(measuredDate),
         };
+      } else if (kind === "weight") {
+        const value = Number(weightKg);
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new Error("Enter a valid weight");
+        }
+        payload = {
+          kind: "weight",
+          measuredAt: dateToMeasuredAtIso(measuredDate),
+          valueKg: Math.round(value * 10) / 10,
+        };
       } else {
         return;
       }
@@ -413,6 +614,7 @@ export default function FitnessMetricTrend() {
     bpSystolic,
     bpDiastolic,
     heartRateBpm,
+    weightKg,
     createMeasurement,
     refetchHistory,
   ]);
@@ -466,6 +668,10 @@ export default function FitnessMetricTrend() {
           </ThemedText>
         )}
 
+        {refreshing ? (
+          <ThemedText style={{ opacity: 0.6 }}>Refreshing latest readings…</ThemedText>
+        ) : null}
+
         {loading ? (
           <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>
             <ActivityIndicator size="large" />
@@ -494,13 +700,60 @@ export default function FitnessMetricTrend() {
                   kind={kind}
                   points={chart.points}
                   selectedBarIndex={selectedBarIndex}
-                  setSelectedBarIndex={setSelectedBarIndex}
+                  setSelectedBarIndex={(index) => {
+                    const nextDate =
+                      typeof index === "number"
+                        ? chart.points[index]?.date ?? null
+                        : null;
+                    setSelectedDateKey(nextDate);
+                  }}
                   targetLines={chart.targetLines}
-                  yMax={chart.yMax}
-                  yMin={chart.yMin}
                 />
 
-                {selectedDateKey ? (
+                {kind === "steps" && resolvedStepSummary ? (
+                  <StepSummary summary={resolvedStepSummary} />
+                ) : null}
+
+                {selectedDateKey && kind === "steps" ? (
+                  hourlyStepValues.length ? (
+                    <MetricHourlyBarChart
+                      emptyLabel="No step activity recorded for this day."
+                      formatSelectedValue={(value) =>
+                        typeof value === "number"
+                          ? `${Math.round(value).toLocaleString()} steps`
+                          : "--"
+                      }
+                      label="Hourly steps"
+                      values={hourlyStepValues}
+                    />
+                  ) : isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                    <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                      Hourly step breakdown is unavailable for this source.
+                    </ThemedText>
+                  ) : !isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                    <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                      Hourly step breakdown is only available for today.
+                    </ThemedText>
+                  ) : null
+                ) : null}
+
+                {selectedDateKey &&
+                kind === "heart_rate" &&
+                heartRateHourlyValues.length ? (
+                  <MetricHourlyBarChart
+                    color="#DC2626"
+                    emptyLabel="No heart rate readings for this day."
+                    formatSelectedValue={(value) =>
+                      typeof value === "number" ? `${Math.round(value)} bpm` : "--"
+                    }
+                    label="Hourly heart rate"
+                    values={heartRateHourlyValues}
+                  />
+                ) : null}
+
+                {selectedDateKey &&
+                kind !== "steps" &&
+                kind !== "heart_rate" ? (
                   <MetricDayEntries
                     kind={kind}
                     selectedDateKey={selectedDateKey}
@@ -570,13 +823,81 @@ export default function FitnessMetricTrend() {
         setShowSleepToPicker={setShowSleepToPicker}
         setSleepFromTime={setSleepFromTime}
         setSleepToTime={setSleepToTime}
+        setWeightKg={setWeightKg}
         showDatePicker={showDatePicker}
         showSleepFromPicker={showSleepFromPicker}
         showSleepToPicker={showSleepToPicker}
         sleepFromTime={sleepFromTime}
         sleepToTime={sleepToTime}
         systolicOptions={systolicOptions}
+        weightKg={weightKg}
       />
+    </View>
+  );
+}
+
+function StepSummary({
+  summary,
+}: {
+  summary: {
+    averageSpeedKph: number | null;
+    caloriesKcal: number | null;
+    distanceMeters: number | null;
+    steps: number | null;
+  };
+}) {
+  const items = [
+    {
+      label: "Steps",
+      value: formatStepMetric(summary.steps),
+    },
+    {
+      label: "Distance",
+      value: formatDistanceValue(summary.distanceMeters),
+    },
+    {
+      label: "Calories",
+      value: formatStepMetric(summary.caloriesKcal, { suffix: "kcal" }),
+    },
+    {
+      label: "Avg speed",
+      value: formatStepMetric(summary.averageSpeedKph, {
+        digits: 1,
+        suffix: "km/h",
+      }),
+    },
+  ];
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+        marginTop: 12,
+      }}
+    >
+      {items.map((item) => (
+        <View
+          key={item.label}
+          style={{
+            backgroundColor: "#F8FAFC",
+            borderColor: "#E2E8F0",
+            borderRadius: 10,
+            borderWidth: 1,
+            minWidth: "47%",
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+          }}
+        >
+          <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+            {item.label}
+          </ThemedText>
+          <ThemedText type="defaultSemiBold" style={{ fontSize: 18 }}>
+            {item.value}
+          </ThemedText>
+        </View>
+      ))}
     </View>
   );
 }

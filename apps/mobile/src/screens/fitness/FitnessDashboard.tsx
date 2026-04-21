@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -12,6 +13,7 @@ import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
+import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@/store/services/dashboardApi";
 import { useGetLatestMeasurementsQuery } from "@/store/services/measurementsApi";
 import type { MeasurementLatest } from "@/store/services/types";
+import { formatSleepHours } from "./metricTrendUtils";
 
 type MetricCard = {
   kind: MeasurementKind;
@@ -64,6 +67,8 @@ function toCard(
             ? "Exercise"
             : kind === "sleep"
               ? "Sleep"
+              : kind === "weight"
+                ? "Weight"
               : "Steps",
       subtext: "No reading yet",
       value: "No data",
@@ -127,7 +132,18 @@ function toCard(
       subtext: formatDateTime(doc.measuredAt),
       value:
         typeof doc.durationMin === "number"
-          ? `${Math.round(doc.durationMin)} min`
+          ? formatSleepHours(doc.durationMin)
+          : "No data",
+    };
+  }
+  if (doc.kind === "weight") {
+    return {
+      kind: "weight",
+      label: "Weight",
+      subtext: formatDateTime(doc.measuredAt),
+      value:
+        typeof doc.valueKg === "number"
+          ? `${Math.round(doc.valueKg * 10) / 10} kg`
           : "No data",
     };
   }
@@ -219,18 +235,17 @@ export default function FitnessDashboard() {
     useGetLatestMeasurementsQuery(undefined);
   const { data: targetsData } = useGetTargetsQuery("lifestyle");
   const {
+    backgroundReadGranted,
     dataOrigins: stepDataOrigins,
     debug: stepDebug,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
-    selectedDataOrigin,
+    requestBackgroundReadAccess,
     status: stepStatus,
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
-  useSyncStepCount(stepsToday, stepStatus === "ready", {
-    providerPackageName: selectedDataOrigin,
-  });
+  useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(true);
   const errorMessage = toQueryErrorMessage(
     error,
@@ -240,6 +255,24 @@ export default function FitnessDashboard() {
   const loading = isLoading && items.length === 0;
   const refreshing = isFetching && items.length > 0;
   const hasMissingHealthPermissions = missingHealthPermissions.length > 0;
+
+  const handleTriggerBackgroundTask = async () => {
+    try {
+      const triggered =
+        await triggerHealthConnectBackgroundTaskForTestingAsync();
+      Alert.alert(
+        triggered ? "Background task triggered" : "Background task unavailable",
+        triggered
+          ? "The Health Connect background worker was triggered for testing."
+          : "Background task testing is unavailable on this build or device.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Background task failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
 
   const stepsTarget = useMemo(() => {
     const stepsTargetItem = targetsData?.items.find(
@@ -282,6 +315,7 @@ export default function FitnessDashboard() {
 
     return [
       stepsCard,
+      toCard("weight", byKind.get("weight")),
       toCard("heart_rate", byKind.get("heart_rate")),
       toCard("exercise", byKind.get("exercise")),
       toCard("blood_pressure", byKind.get("blood_pressure")),
@@ -340,7 +374,7 @@ export default function FitnessDashboard() {
         <View style={{ gap: 4 }}>
           <ThemedText type="title">Fitness dashboard</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
-            Latest readings for heart rate, activity, blood pressure, and sleep.
+            Latest readings for weight, heart rate, activity, blood pressure, and sleep.
           </ThemedText>
         </View>
 
@@ -359,6 +393,57 @@ export default function FitnessDashboard() {
             <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
             <TouchableOpacity onPress={refetch} style={{ marginTop: 6 }}>
               <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
+            </TouchableOpacity>
+          </Card>
+        ) : null}
+
+        {!loading && stepStatus === "ready" && !backgroundReadGranted ? (
+          <Card>
+            <ThemedText type="defaultSemiBold">
+              Background Health Connect sync
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Allow background Health Connect access if you want steps,
+              exercise, sleep, heart rate, and blood pressure to sync when the
+              app is not open.
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => {
+                void requestBackgroundReadAccess();
+              }}
+              style={{ marginTop: 8 }}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>
+                Allow background health access
+              </ThemedText>
+            </TouchableOpacity>
+            {__DEV__ ? (
+              <ThemedText style={{ marginTop: 8, opacity: 0.7 }}>
+                Debug: background read permission is missing.
+              </ThemedText>
+            ) : null}
+          </Card>
+        ) : null}
+
+        {!loading && __DEV__ ? (
+          <Card>
+            <ThemedText type="defaultSemiBold">Dev: Background sync</ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Trigger the Health Connect background worker immediately for testing.
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Background read permission:{" "}
+              {backgroundReadGranted ? "granted" : "missing"}
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => {
+                void handleTriggerBackgroundTask();
+              }}
+              style={{ marginTop: 8 }}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>
+                Run background sync now
+              </ThemedText>
             </TouchableOpacity>
           </Card>
         ) : null}
