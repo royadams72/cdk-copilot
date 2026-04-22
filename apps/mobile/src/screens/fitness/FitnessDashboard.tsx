@@ -263,7 +263,6 @@ export default function FitnessDashboard() {
   const weightDisplayUnit = weightUnitFromUserUnits(
     currentUserSettings?.units ?? "metric",
   );
-  console.log("weightDisplayUnit", currentUserSettings?.units);
 
   const handleTriggerBackgroundTask = async () => {
     try {
