@@ -97,6 +97,19 @@ function dayTimeRange(date: Date) {
   };
 }
 
+function hourTimeRange(dayStart: Date, hour: number) {
+  const start = new Date(dayStart);
+  start.setHours(hour, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(hour + 1, 0, 0, 0);
+
+  return {
+    endTime: new Date(end.getTime() - 1).toISOString(),
+    operator: "between" as const,
+    startTime: start.toISOString(),
+  };
+}
+
 async function readStepTotalsByOrigin(
   healthConnect: typeof import("react-native-health-connect"),
   timeRangeFilter: {
@@ -153,6 +166,15 @@ function selectStepTotalFromOrigins(
           ? highestOriginTotal
           : aggregateTotal,
   };
+}
+
+function selectHourlyStepDataOrigin(originTotals: Record<string, number>) {
+  if (typeof originTotals.android === "number" && originTotals.android > 0) {
+    return "android";
+  }
+
+  const selected = selectStepTotalFromOrigins(0, originTotals);
+  return selected.selectedDataOrigin;
 }
 
 async function readStepAggregateSummary(
@@ -453,37 +475,30 @@ function hasFlatHourlyDistribution(values: number[]) {
 async function readHourlyStepAggregateFallback(
   healthConnect: typeof import("react-native-health-connect"),
   date: Date,
+  selectedDataOrigin: string | null,
 ) {
-  const groups = await healthConnect.aggregateGroupByDuration({
-    recordType: "Steps",
-    timeRangeFilter: dayTimeRange(date),
-    timeRangeSlicer: {
-      duration: "HOURS",
-      length: 1,
-    },
-  });
-
+  const dayStart = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
   const hourly = Array.from({ length: 24 }, () => 0);
-  for (const group of groups) {
-    const groupStart = new Date(group.startTime);
-    if (Number.isNaN(groupStart.getTime())) {
-      continue;
-    }
 
-    hourly[groupStart.getHours()] = Math.max(
-      0,
-      Math.round(group.result.COUNT_TOTAL ?? 0),
-    );
+  for (let hour = 0; hour < 24; hour += 1) {
+    const aggregate = await healthConnect.aggregateRecord({
+      dataOriginFilter: selectedDataOrigin ? [selectedDataOrigin] : undefined,
+      recordType: "Steps",
+      timeRangeFilter: hourTimeRange(dayStart, hour),
+    });
+    hourly[hour] = Math.max(0, Math.round(aggregate.COUNT_TOTAL ?? 0));
   }
 
   return hourly;
 }
-
-type BoundedAfterTimeRangeFilter = {
-  operator: "after";
-  startTime: string;
-  endTime: string;
-};
 
 export async function readHealthConnectHourlyStepsForDate(date: Date) {
   const healthConnect = await import("react-native-health-connect");
@@ -520,67 +535,55 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
     0,
     0,
   );
-  const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   const dayStartIso = dayStart.toISOString();
-  const nextDayStartMs = nextDayStart.getTime();
-
-  const nextDayStartIso = nextDayStart.toISOString();
-
-  console.log("HC hourly steps v5 request", {
-    date: date.toISOString(),
-    dayStartIso,
-    nextDayStartIso,
-    operator: "after",
-    pageSize: 5000,
+  const dayRange = dayTimeRange(date);
+  const dayAggregate = await healthConnect.aggregateRecord({
+    recordType: "Steps",
+    timeRangeFilter: dayRange,
   });
-
-  const boundedTimeRangeFilter: BoundedAfterTimeRangeFilter = {
-    endTime: nextDayStartIso,
-    operator: "after",
-    startTime: dayStartIso,
-  };
+  let originTotals: Record<string, number> = {};
 
   try {
-    const result = await healthConnect.readRecords("Steps", {
-      ascendingOrder: true,
-      pageSize: 5000,
-      timeRangeFilter:
-        boundedTimeRangeFilter as unknown as Parameters<
-          typeof healthConnect.readRecords<"Steps">
-        >[1]["timeRangeFilter"],
-    });
-
-    const hourly = clampTodayFutureHours(
-      date,
-      bucketHourlyStepValues(
-        result.records,
-        dayStart,
-        nextDayStartMs,
-      ),
+    originTotals = await readStepTotalsByOrigin(
+      healthConnect,
+      dayRange,
+      dayAggregate.dataOrigins ?? [],
     );
-    if (hasFlatHourlyDistribution(hourly)) {
-      console.log("HC hourly steps v4 unavailable-flat-records", {
-        date: date.toISOString(),
-        hourly,
-      });
-      return null;
-    }
-
-    return hourly;
   } catch (error) {
-    console.log("HC hourly steps raw read failed v5", {
+    console.log("HC hourly steps origin read failed v6", {
+      aggregateDataOrigins: dayAggregate.dataOrigins ?? [],
       date: date.toISOString(),
       error: toErrorMessage(error),
     });
   }
 
+  const selected = selectStepTotalFromOrigins(
+    Math.max(0, Math.round(dayAggregate.COUNT_TOTAL ?? 0)),
+    originTotals,
+  );
+  const selectedHourlyDataOrigin = selectHourlyStepDataOrigin(originTotals);
+
+  console.log("HC hourly steps v6 aggregate request", {
+    date: date.toISOString(),
+    dayStartIso,
+    endTime: dayRange.endTime,
+    operator: dayRange.operator,
+    originTotals,
+    selectedDataOrigin: selected.selectedDataOrigin,
+    selectedHourlyDataOrigin,
+  });
+
   try {
     const hourly = clampTodayFutureHours(
       date,
-      await readHourlyStepAggregateFallback(healthConnect, date),
+      await readHourlyStepAggregateFallback(
+        healthConnect,
+        date,
+        selectedHourlyDataOrigin,
+      ),
     );
     if (hasFlatHourlyDistribution(hourly)) {
-      console.log("HC hourly steps v5 unavailable-flat-aggregate", {
+      console.log("HC hourly steps v6 unavailable-flat-aggregate", {
         date: date.toISOString(),
         hourly,
       });
@@ -589,7 +592,7 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
 
     return hourly;
   } catch (error) {
-    console.log("HC hourly steps aggregate fallback failed v5", {
+    console.log("HC hourly steps aggregate failed v6", {
       date: date.toISOString(),
       error: toErrorMessage(error),
     });

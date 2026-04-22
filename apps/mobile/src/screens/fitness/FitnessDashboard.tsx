@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,8 +14,14 @@ import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
+import {
+  detectInstalledFitnessApps,
+  formatFitnessAppName,
+  type KnownFitnessApp,
+} from "@/lib/fitnessApps";
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "../dashboard/components/Card";
+import { buildFitnessSetupGuidance } from "@/lib/fitnessSetupState";
 import {
   type MeasurementKind,
   toQueryErrorMessage,
@@ -200,14 +206,7 @@ function formatStepOrigins(dataOrigins: string[]) {
 }
 
 function formatHealthConnectOrigin(origin: string) {
-  if (origin.includes("shealth")) return "Samsung Health";
-  if (origin.includes("google.android.apps.fitness")) return "Google Fit";
-  if (origin.includes("fitbit")) return "Fitbit";
-  if (origin.includes("garmin")) return "Garmin";
-  if (origin.includes("withings")) return "Withings";
-  if (origin.includes("oneplus")) return "OnePlus";
-
-  return origin.split(".").at(-1) ?? origin;
+  return formatFitnessAppName(origin);
 }
 
 function formatOriginTotals(originTotals: Record<string, number>) {
@@ -235,6 +234,9 @@ function getStepSubtext(
 
 export default function FitnessDashboard() {
   const router = useRouter();
+  const [installedFitnessApps, setInstalledFitnessApps] = useState<
+    KnownFitnessApp[]
+  >([]);
   const { data, error, isFetching, isLoading, refetch } =
     useGetLatestMeasurementsQuery(undefined);
   const { data: currentUserSettings } = useGetCurrentUserSettingsQuery();
@@ -263,6 +265,23 @@ export default function FitnessDashboard() {
   const weightDisplayUnit = weightUnitFromUserUnits(
     currentUserSettings?.units ?? "metric",
   );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadInstalledApps = async () => {
+      const apps = await detectInstalledFitnessApps();
+      if (mounted) {
+        setInstalledFitnessApps(apps);
+      }
+    };
+
+    void loadInstalledApps();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleTriggerBackgroundTask = async () => {
     try {
@@ -358,6 +377,24 @@ export default function FitnessDashboard() {
     weightDisplayUnit,
   ]);
 
+  const fitnessSetupGuidance = useMemo(
+    () =>
+      buildFitnessSetupGuidance({
+        hasMissingHealthPermissions,
+        installedApps: installedFitnessApps,
+        items,
+        stepDataOrigins,
+        stepStatus,
+      }),
+    [
+      hasMissingHealthPermissions,
+      installedFitnessApps,
+      items,
+      stepDataOrigins,
+      stepStatus,
+    ],
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
@@ -448,6 +485,17 @@ export default function FitnessDashboard() {
                 Debug: background read permission is missing.
               </ThemedText>
             ) : null}
+          </Card>
+        ) : null}
+
+        {!loading && fitnessSetupGuidance ? (
+          <Card>
+            <ThemedText type="defaultSemiBold">
+              {fitnessSetupGuidance.title}
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              {fitnessSetupGuidance.body}
+            </ThemedText>
           </Card>
         ) : null}
 

@@ -707,10 +707,6 @@ export default function FitnessMetricTrend() {
           </ThemedText>
         )}
 
-        {refreshing ? (
-          <ThemedText style={{ opacity: 0.6 }}>Refreshing latest readings…</ThemedText>
-        ) : null}
-
         {loading ? (
           <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>
             <ActivityIndicator size="large" />
