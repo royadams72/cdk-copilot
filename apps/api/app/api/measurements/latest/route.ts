@@ -7,6 +7,15 @@ import { COLLECTIONS } from "@ckd/core/server";
 
 export const runtime = "nodejs";
 
+const MEASUREMENT_KINDS = [
+  "blood_pressure",
+  "exercise",
+  "heart_rate",
+  "sleep",
+  "steps",
+  "weight",
+] as const;
+
 export async function GET(req: NextRequest) {
   const caller = await requireUser(req);
   const patientIdParam =
@@ -22,18 +31,19 @@ export async function GET(req: NextRequest) {
   const patientId = new ObjectId(patientIdParam);
 
   const db = await getDb();
-
-  const docs = await db
-    .collection(COLLECTIONS.MeasurementsLedger)
-    .aggregate([
-      { $match: { patientId } },
-      { $sort: { measuredAt: 1, receivedAt: 1, _id: 1 } },
-      { $group: { _id: "$kind", latest: { $last: "$$ROOT" } } },
-      { $replaceRoot: { newRoot: "$latest" } },
-      { $project: { _id: 0 } },
-      { $sort: { kind: 1 } },
-    ])
-    .toArray();
+  const collection = db.collection(COLLECTIONS.MeasurementsLedger);
+  const docs = (
+    await Promise.all(
+      MEASUREMENT_KINDS.map((kind) =>
+        collection.findOne(
+          { kind, patientId },
+          { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
+        ),
+      ),
+    )
+  )
+    .filter((doc): doc is Record<string, unknown> => !!doc)
+    .sort((a, b) => String(a.kind).localeCompare(String(b.kind)));
 
   return NextResponse.json({ ok: true, data: docs });
 }

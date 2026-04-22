@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
   if (!existingPii) {
     await users_pii.insertOne({
       ...user_pii_dto,
+      ...(res.doc.orgId ? { orgId: res.doc.orgId } : {}),
       patientId: tokenPatientId,
     });
   }
