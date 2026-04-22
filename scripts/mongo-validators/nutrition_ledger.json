@@ -1,8 +1,32 @@
 {
   "collMod": "nutrition_ledger",
   "indexes": [
-    { "key": { "eatenAt": -1, "patientId": 1 } },
-    { "key": { "createdAt": -1, "patientId": 1 } }
+    {
+      "key": { "patientId": 1, "eatenAt": -1 },
+      "options": { "name": "byPatientEatenAt" }
+    },
+    {
+      "key": { "patientId": 1, "createdAt": -1 },
+      "options": { "name": "byPatientCreatedAt" }
+    },
+    {
+      "key": { "patientId": 1, "mealType": 1, "eatenAt": -1 },
+      "options": { "name": "byPatientMealTypeEatenAt" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "eatenAt": -1 },
+      "options": {
+        "name": "byOrgPatientEatenAt",
+        "partialFilterExpression": { "orgId": { "$type": "string" } }
+      }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "createdAt": -1 },
+      "options": {
+        "name": "byOrgPatientCreatedAt",
+        "partialFilterExpression": { "orgId": { "$type": "string" } }
+      }
+    }
   ],
   "validationAction": "error",
   "validationLevel": "moderate",

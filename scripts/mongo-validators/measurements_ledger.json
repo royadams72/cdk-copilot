@@ -43,11 +43,6 @@
           "externalRecordId": { "$exists": true }
         }
       }
-    },
-    { "key": { "receivedAt": -1 }, "options": { "name": "byReceived_desc" } },
-    {
-      "key": { "createdBy": 1, "measuredAt": -1 },
-      "options": { "name": "byCreatedBy_time" }
     }
   ],
   "validationAction": "error",

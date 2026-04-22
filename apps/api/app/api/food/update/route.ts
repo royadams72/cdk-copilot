@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     const patientObjectId = new ObjectId(caller.patientId);
 
     type NutritionEntryInsert = Omit<TNutritionEntry, "patientId"> & {
+      orgId?: string;
       patientId: ObjectId;
     };
     const collection = getCollection<NutritionEntryInsert>(
@@ -165,6 +166,7 @@ export async function POST(req: NextRequest) {
           eatenAt: resolvedEatenAt,
           items: mealArray,
           mealType,
+          ...(caller.orgId ? { orgId: caller.orgId } : {}),
           totals,
           updatedAt: now,
         },

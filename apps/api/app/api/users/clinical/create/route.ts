@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const user = await requireUser(req, STEP3);
-    // console.log("user:", user);
 
     if (!user.patientId) {
       return bad("Patient context missing", { requestId }, 403);
@@ -47,18 +46,18 @@ export async function POST(req: NextRequest) {
     const insertDto: TUserClinicalCreate = parsed.data;
     const doc: UserClinicalDoc = {
       ...insertDto,
-      patientId: new ObjectId(insertDto.patientId),
       createdAt: now,
-      updatedAt: now,
       createdBy: user.principalId,
-      updatedBy: user.principalId,
       lastClinicalUpdateAt: insertDto.lastClinicalUpdateAt ?? now,
+      patientId: new ObjectId(insertDto.patientId),
+      updatedAt: now,
+      updatedBy: user.principalId,
     };
 
     const db = await getDb();
     const collection = getCollection<UserClinicalDoc>(
       db,
-      COLLECTIONS.UsersClinical
+      COLLECTIONS.UsersClinical,
     );
 
     const { insertedId } = await collection.insertOne(doc);

@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     const patientObjectId = new ObjectId(caller.patientId);
 
     type NutritionEntryInsert = Omit<TNutritionEntry, "patientId"> & {
+      orgId?: string;
       patientId: ObjectId;
     };
     const collection = getCollection<NutritionEntryInsert>(
@@ -161,6 +162,7 @@ export async function POST(req: NextRequest) {
     if (parsed?.data) {
       await collection.insertOne({
         ...parsed.data,
+        ...(caller.orgId ? { orgId: caller.orgId } : {}),
         patientId: patientObjectId,
       });
       await incrementFavouriteMaps(

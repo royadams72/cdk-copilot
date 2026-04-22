@@ -11,7 +11,7 @@ import { measurementsApi } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
 
 const FAILED_SYNC_RETRY_MS = 10 * 60_000;
-const MAX_UPLOADS_PER_SYNC = 5;
+const MAX_UPLOADS_PER_SYNC = 100;
 const MIN_BACKGROUND_SYNC_INTERVAL_MS = 15 * 60_000;
 const FOREGROUND_SYNC_INTERVAL_MS = 5 * 60_000;
 
@@ -108,18 +108,27 @@ function externalRecordId(
   recordType: HealthRecordType,
   record: HealthRecord,
   fallbackTime: string,
+  sampleKey?: string,
 ) {
   const origin = providerPackageName(record.metadata);
   const recordId =
     record.metadata?.id?.trim() || record.metadata?.clientRecordId?.trim();
-  if (recordId) return `health-connect:${origin}:${recordType}:${recordId}`;
-  return `health-connect:${origin}:${recordType}:${fallbackTime}`;
+  const suffix = sampleKey?.trim();
+  if (recordId) {
+    return suffix
+      ? `health-connect:${origin}:${recordType}:${recordId}:${suffix}`
+      : `health-connect:${origin}:${recordType}:${recordId}`;
+  }
+  return suffix
+    ? `health-connect:${origin}:${recordType}:${fallbackTime}:${suffix}`
+    : `health-connect:${origin}:${recordType}:${fallbackTime}`;
 }
 
 function provenance(
   recordType: HealthRecordType,
   record: HealthRecord,
   time: string,
+  sampleKey?: string,
 ) {
   const packageName = providerPackageName(record.metadata);
   const manufacturer = record.metadata?.device?.manufacturer?.trim();
@@ -136,7 +145,7 @@ function provenance(
             platform: "Health Connect",
           }
         : undefined,
-    externalRecordId: externalRecordId(recordType, record, time),
+    externalRecordId: externalRecordId(recordType, record, time, sampleKey),
     provider: {
       displayName: providerDisplayName(packageName),
       packageName,
@@ -171,16 +180,26 @@ function exerciseTitle(record: HealthRecord) {
   return "Imported exercise";
 }
 
-function latestHeartRateSample(record: HealthRecord) {
+function heartRateSamples(record: HealthRecord) {
   const samples = record.samples ?? [];
+  const seen = new Set<string>();
+
   return samples
     .filter(
       (sample) =>
         typeof sample.beatsPerMinute === "number" &&
+        Number.isFinite(sample.beatsPerMinute) &&
         typeof sample.time === "string",
     )
     .sort((a, b) => String(a.time).localeCompare(String(b.time)))
-    .at(-1);
+    .filter((sample) => {
+      const key = `${sample.time}:${sample.beatsPerMinute}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
 }
 
 function toMeasurementPayloads(
@@ -206,14 +225,15 @@ function toMeasurementPayloads(
     }
 
     if (recordType === "HeartRate") {
-      const sample = latestHeartRateSample(record);
-      if (!sample?.time || !sample.beatsPerMinute) continue;
-      payloads.push({
-        ...provenance(recordType, record, sample.time),
-        bpm: Math.round(sample.beatsPerMinute),
-        kind: "heart_rate",
-        measuredAt: sample.time,
-      });
+      for (const sample of heartRateSamples(record)) {
+        if (!sample.time || !sample.beatsPerMinute) continue;
+        payloads.push({
+          ...provenance(recordType, record, sample.time, sample.time),
+          bpm: Math.round(sample.beatsPerMinute),
+          kind: "heart_rate",
+          measuredAt: sample.time,
+        });
+      }
       continue;
     }
 

@@ -46,8 +46,33 @@ type MeasurementDoc = {
 
 const MAX_DOCS = 5000;
 
-function dayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+type UserPiiDoc = {
+  patientId?: ObjectId;
+  timeZone?: string;
+};
+
+function dayKey(date: Date, timeZone: string) {
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone,
+      year: "numeric",
+    });
+  } catch {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "Europe/London",
+      year: "numeric",
+    });
+  }
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
 }
 
 function asNumber(value: unknown): number | null {
@@ -87,6 +112,12 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
+    const usersPii = db.collection<UserPiiDoc>(COLLECTIONS.UsersPII);
+    const pii = await usersPii.findOne(
+      { patientId },
+      { projection: { _id: 0, timeZone: 1 } },
+    );
+    const timeZone = pii?.timeZone?.trim() || "Europe/London";
     const docs = await db
       .collection<MeasurementDoc>(COLLECTIONS.MeasurementsLedger)
       .find(
@@ -134,7 +165,7 @@ export async function GET(req: NextRequest) {
     >();
 
     for (const doc of docs) {
-      const key = dayKey(doc.measuredAt);
+      const key = dayKey(doc.measuredAt, timeZone);
 
       let value: number | null = null;
       let value2: number | null = null;
@@ -249,6 +280,13 @@ export async function GET(req: NextRequest) {
             : null;
           value2 = numericValue2.length
             ? numericValue2.reduce((sum, item) => sum + item, 0)
+            : null;
+        } else if (kind === "heart_rate") {
+          value = numericValue.length
+            ? Math.round(
+                numericValue.reduce((sum, item) => sum + item, 0) /
+                  numericValue.length,
+              )
             : null;
         } else if (kind === "sleep") {
           value = numericValue.length
