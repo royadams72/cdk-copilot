@@ -26,7 +26,6 @@ export async function GET(req: NextRequest) {
       { patientId: new ObjectId(user.patientId) },
       { projection: { _id: 0, units: 1 } },
     );
-    console.log("pii?.units", pii?.units, "user.patientId::", user.patientId);
 
     return ok({ units: pii?.units === "imperial" ? "imperial" : "metric" });
   } catch (err: any) {

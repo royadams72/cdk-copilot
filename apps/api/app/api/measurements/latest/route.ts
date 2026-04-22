@@ -32,17 +32,16 @@ export async function GET(req: NextRequest) {
 
   const db = await getDb();
   const collection = db.collection(COLLECTIONS.MeasurementsLedger);
-  const docs = (
-    await Promise.all(
-      MEASUREMENT_KINDS.map((kind) =>
-        collection.findOne(
-          { kind, patientId },
-          { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
-        ),
+  const results = await Promise.all(
+    MEASUREMENT_KINDS.map((kind) =>
+      collection.findOne(
+        { kind, patientId },
+        { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
       ),
-    )
-  )
-    .filter((doc): doc is Record<string, unknown> => !!doc)
+    ),
+  );
+  const docs = results
+    .filter((doc) => doc !== null)
     .sort((a, b) => String(a.kind).localeCompare(String(b.kind)));
 
   return NextResponse.json({ ok: true, data: docs });

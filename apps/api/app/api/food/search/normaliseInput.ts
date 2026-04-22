@@ -108,7 +108,6 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
   const out: TLogMealItem[] = [];
 
   for (const item of items) {
-    console.log("item::::::", items);
     const text = item.normalised.toLowerCase().trim();
     const breadRewrite = rewriteBreadForEdamam(item);
     if (breadRewrite) {
