@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
@@ -8,21 +9,21 @@ import { COLLECTIONS, getCollection } from "@ckd/core/server";
 export const runtime = "nodejs";
 
 type UserPiiDoc = {
-  patientId?: string;
+  patientId?: ObjectId;
   units?: "metric" | "imperial";
 };
 
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser(req);
-    if (!user.patientId) {
+    if (!user.patientId || !ObjectId.isValid(user.patientId)) {
       return bad("Patient context missing", undefined, 403);
     }
 
     const db = await getDb();
     const usersPii = getCollection<UserPiiDoc>(db, COLLECTIONS.UsersPII);
     const pii = await usersPii.findOne(
-      { patientId: user.patientId },
+      { patientId: new ObjectId(user.patientId) },
       { projection: { _id: 0, units: 1 } },
     );
     console.log("pii?.units", pii?.units, "user.patientId::", user.patientId);

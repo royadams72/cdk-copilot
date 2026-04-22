@@ -16,6 +16,10 @@
         },
         "genderIdentity": { "bsonType": "string" },
         "ethnicity": { "bsonType": "string" },
+        "units": {
+          "bsonType": "string",
+          "enum": ["metric", "imperial"]
+        },
         "phoneE164": { "bsonType": "string" },
         "email": { "bsonType": "string" },
         "address": {
