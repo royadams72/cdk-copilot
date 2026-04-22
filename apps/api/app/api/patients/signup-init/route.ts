@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     );
 
     const existingAccountByEmail = await accounts.findOne(
-      { isActive: true, email },
+      { email, isActive: true },
       {
         collation: { locale: "en", strength: 2 },
         projection: { principalId: 1, role: 1, scopes: 1 },
@@ -99,15 +99,15 @@ export async function POST(req: NextRequest) {
 
     const pendingAuth = await auth_tokens.findOne(
       {
-        email,
-        usedAt: null,
         type: {
           $in: [COLLECTION_TYPE.EmailVerify, COLLECTION_TYPE.OauthCode],
         },
+        email,
+        usedAt: null,
       },
       {
-        sort: { createdAt: -1 },
         projection: { patientId: 1, principalId: 1, role: 1, scopes: 1 },
+        sort: { createdAt: -1 },
       },
     );
 
@@ -142,21 +142,21 @@ export async function POST(req: NextRequest) {
       ? existingAccount.scopes
       : existingAccountByEmail?.scopes?.length
         ? existingAccountByEmail.scopes
-      : Array.isArray((existingPii as any)?.scopes) &&
-          (existingPii as any).scopes.length
-        ? (existingPii as any).scopes
-        : Array.isArray((pendingAuth as any)?.scopes) &&
-            (pendingAuth as any).scopes.length
-          ? (pendingAuth as any).scopes
-        : scopes;
+        : Array.isArray((existingPii as any)?.scopes) &&
+            (existingPii as any).scopes.length
+          ? (existingPii as any).scopes
+          : Array.isArray((pendingAuth as any)?.scopes) &&
+              (pendingAuth as any).scopes.length
+            ? (pendingAuth as any).scopes
+            : scopes;
 
     const isExistingIdentity = Boolean(
       existingPii ||
-        existingAccount ||
-        existingAccountByEmail ||
-        patientByPiiId ||
-        patientByPrincipal ||
-        pendingAuth,
+      existingAccount ||
+      existingAccountByEmail ||
+      patientByPiiId ||
+      patientByPrincipal ||
+      pendingAuth,
     );
 
     if (existingPii && !existingAccount) {
