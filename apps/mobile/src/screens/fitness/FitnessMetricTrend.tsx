@@ -58,9 +58,7 @@ import {
   SLEEP_TARGET_MIN,
   SLOT_GAP,
   sortEntriesForTrendDay,
-  convertKgToLb,
   convertLbToKg,
-  type WeightUnit,
   weightUnitFromUserUnits,
 } from "./metricTrendUtils";
 
@@ -123,8 +121,8 @@ export default function FitnessMetricTrend() {
   const [bpSystolic, setBpSystolic] = useState(BP_TARGET_SYSTOLIC);
   const [bpDiastolic, setBpDiastolic] = useState(BP_TARGET_DIASTOLIC);
   const [heartRateBpm, setHeartRateBpm] = useState(72);
-  const [weightUnit, setWeightUnit] = useState<WeightUnit>("kg");
   const [weightValue, setWeightValue] = useState(70);
+  const [weightDecimal, setWeightDecimal] = useState(5);
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -139,10 +137,12 @@ export default function FitnessMetricTrend() {
   const systolicOptions = useMemo(() => numberRange(90, 220), []);
   const diastolicOptions = useMemo(() => numberRange(50, 140), []);
   const heartRateOptions = useMemo(() => numberRange(35, 220), []);
-  const weightKgOptions = useMemo(
-    () => Array.from({ length: 441 }, (_, index) => 30 + index * 0.5),
+  const exerciseDurationOptions = useMemo(
+    () => numberRange(5, 240).filter((value) => value % 5 === 0),
     [],
   );
+  const weightDecimalOptions = useMemo(() => numberRange(1, 9), []);
+  const weightKgOptions = useMemo(() => numberRange(30, 250), []);
   const weightLbOptions = useMemo(() => numberRange(66, 550), []);
 
   const {
@@ -165,7 +165,7 @@ export default function FitnessMetricTrend() {
     currentUserSettings?.units ?? "metric",
   );
   const weightOptions =
-    weightUnit === "lb" ? weightLbOptions : weightKgOptions;
+    preferredWeightUnit === "lb" ? weightLbOptions : weightKgOptions;
 
   const points = history?.points ?? [];
   const entriesByDate = history?.entriesByDate ?? {};
@@ -191,22 +191,6 @@ export default function FitnessMetricTrend() {
     }
     return null;
   }, [exerciseCatalog, selectedExerciseId]);
-
-  const handleWeightUnitChange = useCallback((nextUnit: WeightUnit) => {
-    setWeightUnit((currentUnit) => {
-      if (currentUnit === nextUnit) {
-        return currentUnit;
-      }
-
-      setWeightValue((currentValue) =>
-        nextUnit === "lb"
-          ? Math.round(convertKgToLb(currentValue))
-          : Math.round(convertLbToKg(currentValue) * 10) / 10,
-      );
-
-      return nextUnit;
-    });
-  }, []);
 
   useEffect(() => {
     if (!exerciseCatalog.length) return;
@@ -535,31 +519,12 @@ export default function FitnessMetricTrend() {
 
   useEffect(() => {
     setMeasuredDate(new Date());
-    setWeightUnit(preferredWeightUnit);
+    setExerciseMinutes("30");
     setWeightValue(preferredWeightUnit === "lb" ? 154 : 70);
+    setWeightDecimal(5);
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
   }, [kind, modalOpen, preferredWeightUnit]);
-
-  useEffect(() => {
-    if (kind !== "weight") {
-      return;
-    }
-
-    setWeightUnit((currentUnit) => {
-      if (currentUnit === preferredWeightUnit) {
-        return currentUnit;
-      }
-
-      setWeightValue((currentValue) =>
-        preferredWeightUnit === "lb"
-          ? Math.round(convertKgToLb(currentValue))
-          : Math.round(convertLbToKg(currentValue) * 10) / 10,
-      );
-
-      return preferredWeightUnit;
-    });
-  }, [kind, preferredWeightUnit]);
 
   useEffect(() => {
     const latestDate = chart.points[chart.points.length - 1]?.date ?? null;
@@ -636,7 +601,7 @@ export default function FitnessMetricTrend() {
           measuredAt: dateToMeasuredAtIso(measuredDate),
         };
       } else if (kind === "weight") {
-        const value = Number(weightValue);
+        const value = Number(weightValue) + weightDecimal / 10;
         if (!Number.isFinite(value) || value <= 0) {
           throw new Error("Enter a valid weight");
         }
@@ -644,7 +609,7 @@ export default function FitnessMetricTrend() {
           kind: "weight",
           measuredAt: dateToMeasuredAtIso(measuredDate),
           valueKg:
-            weightUnit === "lb"
+            preferredWeightUnit === "lb"
               ? Math.round(convertLbToKg(value) * 10) / 10
               : Math.round(value * 10) / 10,
         };
@@ -653,7 +618,7 @@ export default function FitnessMetricTrend() {
       }
 
       await createMeasurement(payload).unwrap();
-      setExerciseMinutes("");
+      setExerciseMinutes("30");
       setModalOpen(false);
       await refetchHistory();
     } catch (err: unknown) {
@@ -672,8 +637,9 @@ export default function FitnessMetricTrend() {
     bpSystolic,
     bpDiastolic,
     heartRateBpm,
-    weightUnit,
     weightValue,
+    weightDecimal,
+    preferredWeightUnit,
     createMeasurement,
     refetchHistory,
   ]);
@@ -897,7 +863,7 @@ export default function FitnessMetricTrend() {
         setShowSleepToPicker={setShowSleepToPicker}
         setSleepFromTime={setSleepFromTime}
         setSleepToTime={setSleepToTime}
-        setWeightUnit={handleWeightUnitChange}
+        setWeightDecimal={setWeightDecimal}
         setWeightValue={setWeightValue}
         showDatePicker={showDatePicker}
         showSleepFromPicker={showSleepFromPicker}
@@ -905,8 +871,11 @@ export default function FitnessMetricTrend() {
         sleepFromTime={sleepFromTime}
         sleepToTime={sleepToTime}
         systolicOptions={systolicOptions}
+        exerciseDurationOptions={exerciseDurationOptions}
+        weightDecimalOptions={weightDecimalOptions}
         weightOptions={weightOptions}
-        weightUnit={weightUnit}
+        weightDecimal={weightDecimal}
+        weightUnit={preferredWeightUnit}
         weightValue={weightValue}
       />
     </View>

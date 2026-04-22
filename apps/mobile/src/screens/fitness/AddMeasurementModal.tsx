@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -32,6 +31,7 @@ type Props = {
   exerciseCatalogError: string | null;
   exerciseCatalogLoading: boolean;
   exerciseMinutes: string;
+  exerciseDurationOptions: number[];
   heartRateBpm: number;
   heartRateOptions: number[];
   kind: MeasurementKind;
@@ -57,7 +57,7 @@ type Props = {
   setShowSleepToPicker: (value: boolean) => void;
   setSleepFromTime: (value: Date) => void;
   setSleepToTime: (value: Date) => void;
-  setWeightUnit: (value: WeightUnit) => void;
+  setWeightDecimal: (value: number) => void;
   setWeightValue: (value: number) => void;
   showDatePicker: boolean;
   showSleepFromPicker: boolean;
@@ -65,6 +65,8 @@ type Props = {
   sleepFromTime: Date;
   sleepToTime: Date;
   systolicOptions: number[];
+  weightDecimal: number;
+  weightDecimalOptions: number[];
   weightOptions: number[];
   weightUnit: WeightUnit;
   weightValue: number;
@@ -78,6 +80,7 @@ export function AddMeasurementModal({
   exerciseCatalogError,
   exerciseCatalogLoading,
   exerciseMinutes,
+  exerciseDurationOptions,
   heartRateBpm,
   heartRateOptions,
   kind,
@@ -101,7 +104,7 @@ export function AddMeasurementModal({
   setShowSleepToPicker,
   setSleepFromTime,
   setSleepToTime,
-  setWeightUnit,
+  setWeightDecimal,
   setWeightValue,
   showDatePicker,
   showSleepFromPicker,
@@ -109,6 +112,8 @@ export function AddMeasurementModal({
   sleepFromTime,
   sleepToTime,
   systolicOptions,
+  weightDecimal,
+  weightDecimalOptions,
   weightOptions,
   weightUnit,
   weightValue,
@@ -229,21 +234,29 @@ export function AddMeasurementModal({
                   </ThemedText>
                 ) : null}
 
-                <TextInput
-                  value={exerciseMinutes}
-                  onChangeText={(text) =>
-                    setExerciseMinutes(text.replace(/[^0-9]/g, ""))
-                  }
-                  placeholder="Duration (minutes)"
-                  keyboardType="number-pad"
+                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
+                  Duration (minutes)
+                </ThemedText>
+                <View
                   style={{
                     borderColor: "#CBD5E1",
                     borderRadius: 8,
                     borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
                   }}
-                />
+                >
+                  <Picker
+                    selectedValue={exerciseMinutes}
+                    onValueChange={(value) => setExerciseMinutes(String(value))}
+                  >
+                    {exerciseDurationOptions.map((value) => (
+                      <Picker.Item
+                        key={`exercise-minutes-${value}`}
+                        label={`${value}`}
+                        value={String(value)}
+                      />
+                    ))}
+                  </Picker>
+                </View>
               </>
             ) : null}
 
@@ -330,52 +343,63 @@ export function AddMeasurementModal({
             {kind === "weight" ? (
               <>
                 <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
-                  Unit
-                </ThemedText>
-                <View
-                  style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
-                  }}
-                >
-                  <Picker
-                    selectedValue={weightUnit}
-                    onValueChange={(value) =>
-                      setWeightUnit(value as WeightUnit)
-                    }
-                  >
-                    <Picker.Item label="kg" value="kg" />
-                    <Picker.Item label="lbs" value="lb" />
-                  </Picker>
-                </View>
-                <ThemedText style={{ fontSize: 12, opacity: 0.8 }}>
                   Weight ({weightUnit === "lb" ? "lbs" : "kg"})
                 </ThemedText>
                 <View
                   style={{
-                    borderColor: "#CBD5E1",
-                    borderRadius: 8,
-                    borderWidth: 1,
+                    flexDirection: "row",
+                    gap: 8,
                   }}
                 >
-                  <Picker
-                    selectedValue={weightValue}
-                    onValueChange={(value) => setWeightValue(Number(value))}
+                  <View
+                    style={{
+                      borderColor: "#CBD5E1",
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      flex: 1,
+                    }}
                   >
-                    {weightOptions.map((value) => (
-                      <Picker.Item
-                        key={`weight-${value}`}
-                        label={
-                          weightUnit === "lb"
-                            ? `${Math.round(value)}`
-                            : value.toFixed(1)
-                        }
-                        value={value}
-                      />
-                    ))}
-                  </Picker>
+                    <Picker
+                      selectedValue={weightValue}
+                      onValueChange={(value) => setWeightValue(Number(value))}
+                    >
+                      {weightOptions.map((value) => (
+                        <Picker.Item
+                          key={`weight-whole-${value}`}
+                          label={`${Math.round(value)}`}
+                          value={value}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                  <View
+                    style={{
+                      borderColor: "#CBD5E1",
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      flex: 1,
+                    }}
+                  >
+                    <Picker
+                      selectedValue={weightDecimal}
+                      onValueChange={(value) =>
+                        setWeightDecimal(Number(value))
+                      }
+                    >
+                      {weightDecimalOptions.map((value) => (
+                        <Picker.Item
+                          key={`weight-decimal-${value}`}
+                          label={`.${value}`}
+                          value={value}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
                 </View>
+                <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
+                  Selected: {weightValue}
+                  .{weightDecimal} {weightUnit === "lb" ? "lbs" : "kg"}
+                </ThemedText>
               </>
             ) : null}
 

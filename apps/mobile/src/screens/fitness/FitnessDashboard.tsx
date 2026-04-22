@@ -69,13 +69,13 @@ function toCard(
           ? "Blood pressure"
           : kind === "heart_rate"
             ? "Heart rate"
-          : kind === "exercise"
-            ? "Exercise"
-            : kind === "sleep"
-              ? "Sleep"
-              : kind === "weight"
-                ? "Weight"
-              : "Steps",
+            : kind === "exercise"
+              ? "Exercise"
+              : kind === "sleep"
+                ? "Sleep"
+                : kind === "weight"
+                  ? "Weight"
+                  : "Steps",
       subtext: "No reading yet",
       value: "No data",
     };
@@ -159,9 +159,7 @@ function toCard(
       label: "Heart rate",
       subtext: formatDateTime(doc.measuredAt),
       value:
-        typeof doc.bpm === "number"
-          ? `${Math.round(doc.bpm)} bpm`
-          : "No data",
+        typeof doc.bpm === "number" ? `${Math.round(doc.bpm)} bpm` : "No data",
     };
   }
   return {
@@ -265,6 +263,7 @@ export default function FitnessDashboard() {
   const weightDisplayUnit = weightUnitFromUserUnits(
     currentUserSettings?.units ?? "metric",
   );
+  console.log("weightDisplayUnit", currentUserSettings?.units);
 
   const handleTriggerBackgroundTask = async () => {
     try {
@@ -326,8 +325,18 @@ export default function FitnessDashboard() {
     return [
       stepsCard,
       toCard("weight", byKind.get("weight"), stepsTarget, weightDisplayUnit),
-      toCard("heart_rate", byKind.get("heart_rate"), stepsTarget, weightDisplayUnit),
-      toCard("exercise", byKind.get("exercise"), stepsTarget, weightDisplayUnit),
+      toCard(
+        "heart_rate",
+        byKind.get("heart_rate"),
+        stepsTarget,
+        weightDisplayUnit,
+      ),
+      toCard(
+        "exercise",
+        byKind.get("exercise"),
+        stepsTarget,
+        weightDisplayUnit,
+      ),
       toCard(
         "blood_pressure",
         byKind.get("blood_pressure"),
@@ -391,7 +400,8 @@ export default function FitnessDashboard() {
         <View style={{ gap: 4 }}>
           <ThemedText type="title">Fitness dashboard</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
-            Latest readings for weight, heart rate, activity, blood pressure, and sleep.
+            Latest readings for weight, heart rate, activity, blood pressure,
+            and sleep.
           </ThemedText>
         </View>
 
@@ -446,7 +456,8 @@ export default function FitnessDashboard() {
           <Card>
             <ThemedText type="defaultSemiBold">Dev: Background sync</ThemedText>
             <ThemedText style={{ opacity: 0.7 }}>
-              Trigger the Health Connect background worker immediately for testing.
+              Trigger the Health Connect background worker immediately for
+              testing.
             </ThemedText>
             <ThemedText style={{ opacity: 0.7 }}>
               Background read permission:{" "}
@@ -528,8 +539,8 @@ export default function FitnessDashboard() {
                       ? "Allow more Health Connect access"
                       : "Allow step access"
                     : card.kind === "steps"
-                    ? "View trend"
-                    : "View trend and add reading"}
+                      ? "View trend"
+                      : "View trend and add reading"}
                 </ThemedText>
               </Card>
             </TouchableOpacity>
