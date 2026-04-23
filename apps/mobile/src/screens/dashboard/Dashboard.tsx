@@ -22,7 +22,6 @@ import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
-import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 
 export default function Dashboard() {
@@ -43,7 +42,6 @@ export default function Dashboard() {
     stepsToday,
   } = useStepCount(10000);
   useSyncStepCount(stepsToday, stepStatus === "ready");
-  useSyncHealthConnectMeasurements(true);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(
