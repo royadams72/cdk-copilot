@@ -55,7 +55,9 @@
 
 - `POST /api/nutrition/weekly-summary/run`
   - Patient-authenticated: generate for the current patient.
-  - Cron/internal: provide `x-cron-secret: $WEEKLY_NUTRITION_CRON_SECRET` and optionally `patientId`.
+- `GET /api/nutrition/weekly-summary/run`
+  - Cron/internal: Vercel cron invokes the route with `GET`.
+  - Secure it with `Authorization: Bearer $CRON_SECRET` and optionally pass `patientId` / `referenceDate` as query params.
 - `GET /api/nutrition/weekly-summary/latest`
   - Returns the latest stored summary for the signed-in patient.
 
