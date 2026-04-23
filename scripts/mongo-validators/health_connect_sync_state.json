@@ -1,0 +1,79 @@
+{
+  "collMod": "health_connect_sync_state",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["patientId", "provider", "createdAt", "updatedAt"],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "patientId": { "bsonType": "objectId" },
+        "orgId": { "bsonType": "string" },
+        "provider": {
+          "bsonType": "string",
+          "enum": ["health_connect"]
+        },
+        "recordTypes": {
+          "bsonType": "object",
+          "properties": {
+            "steps": {
+              "bsonType": "object",
+              "required": ["lastSyncedAt"],
+              "properties": {
+                "lastSyncedAt": { "bsonType": "date" }
+              },
+              "additionalProperties": false
+            },
+            "heart_rate": {
+              "bsonType": "object",
+              "required": ["lastSyncedAt"],
+              "properties": {
+                "lastSyncedAt": { "bsonType": "date" }
+              },
+              "additionalProperties": false
+            },
+            "sleep": {
+              "bsonType": "object",
+              "required": ["lastSyncedAt"],
+              "properties": {
+                "lastSyncedAt": { "bsonType": "date" }
+              },
+              "additionalProperties": false
+            },
+            "exercise": {
+              "bsonType": "object",
+              "required": ["lastSyncedAt"],
+              "properties": {
+                "lastSyncedAt": { "bsonType": "date" }
+              },
+              "additionalProperties": false
+            },
+            "blood_pressure": {
+              "bsonType": "object",
+              "required": ["lastSyncedAt"],
+              "properties": {
+                "lastSyncedAt": { "bsonType": "date" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "provider": 1 },
+      "options": { "unique": true, "name": "uniq_patient_provider" }
+    },
+    {
+      "key": { "orgId": 1, "updatedAt": -1 },
+      "options": { "name": "byOrgUpdated" }
+    }
+  ]
+}

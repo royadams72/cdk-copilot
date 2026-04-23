@@ -8,7 +8,6 @@ import {
   ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
   ANDROID_HEALTH_RECORD_PERMISSIONS,
 } from "@/lib/healthConnectPermissions";
-import { secureStorage } from "@/lib/secureStorage";
 import { store } from "@/store";
 import { measurementsApi } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
@@ -17,10 +16,10 @@ const FAILED_SYNC_RETRY_MS = 10 * 60_000;
 const MAX_UPLOADS_PER_SYNC = 100;
 const MIN_BACKGROUND_SYNC_INTERVAL_MS = 15 * 60_000;
 const FOREGROUND_SYNC_INTERVAL_MS = 5 * 60_000;
+const HEALTH_CONNECT_SYNC_OVERLAP_MS = 5 * 60_000;
 
 const syncedMeasurementKeys = new Set<string>();
 const failedMeasurementRetryAt = new Map<string, number>();
-const HEALTH_CONNECT_LAST_SYNC_AT_KEY = "health_connect_last_sync_at";
 
 let healthConnectSyncPromise: Promise<void> | null = null;
 let lastHealthConnectSyncStartedAt = 0;
@@ -33,6 +32,26 @@ type HealthRecordType =
   | "HeartRate"
   | "RestingHeartRate"
   | "SleepSession";
+
+type SyncStateRecordType =
+  | "blood_pressure"
+  | "exercise"
+  | "heart_rate"
+  | "sleep"
+  | "steps";
+
+type HealthConnectSyncStateResponse = {
+  provider: "health_connect";
+  recordTypes?: Partial<
+    Record<
+      SyncStateRecordType,
+      {
+        lastSyncedAt?: string;
+      }
+    >
+  >;
+  updatedAt?: string | null;
+};
 
 type HealthMetadata = {
   clientRecordId?: string;
@@ -86,13 +105,6 @@ function stepSyncSlotKey(date: Date) {
   return `${dateKey}:${slot}`;
 }
 
-async function createMeasurement(payload: CreateMeasurementArgs) {
-  const result = store.dispatch(
-    measurementsApi.endpoints.createMeasurement.initiate(payload),
-  );
-  return result.unwrap();
-}
-
 async function createMeasurementDirect(payload: CreateMeasurementArgs) {
   const response = await authFetch(`${API}/api/measurements/create`, {
     body: JSON.stringify(payload),
@@ -128,30 +140,60 @@ function invalidateMeasurementCaches(
   store.dispatch(measurementsApi.util.invalidateTags(tags));
 }
 
-function startOfRecentWindow() {
-  const start = new Date();
-  start.setDate(start.getDate() - 30);
-  start.setHours(0, 0, 0, 0);
-  return start;
+function syncStateRecordType(recordType: HealthRecordType): SyncStateRecordType {
+  switch (recordType) {
+    case "BloodPressure":
+      return "blood_pressure";
+    case "ExerciseSession":
+      return "exercise";
+    case "SleepSession":
+      return "sleep";
+    default:
+      return "heart_rate";
+  }
 }
 
-async function getLastHealthConnectSyncAt() {
-  const stored = await secureStorage.getItem(HEALTH_CONNECT_LAST_SYNC_AT_KEY);
-  if (!stored) return null;
-  const parsed = new Date(stored);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+async function getServerHealthConnectSyncState() {
+  const response = await authFetch(`${API}/api/users/health-connect/sync-state`);
+  const body = (await response.json().catch(() => null)) as
+    | { data?: HealthConnectSyncStateResponse; message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok || !body.data) {
+    throw new Error(body?.message ?? "Failed to load Health Connect sync state");
+  }
+
+  return body.data;
 }
 
-async function setLastHealthConnectSyncAt(value: string) {
-  await secureStorage.setItem(HEALTH_CONNECT_LAST_SYNC_AT_KEY, value);
+async function updateServerHealthConnectSyncState(
+  recordTypes: Partial<Record<SyncStateRecordType, { lastSyncedAt: string }>>,
+) {
+  const response = await authFetch(`${API}/api/users/health-connect/sync-state`, {
+    body: JSON.stringify({ recordTypes }),
+    method: "PATCH",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Failed to update Health Connect sync state");
+  }
 }
 
-async function healthConnectSyncWindow() {
+function healthConnectSyncWindow(
+  syncState: HealthConnectSyncStateResponse,
+  recordType: HealthRecordType,
+) {
   const end = new Date();
-  const lastSyncAt = await getLastHealthConnectSyncAt();
-  const start = lastSyncAt
-    ? new Date(lastSyncAt.getTime() - 5 * 60_000)
-    : new Date(end.getTime() - 60_000);
+  const syncType = syncStateRecordType(recordType);
+  const lastSyncedAtValue = syncState.recordTypes?.[syncType]?.lastSyncedAt;
+  const lastSyncedAt = lastSyncedAtValue ? new Date(lastSyncedAtValue) : null;
+  const start =
+    lastSyncedAt && !Number.isNaN(lastSyncedAt.getTime())
+      ? new Date(lastSyncedAt.getTime() - HEALTH_CONNECT_SYNC_OVERLAP_MS)
+      : new Date(end.getTime() - 60_000);
 
   if (start.getTime() >= end.getTime()) {
     start.setTime(end.getTime() - 60_000);
@@ -169,6 +211,22 @@ function providerPackageName(metadata?: HealthMetadata) {
 
 function providerDisplayName(packageName: string) {
   return packageName.split(".").filter(Boolean).at(-1) ?? packageName;
+}
+
+function resolvedStepProvider(
+  selectedDataOrigin: string | null,
+  dataOrigins: string[],
+) {
+  const packageName =
+    selectedDataOrigin?.trim() ||
+    dataOrigins.find((origin) => origin && origin !== "android") ||
+    dataOrigins[0] ||
+    "android.healthconnect";
+
+  return {
+    displayName: providerDisplayName(packageName),
+    packageName,
+  };
 }
 
 function externalRecordId(
@@ -427,6 +485,10 @@ export async function syncTodayStepMeasurement(
   const roundedSteps = Math.round(result.stepsToday);
   const dateKey = localDateKey(now);
   const externalRecordId = `health-connect:steps:${dateKey}`;
+  const provider = resolvedStepProvider(
+    result.selectedDataOrigin,
+    result.dataOrigins,
+  );
   inFlightStepSlotKey = slotKey;
 
   try {
@@ -438,10 +500,7 @@ export async function syncTodayStepMeasurement(
       externalRecordId,
       kind: "steps",
       measuredAt: now.toISOString(),
-      provider: {
-        displayName: "Health Connect",
-        packageName: "android.healthconnect",
-      },
+      provider,
       source: "provider",
     });
     invalidateMeasurementCaches("steps");
@@ -484,13 +543,13 @@ export async function syncRecentHealthConnectMeasurements(
   healthConnectSyncPromise = (async () => {
     let uploads = 0;
     let changedKinds = new Set<CreateMeasurementArgs["kind"]>();
-    let latestSyncedAt: string | null = null;
+    const latestSyncedAtByType: Partial<Record<SyncStateRecordType, string>> = {};
 
     try {
       const healthConnect = await import("react-native-health-connect");
       const initialized = await healthConnect.initialize();
       if (!initialized) return;
-      const syncWindow = await healthConnectSyncWindow();
+      const syncState = await getServerHealthConnectSyncState();
 
       const grantedPermissions = await healthConnect.getGrantedPermissions();
       const granted = new Set(
@@ -510,6 +569,7 @@ export async function syncRecentHealthConnectMeasurements(
         const recordType = permission.recordType as HealthRecordType;
 
         try {
+          const syncWindow = healthConnectSyncWindow(syncState, recordType);
           const records = await readRecentRecords(
             healthConnect,
             recordType,
@@ -536,12 +596,13 @@ export async function syncRecentHealthConnectMeasurements(
               syncedMeasurementKeys.add(syncKey);
               failedMeasurementRetryAt.delete(syncKey);
               changedKinds.add(payload.kind);
+              const syncType = syncStateRecordType(recordType);
               if (
                 payload.measuredAt &&
-                (!latestSyncedAt ||
-                  payload.measuredAt.localeCompare(latestSyncedAt) > 0)
+                (!latestSyncedAtByType[syncType] ||
+                  payload.measuredAt.localeCompare(latestSyncedAtByType[syncType]!) > 0)
               ) {
-                latestSyncedAt = payload.measuredAt;
+                latestSyncedAtByType[syncType] = payload.measuredAt;
               }
               uploads += 1;
             } catch (error) {
@@ -568,8 +629,15 @@ export async function syncRecentHealthConnectMeasurements(
     } catch (error) {
       console.log("Health Connect sync failed", error);
     } finally {
-      if (latestSyncedAt) {
-        await setLastHealthConnectSyncAt(latestSyncedAt);
+      if (Object.keys(latestSyncedAtByType).length > 0) {
+        await updateServerHealthConnectSyncState(
+          Object.fromEntries(
+            Object.entries(latestSyncedAtByType).map(([recordType, lastSyncedAt]) => [
+              recordType,
+              { lastSyncedAt: lastSyncedAt! },
+            ]),
+          ) as Partial<Record<SyncStateRecordType, { lastSyncedAt: string }>>,
+        );
       }
       if (changedKinds.size > 0) {
         for (const kind of changedKinds) {
