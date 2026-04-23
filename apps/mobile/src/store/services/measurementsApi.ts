@@ -22,6 +22,7 @@ export const measurementsApi = appApi.injectEndpoints({
       MeasurementHistoryResponse,
       MeasurementKind
     >({
+      keepUnusedDataFor: 15 * 60,
       providesTags: (_result, _error, kind) => [
         { id: "history", type: "Fitness" as const },
         { id: `history:${kind}`, type: "Fitness" as const },
@@ -32,9 +33,13 @@ export const measurementsApi = appApi.injectEndpoints({
     createMeasurement: builder.mutation<unknown, CreateMeasurementArgs>({
       invalidatesTags: (_result, _error, arg) => [
         { id: "latest", type: "Fitness" as const },
-        { id: "history", type: "Fitness" as const },
-        { id: `history:${arg.kind}`, type: "Fitness" as const },
         { id: "today", type: "Dashboard" as const },
+        ...(arg.source === "provider"
+          ? []
+          : ([
+              { id: "history", type: "Fitness" as const },
+              { id: `history:${arg.kind}`, type: "Fitness" as const },
+            ] as const)),
       ],
       query: (body) => ({
         body,

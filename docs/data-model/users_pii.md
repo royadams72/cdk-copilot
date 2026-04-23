@@ -24,6 +24,7 @@
 - `onboardingSteps` · string\[]
 - `notificationPrefs` · { email, push, sms }
 - `integrations` · Apple Health / Google Fit / Withings link state
+  Health Connect sync progress now lives in `health_connect_sync_state`, not inline on `users_pii`.
 - `devices` · array of device records `{ platform, pushToken?, lastSeenAt? }`
 - `consentAppTosAt` · Date
   **(TOS = Terms of Service)**

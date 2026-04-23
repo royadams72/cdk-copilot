@@ -1,6 +1,8 @@
 import { Platform } from "react-native";
 import { ExerciseType } from "react-native-health-connect";
 
+import { API } from "@/constants/api";
+import { authFetch } from "@/lib/authFetch";
 import { loadAndroidStepState } from "@/lib/healthConnectStepSummary";
 import {
   ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
@@ -14,6 +16,7 @@ const FAILED_SYNC_RETRY_MS = 10 * 60_000;
 const MAX_UPLOADS_PER_SYNC = 100;
 const MIN_BACKGROUND_SYNC_INTERVAL_MS = 15 * 60_000;
 const FOREGROUND_SYNC_INTERVAL_MS = 5 * 60_000;
+const HEALTH_CONNECT_SYNC_OVERLAP_MS = 5 * 60_000;
 
 const syncedMeasurementKeys = new Set<string>();
 const failedMeasurementRetryAt = new Map<string, number>();
@@ -29,6 +32,26 @@ type HealthRecordType =
   | "HeartRate"
   | "RestingHeartRate"
   | "SleepSession";
+
+type SyncStateRecordType =
+  | "blood_pressure"
+  | "exercise"
+  | "heart_rate"
+  | "sleep"
+  | "steps";
+
+type HealthConnectSyncStateResponse = {
+  provider: "health_connect";
+  recordTypes?: Partial<
+    Record<
+      SyncStateRecordType,
+      {
+        lastSyncedAt?: string;
+      }
+    >
+  >;
+  updatedAt?: string | null;
+};
 
 type HealthMetadata = {
   clientRecordId?: string;
@@ -82,18 +105,104 @@ function stepSyncSlotKey(date: Date) {
   return `${dateKey}:${slot}`;
 }
 
-async function createMeasurement(payload: CreateMeasurementArgs) {
-  const result = store.dispatch(
-    measurementsApi.endpoints.createMeasurement.initiate(payload),
-  );
-  return result.unwrap();
+async function createMeasurementDirect(payload: CreateMeasurementArgs) {
+  const response = await authFetch(`${API}/api/measurements/create`, {
+    body: JSON.stringify(payload),
+    method: "POST",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Failed to create measurement");
+  }
+
+  return body;
 }
 
-function startOfRecentWindow() {
-  const start = new Date();
-  start.setDate(start.getDate() - 30);
-  start.setHours(0, 0, 0, 0);
-  return start;
+function invalidateMeasurementCaches(
+  kind: CreateMeasurementArgs["kind"],
+  options: { includeHistory?: boolean } = {},
+) {
+  const tags: Parameters<typeof measurementsApi.util.invalidateTags>[0] = [
+    { id: "latest", type: "Fitness" as const },
+    { id: "today", type: "Dashboard" as const },
+  ];
+
+  if (options.includeHistory) {
+    tags.push(
+      { id: "history", type: "Fitness" as const },
+      { id: `history:${kind}`, type: "Fitness" as const },
+    );
+  }
+
+  store.dispatch(measurementsApi.util.invalidateTags(tags));
+}
+
+function syncStateRecordType(recordType: HealthRecordType): SyncStateRecordType {
+  switch (recordType) {
+    case "BloodPressure":
+      return "blood_pressure";
+    case "ExerciseSession":
+      return "exercise";
+    case "SleepSession":
+      return "sleep";
+    default:
+      return "heart_rate";
+  }
+}
+
+async function getServerHealthConnectSyncState() {
+  const response = await authFetch(`${API}/api/users/health-connect/sync-state`);
+  const body = (await response.json().catch(() => null)) as
+    | { data?: HealthConnectSyncStateResponse; message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok || !body.data) {
+    throw new Error(body?.message ?? "Failed to load Health Connect sync state");
+  }
+
+  return body.data;
+}
+
+async function updateServerHealthConnectSyncState(
+  recordTypes: Partial<Record<SyncStateRecordType, { lastSyncedAt: string }>>,
+) {
+  const response = await authFetch(`${API}/api/users/health-connect/sync-state`, {
+    body: JSON.stringify({ recordTypes }),
+    method: "PATCH",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Failed to update Health Connect sync state");
+  }
+}
+
+function healthConnectSyncWindow(
+  syncState: HealthConnectSyncStateResponse,
+  recordType: HealthRecordType,
+) {
+  const end = new Date();
+  const syncType = syncStateRecordType(recordType);
+  const lastSyncedAtValue = syncState.recordTypes?.[syncType]?.lastSyncedAt;
+  const lastSyncedAt = lastSyncedAtValue ? new Date(lastSyncedAtValue) : null;
+  const start =
+    lastSyncedAt && !Number.isNaN(lastSyncedAt.getTime())
+      ? new Date(lastSyncedAt.getTime() - HEALTH_CONNECT_SYNC_OVERLAP_MS)
+      : new Date(end.getTime() - 60_000);
+
+  if (start.getTime() >= end.getTime()) {
+    start.setTime(end.getTime() - 60_000);
+  }
+
+  return {
+    endTime: end.toISOString(),
+    startTime: start.toISOString(),
+  };
 }
 
 function providerPackageName(metadata?: HealthMetadata) {
@@ -102,6 +211,22 @@ function providerPackageName(metadata?: HealthMetadata) {
 
 function providerDisplayName(packageName: string) {
   return packageName.split(".").filter(Boolean).at(-1) ?? packageName;
+}
+
+function resolvedStepProvider(
+  selectedDataOrigin: string | null,
+  dataOrigins: string[],
+) {
+  const packageName =
+    selectedDataOrigin?.trim() ||
+    dataOrigins.find((origin) => origin && origin !== "android") ||
+    dataOrigins[0] ||
+    "android.healthconnect";
+
+  return {
+    displayName: providerDisplayName(packageName),
+    packageName,
+  };
 }
 
 function externalRecordId(
@@ -284,6 +409,10 @@ function toMeasurementPayloads(
 async function readRecentRecords(
   healthConnect: typeof import("react-native-health-connect"),
   recordType: HealthRecordType,
+  timeRange: {
+    endTime: string;
+    startTime: string;
+  },
 ) {
   let pageToken: string | undefined;
   const records: HealthRecord[] = [];
@@ -294,9 +423,9 @@ async function readRecentRecords(
       pageSize: 100,
       pageToken,
       timeRangeFilter: {
-        endTime: new Date().toISOString(),
+        endTime: timeRange.endTime,
         operator: "between",
-        startTime: startOfRecentWindow().toISOString(),
+        startTime: timeRange.startTime,
       },
     });
     records.push(...(result.records as HealthRecord[]));
@@ -356,10 +485,14 @@ export async function syncTodayStepMeasurement(
   const roundedSteps = Math.round(result.stepsToday);
   const dateKey = localDateKey(now);
   const externalRecordId = `health-connect:steps:${dateKey}`;
+  const provider = resolvedStepProvider(
+    result.selectedDataOrigin,
+    result.dataOrigins,
+  );
   inFlightStepSlotKey = slotKey;
 
   try {
-    await createMeasurement({
+    await createMeasurementDirect({
       averageSpeedKph: result.summary?.averageSpeedKph ?? undefined,
       caloriesKcal: result.summary?.caloriesKcal ?? undefined,
       count: roundedSteps,
@@ -367,12 +500,10 @@ export async function syncTodayStepMeasurement(
       externalRecordId,
       kind: "steps",
       measuredAt: now.toISOString(),
-      provider: {
-        displayName: "Health Connect",
-        packageName: "android.healthconnect",
-      },
+      provider,
       source: "provider",
     });
+    invalidateMeasurementCaches("steps");
     lastSyncedStepSlotKey = slotKey;
   } catch (error) {
     console.log("Step sync failed", {
@@ -411,11 +542,14 @@ export async function syncRecentHealthConnectMeasurements(
   lastHealthConnectSyncStartedAt = now;
   healthConnectSyncPromise = (async () => {
     let uploads = 0;
+    let changedKinds = new Set<CreateMeasurementArgs["kind"]>();
+    const latestSyncedAtByType: Partial<Record<SyncStateRecordType, string>> = {};
 
     try {
       const healthConnect = await import("react-native-health-connect");
       const initialized = await healthConnect.initialize();
       if (!initialized) return;
+      const syncState = await getServerHealthConnectSyncState();
 
       const grantedPermissions = await healthConnect.getGrantedPermissions();
       const granted = new Set(
@@ -435,7 +569,12 @@ export async function syncRecentHealthConnectMeasurements(
         const recordType = permission.recordType as HealthRecordType;
 
         try {
-          const records = await readRecentRecords(healthConnect, recordType);
+          const syncWindow = healthConnectSyncWindow(syncState, recordType);
+          const records = await readRecentRecords(
+            healthConnect,
+            recordType,
+            syncWindow,
+          );
           const payloads = toMeasurementPayloads(recordType, records).sort((a, b) =>
             String(b.measuredAt ?? "").localeCompare(String(a.measuredAt ?? "")),
           );
@@ -453,9 +592,18 @@ export async function syncRecentHealthConnectMeasurements(
             }
 
             try {
-              await createMeasurement(payload);
+              await createMeasurementDirect(payload);
               syncedMeasurementKeys.add(syncKey);
               failedMeasurementRetryAt.delete(syncKey);
+              changedKinds.add(payload.kind);
+              const syncType = syncStateRecordType(recordType);
+              if (
+                payload.measuredAt &&
+                (!latestSyncedAtByType[syncType] ||
+                  payload.measuredAt.localeCompare(latestSyncedAtByType[syncType]!) > 0)
+              ) {
+                latestSyncedAtByType[syncType] = payload.measuredAt;
+              }
               uploads += 1;
             } catch (error) {
               failedMeasurementRetryAt.set(
@@ -481,6 +629,21 @@ export async function syncRecentHealthConnectMeasurements(
     } catch (error) {
       console.log("Health Connect sync failed", error);
     } finally {
+      if (Object.keys(latestSyncedAtByType).length > 0) {
+        await updateServerHealthConnectSyncState(
+          Object.fromEntries(
+            Object.entries(latestSyncedAtByType).map(([recordType, lastSyncedAt]) => [
+              recordType,
+              { lastSyncedAt: lastSyncedAt! },
+            ]),
+          ) as Partial<Record<SyncStateRecordType, { lastSyncedAt: string }>>,
+        );
+      }
+      if (changedKinds.size > 0) {
+        for (const kind of changedKinds) {
+          invalidateMeasurementCaches(kind);
+        }
+      }
       healthConnectSyncPromise = null;
     }
   })();
