@@ -7,7 +7,10 @@ import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 
-import { syncPushToken } from "@/lib/pushNotifications";
+import {
+  syncPushToken,
+  syncSleepReminderNotification,
+} from "@/lib/pushNotifications";
 import { registerHealthConnectBackgroundTaskAsync } from "@/lib/healthConnectBackgroundTask";
 import { store, persistor } from "@/store";
 
@@ -28,7 +31,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync("#FFFFFF");
-    syncPushToken();
+    void syncPushToken();
+    void syncSleepReminderNotification();
     void registerHealthConnectBackgroundTaskAsync();
 
     const subscription = Notifications.addNotificationResponseReceivedListener(

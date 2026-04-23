@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { getLatestAggregatedSleepMeasurement } from "@/apps/api/lib/utils/sleep";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -34,10 +35,12 @@ export async function GET(req: NextRequest) {
   const collection = db.collection(COLLECTIONS.MeasurementsLedger);
   const results = await Promise.all(
     MEASUREMENT_KINDS.map((kind) =>
-      collection.findOne(
-        { kind, patientId },
-        { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
-      ),
+      kind === "sleep"
+        ? getLatestAggregatedSleepMeasurement(db, patientId)
+        : collection.findOne(
+            { kind, patientId },
+            { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
+          ),
     ),
   );
   const docs = results

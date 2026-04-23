@@ -205,6 +205,21 @@ export type TargetsResponse = {
 };
 
 export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
+export type WeeklySleepSummary = {
+  advice: string[];
+  averageLoggedDurationMin: number | null;
+  hasEnoughSleep: boolean;
+  humanMessage: string;
+  loggedDays: number;
+  manualLoggingOnly: boolean;
+  nightsBelowTarget: number;
+  splitNights: number;
+  targetDurationMin: number;
+  weekEnd: string;
+  weekStart: string;
+  weeklyAverageDurationMin: number;
+};
+export type WeeklySleepSummaryResponse = WeeklySleepSummary | null;
 export type CurrentUserSettingsResponse = {
   units: UserUnits;
 };

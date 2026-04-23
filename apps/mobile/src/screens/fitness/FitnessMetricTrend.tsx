@@ -20,6 +20,7 @@ import {
   useCreateMeasurementMutation,
   useGetExerciseReferenceQuery,
   useGetMeasurementHistoryQuery,
+  useGetWeeklySleepSummaryQuery,
 } from "@/store/services/measurementsApi";
 import { useGetCurrentUserSettingsQuery } from "@/store/services/userApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
@@ -47,6 +48,7 @@ import {
   dateKey,
   dateToMeasuredAtIso,
   EXERCISE_TARGET_MIN,
+  formatSleepHours,
   formatWeightValue,
   formatDayLabel,
   formatDistanceValue,
@@ -161,6 +163,9 @@ export default function FitnessMetricTrend() {
     skip: kind !== "exercise",
   });
   const [createMeasurement] = useCreateMeasurementMutation();
+  const { data: weeklySleepSummary } = useGetWeeklySleepSummaryQuery(undefined, {
+    skip: kind !== "sleep",
+  });
   const preferredWeightUnit = weightUnitFromUserUnits(
     currentUserSettings?.units ?? "metric",
   );
@@ -721,6 +726,36 @@ export default function FitnessMetricTrend() {
             <TouchableOpacity onPress={() => void refetchHistory()}>
               <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
             </TouchableOpacity>
+          </Card>
+        ) : null}
+
+        {!loading && !error && kind === "sleep" && weeklySleepSummary ? (
+          <Card>
+            <View style={{ gap: 6 }}>
+              <ThemedText type="defaultSemiBold">Weekly sleep check</ThemedText>
+              <ThemedText style={{ opacity: 0.72 }}>
+                {weeklySleepSummary.weekStart} to {weeklySleepSummary.weekEnd}
+              </ThemedText>
+              <ThemedText style={{ opacity: 0.82 }}>
+                {weeklySleepSummary.humanMessage}
+              </ThemedText>
+              <ThemedText style={{ opacity: 0.72 }}>
+                Weekly average:{" "}
+                {formatSleepHours(weeklySleepSummary.weeklyAverageDurationMin)} •
+                Logged days: {weeklySleepSummary.loggedDays}/7
+              </ThemedText>
+              <ThemedText style={{ opacity: 0.72 }}>
+                Nights below target: {weeklySleepSummary.nightsBelowTarget}
+                {weeklySleepSummary.splitNights > 0
+                  ? ` • Split nights: ${weeklySleepSummary.splitNights}`
+                  : ""}
+              </ThemedText>
+              {weeklySleepSummary.advice.map((item) => (
+                <ThemedText key={item} style={{ opacity: 0.78 }}>
+                  • {item}
+                </ThemedText>
+              ))}
+            </View>
           </Card>
         ) : null}
 
