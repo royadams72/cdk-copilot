@@ -13,6 +13,7 @@ import { measurementsApi } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
 
 const FAILED_SYNC_RETRY_MS = 10 * 60_000;
+const HEALTH_CONNECT_QUOTA_COOLDOWN_MS = 5 * 60_000;
 const MAX_UPLOADS_PER_SYNC = 100;
 const MIN_BACKGROUND_SYNC_INTERVAL_MS = 15 * 60_000;
 const FOREGROUND_SYNC_INTERVAL_MS = 5 * 60_000;
@@ -23,6 +24,7 @@ const failedMeasurementRetryAt = new Map<string, number>();
 
 let healthConnectSyncPromise: Promise<void> | null = null;
 let lastHealthConnectSyncStartedAt = 0;
+let lastHealthConnectQuotaRetryAt = 0;
 let lastSyncedStepSlotKey: string | null = null;
 let inFlightStepSlotKey: string | null = null;
 
@@ -207,6 +209,18 @@ function healthConnectSyncWindow(
 
 function providerPackageName(metadata?: HealthMetadata) {
   return metadata?.dataOrigin?.trim() || "android.healthconnect";
+}
+
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
+function isHealthConnectQuotaError(error: unknown) {
+  return toErrorMessage(error).includes("API call quota exceeded");
 }
 
 function providerDisplayName(packageName: string) {
@@ -523,6 +537,10 @@ export async function syncRecentHealthConnectMeasurements(
 ) {
   if (Platform.OS !== "android") return;
 
+  if (!options.force && Date.now() < lastHealthConnectQuotaRetryAt) {
+    return;
+  }
+
   if (reason === "background-task") {
     const canReadInBackground = await hasHealthConnectBackgroundReadPermission();
     if (!canReadInBackground) {
@@ -620,6 +638,17 @@ export async function syncRecentHealthConnectMeasurements(
             }
           }
         } catch (error) {
+          if (isHealthConnectQuotaError(error)) {
+            lastHealthConnectQuotaRetryAt =
+              Date.now() + HEALTH_CONNECT_QUOTA_COOLDOWN_MS;
+            console.log("Health Connect quota exceeded, pausing sync", {
+              reason,
+              recordType,
+              retryAt: new Date(lastHealthConnectQuotaRetryAt).toISOString(),
+            });
+            break;
+          }
+
           console.log("Health Connect record read failed", {
             error,
             recordType,
@@ -627,6 +656,16 @@ export async function syncRecentHealthConnectMeasurements(
         }
       }
     } catch (error) {
+      if (isHealthConnectQuotaError(error)) {
+        lastHealthConnectQuotaRetryAt =
+          Date.now() + HEALTH_CONNECT_QUOTA_COOLDOWN_MS;
+        console.log("Health Connect quota exceeded, pausing sync", {
+          reason,
+          retryAt: new Date(lastHealthConnectQuotaRetryAt).toISOString(),
+        });
+        return;
+      }
+
       console.log("Health Connect sync failed", error);
     } finally {
       if (Object.keys(latestSyncedAtByType).length > 0) {

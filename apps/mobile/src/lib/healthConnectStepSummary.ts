@@ -44,6 +44,16 @@ export type AndroidStepState = {
   stepsToday: number | null;
 };
 
+const ANDROID_STEP_STATE_CACHE_TTL_MS = 30_000;
+
+let cachedAndroidStepState:
+  | {
+      expiresAt: number;
+      value: AndroidStepState;
+    }
+  | null = null;
+let inFlightAndroidStepStatePromise: Promise<AndroidStepState> | null = null;
+
 function permissionKey(permission: { accessType: string; recordType: string }) {
   return `${permission.accessType}:${permission.recordType}`;
 }
@@ -66,6 +76,10 @@ function isPermissionError(error: unknown) {
     message.includes("SecurityException") ||
     message.includes("requires one of the permissions")
   );
+}
+
+function isQuotaError(error: unknown) {
+  return toErrorMessage(error).includes("API call quota exceeded");
 }
 
 function sleep(ms: number) {
@@ -600,7 +614,7 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
   }
 }
 
-export async function loadAndroidStepState() {
+async function loadAndroidStepStateFresh() {
   const healthConnect = await import("react-native-health-connect");
   const sdkStatus = await healthConnect.getSdkStatus();
 
@@ -708,31 +722,6 @@ export async function loadAndroidStepState() {
       originAggregateTimeRangeFilter: timeRangeFilter,
     });
   }
-  let groupedTotal: number | null = null;
-  let groupedError = false;
-
-  try {
-    const dailyAggregate = await healthConnect.aggregateGroupByDuration({
-      recordType: "Steps",
-      timeRangeFilter,
-      timeRangeSlicer: {
-        duration: "DAYS",
-        length: 1,
-      },
-    });
-    groupedTotal = dailyAggregate.reduce(
-      (total, group) =>
-        total + Math.max(0, Math.round(group.result.COUNT_TOTAL ?? 0)),
-      0,
-    );
-  } catch (error) {
-    groupedError = true;
-    console.log("Health Connect grouped step aggregate failed", {
-      error: toErrorMessage(error),
-      now: now.toISOString(),
-      timeRangeFilter,
-    });
-  }
 
   const selected = selectStepTotalFromOrigins(aggregateTotal, originTotals);
   let summary: StepActivitySummary | null = null;
@@ -776,8 +765,8 @@ export async function loadAndroidStepState() {
       aggregateTotal,
       caloriesKcal: summary?.caloriesKcal ?? null,
       distanceMeters: summary?.distanceMeters ?? null,
-      groupedError,
-      groupedTotal,
+      groupedError: false,
+      groupedTotal: null,
       originError,
       originTotals,
       selectedDataOrigin: selected.selectedDataOrigin,
@@ -789,4 +778,43 @@ export async function loadAndroidStepState() {
     status: "ready" as const,
     stepsToday: selected.total,
   } satisfies AndroidStepState;
+}
+
+export async function loadAndroidStepState(options: { forceRefresh?: boolean } = {}) {
+  const now = Date.now();
+
+  if (
+    !options.forceRefresh &&
+    cachedAndroidStepState &&
+    cachedAndroidStepState.expiresAt > now
+  ) {
+    return cachedAndroidStepState.value;
+  }
+
+  if (!options.forceRefresh && inFlightAndroidStepStatePromise) {
+    return inFlightAndroidStepStatePromise;
+  }
+
+  inFlightAndroidStepStatePromise = loadAndroidStepStateFresh()
+    .then((value) => {
+      cachedAndroidStepState = {
+        expiresAt: Date.now() + ANDROID_STEP_STATE_CACHE_TTL_MS,
+        value,
+      };
+      return value;
+    })
+    .catch((error: unknown) => {
+      if (cachedAndroidStepState && isQuotaError(error)) {
+        console.log("Health Connect step state quota exceeded, using cached state", {
+          error: toErrorMessage(error),
+        });
+        return cachedAndroidStepState.value;
+      }
+      throw error;
+    })
+    .finally(() => {
+      inFlightAndroidStepStatePromise = null;
+    });
+
+  return inFlightAndroidStepStatePromise;
 }
