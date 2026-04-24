@@ -18,6 +18,13 @@ const MAX_UPLOADS_PER_SYNC = 100;
 const MIN_BACKGROUND_SYNC_INTERVAL_MS = 15 * 60_000;
 const FOREGROUND_SYNC_INTERVAL_MS = 5 * 60_000;
 const HEALTH_CONNECT_SYNC_OVERLAP_MS = 5 * 60_000;
+const INITIAL_SYNC_LOOKBACK_MS: Record<SyncStateRecordType, number> = {
+  blood_pressure: 3 * 24 * 60 * 60_000,
+  exercise: 3 * 24 * 60 * 60_000,
+  heart_rate: 24 * 60 * 60_000,
+  sleep: 7 * 24 * 60 * 60_000,
+  steps: 24 * 60 * 60_000,
+};
 
 const syncedMeasurementKeys = new Set<string>();
 const failedMeasurementRetryAt = new Map<string, number>();
@@ -195,7 +202,7 @@ function healthConnectSyncWindow(
   const start =
     lastSyncedAt && !Number.isNaN(lastSyncedAt.getTime())
       ? new Date(lastSyncedAt.getTime() - HEALTH_CONNECT_SYNC_OVERLAP_MS)
-      : new Date(end.getTime() - 60_000);
+      : new Date(end.getTime() - INITIAL_SYNC_LOOKBACK_MS[syncType]);
 
   if (start.getTime() >= end.getTime()) {
     start.setTime(end.getTime() - 60_000);

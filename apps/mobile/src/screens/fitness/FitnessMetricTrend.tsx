@@ -15,12 +15,15 @@ import {
   readHealthConnectStepSummaryForDate,
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
+import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateMeasurementMutation,
   useGetExerciseReferenceQuery,
   useGetMeasurementHistoryQuery,
   useGetWeeklySleepSummaryQuery,
+  useLazyGetWeeklySleepSummaryQuery,
 } from "@/store/services/measurementsApi";
 import { useGetCurrentUserSettingsQuery } from "@/store/services/userApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
@@ -163,11 +166,20 @@ export default function FitnessMetricTrend() {
     skip: kind !== "exercise",
   });
   const [createMeasurement] = useCreateMeasurementMutation();
-  const { data: weeklySleepSummary } = useGetWeeklySleepSummaryQuery(undefined, {
+  const [loadWeeklySleepSummary] = useLazyGetWeeklySleepSummaryQuery();
+  const {
+    data: weeklySleepSummary,
+  } = useGetWeeklySleepSummaryQuery(undefined, {
     skip: kind !== "sleep",
   });
   const preferredWeightUnit = weightUnitFromUserUnits(
     currentUserSettings?.units ?? "metric",
+  );
+  useSyncHealthConnectMeasurements(
+    kind === "sleep" ||
+      kind === "exercise" ||
+      kind === "heart_rate" ||
+      kind === "blood_pressure",
   );
   const weightOptions =
     preferredWeightUnit === "lb" ? weightLbOptions : weightKgOptions;
@@ -649,6 +661,50 @@ export default function FitnessMetricTrend() {
     refetchHistory,
   ]);
 
+  const handleDevSleepReminderTest = useCallback(async () => {
+    const scheduled = await scheduleDevSleepReminderNotification();
+    Alert.alert(
+      scheduled ? "Reminder scheduled" : "Reminder unavailable",
+      scheduled
+        ? "A dev sleep reminder should appear in about 5 seconds."
+        : "Could not schedule the dev reminder on this device/build.",
+    );
+  }, []);
+
+  const handleDevWeeklySleepTest = useCallback(async () => {
+    try {
+      const summary = await loadWeeklySleepSummary().unwrap();
+
+      if (!summary) {
+        Alert.alert(
+          "Weekly summary",
+          "No weekly sleep summary is available yet for this account.",
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Weekly sleep summary",
+        [
+          `${summary.weekStart} to ${summary.weekEnd}`,
+          `Weekly average: ${formatSleepHours(summary.weeklyAverageDurationMin)}`,
+          `Logged days: ${summary.loggedDays}/7`,
+          `Below target: ${summary.nightsBelowTarget}`,
+          summary.splitNights > 0 ? `Split nights: ${summary.splitNights}` : "",
+          "",
+          summary.humanMessage,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+    } catch (error) {
+      Alert.alert(
+        "Weekly summary failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }, [loadWeeklySleepSummary]);
+
   const showAdd = kind !== "steps";
 
   return (
@@ -755,6 +811,42 @@ export default function FitnessMetricTrend() {
                   • {item}
                 </ThemedText>
               ))}
+            </View>
+          </Card>
+        ) : null}
+
+        {__DEV__ && kind === "sleep" ? (
+          <Card>
+            <View style={{ gap: 10 }}>
+              <ThemedText type="defaultSemiBold">Dev sleep tools</ThemedText>
+              <TouchableOpacity
+                onPress={() => void handleDevSleepReminderTest()}
+                style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: "rgba(15,118,110,0.12)",
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                }}
+              >
+                <ThemedText style={{ color: "#115E59", fontWeight: "700" }}>
+                  Test sleep reminder
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void handleDevWeeklySleepTest()}
+                style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: "rgba(37,99,235,0.12)",
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                }}
+              >
+                <ThemedText style={{ color: "#1D4ED8", fontWeight: "700" }}>
+                  Test weekly summary
+                </ThemedText>
+              </TouchableOpacity>
             </View>
           </Card>
         ) : null}

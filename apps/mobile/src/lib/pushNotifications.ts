@@ -133,6 +133,46 @@ async function cancelSleepReminderNotification() {
   }
 }
 
+export async function scheduleDevSleepReminderNotification() {
+  try {
+    if (!__DEV__ || (Platform.OS !== "ios" && Platform.OS !== "android")) {
+      return false;
+    }
+
+    const hasPermission = await ensureNotificationPermission();
+    if (!hasPermission) {
+      return false;
+    }
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("sleep-reminders", {
+        importance: Notifications.AndroidImportance.DEFAULT,
+        name: "Sleep reminders",
+      });
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        body: "Dev test: open sleep logging and verify the reminder flow.",
+        data: {
+          screen: "/(fitness)/metric-trend?kind=sleep&label=Sleep",
+        },
+        sound: true,
+        title: "Log your sleep",
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 5,
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.log("scheduleDevSleepReminderNotification failed", error);
+    return false;
+  }
+}
+
 export async function syncSleepReminderNotification() {
   try {
     if (Platform.OS !== "ios" && Platform.OS !== "android") {

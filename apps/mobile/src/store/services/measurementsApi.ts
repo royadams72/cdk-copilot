@@ -68,4 +68,5 @@ export const {
   useGetLatestMeasurementsQuery,
   useGetMeasurementHistoryQuery,
   useGetWeeklySleepSummaryQuery,
+  useLazyGetWeeklySleepSummaryQuery,
 } = measurementsApi;
