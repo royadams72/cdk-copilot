@@ -145,7 +145,7 @@ export async function PATCH(req: NextRequest) {
         $set: setFields,
         $setOnInsert: {
           createdAt: now,
-          orgId: caller.orgId,
+          orgId: caller.orgId ?? "org_demo",
           patientId,
           provider: "health_connect",
         },

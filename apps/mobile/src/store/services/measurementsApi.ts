@@ -5,6 +5,7 @@ import type {
   MeasurementHistoryResponse,
   MeasurementKind,
   MeasurementLatest,
+  WeeklySleepSummaryResponse,
 } from "./types";
 
 export const measurementsApi = appApi.injectEndpoints({
@@ -17,6 +18,13 @@ export const measurementsApi = appApi.injectEndpoints({
     getLatestMeasurements: builder.query<MeasurementLatest[], void>({
       providesTags: [{ id: "latest", type: "Fitness" as const }],
       query: () => "/api/measurements/latest",
+    }),
+    getWeeklySleepSummary: builder.query<WeeklySleepSummaryResponse, void>({
+      keepUnusedDataFor: 15 * 60,
+      providesTags: [{ id: "weekly-sleep-summary", type: "Fitness" as const }],
+      query: () => "/api/sleep/weekly-summary/latest",
+      transformResponse: (response: { summary?: WeeklySleepSummaryResponse }) =>
+        response?.summary ?? null,
     }),
     getMeasurementHistory: builder.query<
       MeasurementHistoryResponse,
@@ -33,6 +41,7 @@ export const measurementsApi = appApi.injectEndpoints({
     createMeasurement: builder.mutation<unknown, CreateMeasurementArgs>({
       invalidatesTags: (_result, _error, arg) => [
         { id: "latest", type: "Fitness" as const },
+        { id: "weekly-sleep-summary", type: "Fitness" as const },
         { id: "today", type: "Dashboard" as const },
         ...(arg.source === "provider"
           ? []
@@ -58,4 +67,6 @@ export const {
   useGetExerciseReferenceQuery,
   useGetLatestMeasurementsQuery,
   useGetMeasurementHistoryQuery,
+  useGetWeeklySleepSummaryQuery,
+  useLazyGetWeeklySleepSummaryQuery,
 } = measurementsApi;

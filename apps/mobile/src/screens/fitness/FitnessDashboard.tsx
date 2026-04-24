@@ -14,6 +14,7 @@ import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
+import { syncSleepReminderNotification } from "@/lib/pushNotifications";
 import {
   detectInstalledFitnessApps,
   formatFitnessAppName,
@@ -258,6 +259,11 @@ export default function FitnessDashboard() {
     error,
     "Failed to load fitness readings",
   );
+
+  useEffect(() => {
+    if (!data) return;
+    void syncSleepReminderNotification();
+  }, [data]);
   const items = data ?? [];
   const loading = isLoading && items.length === 0;
   const refreshing = isFetching && items.length > 0;
