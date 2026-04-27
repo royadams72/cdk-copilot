@@ -15,7 +15,10 @@ import {
   readHealthConnectStepSummaryForDate,
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
-import { backfillHealthConnectStepDates } from "@/lib/healthConnectSync";
+import {
+  backfillHealthConnectMeasurementDates,
+  backfillHealthConnectStepDates,
+} from "@/lib/healthConnectSync";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { toQueryErrorMessage } from "@/store/services/appApi";
@@ -129,7 +132,7 @@ export default function FitnessMetricTrend() {
   const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [weightValue, setWeightValue] = useState(70);
   const [weightDecimal, setWeightDecimal] = useState(5);
-  const [stepsBackfillState, setStepsBackfillState] = useState<{
+  const [historyBackfillState, setHistoryBackfillState] = useState<{
     error: string | null;
     missingCount: number;
     running: boolean;
@@ -138,7 +141,7 @@ export default function FitnessMetricTrend() {
     missingCount: 0,
     running: false,
   });
-  const attemptedStepBackfillWindowsRef = useRef<Set<string>>(new Set());
+  const attemptedBackfillWindowsRef = useRef<Set<string>>(new Set());
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -396,8 +399,13 @@ export default function FitnessMetricTrend() {
     return index >= 0 ? index : null;
   }, [chart.points, selectedDateKey]);
 
-  const existingStepDateKeys = useMemo(() => {
-    if (kind !== "steps") {
+  const existingMetricDateKeys = useMemo(() => {
+    if (
+      kind !== "steps" &&
+      kind !== "sleep" &&
+      kind !== "exercise" &&
+      kind !== "blood_pressure"
+    ) {
       return new Set<string>();
     }
     return new Set(points.map((point) => point.date));
@@ -562,7 +570,15 @@ export default function FitnessMetricTrend() {
   }, [kind, modalOpen, preferredWeightUnit]);
 
   useEffect(() => {
-    if (kind !== "steps" || Platform.OS !== "android" || loading || !!error) {
+    if (
+      (kind !== "steps" &&
+        kind !== "sleep" &&
+        kind !== "exercise" &&
+        kind !== "blood_pressure") ||
+      Platform.OS !== "android" ||
+      loading ||
+      !!error
+    ) {
       return;
     }
 
@@ -577,7 +593,8 @@ export default function FitnessMetricTrend() {
     const windowStartKey = dateKey(windowStart);
     const windowEndKey = dateKey(windowEnd);
     const windowKey = `${windowStartKey}:${windowEndKey}`;
-    if (attemptedStepBackfillWindowsRef.current.has(windowKey)) {
+    const scopedWindowKey = `${kind}:${windowKey}`;
+    if (attemptedBackfillWindowsRef.current.has(scopedWindowKey)) {
       return;
     }
 
@@ -588,19 +605,19 @@ export default function FitnessMetricTrend() {
       cursor = addDays(cursor, 1)
     ) {
       const currentKey = dateKey(cursor);
-      if (!existingStepDateKeys.has(currentKey)) {
+      if (!existingMetricDateKeys.has(currentKey)) {
         missingDateKeys.push(currentKey);
       }
     }
 
     if (!missingDateKeys.length) {
-      attemptedStepBackfillWindowsRef.current.add(windowKey);
+      attemptedBackfillWindowsRef.current.add(scopedWindowKey);
       return;
     }
 
     let cancelled = false;
-    attemptedStepBackfillWindowsRef.current.add(windowKey);
-    setStepsBackfillState({
+    attemptedBackfillWindowsRef.current.add(scopedWindowKey);
+    setHistoryBackfillState({
       error: null,
       missingCount: missingDateKeys.length,
       running: true,
@@ -608,14 +625,29 @@ export default function FitnessMetricTrend() {
 
     void (async () => {
       try {
-        const result = await backfillHealthConnectStepDates(missingDateKeys, {
-          reason: "steps-screen",
-          windowKey,
-        });
+        const metricKind = kind;
+        const result =
+          metricKind === "steps"
+            ? await backfillHealthConnectStepDates(missingDateKeys, {
+                reason: "steps-screen",
+                windowKey,
+              })
+            : metricKind === "sleep" ||
+                metricKind === "exercise" ||
+                metricKind === "blood_pressure"
+              ? await backfillHealthConnectMeasurementDates(
+                  metricKind,
+                  missingDateKeys,
+                  {
+                    reason: "metric-screen",
+                    windowKey,
+                  },
+                )
+              : { attempted: 0, uploaded: 0 };
 
         if (cancelled) return;
 
-        setStepsBackfillState({
+        setHistoryBackfillState({
           error: null,
           missingCount: Math.max(0, missingDateKeys.length - result.uploaded),
           running: false,
@@ -626,11 +658,11 @@ export default function FitnessMetricTrend() {
         }
       } catch (backfillError) {
         if (cancelled) return;
-        setStepsBackfillState({
+        setHistoryBackfillState({
           error:
             backfillError instanceof Error
               ? backfillError.message
-              : "Could not backfill step history.",
+              : "Could not backfill device history.",
           missingCount: missingDateKeys.length,
           running: false,
         });
@@ -642,7 +674,7 @@ export default function FitnessMetricTrend() {
     };
   }, [
     error,
-    existingStepDateKeys,
+    existingMetricDateKeys,
     kind,
     loading,
     refetchHistory,
@@ -873,22 +905,48 @@ export default function FitnessMetricTrend() {
             <ThemedText style={{ opacity: 0.7 }}>
               Steps are synced from your phone/watch.
             </ThemedText>
-            {kind === "steps" && stepsBackfillState.running ? (
+            {(kind === "steps" ||
+              kind === "sleep" ||
+              kind === "exercise" ||
+              kind === "blood_pressure") &&
+            historyBackfillState.running ? (
               <ThemedText style={{ opacity: 0.72 }}>
-                Filling {stepsBackfillState.missingCount} missing day
-                {stepsBackfillState.missingCount === 1 ? "" : "s"} from Health
+                Filling {historyBackfillState.missingCount} missing day
+                {historyBackfillState.missingCount === 1 ? "" : "s"} from Health
                 Connect...
               </ThemedText>
             ) : null}
-            {kind === "steps" &&
-            !stepsBackfillState.running &&
-            stepsBackfillState.error ? (
+            {(kind === "steps" ||
+              kind === "sleep" ||
+              kind === "exercise" ||
+              kind === "blood_pressure") &&
+            !historyBackfillState.running &&
+            historyBackfillState.error ? (
               <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
-                {stepsBackfillState.error}
+                {historyBackfillState.error}
               </ThemedText>
             ) : null}
           </View>
         )}
+
+        {kind !== "steps" &&
+        (kind === "sleep" || kind === "exercise" || kind === "blood_pressure") &&
+        historyBackfillState.running ? (
+          <ThemedText style={{ opacity: 0.72 }}>
+            Filling {historyBackfillState.missingCount} missing day
+            {historyBackfillState.missingCount === 1 ? "" : "s"} from Health
+            Connect...
+          </ThemedText>
+        ) : null}
+
+        {kind !== "steps" &&
+        (kind === "sleep" || kind === "exercise" || kind === "blood_pressure") &&
+        !historyBackfillState.running &&
+        historyBackfillState.error ? (
+          <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
+            {historyBackfillState.error}
+          </ThemedText>
+        ) : null}
 
         {loading ? (
           <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>

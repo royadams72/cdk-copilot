@@ -53,6 +53,12 @@ type SyncStateRecordType =
   | "sleep"
   | "steps";
 
+type BackfillableMeasurementKind =
+  | "blood_pressure"
+  | "exercise"
+  | "sleep"
+  | "steps";
+
 type HealthConnectSyncStateResponse = {
   provider: "health_connect";
   recordTypes?: Partial<
@@ -468,6 +474,34 @@ async function readRecentRecords(
   return records;
 }
 
+function dayRangeForDateKey(dateKey: string) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const start = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return {
+    endTime: end.toISOString(),
+    startTime: start.toISOString(),
+  };
+}
+
+function recordTypesForBackfillKind(kind: Exclude<BackfillableMeasurementKind, "steps">) {
+  if (kind === "sleep") return ["SleepSession"] as const;
+  if (kind === "exercise") return ["ExerciseSession"] as const;
+  return ["BloodPressure"] as const;
+}
+
 export async function hasHealthConnectBackgroundReadPermission() {
   if (Platform.OS !== "android") {
     return false;
@@ -615,6 +649,66 @@ export async function backfillHealthConnectStepDates(
     return { attempted, uploaded };
   } finally {
     inFlightStepBackfillWindowKeys.delete(options.windowKey);
+  }
+}
+
+export async function backfillHealthConnectMeasurementDates(
+  kind: Exclude<BackfillableMeasurementKind, "steps">,
+  missingDateKeys: string[],
+  options: {
+    reason?: "metric-screen";
+    windowKey: string;
+  },
+) {
+  if (Platform.OS !== "android" || !missingDateKeys.length) {
+    return { attempted: 0, uploaded: 0 };
+  }
+
+  const inFlightKey = `${kind}:${options.windowKey}`;
+  if (inFlightStepBackfillWindowKeys.has(inFlightKey)) {
+    return { attempted: 0, uploaded: 0 };
+  }
+
+  inFlightStepBackfillWindowKeys.add(inFlightKey);
+  let attempted = 0;
+  let uploaded = 0;
+
+  try {
+    const healthConnect = await import("react-native-health-connect");
+    const initialized = await healthConnect.initialize();
+    if (!initialized) {
+      return { attempted: 0, uploaded: 0 };
+    }
+
+    const orderedDateKeys = [...new Set(missingDateKeys)].sort();
+    const recordTypes = recordTypesForBackfillKind(kind);
+
+    for (const dateKey of orderedDateKeys) {
+      const timeRange = dayRangeForDateKey(dateKey);
+      if (!timeRange) {
+        continue;
+      }
+
+      attempted += 1;
+
+      for (const recordType of recordTypes) {
+        const records = await readRecentRecords(healthConnect, recordType, timeRange);
+        const payloads = toMeasurementPayloads(recordType, records);
+
+        for (const payload of payloads) {
+          await createMeasurementDirect(payload);
+          uploaded += 1;
+        }
+      }
+    }
+
+    if (uploaded > 0) {
+      invalidateMeasurementCaches(kind, { includeHistory: true });
+    }
+
+    return { attempted, uploaded };
+  } finally {
+    inFlightStepBackfillWindowKeys.delete(inFlightKey);
   }
 }
 
