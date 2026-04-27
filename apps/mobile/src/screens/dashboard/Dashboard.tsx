@@ -14,6 +14,10 @@ import {
   toQueryErrorMessage,
   useGetDashboardQuery,
 } from "@/store/services/dashboardApi";
+import {
+  useGetPendingPatientEngagementQuery,
+  useOpenPatientEngagementMutation,
+} from "@/store/services/patientEngagementApi";
 
 import { styles } from "./styles";
 import { Card } from "./components/Card";
@@ -42,6 +46,11 @@ export default function Dashboard() {
     stepsToday,
   } = useStepCount(10000);
   useSyncStepCount(stepsToday, stepStatus === "ready");
+  const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
+  const [openPatientEngagement, { isLoading: isOpeningEngagement }] =
+    useOpenPatientEngagementMutation();
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(
@@ -74,6 +83,24 @@ export default function Dashboard() {
       }
     })();
   }, []);
+
+  const handleOpenEngagement = useCallback(() => {
+    if (!pendingEngagement?.key) return;
+
+    const title = pendingEngagement.metadata?.copy?.title ?? "Achievement unlocked";
+    const body =
+      pendingEngagement.metadata?.copy?.body ??
+      "You earned a new patient engagement achievement.";
+
+    Alert.alert(title, body, [
+      {
+        onPress: () => {
+          void openPatientEngagement({ key: pendingEngagement.key });
+        },
+        text: "Nice",
+      },
+    ]);
+  }, [openPatientEngagement, pendingEngagement]);
 
   const rangeSummary = useMemo(() => {
     if (!data) return "";
@@ -148,6 +175,27 @@ export default function Dashboard() {
           </View>
 
           {error && data && <InlineError message={errorMessage} />}
+
+          {pendingEngagement ? (
+            <Card>
+              <ThemedText type="defaultSemiBold">
+                {pendingEngagement.metadata?.copy?.title ?? "Achievement unlocked"}
+              </ThemedText>
+              <ThemedText style={styles.helperText}>
+                {pendingEngagement.metadata?.copy?.body ??
+                  "You earned a new engagement milestone."}
+              </ThemedText>
+              <Pressable
+                disabled={isOpeningEngagement}
+                style={styles.primaryActionButton}
+                onPress={handleOpenEngagement}
+              >
+                <ThemedText style={styles.primaryActionText}>
+                  {isOpeningEngagement ? "Opening..." : "View achievement"}
+                </ThemedText>
+              </Pressable>
+            </Card>
+          ) : null}
 
           <>
             {data?.nutrition.radials?.length ? (

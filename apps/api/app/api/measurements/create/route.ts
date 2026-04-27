@@ -6,6 +6,12 @@ import { Db, ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  awardExerciseDaysEngagement,
+  awardSleepLoggingEngagement,
+  awardStepsEngagement,
+  awardWeightLossWeeksEngagement,
+} from "@/apps/api/lib/utils/patientEngagement";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -551,6 +557,13 @@ export async function POST(req: NextRequest) {
           .updateOne(filter, fallbackUpdate, { upsert: true });
       }
 
+      await awardStepsEngagement(db, {
+        count: typeof payload.count === "number" ? payload.count : 0,
+        measuredAt: payload.measuredAt as Date,
+        orgId: payload.orgId as string,
+        patientId: payload.patientId as ObjectId,
+      });
+
       return ok(
         {
           id: result.upsertedId?.toString() ?? null,
@@ -561,6 +574,28 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await saveMeasurement(db, payload);
+    if (kind === "sleep") {
+      await awardSleepLoggingEngagement(db, {
+        measuredAt: payload.measuredAt as Date,
+        orgId: payload.orgId as string,
+        patientId: payload.patientId as ObjectId,
+        source: payload.source as string,
+      });
+    }
+    if (kind === "exercise") {
+      await awardExerciseDaysEngagement(db, {
+        measuredAt: payload.measuredAt as Date,
+        orgId: payload.orgId as string,
+        patientId: payload.patientId as ObjectId,
+      });
+    }
+    if (kind === "weight") {
+      await awardWeightLossWeeksEngagement(db, {
+        measuredAt: payload.measuredAt as Date,
+        orgId: payload.orgId as string,
+        patientId: payload.patientId as ObjectId,
+      });
+    }
     return ok({ id: result.id, updated: result.updated }, result.status);
   } catch (err: any) {
     const status = err?.status || 500;

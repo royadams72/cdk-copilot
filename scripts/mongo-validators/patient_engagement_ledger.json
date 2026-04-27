@@ -1,0 +1,184 @@
+{
+  "collMod": "patient_engagement_ledger",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "achievedAt": -1 },
+      "options": { "name": "byPatientAchievedAt" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "achievedAt": -1 },
+      "options": { "name": "byOrgPatientAchievedAt" }
+    },
+    {
+      "key": { "orgId": 1, "type": 1, "achievedAt": -1 },
+      "options": { "name": "byOrgTypeAchievedAt" }
+    },
+    {
+      "key": { "patientId": 1, "key": 1 },
+      "options": { "name": "uniqPatientKey", "unique": true }
+    },
+    {
+      "key": { "orgId": 1, "achievedAt": -1 },
+      "options": { "name": "byOrgAchievedAt" }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "orgId",
+        "type",
+        "key",
+        "achievedAt",
+        "sourceRefs",
+        "createdAt",
+        "createdBy",
+        "delivery"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "patientId": { "bsonType": "objectId" },
+        "orgId": { "bsonType": "string" },
+        "type": {
+          "bsonType": "string",
+          "enum": [
+            "first_steps_threshold",
+            "meal_logging_streak",
+            "meal_targets_streak",
+            "sleep_logging_streak",
+            "exercise_days_streak",
+            "steps_target_streak",
+            "steps_multiplier_streak",
+            "weight_loss_weeks_streak"
+          ]
+        },
+        "key": { "bsonType": "string" },
+        "achievedAt": { "bsonType": "date" },
+        "sourceRefs": {
+          "bsonType": "array",
+          "minItems": 1,
+          "items": {
+            "bsonType": "object",
+            "required": ["collection"],
+            "properties": {
+              "collection": {
+                "bsonType": "string",
+                "enum": [
+                  "measurements_ledger",
+                  "nutrition_ledger",
+                  "targets_current",
+                  "targets_ledger"
+                ]
+              },
+              "documentId": { "bsonType": ["objectId", "string"] },
+              "kind": {
+                "bsonType": "string",
+                "enum": ["steps", "exercise", "sleep", "meal", "weight", "target"]
+              },
+              "sourceDate": { "bsonType": "string" },
+              "measuredAt": { "bsonType": "date" },
+              "eatenAt": { "bsonType": "date" },
+              "weekStart": { "bsonType": ["date", "string"] }
+            },
+            "additionalProperties": true
+          }
+        },
+        "metadata": {
+          "bsonType": "object",
+          "properties": {
+            "threshold": { "bsonType": ["double", "int", "long", "decimal"] },
+            "thresholdUnit": { "bsonType": "string" },
+            "streakLength": { "bsonType": ["double", "int", "long", "decimal"] },
+            "window": {
+              "bsonType": "object",
+              "properties": {
+                "kind": { "bsonType": "string" },
+                "startDate": { "bsonType": "string" },
+                "endDate": { "bsonType": "string" },
+                "startWeek": { "bsonType": "string" },
+                "endWeek": { "bsonType": "string" },
+                "timezone": { "bsonType": "string" }
+              },
+              "additionalProperties": true
+            },
+            "targetMetric": { "bsonType": "string" },
+            "targetValue": { "bsonType": ["double", "int", "long", "decimal"] },
+            "copy": {
+              "bsonType": "object",
+              "properties": {
+                "title": { "bsonType": "string" },
+                "body": { "bsonType": "string" },
+                "shortBody": { "bsonType": "string" },
+                "celebrationStyle": { "bsonType": "string" }
+              },
+              "additionalProperties": true
+            },
+            "days": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" }
+            },
+            "weeks": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" }
+            },
+            "stats": {
+              "bsonType": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "delivery": {
+          "bsonType": "object",
+          "required": ["notification", "inApp"],
+          "properties": {
+            "notification": {
+              "bsonType": "object",
+              "required": ["status", "sentAt"],
+              "properties": {
+                "status": {
+                  "bsonType": "string",
+                  "enum": ["pending", "sent", "skipped", "failed"]
+                },
+                "sentAt": { "bsonType": ["date", "null"] }
+              },
+              "additionalProperties": false
+            },
+            "inApp": {
+              "bsonType": "object",
+              "required": ["status", "firstShownAt", "openedAt"],
+              "properties": {
+                "status": {
+                  "bsonType": "string",
+                  "enum": ["pending", "shown", "opened", "dismissed", "expired"]
+                },
+                "firstShownAt": { "bsonType": ["date", "null"] },
+                "openedAt": { "bsonType": ["date", "null"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "createdAt": { "bsonType": "date" },
+        "createdBy": {
+          "bsonType": "object",
+          "required": ["principalId", "actorType"],
+          "properties": {
+            "principalId": { "bsonType": "string" },
+            "actorType": {
+              "bsonType": "string",
+              "enum": ["user", "clinician", "system", "patient", "dietitian", "admin"]
+            },
+            "displayName": { "bsonType": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

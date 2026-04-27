@@ -24,58 +24,20 @@ type ExpoPushTicket = {
 
 const EXPO_PUSH_API_URL = "https://exp.host/--/api/v2/push/send";
 
+type ExpoPushMessage = {
+  body: string;
+  data?: Record<string, unknown>;
+  sound?: "default";
+  title: string;
+  to: string;
+};
+
 function getInsightPreview(insight: TWeeklyNutritionInsight) {
   const firstSentence = insight.humanMessage.split(/(?<=[.!?])\s+/)[0]?.trim();
   return firstSentence || "Your weekly nutrition report is ready.";
 }
 
-export async function sendWeeklyInsightPushNotifications(
-  db: Db,
-  insights: TWeeklyNutritionInsight[],
-) {
-  if (!insights.length) {
-    return { attempted: 0, delivered: 0, failed: 0 };
-  }
-
-  const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
-  const patientIds = insights.map((insight) => insight.patientId);
-  const users = await usersPii
-    .find(
-      {
-        patientId: { $in: patientIds },
-        "notificationPrefs.push": true,
-        "devices.pushToken": { $exists: true },
-      },
-      {
-        projection: {
-          devices: 1,
-          notificationPrefs: 1,
-          patientId: 1,
-        },
-      },
-    )
-    .toArray();
-
-  const pushMessages = insights.flatMap((insight) => {
-    const user = users.find((candidate) => candidate.patientId === insight.patientId);
-    const tokens = (user?.devices ?? [])
-      .map((device) => device.pushToken?.trim())
-      .filter((token): token is string => Boolean(token));
-
-    return Array.from(new Set(tokens)).map((to) => ({
-      body: getInsightPreview(insight),
-      data: {
-        screen: "/(nutrition)/nutrition-details",
-        type: "weekly-report",
-        weekEnd: insight.weekEnd,
-        weekStart: insight.weekStart,
-      },
-      sound: "default",
-      title: "Weekly report ready",
-      to,
-    }));
-  });
-
+async function sendExpoPushMessages(pushMessages: ExpoPushMessage[]) {
   if (!pushMessages.length) {
     return { attempted: 0, delivered: 0, failed: 0 };
   }
@@ -109,4 +71,98 @@ export async function sendWeeklyInsightPushNotifications(
     delivered,
     failed: pushMessages.length - delivered,
   };
+}
+
+export async function sendPatientPushNotification(
+  db: Db,
+  input: {
+    body: string;
+    data?: Record<string, unknown>;
+    patientId: string;
+    title: string;
+  },
+) {
+  const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
+  const user = await usersPii.findOne(
+    {
+      patientId: input.patientId,
+      "notificationPrefs.push": true,
+      "devices.pushToken": { $exists: true },
+    },
+    {
+      projection: {
+        devices: 1,
+        notificationPrefs: 1,
+        patientId: 1,
+      },
+    },
+  );
+
+  const tokens = Array.from(
+    new Set(
+      (user?.devices ?? [])
+        .map((device) => device.pushToken?.trim())
+        .filter((token): token is string => Boolean(token)),
+    ),
+  );
+
+  return sendExpoPushMessages(
+    tokens.map((to) => ({
+      body: input.body,
+      data: input.data,
+      sound: "default" as const,
+      title: input.title,
+      to,
+    })),
+  );
+}
+
+export async function sendWeeklyInsightPushNotifications(
+  db: Db,
+  insights: TWeeklyNutritionInsight[],
+) {
+  if (!insights.length) {
+    return { attempted: 0, delivered: 0, failed: 0 };
+  }
+
+  const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
+  const patientIds = insights.map((insight) => insight.patientId);
+  const users = await usersPii
+    .find(
+      {
+        patientId: { $in: patientIds },
+        "notificationPrefs.push": true,
+        "devices.pushToken": { $exists: true },
+      },
+      {
+        projection: {
+          devices: 1,
+          notificationPrefs: 1,
+          patientId: 1,
+        },
+      },
+    )
+    .toArray();
+
+  const pushMessages: ExpoPushMessage[] = insights.flatMap((insight) => {
+    const user = users.find((candidate) => candidate.patientId === insight.patientId);
+    const tokens = (user?.devices ?? [])
+      .map((device) => device.pushToken?.trim())
+      .filter((token): token is string => Boolean(token));
+
+    return Array.from(new Set(tokens)).map((to) => ({
+      body: getInsightPreview(insight),
+      data: {
+        screen: "/(nutrition)/nutrition-details",
+        type: "weekly-report",
+        weekEnd: insight.weekEnd,
+        weekStart: insight.weekStart,
+      },
+      sound: "default" as const,
+      title: "Weekly report ready",
+      to,
+    }));
+  });
+
+  return sendExpoPushMessages(pushMessages);
 }
