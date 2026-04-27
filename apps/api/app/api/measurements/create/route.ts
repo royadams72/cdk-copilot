@@ -110,6 +110,24 @@ function providerUpsertFilter(payload: Record<string, unknown>) {
   ) {
     return null;
   }
+  const providerPackageName =
+    payload.provider &&
+    typeof payload.provider === "object" &&
+    !Array.isArray(payload.provider) &&
+    typeof (payload.provider as Record<string, unknown>).packageName === "string"
+      ? ((payload.provider as Record<string, unknown>).packageName as string)
+      : null;
+
+  if (providerPackageName) {
+    return {
+      externalRecordId: payload.externalRecordId,
+      kind: payload.kind,
+      orgId: payload.orgId,
+      patientId: payload.patientId,
+      "provider.packageName": providerPackageName,
+    };
+  }
+
   return {
     externalRecordId: payload.externalRecordId,
     kind: payload.kind,
@@ -486,7 +504,7 @@ export async function POST(req: NextRequest) {
               kind: "steps",
               orgId: payload.orgId,
               patientId: payload.patientId,
-              source: payload.source,
+              "provider.packageName": provider.packageName,
             }
           : {
               kind: "steps",

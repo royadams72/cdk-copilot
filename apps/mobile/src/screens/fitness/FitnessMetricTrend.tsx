@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import {
   readHealthConnectStepSummaryForDate,
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
+import { backfillHealthConnectStepDates } from "@/lib/healthConnectSync";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { toQueryErrorMessage } from "@/store/services/appApi";
@@ -128,6 +129,16 @@ export default function FitnessMetricTrend() {
   const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [weightValue, setWeightValue] = useState(70);
   const [weightDecimal, setWeightDecimal] = useState(5);
+  const [stepsBackfillState, setStepsBackfillState] = useState<{
+    error: string | null;
+    missingCount: number;
+    running: boolean;
+  }>({
+    error: null,
+    missingCount: 0,
+    running: false,
+  });
+  const attemptedStepBackfillWindowsRef = useRef<Set<string>>(new Set());
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -385,6 +396,13 @@ export default function FitnessMetricTrend() {
     return index >= 0 ? index : null;
   }, [chart.points, selectedDateKey]);
 
+  const existingStepDateKeys = useMemo(() => {
+    if (kind !== "steps") {
+      return new Set<string>();
+    }
+    return new Set(points.map((point) => point.date));
+  }, [kind, points]);
+
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
     return sortEntriesForTrendDay(kind, entriesByDate[selectedDateKey] ?? []);
@@ -542,6 +560,94 @@ export default function FitnessMetricTrend() {
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
   }, [kind, modalOpen, preferredWeightUnit]);
+
+  useEffect(() => {
+    if (kind !== "steps" || Platform.OS !== "android" || loading || !!error) {
+      return;
+    }
+
+    const anchorKey = selectedDateKey ?? dateKey(new Date());
+    const anchorDate = new Date(`${anchorKey}T12:00:00`);
+    if (Number.isNaN(anchorDate.getTime())) {
+      return;
+    }
+
+    const windowEnd = new Date(anchorDate);
+    const windowStart = addDays(windowEnd, -29);
+    const windowStartKey = dateKey(windowStart);
+    const windowEndKey = dateKey(windowEnd);
+    const windowKey = `${windowStartKey}:${windowEndKey}`;
+    if (attemptedStepBackfillWindowsRef.current.has(windowKey)) {
+      return;
+    }
+
+    const missingDateKeys: string[] = [];
+    for (
+      let cursor = new Date(windowStart);
+      cursor.getTime() <= windowEnd.getTime();
+      cursor = addDays(cursor, 1)
+    ) {
+      const currentKey = dateKey(cursor);
+      if (!existingStepDateKeys.has(currentKey)) {
+        missingDateKeys.push(currentKey);
+      }
+    }
+
+    if (!missingDateKeys.length) {
+      attemptedStepBackfillWindowsRef.current.add(windowKey);
+      return;
+    }
+
+    let cancelled = false;
+    attemptedStepBackfillWindowsRef.current.add(windowKey);
+    setStepsBackfillState({
+      error: null,
+      missingCount: missingDateKeys.length,
+      running: true,
+    });
+
+    void (async () => {
+      try {
+        const result = await backfillHealthConnectStepDates(missingDateKeys, {
+          reason: "steps-screen",
+          windowKey,
+        });
+
+        if (cancelled) return;
+
+        setStepsBackfillState({
+          error: null,
+          missingCount: Math.max(0, missingDateKeys.length - result.uploaded),
+          running: false,
+        });
+
+        if (result.uploaded > 0) {
+          await refetchHistory();
+        }
+      } catch (backfillError) {
+        if (cancelled) return;
+        setStepsBackfillState({
+          error:
+            backfillError instanceof Error
+              ? backfillError.message
+              : "Could not backfill step history.",
+          missingCount: missingDateKeys.length,
+          running: false,
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    error,
+    existingStepDateKeys,
+    kind,
+    loading,
+    refetchHistory,
+    selectedDateKey,
+  ]);
 
   useEffect(() => {
     const latestDate = chart.points[chart.points.length - 1]?.date ?? null;
@@ -763,9 +869,25 @@ export default function FitnessMetricTrend() {
             </ThemedText>
           </TouchableOpacity>
         ) : (
-          <ThemedText style={{ opacity: 0.7 }}>
-            Steps are synced from your phone/watch.
-          </ThemedText>
+          <View style={{ gap: 4 }}>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Steps are synced from your phone/watch.
+            </ThemedText>
+            {kind === "steps" && stepsBackfillState.running ? (
+              <ThemedText style={{ opacity: 0.72 }}>
+                Filling {stepsBackfillState.missingCount} missing day
+                {stepsBackfillState.missingCount === 1 ? "" : "s"} from Health
+                Connect...
+              </ThemedText>
+            ) : null}
+            {kind === "steps" &&
+            !stepsBackfillState.running &&
+            stepsBackfillState.error ? (
+              <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
+                {stepsBackfillState.error}
+              </ThemedText>
+            ) : null}
+          </View>
         )}
 
         {loading ? (

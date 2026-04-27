@@ -3,7 +3,10 @@ import { ExerciseType } from "react-native-health-connect";
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-import { loadAndroidStepState } from "@/lib/healthConnectStepSummary";
+import {
+  loadAndroidStepState,
+  readHealthConnectStepSummaryRecordForDate,
+} from "@/lib/healthConnectStepSummary";
 import {
   ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
   ANDROID_HEALTH_RECORD_PERMISSIONS,
@@ -34,6 +37,7 @@ let lastHealthConnectSyncStartedAt = 0;
 let lastHealthConnectQuotaRetryAt = 0;
 let lastSyncedStepSlotKey: string | null = null;
 let inFlightStepSlotKey: string | null = null;
+const inFlightStepBackfillWindowKeys = new Set<string>();
 
 type HealthRecordType =
   | "BloodPressure"
@@ -247,6 +251,14 @@ function resolvedStepProvider(
   return {
     displayName: providerDisplayName(packageName),
     packageName,
+  };
+}
+
+function providerFromPackageName(packageName: string | null) {
+  const resolvedPackageName = packageName?.trim() || "android.healthconnect";
+  return {
+    displayName: providerDisplayName(resolvedPackageName),
+    packageName: resolvedPackageName,
   };
 }
 
@@ -535,6 +547,74 @@ export async function syncTodayStepMeasurement(
     if (inFlightStepSlotKey === slotKey) {
       inFlightStepSlotKey = null;
     }
+  }
+}
+
+export async function backfillHealthConnectStepDates(
+  missingDateKeys: string[],
+  options: {
+    reason?: "steps-screen";
+    windowKey: string;
+  },
+) {
+  if (Platform.OS !== "android" || !missingDateKeys.length) {
+    return { attempted: 0, uploaded: 0 };
+  }
+
+  if (inFlightStepBackfillWindowKeys.has(options.windowKey)) {
+    return { attempted: 0, uploaded: 0 };
+  }
+
+  inFlightStepBackfillWindowKeys.add(options.windowKey);
+  let attempted = 0;
+  let uploaded = 0;
+
+  try {
+    const orderedDateKeys = [...new Set(missingDateKeys)].sort();
+
+    for (const dateKey of orderedDateKeys) {
+      const date = new Date(`${dateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        continue;
+      }
+
+      attempted += 1;
+      const summary = await readHealthConnectStepSummaryRecordForDate(date);
+      if (!summary) {
+        continue;
+      }
+
+      const measuredAt = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12,
+        0,
+        0,
+        0,
+      ).toISOString();
+
+      await createMeasurementDirect({
+        averageSpeedKph: summary.averageSpeedKph ?? undefined,
+        caloriesKcal: summary.caloriesKcal ?? undefined,
+        count: Math.max(0, Math.round(summary.steps ?? 0)),
+        distanceMeters: summary.distanceMeters ?? undefined,
+        externalRecordId: `health-connect:steps:${dateKey}`,
+        kind: "steps",
+        measuredAt,
+        provider: providerFromPackageName(summary.selectedDataOrigin),
+        source: "provider",
+      });
+      uploaded += 1;
+    }
+
+    if (uploaded > 0) {
+      invalidateMeasurementCaches("steps", { includeHistory: true });
+    }
+
+    return { attempted, uploaded };
+  } finally {
+    inFlightStepBackfillWindowKeys.delete(options.windowKey);
   }
 }
 

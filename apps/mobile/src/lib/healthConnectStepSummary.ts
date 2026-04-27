@@ -32,6 +32,10 @@ export type StepActivitySummary = {
   steps: number | null;
 };
 
+export type HealthConnectStepSummaryRecord = StepActivitySummary & {
+  selectedDataOrigin: string | null;
+};
+
 export type AndroidStepState = {
   backgroundReadGranted: boolean;
   canRequestPermission: boolean;
@@ -338,7 +342,7 @@ async function readStepAggregateSummary(
   };
 }
 
-export async function readHealthConnectStepSummaryForDate(date: Date) {
+export async function readHealthConnectStepSummaryRecordForDate(date: Date) {
   const healthConnect = await import("react-native-health-connect");
   const sdkStatus = await healthConnect.getSdkStatus();
   if (
@@ -400,7 +404,22 @@ export async function readHealthConnectStepSummaryForDate(date: Date) {
     averageSpeedKph: aggregateSummary.averageSpeedKph,
     caloriesKcal: aggregateSummary.caloriesKcal,
     distanceMeters: aggregateSummary.distanceMeters,
+    selectedDataOrigin: selected.selectedDataOrigin,
     steps: selected.total,
+  } satisfies HealthConnectStepSummaryRecord;
+}
+
+export async function readHealthConnectStepSummaryForDate(date: Date) {
+  const record = await readHealthConnectStepSummaryRecordForDate(date);
+  if (!record) {
+    return null;
+  }
+
+  return {
+    averageSpeedKph: record.averageSpeedKph,
+    caloriesKcal: record.caloriesKcal,
+    distanceMeters: record.distanceMeters,
+    steps: record.steps,
   } satisfies StepActivitySummary;
 }
 
