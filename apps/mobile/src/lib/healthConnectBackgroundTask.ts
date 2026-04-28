@@ -40,6 +40,23 @@ export async function registerHealthConnectBackgroundTaskAsync() {
   return true;
 }
 
+export async function unregisterHealthConnectBackgroundTaskAsync() {
+  if (Platform.OS !== "android") {
+    return false;
+  }
+
+  const registeredTasks = await TaskManager.getRegisteredTasksAsync();
+  const isRegistered = registeredTasks.some(
+    (task) => task.taskName === HEALTH_CONNECT_BACKGROUND_TASK,
+  );
+  if (!isRegistered) {
+    return false;
+  }
+
+  await BackgroundTask.unregisterTaskAsync(HEALTH_CONNECT_BACKGROUND_TASK);
+  return true;
+}
+
 export async function triggerHealthConnectBackgroundTaskForTestingAsync() {
   if (!__DEV__ || Platform.OS !== "android") {
     return false;

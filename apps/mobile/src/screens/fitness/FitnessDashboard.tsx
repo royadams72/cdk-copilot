@@ -11,7 +11,6 @@ import { useRouter } from "expo-router";
 
 import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { useStepCount } from "@/hooks/useStepCount";
-import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 import { syncSleepReminderNotification } from "@/lib/pushNotifications";
@@ -254,7 +253,6 @@ export default function FitnessDashboard() {
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
   useSyncStepCount(stepsToday, stepStatus === "ready");
-  useSyncHealthConnectMeasurements(true);
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",
