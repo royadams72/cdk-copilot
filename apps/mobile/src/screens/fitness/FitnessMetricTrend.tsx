@@ -431,17 +431,25 @@ export default function FitnessMetricTrend() {
   }, [chart.points, selectedDateKey]);
 
   const existingMetricDateKeys = useMemo(() => {
-    if (
-      kind !== "steps" &&
-      kind !== "sleep" &&
-      kind !== "exercise" &&
-      kind !== "blood_pressure" &&
-      kind !== "heart_rate"
-    ) {
-      return new Set<string>();
+    if (kind === "steps") {
+      return new Set(
+        Object.entries(entriesByDate)
+          .filter(([, entries]) => getStepSummaryFromEntries(entries).steps !== null)
+          .map(([date]) => date),
+      );
     }
-    return new Set(points.map((point) => point.date));
-  }, [kind, points]);
+
+    if (
+      kind === "sleep" ||
+      kind === "exercise" ||
+      kind === "blood_pressure" ||
+      kind === "heart_rate"
+    ) {
+      return new Set(points.map((point) => point.date));
+    }
+
+    return new Set<string>();
+  }, [entriesByDate, kind, points]);
 
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
