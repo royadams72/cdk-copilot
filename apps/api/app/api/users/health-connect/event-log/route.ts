@@ -76,15 +76,12 @@ export async function POST(req: NextRequest) {
           return null;
         }
 
-        return {
+        const doc: Record<string, unknown> = {
           at: now,
-          clientAt: asDate(event.clientAt) ?? undefined,
-          deviceId: asTrimmedString(event.deviceId) ?? undefined,
           env: process.env.NODE_ENV || "dev",
           event: eventName,
           orgId: caller.orgId ?? "org_demo",
           patientId,
-          payload: asPayload(event.payload),
           platform,
           source,
           status:
@@ -93,8 +90,27 @@ export async function POST(req: NextRequest) {
             event.status === "info"
               ? event.status
               : "info",
-          trigger: asTrimmedString(event.trigger) ?? undefined,
         };
+
+        const clientAt = asDate(event.clientAt);
+        const deviceId = asTrimmedString(event.deviceId);
+        const payload = asPayload(event.payload);
+        const trigger = asTrimmedString(event.trigger);
+
+        if (clientAt) {
+          doc.clientAt = clientAt;
+        }
+        if (deviceId) {
+          doc.deviceId = deviceId;
+        }
+        if (payload) {
+          doc.payload = payload;
+        }
+        if (trigger) {
+          doc.trigger = trigger;
+        }
+
+        return doc;
       })
       .filter((doc): doc is NonNullable<typeof doc> => doc !== null);
 
