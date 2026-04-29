@@ -107,6 +107,24 @@ function buildHeartRateHourlyValues(
   });
 }
 
+function sameDayEntries(
+  left: MeasurementDayEntry[],
+  right: MeasurementDayEntry[],
+) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((entry, index) => {
+    const candidate = right[index];
+    return (
+      candidate?.measuredAt === entry.measuredAt &&
+      candidate?.value === entry.value &&
+      candidate?.value2 === entry.value2
+    );
+  });
+}
+
 export default function FitnessMetricTrend() {
   const router = useRouter();
   const params = useLocalSearchParams<{ kind?: string; label?: string }>();
@@ -128,6 +146,9 @@ export default function FitnessMetricTrend() {
   );
   const [healthConnectHeartRateEntries, setHealthConnectHeartRateEntries] =
     useState<MeasurementDayEntry[]>([]);
+  const [healthConnectHeartRateDateKey, setHealthConnectHeartRateDateKey] =
+    useState<string | null>(null);
+  const [heartRateDayLoading, setHeartRateDayLoading] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
     {},
   );
@@ -426,13 +447,27 @@ export default function FitnessMetricTrend() {
     if (!selectedDateKey) return [];
     return sortEntriesForTrendDay(kind, entriesByDate[selectedDateKey] ?? []);
   }, [entriesByDate, kind, selectedDateKey]);
+  const selectedDayEntriesSignature = useMemo(
+    () =>
+      selectedDayEntries
+        .map((entry) => `${entry.measuredAt}:${entry.value ?? "null"}:${entry.value2 ?? "null"}`)
+        .join("|"),
+    [selectedDayEntries],
+  );
 
   const resolvedHeartRateEntries = useMemo(() => {
     if (kind !== "heart_rate") {
       return selectedDayEntries;
     }
 
-    const merged = [...selectedDayEntries, ...healthConnectHeartRateEntries];
+    const scopedHealthConnectEntries =
+      healthConnectHeartRateDateKey === selectedDateKey
+        ? healthConnectHeartRateEntries
+        : [];
+    if (scopedHealthConnectEntries.length > 0) {
+      return sortEntriesForTrendDay(kind, scopedHealthConnectEntries);
+    }
+    const merged = [...selectedDayEntries, ...scopedHealthConnectEntries];
     const seen = new Set<string>();
     return sortEntriesForTrendDay(
       kind,
@@ -445,7 +480,27 @@ export default function FitnessMetricTrend() {
         return true;
       }),
     );
-  }, [healthConnectHeartRateEntries, kind, selectedDayEntries]);
+  }, [
+    healthConnectHeartRateDateKey,
+    healthConnectHeartRateEntries,
+    kind,
+    selectedDateKey,
+    selectedDayEntries,
+  ]);
+  const scopedHealthConnectHeartRateEntries = useMemo(
+    () =>
+      kind === "heart_rate" && healthConnectHeartRateDateKey === selectedDateKey
+        ? healthConnectHeartRateEntries
+        : [],
+    [
+      healthConnectHeartRateDateKey,
+      healthConnectHeartRateEntries,
+      kind,
+      selectedDateKey,
+    ],
+  );
+  const shouldShowHeartRateMissingState =
+    kind !== "heart_rate" || scopedHealthConnectHeartRateEntries.length === 0;
 
   const selectedStepSummary = useMemo(() => {
     if (kind !== "steps") return null;
@@ -543,8 +598,11 @@ export default function FitnessMetricTrend() {
     if (kind !== "heart_rate") {
       return [];
     }
+    if (heartRateDayLoading) {
+      return [];
+    }
     return buildHeartRateHourlyValues(resolvedHeartRateEntries);
-  }, [kind, resolvedHeartRateEntries]);
+  }, [heartRateDayLoading, kind, resolvedHeartRateEntries]);
 
   useEffect(() => {
     let cancelled = false;
@@ -555,20 +613,49 @@ export default function FitnessMetricTrend() {
         Platform.OS !== "android" ||
         !selectedDateKey
       ) {
-        setHealthConnectHeartRateEntries([]);
+        setHealthConnectHeartRateEntries((current) =>
+          current.length ? [] : current,
+        );
+        setHealthConnectHeartRateDateKey(null);
+        setHeartRateDayLoading(false);
         return;
       }
 
+      setHeartRateDayLoading(true);
+      setHealthConnectHeartRateEntries((current) =>
+        current.length ? [] : current,
+      );
+      setHealthConnectHeartRateDateKey(selectedDateKey);
+
       const date = new Date(`${selectedDateKey}T12:00:00`);
       if (Number.isNaN(date.getTime())) {
-        setHealthConnectHeartRateEntries([]);
+        setHealthConnectHeartRateEntries((current) =>
+          current.length ? [] : current,
+        );
+        setHealthConnectHeartRateDateKey(null);
+        setHeartRateDayLoading(false);
         return;
       }
 
       try {
         const entries = await readHealthConnectHeartRateEntriesForDate(date);
         if (!cancelled) {
-          setHealthConnectHeartRateEntries(entries);
+          setHealthConnectHeartRateDateKey(selectedDateKey);
+          setHealthConnectHeartRateEntries((current) =>
+            sameDayEntries(current, entries) ? current : entries,
+          );
+          if (entries.length > 0) {
+            setHistoryBackfillState((current) =>
+              current.error || current.missingCount > 0 || current.running
+                ? {
+                    error: null,
+                    missingCount: 0,
+                    running: false,
+                  }
+                : current,
+            );
+          }
+          setHeartRateDayLoading(false);
         }
       } catch (heartRateError) {
         console.log("Health Connect heart rate day read failed", {
@@ -579,7 +666,11 @@ export default function FitnessMetricTrend() {
               : String(heartRateError),
         });
         if (!cancelled) {
-          setHealthConnectHeartRateEntries([]);
+          setHealthConnectHeartRateEntries((current) =>
+            current.length ? [] : current,
+          );
+          setHealthConnectHeartRateDateKey(selectedDateKey);
+          setHeartRateDayLoading(false);
         }
       }
     };
@@ -589,7 +680,7 @@ export default function FitnessMetricTrend() {
     return () => {
       cancelled = true;
     };
-  }, [kind, selectedDateKey]);
+  }, [kind, selectedDateKey, selectedDayEntriesSignature]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1017,7 +1108,8 @@ export default function FitnessMetricTrend() {
               kind === "blood_pressure" ||
               kind === "heart_rate") &&
             !historyBackfillState.running &&
-            historyBackfillState.error ? (
+            historyBackfillState.error &&
+            shouldShowHeartRateMissingState ? (
               <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
                 {historyBackfillState.error}
               </ThemedText>
@@ -1044,7 +1136,8 @@ export default function FitnessMetricTrend() {
           kind === "blood_pressure" ||
           kind === "heart_rate") &&
         !historyBackfillState.running &&
-        historyBackfillState.error ? (
+        historyBackfillState.error &&
+        shouldShowHeartRateMissingState ? (
           <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
             {historyBackfillState.error}
           </ThemedText>
@@ -1199,6 +1292,12 @@ export default function FitnessMetricTrend() {
                     label="Hourly heart rate"
                     values={heartRateHourlyValues}
                   />
+                ) : selectedDateKey &&
+                  kind === "heart_rate" &&
+                  heartRateDayLoading ? (
+                  <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                    Loading device heart rate...
+                  </ThemedText>
                 ) : null}
 
                 {selectedDateKey &&

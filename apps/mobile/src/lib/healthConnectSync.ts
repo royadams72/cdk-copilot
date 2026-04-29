@@ -348,6 +348,13 @@ function exerciseTitle(record: HealthRecord) {
   return "Imported exercise";
 }
 
+function heartRateRecordSampleTimes(record: HealthRecord) {
+  return (record.samples ?? [])
+    .map((sample) => sample.time)
+    .filter((time): time is string => typeof time === "string")
+    .sort((a, b) => a.localeCompare(b));
+}
+
 function heartRateSamples(record: HealthRecord) {
   const samples = record.samples ?? [];
   const seen = new Set<string>();
@@ -574,9 +581,43 @@ export async function readHealthConnectHeartRateEntriesForDate(date: Date) {
   }
 
   const payloads: CreateMeasurementArgs[] = [];
+  const rawDebug: Array<{
+    firstAt: string | null;
+    lastAt: string | null;
+    payloadCount: number;
+    rawRecordCount: number;
+    sampleCount: number;
+    type: "HeartRate" | "RestingHeartRate";
+  }> = [];
   for (const recordType of ["HeartRate", "RestingHeartRate"] as const) {
     const records = await readRecentRecords(healthConnect, recordType, timeRange);
-    payloads.push(...toMeasurementPayloads(recordType, records));
+    const mappedPayloads = toMeasurementPayloads(recordType, records);
+    payloads.push(...mappedPayloads);
+
+    if (recordType === "HeartRate") {
+      const sampleTimes = records.flatMap((record) => heartRateRecordSampleTimes(record));
+      rawDebug.push({
+        firstAt: sampleTimes[0] ?? null,
+        lastAt: sampleTimes.at(-1) ?? null,
+        payloadCount: mappedPayloads.length,
+        rawRecordCount: records.length,
+        sampleCount: sampleTimes.length,
+        type: recordType,
+      });
+    } else {
+      const recordTimes = records
+        .map((record) => record.time)
+        .filter((time): time is string => typeof time === "string")
+        .sort((a, b) => a.localeCompare(b));
+      rawDebug.push({
+        firstAt: recordTimes[0] ?? null,
+        lastAt: recordTimes.at(-1) ?? null,
+        payloadCount: mappedPayloads.length,
+        rawRecordCount: records.length,
+        sampleCount: recordTimes.length,
+        type: recordType,
+      });
+    }
   }
 
   const seen = new Set<string>();
@@ -602,6 +643,100 @@ export async function readHealthConnectHeartRateEntriesForDate(date: Date) {
       value: payload.bpm,
       value2: null,
     }));
+}
+
+export async function syncHealthConnectHeartRateEntriesForDate(
+  date: Date,
+  existingEntries: MeasurementDayEntry[] = [],
+) {
+  if (Platform.OS !== "android") {
+    return {
+      entries: [] as MeasurementDayEntry[],
+      uploaded: 0,
+    };
+  }
+
+  const timeRange = dayRangeForDateKey(localDateKey(date));
+  if (!timeRange) {
+    return {
+      entries: [] as MeasurementDayEntry[],
+      uploaded: 0,
+    };
+  }
+
+  const healthConnect = await import("react-native-health-connect");
+  const initialized = await healthConnect.initialize();
+  if (!initialized) {
+    return {
+      entries: [] as MeasurementDayEntry[],
+      uploaded: 0,
+    };
+  }
+
+  const payloads: CreateMeasurementArgs[] = [];
+  for (const recordType of ["HeartRate", "RestingHeartRate"] as const) {
+    const records = await readRecentRecords(healthConnect, recordType, timeRange);
+    payloads.push(...toMeasurementPayloads(recordType, records));
+  }
+
+  const existingKeys = new Set(
+    existingEntries
+      .filter(
+        (entry) =>
+          typeof entry.value === "number" &&
+          Number.isFinite(entry.value) &&
+          typeof entry.measuredAt === "string",
+      )
+      .map((entry) => `${entry.measuredAt}:${Math.round(entry.value as number)}`),
+  );
+
+  const uniquePayloads = payloads
+    .filter(
+      (payload): payload is CreateMeasurementArgs & { bpm: number; measuredAt: string } =>
+        payload.kind === "heart_rate" &&
+        typeof payload.bpm === "number" &&
+        Number.isFinite(payload.bpm) &&
+        typeof payload.measuredAt === "string",
+    )
+    .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
+    .filter((payload, index, all) => {
+      const key = `${payload.measuredAt}:${payload.bpm}`;
+      return index === all.findIndex((candidate) => (
+        `${candidate.measuredAt}:${candidate.bpm}` === key
+      ));
+    });
+
+  const existingTimes = existingEntries
+    .map((entry) => entry.measuredAt)
+    .filter((value): value is string => typeof value === "string")
+    .sort((a, b) => a.localeCompare(b));
+  const payloadTimes = uniquePayloads
+    .map((payload) => payload.measuredAt)
+    .sort((a, b) => a.localeCompare(b));
+
+  let uploaded = 0;
+  for (const payload of uniquePayloads) {
+    const key = `${payload.measuredAt}:${payload.bpm}`;
+    if (existingKeys.has(key)) {
+      continue;
+    }
+    await createMeasurementDirect(payload);
+    existingKeys.add(key);
+    uploaded += 1;
+  }
+
+  if (uploaded > 0) {
+    invalidateMeasurementCaches("heart_rate", { includeHistory: true });
+  }
+
+  return {
+    entries: uniquePayloads.map((payload) => ({
+      measuredAt: payload.measuredAt,
+      value: payload.bpm,
+      value2: null,
+    })),
+    uploaded,
+  };
 }
 
 export async function hasHealthConnectBackgroundReadPermission() {
