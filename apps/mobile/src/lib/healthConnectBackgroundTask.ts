@@ -2,13 +2,24 @@ import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 
+import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import { syncRecentHealthConnectMeasurements, syncTodayStepMeasurement } from "@/lib/healthConnectSync";
 
 const HEALTH_CONNECT_BACKGROUND_TASK = "health-connect-sync";
 
 async function runHealthConnectBackgroundTaskAsync() {
+  await logHealthConnectEvent({
+    event: "background-task-start",
+    source: "background-task",
+    status: "info",
+  });
   await syncTodayStepMeasurement("background-task", { force: true });
   await syncRecentHealthConnectMeasurements("background-task", { force: true });
+  await logHealthConnectEvent({
+    event: "background-task-success",
+    source: "background-task",
+    status: "info",
+  });
 }
 
 if (!TaskManager.isTaskDefined(HEALTH_CONNECT_BACKGROUND_TASK)) {
@@ -18,6 +29,14 @@ if (!TaskManager.isTaskDefined(HEALTH_CONNECT_BACKGROUND_TASK)) {
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch (error) {
       console.log("Health Connect background task failed", error);
+      await logHealthConnectEvent({
+        event: "background-task-fail",
+        payload: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        source: "background-task",
+        status: "error",
+      });
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });

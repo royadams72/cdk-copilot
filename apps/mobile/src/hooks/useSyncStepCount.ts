@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
 
+import { flushHealthConnectEventLogs } from "@/lib/healthConnectEventLogger";
 import { syncTodayStepMeasurement } from "@/lib/healthConnectSync";
 
 export function useSyncStepCount(
@@ -12,6 +13,7 @@ export function useSyncStepCount(
       return;
     }
 
+    void flushHealthConnectEventLogs();
     void syncTodayStepMeasurement("mount");
 
     const interval = setInterval(() => {
@@ -20,6 +22,7 @@ export function useSyncStepCount(
 
     const appStateSubscription = AppState.addEventListener("change", (state) => {
       if (state === "active") {
+        void flushHealthConnectEventLogs();
         void syncTodayStepMeasurement("active", { force: true });
       }
       if (state === "background") {

@@ -4,6 +4,28 @@ This document covers the one-off audit and cleanup scripts for provider-synced m
 
 These scripts are intended for maintenance and repair of historical data, especially when older rows predate the current upsert/deduping logic.
 
+## Health Connect runtime telemetry
+
+Background-task visibility is stored in `health_connect_event_logs`.
+
+Purpose:
+- confirm whether Android background tasks actually ran while the app was closed
+- preserve sync telemetry longer than rolling Vercel runtime logs
+- track `steps` sync starts, skips, successes, and failures
+- track Health Connect incremental sync starts, skips, finishes, and failures
+
+Relevant API route:
+
+- `POST /api/users/health-connect/event-log`
+- `GET /api/users/health-connect/event-log?limit=100`
+
+Retention:
+- documents auto-expire after 60 days
+
+Important:
+- mobile may queue events locally and flush them later
+- if the device was offline during a background run, the event can still appear later once the app opens and flushes its queue
+
 ## Scripts
 
 ### Step audits and cleanup
