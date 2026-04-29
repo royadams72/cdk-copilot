@@ -11,7 +11,7 @@ import {
   syncPushToken,
   syncSleepReminderNotification,
 } from "@/lib/pushNotifications";
-import { registerHealthConnectBackgroundTaskAsync } from "@/lib/healthConnectBackgroundTask";
+import { unregisterHealthConnectBackgroundTaskAsync } from "@/lib/healthConnectBackgroundTask";
 import { store, persistor } from "@/store";
 
 const LightNavigationTheme = {
@@ -33,7 +33,7 @@ export default function RootLayout() {
     void SystemUI.setBackgroundColorAsync("#FFFFFF");
     void syncPushToken();
     void syncSleepReminderNotification();
-    void registerHealthConnectBackgroundTaskAsync();
+    void unregisterHealthConnectBackgroundTaskAsync();
 
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {

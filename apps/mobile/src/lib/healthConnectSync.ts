@@ -3,14 +3,20 @@ import { ExerciseType } from "react-native-health-connect";
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-import { loadAndroidStepState } from "@/lib/healthConnectStepSummary";
+import {
+  loadAndroidStepState,
+  readHealthConnectStepSummaryRecordForDate,
+} from "@/lib/healthConnectStepSummary";
 import {
   ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
   ANDROID_HEALTH_RECORD_PERMISSIONS,
 } from "@/lib/healthConnectPermissions";
 import { store } from "@/store";
 import { measurementsApi } from "@/store/services/measurementsApi";
-import type { CreateMeasurementArgs } from "@/store/services/types";
+import type {
+  CreateMeasurementArgs,
+  MeasurementDayEntry,
+} from "@/store/services/types";
 
 const FAILED_SYNC_RETRY_MS = 10 * 60_000;
 const HEALTH_CONNECT_QUOTA_COOLDOWN_MS = 5 * 60_000;
@@ -34,6 +40,7 @@ let lastHealthConnectSyncStartedAt = 0;
 let lastHealthConnectQuotaRetryAt = 0;
 let lastSyncedStepSlotKey: string | null = null;
 let inFlightStepSlotKey: string | null = null;
+const inFlightStepBackfillWindowKeys = new Set<string>();
 
 type HealthRecordType =
   | "BloodPressure"
@@ -43,6 +50,13 @@ type HealthRecordType =
   | "SleepSession";
 
 type SyncStateRecordType =
+  | "blood_pressure"
+  | "exercise"
+  | "heart_rate"
+  | "sleep"
+  | "steps";
+
+type BackfillableMeasurementKind =
   | "blood_pressure"
   | "exercise"
   | "heart_rate"
@@ -250,6 +264,14 @@ function resolvedStepProvider(
   };
 }
 
+function providerFromPackageName(packageName: string | null) {
+  const resolvedPackageName = packageName?.trim() || "android.healthconnect";
+  return {
+    displayName: providerDisplayName(resolvedPackageName),
+    packageName: resolvedPackageName,
+  };
+}
+
 function externalRecordId(
   recordType: HealthRecordType,
   record: HealthRecord,
@@ -324,6 +346,13 @@ function exerciseTitle(record: HealthRecord) {
     return EXERCISE_TYPE_LABELS[record.exerciseType] ?? "Imported exercise";
   }
   return "Imported exercise";
+}
+
+function heartRateRecordSampleTimes(record: HealthRecord) {
+  return (record.samples ?? [])
+    .map((sample) => sample.time)
+    .filter((time): time is string => typeof time === "string")
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function heartRateSamples(record: HealthRecord) {
@@ -456,6 +485,260 @@ async function readRecentRecords(
   return records;
 }
 
+function dayRangeForDateKey(dateKey: string) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const start = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return {
+    endTime: end.toISOString(),
+    startTime: start.toISOString(),
+  };
+}
+
+function recordTypesForBackfillKind(kind: Exclude<BackfillableMeasurementKind, "steps">) {
+  if (kind === "sleep") return ["SleepSession"] as const;
+  if (kind === "exercise") return ["ExerciseSession"] as const;
+  if (kind === "heart_rate") return ["HeartRate", "RestingHeartRate"] as const;
+  return ["BloodPressure"] as const;
+}
+
+function representativeHeartRatePayload(
+  payloads: CreateMeasurementArgs[],
+) {
+  const heartRatePayloads = payloads.filter(
+    (payload): payload is CreateMeasurementArgs & { bpm: number; measuredAt: string } =>
+      payload.kind === "heart_rate" &&
+      typeof payload.bpm === "number" &&
+      Number.isFinite(payload.bpm) &&
+      typeof payload.measuredAt === "string",
+  );
+
+  if (!heartRatePayloads.length) {
+    return null;
+  }
+
+  const totalBpm = heartRatePayloads.reduce((sum, payload) => sum + payload.bpm, 0);
+  const averageBpm = Math.round(totalBpm / heartRatePayloads.length);
+  const representativeSource =
+    heartRatePayloads.find((payload) =>
+      payload.externalRecordId?.includes(":RestingHeartRate:"),
+    ) ?? heartRatePayloads[heartRatePayloads.length - 1];
+  const sampleDate = new Date(representativeSource.measuredAt);
+  if (Number.isNaN(sampleDate.getTime())) {
+    return {
+      ...representativeSource,
+      bpm: averageBpm,
+      measuredAt: representativeSource.measuredAt,
+    };
+  }
+
+  const middayMeasuredAt = new Date(
+    sampleDate.getFullYear(),
+    sampleDate.getMonth(),
+    sampleDate.getDate(),
+    12,
+    0,
+    0,
+    0,
+  ).toISOString();
+
+  return {
+    ...representativeSource,
+    bpm: averageBpm,
+    externalRecordId: representativeSource.externalRecordId
+      ? `${representativeSource.externalRecordId}:daily-average`
+      : representativeSource.externalRecordId,
+    measuredAt: middayMeasuredAt,
+  };
+}
+
+export async function readHealthConnectHeartRateEntriesForDate(date: Date) {
+  if (Platform.OS !== "android") {
+    return [] as MeasurementDayEntry[];
+  }
+
+  const timeRange = dayRangeForDateKey(localDateKey(date));
+  if (!timeRange) {
+    return [] as MeasurementDayEntry[];
+  }
+
+  const healthConnect = await import("react-native-health-connect");
+  const initialized = await healthConnect.initialize();
+  if (!initialized) {
+    return [] as MeasurementDayEntry[];
+  }
+
+  const payloads: CreateMeasurementArgs[] = [];
+  const rawDebug: Array<{
+    firstAt: string | null;
+    lastAt: string | null;
+    payloadCount: number;
+    rawRecordCount: number;
+    sampleCount: number;
+    type: "HeartRate" | "RestingHeartRate";
+  }> = [];
+  for (const recordType of ["HeartRate", "RestingHeartRate"] as const) {
+    const records = await readRecentRecords(healthConnect, recordType, timeRange);
+    const mappedPayloads = toMeasurementPayloads(recordType, records);
+    payloads.push(...mappedPayloads);
+
+    if (recordType === "HeartRate") {
+      const sampleTimes = records.flatMap((record) => heartRateRecordSampleTimes(record));
+      rawDebug.push({
+        firstAt: sampleTimes[0] ?? null,
+        lastAt: sampleTimes.at(-1) ?? null,
+        payloadCount: mappedPayloads.length,
+        rawRecordCount: records.length,
+        sampleCount: sampleTimes.length,
+        type: recordType,
+      });
+    } else {
+      const recordTimes = records
+        .map((record) => record.time)
+        .filter((time): time is string => typeof time === "string")
+        .sort((a, b) => a.localeCompare(b));
+      rawDebug.push({
+        firstAt: recordTimes[0] ?? null,
+        lastAt: recordTimes.at(-1) ?? null,
+        payloadCount: mappedPayloads.length,
+        rawRecordCount: records.length,
+        sampleCount: recordTimes.length,
+        type: recordType,
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  return payloads
+    .filter(
+      (payload): payload is CreateMeasurementArgs & { bpm: number; measuredAt: string } =>
+        payload.kind === "heart_rate" &&
+        typeof payload.bpm === "number" &&
+        Number.isFinite(payload.bpm) &&
+        typeof payload.measuredAt === "string",
+    )
+    .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
+    .filter((payload) => {
+      const key = `${payload.measuredAt}:${payload.bpm}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .map((payload) => ({
+      measuredAt: payload.measuredAt,
+      value: payload.bpm,
+      value2: null,
+    }));
+}
+
+export async function syncHealthConnectHeartRateEntriesForDate(
+  date: Date,
+  existingEntries: MeasurementDayEntry[] = [],
+) {
+  if (Platform.OS !== "android") {
+    return {
+      entries: [] as MeasurementDayEntry[],
+      uploaded: 0,
+    };
+  }
+
+  const timeRange = dayRangeForDateKey(localDateKey(date));
+  if (!timeRange) {
+    return {
+      entries: [] as MeasurementDayEntry[],
+      uploaded: 0,
+    };
+  }
+
+  const healthConnect = await import("react-native-health-connect");
+  const initialized = await healthConnect.initialize();
+  if (!initialized) {
+    return {
+      entries: [] as MeasurementDayEntry[],
+      uploaded: 0,
+    };
+  }
+
+  const payloads: CreateMeasurementArgs[] = [];
+  for (const recordType of ["HeartRate", "RestingHeartRate"] as const) {
+    const records = await readRecentRecords(healthConnect, recordType, timeRange);
+    payloads.push(...toMeasurementPayloads(recordType, records));
+  }
+
+  const existingKeys = new Set(
+    existingEntries
+      .filter(
+        (entry) =>
+          typeof entry.value === "number" &&
+          Number.isFinite(entry.value) &&
+          typeof entry.measuredAt === "string",
+      )
+      .map((entry) => `${entry.measuredAt}:${Math.round(entry.value as number)}`),
+  );
+
+  const uniquePayloads = payloads
+    .filter(
+      (payload): payload is CreateMeasurementArgs & { bpm: number; measuredAt: string } =>
+        payload.kind === "heart_rate" &&
+        typeof payload.bpm === "number" &&
+        Number.isFinite(payload.bpm) &&
+        typeof payload.measuredAt === "string",
+    )
+    .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
+    .filter((payload, index, all) => {
+      const key = `${payload.measuredAt}:${payload.bpm}`;
+      return index === all.findIndex((candidate) => (
+        `${candidate.measuredAt}:${candidate.bpm}` === key
+      ));
+    });
+
+  const existingTimes = existingEntries
+    .map((entry) => entry.measuredAt)
+    .filter((value): value is string => typeof value === "string")
+    .sort((a, b) => a.localeCompare(b));
+  const payloadTimes = uniquePayloads
+    .map((payload) => payload.measuredAt)
+    .sort((a, b) => a.localeCompare(b));
+
+  let uploaded = 0;
+  for (const payload of uniquePayloads) {
+    const key = `${payload.measuredAt}:${payload.bpm}`;
+    if (existingKeys.has(key)) {
+      continue;
+    }
+    await createMeasurementDirect(payload);
+    existingKeys.add(key);
+    uploaded += 1;
+  }
+
+  if (uploaded > 0) {
+    invalidateMeasurementCaches("heart_rate", { includeHistory: true });
+  }
+
+  return {
+    entries: uniquePayloads.map((payload) => ({
+      measuredAt: payload.measuredAt,
+      value: payload.bpm,
+      value2: null,
+    })),
+    uploaded,
+  };
+}
+
 export async function hasHealthConnectBackgroundReadPermission() {
   if (Platform.OS !== "android") {
     return false;
@@ -535,6 +818,164 @@ export async function syncTodayStepMeasurement(
     if (inFlightStepSlotKey === slotKey) {
       inFlightStepSlotKey = null;
     }
+  }
+}
+
+export async function backfillHealthConnectStepDates(
+  missingDateKeys: string[],
+  options: {
+    reason?: "steps-screen";
+    windowKey: string;
+  },
+) {
+  if (Platform.OS !== "android" || !missingDateKeys.length) {
+    return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+  }
+
+  if (inFlightStepBackfillWindowKeys.has(options.windowKey)) {
+    return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+  }
+
+  inFlightStepBackfillWindowKeys.add(options.windowKey);
+  let attempted = 0;
+  let resolvedDays = 0;
+  let uploaded = 0;
+
+  try {
+    const orderedDateKeys = [...new Set(missingDateKeys)].sort();
+
+    for (const dateKey of orderedDateKeys) {
+      const date = new Date(`${dateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        continue;
+      }
+
+      attempted += 1;
+      const summary = await readHealthConnectStepSummaryRecordForDate(date);
+      if (!summary) {
+        continue;
+      }
+
+      const measuredAt = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12,
+        0,
+        0,
+        0,
+      ).toISOString();
+
+      await createMeasurementDirect({
+        averageSpeedKph: summary.averageSpeedKph ?? undefined,
+        caloriesKcal: summary.caloriesKcal ?? undefined,
+        count: Math.max(0, Math.round(summary.steps ?? 0)),
+        distanceMeters: summary.distanceMeters ?? undefined,
+        externalRecordId: `health-connect:steps:${dateKey}`,
+        kind: "steps",
+        measuredAt,
+        provider: providerFromPackageName(summary.selectedDataOrigin),
+        source: "provider",
+      });
+      resolvedDays += 1;
+      uploaded += 1;
+    }
+
+    if (uploaded > 0) {
+      invalidateMeasurementCaches("steps", { includeHistory: true });
+    }
+
+    return { attempted, resolvedDays, uploaded };
+  } finally {
+    inFlightStepBackfillWindowKeys.delete(options.windowKey);
+  }
+}
+
+export async function backfillHealthConnectMeasurementDates(
+  kind: Exclude<BackfillableMeasurementKind, "steps">,
+  missingDateKeys: string[],
+  options: {
+    reason?: "metric-screen";
+    windowKey: string;
+  },
+) {
+  if (Platform.OS !== "android" || !missingDateKeys.length) {
+    return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+  }
+
+  const inFlightKey = `${kind}:${options.windowKey}`;
+  if (inFlightStepBackfillWindowKeys.has(inFlightKey)) {
+    return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+  }
+
+  inFlightStepBackfillWindowKeys.add(inFlightKey);
+  let attempted = 0;
+  let resolvedDays = 0;
+  let uploaded = 0;
+
+  try {
+    const healthConnect = await import("react-native-health-connect");
+    const initialized = await healthConnect.initialize();
+    if (!initialized) {
+      return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+    }
+    const grantedPermissions = await healthConnect.getGrantedPermissions();
+    const granted = new Set(
+      grantedPermissions.map(
+        (permission) => `${permission.accessType}:${permission.recordType}`,
+      ),
+    );
+
+    const orderedDateKeys = [...new Set(missingDateKeys)].sort();
+    const recordTypes = recordTypesForBackfillKind(kind);
+    const missingPermission = recordTypes.some(
+      (recordType) => !granted.has(`read:${recordType}`),
+    );
+    if (missingPermission) {
+      throw new Error("Health Connect permission is missing for this metric.");
+    }
+
+    for (const dateKey of orderedDateKeys) {
+      const timeRange = dayRangeForDateKey(dateKey);
+      if (!timeRange) {
+        continue;
+      }
+
+      attempted += 1;
+      let resolvedForDay = false;
+
+      for (const recordType of recordTypes) {
+        const records = await readRecentRecords(healthConnect, recordType, timeRange);
+        const payloads = toMeasurementPayloads(recordType, records);
+        if (kind === "heart_rate") {
+          const representativePayload = representativeHeartRatePayload(payloads);
+          if (representativePayload) {
+            await createMeasurementDirect(representativePayload);
+            resolvedForDay = true;
+            uploaded += 1;
+          }
+          continue;
+        }
+
+        for (const payload of payloads) {
+          await createMeasurementDirect(payload);
+          resolvedForDay = true;
+          uploaded += 1;
+        }
+      }
+
+      if (resolvedForDay) {
+        resolvedDays += 1;
+      }
+    }
+
+    if (uploaded > 0) {
+      invalidateMeasurementCaches(kind, { includeHistory: true });
+    }
+
+    return { attempted, resolvedDays, uploaded };
+  } finally {
+    inFlightStepBackfillWindowKeys.delete(inFlightKey);
   }
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,12 @@ import {
   readHealthConnectStepSummaryForDate,
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
+import {
+  backfillHealthConnectMeasurementDates,
+  backfillHealthConnectStepDates,
+  readHealthConnectHeartRateEntriesForDate,
+} from "@/lib/healthConnectSync";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
-import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateMeasurementMutation,
@@ -26,7 +30,10 @@ import {
   useLazyGetWeeklySleepSummaryQuery,
 } from "@/store/services/measurementsApi";
 import { useGetCurrentUserSettingsQuery } from "@/store/services/userApi";
-import type { CreateMeasurementArgs } from "@/store/services/types";
+import type {
+  CreateMeasurementArgs,
+  MeasurementDayEntry,
+} from "@/store/services/types";
 
 import { Card } from "../dashboard/components/Card";
 import { AddMeasurementModal } from "./AddMeasurementModal";
@@ -48,14 +55,15 @@ import {
   CHART_PAD,
   CHART_WIDTH,
   combineDateAndTime,
+  convertLbToKg,
   dateKey,
   dateToMeasuredAtIso,
   EXERCISE_TARGET_MIN,
-  formatSleepHours,
-  formatWeightValue,
   formatDayLabel,
   formatDistanceValue,
+  formatSleepHours,
   formatStepMetric,
+  formatWeightValue,
   getStepSummaryFromEntries,
   GROUP_GAP,
   metricUnit,
@@ -63,7 +71,6 @@ import {
   SLEEP_TARGET_MIN,
   SLOT_GAP,
   sortEntriesForTrendDay,
-  convertLbToKg,
   weightUnitFromUserUnits,
 } from "./metricTrendUtils";
 
@@ -100,6 +107,24 @@ function buildHeartRateHourlyValues(
   });
 }
 
+function sameDayEntries(
+  left: MeasurementDayEntry[],
+  right: MeasurementDayEntry[],
+) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((entry, index) => {
+    const candidate = right[index];
+    return (
+      candidate?.measuredAt === entry.measuredAt &&
+      candidate?.value === entry.value &&
+      candidate?.value2 === entry.value2
+    );
+  });
+}
+
 export default function FitnessMetricTrend() {
   const router = useRouter();
   const params = useLocalSearchParams<{ kind?: string; label?: string }>();
@@ -119,6 +144,11 @@ export default function FitnessMetricTrend() {
   const [hourlyStepValues, setHourlyStepValues] = useState<(number | null)[]>(
     [],
   );
+  const [healthConnectHeartRateEntries, setHealthConnectHeartRateEntries] =
+    useState<MeasurementDayEntry[]>([]);
+  const [healthConnectHeartRateDateKey, setHealthConnectHeartRateDateKey] =
+    useState<string | null>(null);
+  const [heartRateDayLoading, setHeartRateDayLoading] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
     {},
   );
@@ -128,6 +158,16 @@ export default function FitnessMetricTrend() {
   const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [weightValue, setWeightValue] = useState(70);
   const [weightDecimal, setWeightDecimal] = useState(5);
+  const [historyBackfillState, setHistoryBackfillState] = useState<{
+    error: string | null;
+    missingCount: number;
+    running: boolean;
+  }>({
+    error: null,
+    missingCount: 0,
+    running: false,
+  });
+  const attemptedBackfillWindowsRef = useRef<Set<string>>(new Set());
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -167,19 +207,14 @@ export default function FitnessMetricTrend() {
   });
   const [createMeasurement] = useCreateMeasurementMutation();
   const [loadWeeklySleepSummary] = useLazyGetWeeklySleepSummaryQuery();
-  const {
-    data: weeklySleepSummary,
-  } = useGetWeeklySleepSummaryQuery(undefined, {
-    skip: kind !== "sleep",
-  });
+  const { data: weeklySleepSummary } = useGetWeeklySleepSummaryQuery(
+    undefined,
+    {
+      skip: kind !== "sleep",
+    },
+  );
   const preferredWeightUnit = weightUnitFromUserUnits(
     currentUserSettings?.units ?? "metric",
-  );
-  useSyncHealthConnectMeasurements(
-    kind === "sleep" ||
-      kind === "exercise" ||
-      kind === "heart_rate" ||
-      kind === "blood_pressure",
   );
   const weightOptions =
     preferredWeightUnit === "lb" ? weightLbOptions : weightKgOptions;
@@ -226,7 +261,8 @@ export default function FitnessMetricTrend() {
   const chart = useMemo<TrendChart>(() => {
     const numeric = points.filter(
       (point) =>
-        typeof (kind === "exercise" ? point.value2 : point.value) === "number" &&
+        typeof (kind === "exercise" ? point.value2 : point.value) ===
+          "number" &&
         Number.isFinite(kind === "exercise" ? point.value2 : point.value),
     );
     if (numeric.length === 0) {
@@ -240,7 +276,9 @@ export default function FitnessMetricTrend() {
     }
 
     const values = numeric
-      .map((point) => (kind === "exercise" ? (point.value2 as number) : point.value))
+      .map((point) =>
+        kind === "exercise" ? (point.value2 as number) : point.value,
+      )
       .filter((value): value is number => value !== null);
     const values2 =
       kind === "blood_pressure"
@@ -264,7 +302,11 @@ export default function FitnessMetricTrend() {
 
     const yMin =
       kind === "blood_pressure"
-        ? Math.min(...values, ...(values2.length ? values2 : []), ...targetValues)
+        ? Math.min(
+            ...values,
+            ...(values2.length ? values2 : []),
+            ...targetValues,
+          )
         : 0;
     const yMax = Math.max(
       ...values,
@@ -374,21 +416,91 @@ export default function FitnessMetricTrend() {
 
   const latestPoint = useMemo(() => {
     const numeric = points.filter(
-      (point) => typeof point.value === "number" && Number.isFinite(point.value),
+      (point) =>
+        typeof point.value === "number" && Number.isFinite(point.value),
     );
     return numeric.length ? numeric[numeric.length - 1] : null;
   }, [points]);
 
   const selectedBarIndex = useMemo(() => {
     if (!selectedDateKey) return null;
-    const index = chart.points.findIndex((point) => point.date === selectedDateKey);
+    const index = chart.points.findIndex(
+      (point) => point.date === selectedDateKey,
+    );
     return index >= 0 ? index : null;
   }, [chart.points, selectedDateKey]);
+
+  const existingMetricDateKeys = useMemo(() => {
+    if (
+      kind !== "steps" &&
+      kind !== "sleep" &&
+      kind !== "exercise" &&
+      kind !== "blood_pressure" &&
+      kind !== "heart_rate"
+    ) {
+      return new Set<string>();
+    }
+    return new Set(points.map((point) => point.date));
+  }, [kind, points]);
 
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
     return sortEntriesForTrendDay(kind, entriesByDate[selectedDateKey] ?? []);
   }, [entriesByDate, kind, selectedDateKey]);
+  const selectedDayEntriesSignature = useMemo(
+    () =>
+      selectedDayEntries
+        .map((entry) => `${entry.measuredAt}:${entry.value ?? "null"}:${entry.value2 ?? "null"}`)
+        .join("|"),
+    [selectedDayEntries],
+  );
+
+  const resolvedHeartRateEntries = useMemo(() => {
+    if (kind !== "heart_rate") {
+      return selectedDayEntries;
+    }
+
+    const scopedHealthConnectEntries =
+      healthConnectHeartRateDateKey === selectedDateKey
+        ? healthConnectHeartRateEntries
+        : [];
+    if (scopedHealthConnectEntries.length > 0) {
+      return sortEntriesForTrendDay(kind, scopedHealthConnectEntries);
+    }
+    const merged = [...selectedDayEntries, ...scopedHealthConnectEntries];
+    const seen = new Set<string>();
+    return sortEntriesForTrendDay(
+      kind,
+      merged.filter((entry) => {
+        const key = `${entry.measuredAt}:${entry.value ?? "null"}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      }),
+    );
+  }, [
+    healthConnectHeartRateDateKey,
+    healthConnectHeartRateEntries,
+    kind,
+    selectedDateKey,
+    selectedDayEntries,
+  ]);
+  const scopedHealthConnectHeartRateEntries = useMemo(
+    () =>
+      kind === "heart_rate" && healthConnectHeartRateDateKey === selectedDateKey
+        ? healthConnectHeartRateEntries
+        : [],
+    [
+      healthConnectHeartRateDateKey,
+      healthConnectHeartRateEntries,
+      kind,
+      selectedDateKey,
+    ],
+  );
+  const shouldShowHeartRateMissingState =
+    kind !== "heart_rate" || scopedHealthConnectHeartRateEntries.length === 0;
 
   const selectedStepSummary = useMemo(() => {
     if (kind !== "steps") return null;
@@ -400,10 +512,9 @@ export default function FitnessMetricTrend() {
       return false;
     }
     const now = new Date();
-    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
-      2,
-      "0",
-    )}-${String(now.getDate()).padStart(2, "0")}`;
+    const todayKey = `${now.getFullYear()}-${String(
+      now.getMonth() + 1,
+    ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     return selectedDateKey === todayKey;
   }, [selectedDateKey]);
 
@@ -478,7 +589,8 @@ export default function FitnessMetricTrend() {
         selectedStepSummary.distanceMeters ??
         healthConnectStepSummary?.distanceMeters ??
         null,
-      steps: selectedStepSummary.steps ?? healthConnectStepSummary?.steps ?? null,
+      steps:
+        selectedStepSummary.steps ?? healthConnectStepSummary?.steps ?? null,
     } satisfies StepActivitySummary;
   }, [healthConnectStepSummary, kind, selectedStepSummary]);
 
@@ -486,8 +598,89 @@ export default function FitnessMetricTrend() {
     if (kind !== "heart_rate") {
       return [];
     }
-    return buildHeartRateHourlyValues(selectedDayEntries);
-  }, [kind, selectedDayEntries]);
+    if (heartRateDayLoading) {
+      return [];
+    }
+    return buildHeartRateHourlyValues(resolvedHeartRateEntries);
+  }, [heartRateDayLoading, kind, resolvedHeartRateEntries]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHeartRateEntries = async () => {
+      if (
+        kind !== "heart_rate" ||
+        Platform.OS !== "android" ||
+        !selectedDateKey
+      ) {
+        setHealthConnectHeartRateEntries((current) =>
+          current.length ? [] : current,
+        );
+        setHealthConnectHeartRateDateKey(null);
+        setHeartRateDayLoading(false);
+        return;
+      }
+
+      setHeartRateDayLoading(true);
+      setHealthConnectHeartRateEntries((current) =>
+        current.length ? [] : current,
+      );
+      setHealthConnectHeartRateDateKey(selectedDateKey);
+
+      const date = new Date(`${selectedDateKey}T12:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        setHealthConnectHeartRateEntries((current) =>
+          current.length ? [] : current,
+        );
+        setHealthConnectHeartRateDateKey(null);
+        setHeartRateDayLoading(false);
+        return;
+      }
+
+      try {
+        const entries = await readHealthConnectHeartRateEntriesForDate(date);
+        if (!cancelled) {
+          setHealthConnectHeartRateDateKey(selectedDateKey);
+          setHealthConnectHeartRateEntries((current) =>
+            sameDayEntries(current, entries) ? current : entries,
+          );
+          if (entries.length > 0) {
+            setHistoryBackfillState((current) =>
+              current.error || current.missingCount > 0 || current.running
+                ? {
+                    error: null,
+                    missingCount: 0,
+                    running: false,
+                  }
+                : current,
+            );
+          }
+          setHeartRateDayLoading(false);
+        }
+      } catch (heartRateError) {
+        console.log("Health Connect heart rate day read failed", {
+          date: selectedDateKey,
+          error:
+            heartRateError instanceof Error
+              ? heartRateError.message
+              : String(heartRateError),
+        });
+        if (!cancelled) {
+          setHealthConnectHeartRateEntries((current) =>
+            current.length ? [] : current,
+          );
+          setHealthConnectHeartRateDateKey(selectedDateKey);
+          setHeartRateDayLoading(false);
+        }
+      }
+    };
+
+    void loadHeartRateEntries();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, selectedDateKey, selectedDayEntriesSignature]);
 
   useEffect(() => {
     let cancelled = false;
@@ -542,6 +735,132 @@ export default function FitnessMetricTrend() {
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
   }, [kind, modalOpen, preferredWeightUnit]);
+
+  useEffect(() => {
+    if (
+      (kind !== "steps" &&
+        kind !== "sleep" &&
+        kind !== "exercise" &&
+        kind !== "blood_pressure" &&
+        kind !== "heart_rate") ||
+      Platform.OS !== "android" ||
+      loading ||
+      !!error
+    ) {
+      return;
+    }
+
+    const anchorKey = selectedDateKey ?? dateKey(new Date());
+    const anchorDate = new Date(`${anchorKey}T12:00:00`);
+    if (Number.isNaN(anchorDate.getTime())) {
+      return;
+    }
+
+    const windowEnd = new Date(anchorDate);
+    const lookbackDays = kind === "heart_rate" ? 6 : 29;
+    const windowStart = addDays(windowEnd, -lookbackDays);
+    const windowStartKey = dateKey(windowStart);
+    const windowEndKey = dateKey(windowEnd);
+    const windowKey = `${windowStartKey}:${windowEndKey}`;
+    const scopedWindowKey = `${kind}:${windowKey}`;
+    if (attemptedBackfillWindowsRef.current.has(scopedWindowKey)) {
+      return;
+    }
+
+    const missingDateKeys: string[] = [];
+    for (
+      let cursor = new Date(windowStart);
+      cursor.getTime() <= windowEnd.getTime();
+      cursor = addDays(cursor, 1)
+    ) {
+      const currentKey = dateKey(cursor);
+      if (!existingMetricDateKeys.has(currentKey)) {
+        missingDateKeys.push(currentKey);
+      }
+    }
+
+    if (!missingDateKeys.length) {
+      attemptedBackfillWindowsRef.current.add(scopedWindowKey);
+      return;
+    }
+
+    let cancelled = false;
+    attemptedBackfillWindowsRef.current.add(scopedWindowKey);
+    setHistoryBackfillState({
+      error: null,
+      missingCount: missingDateKeys.length,
+      running: true,
+    });
+
+    void (async () => {
+      try {
+        const metricKind = kind;
+        const result =
+          metricKind === "steps"
+            ? await backfillHealthConnectStepDates(missingDateKeys, {
+                reason: "steps-screen",
+                windowKey,
+              })
+            : metricKind === "sleep" ||
+                metricKind === "exercise" ||
+                metricKind === "blood_pressure" ||
+                metricKind === "heart_rate"
+              ? await backfillHealthConnectMeasurementDates(
+                  metricKind,
+                  missingDateKeys,
+                  {
+                    reason: "metric-screen",
+                    windowKey,
+                  },
+                )
+              : { attempted: 0, resolvedDays: 0, uploaded: 0 };
+
+        if (cancelled) return;
+
+        const remainingMissingCount = Math.max(
+          0,
+          missingDateKeys.length - result.resolvedDays,
+        );
+
+        setHistoryBackfillState({
+          error:
+            result.attempted > 0 && result.resolvedDays === 0
+              ? "No matching Health Connect data was found for this window."
+              : null,
+          missingCount: remainingMissingCount,
+          running: false,
+        });
+
+        if (result.uploaded > 0) {
+          await refetchHistory();
+        } else {
+          attemptedBackfillWindowsRef.current.delete(scopedWindowKey);
+        }
+      } catch (backfillError) {
+        if (cancelled) return;
+        attemptedBackfillWindowsRef.current.delete(scopedWindowKey);
+        setHistoryBackfillState({
+          error:
+            backfillError instanceof Error
+              ? backfillError.message
+              : "Could not backfill device history.",
+          missingCount: missingDateKeys.length,
+          running: false,
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    error,
+    existingMetricDateKeys,
+    kind,
+    loading,
+    refetchHistory,
+    selectedDateKey,
+  ]);
 
   useEffect(() => {
     const latestDate = chart.points[chart.points.length - 1]?.date ?? null;
@@ -639,7 +958,8 @@ export default function FitnessMetricTrend() {
       setModalOpen(false);
       await refetchHistory();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Could not save reading";
+      const message =
+        err instanceof Error ? err.message : "Could not save reading";
       Alert.alert("Save failed", message);
     } finally {
       setSaving(false);
@@ -709,7 +1029,9 @@ export default function FitnessMetricTrend() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 28 }}>
+      <ScrollView
+        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 28 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
@@ -730,7 +1052,8 @@ export default function FitnessMetricTrend() {
           typeof latestPoint.value === "number" &&
           Number.isFinite(latestPoint.value) ? (
             <ThemedText style={{ opacity: 0.7 }}>
-              Latest: {formatWeightValue(latestPoint.value, preferredWeightUnit)}
+              Latest:{" "}
+              {formatWeightValue(latestPoint.value, preferredWeightUnit)}
             </ThemedText>
           ) : null}
           {kind === "exercise" &&
@@ -763,10 +1086,62 @@ export default function FitnessMetricTrend() {
             </ThemedText>
           </TouchableOpacity>
         ) : (
-          <ThemedText style={{ opacity: 0.7 }}>
-            Steps are synced from your phone/watch.
-          </ThemedText>
+          <View style={{ gap: 4 }}>
+            <ThemedText style={{ opacity: 0.7 }}>
+              Steps are synced from your phone/watch.
+            </ThemedText>
+            {(kind === "steps" ||
+              kind === "sleep" ||
+              kind === "exercise" ||
+              kind === "blood_pressure" ||
+              kind === "heart_rate") &&
+            historyBackfillState.running ? (
+              <ThemedText style={{ opacity: 0.72 }}>
+                Filling {historyBackfillState.missingCount} missing day
+                {historyBackfillState.missingCount === 1 ? "" : "s"} from Health
+                Connect...
+              </ThemedText>
+            ) : null}
+            {(kind === "steps" ||
+              kind === "sleep" ||
+              kind === "exercise" ||
+              kind === "blood_pressure" ||
+              kind === "heart_rate") &&
+            !historyBackfillState.running &&
+            historyBackfillState.error &&
+            shouldShowHeartRateMissingState ? (
+              <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
+                {historyBackfillState.error}
+              </ThemedText>
+            ) : null}
+          </View>
         )}
+
+        {kind !== "steps" &&
+        (kind === "sleep" ||
+          kind === "exercise" ||
+          kind === "blood_pressure" ||
+          kind === "heart_rate") &&
+        historyBackfillState.running ? (
+          <ThemedText style={{ opacity: 0.72 }}>
+            Filling {historyBackfillState.missingCount} missing day
+            {historyBackfillState.missingCount === 1 ? "" : "s"} from Health
+            Connect...
+          </ThemedText>
+        ) : null}
+
+        {kind !== "steps" &&
+        (kind === "sleep" ||
+          kind === "exercise" ||
+          kind === "blood_pressure" ||
+          kind === "heart_rate") &&
+        !historyBackfillState.running &&
+        historyBackfillState.error &&
+        shouldShowHeartRateMissingState ? (
+          <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
+            {historyBackfillState.error}
+          </ThemedText>
+        ) : null}
 
         {loading ? (
           <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>
@@ -797,8 +1172,8 @@ export default function FitnessMetricTrend() {
               </ThemedText>
               <ThemedText style={{ opacity: 0.72 }}>
                 Weekly average:{" "}
-                {formatSleepHours(weeklySleepSummary.weeklyAverageDurationMin)} •
-                Logged days: {weeklySleepSummary.loggedDays}/7
+                {formatSleepHours(weeklySleepSummary.weeklyAverageDurationMin)}{" "}
+                • Logged days: {weeklySleepSummary.loggedDays}/7
               </ThemedText>
               <ThemedText style={{ opacity: 0.72 }}>
                 Nights below target: {weeklySleepSummary.nightsBelowTarget}
@@ -854,7 +1229,9 @@ export default function FitnessMetricTrend() {
         {!loading && !error ? (
           <Card>
             {chart.points.length === 0 ? (
-              <ThemedText style={{ opacity: 0.72 }}>No readings yet.</ThemedText>
+              <ThemedText style={{ opacity: 0.72 }}>
+                No readings yet.
+              </ThemedText>
             ) : (
               <>
                 <MetricBarChart
@@ -865,7 +1242,7 @@ export default function FitnessMetricTrend() {
                   setSelectedBarIndex={(index) => {
                     const nextDate =
                       typeof index === "number"
-                        ? chart.points[index]?.date ?? null
+                        ? (chart.points[index]?.date ?? null)
                         : null;
                     setSelectedDateKey(nextDate);
                   }}
@@ -888,11 +1265,13 @@ export default function FitnessMetricTrend() {
                       label="Hourly steps"
                       values={hourlyStepValues}
                     />
-                  ) : isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                  ) : isSelectedToday &&
+                    (resolvedStepSummary?.steps ?? 0) > 0 ? (
                     <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
                       Hourly step breakdown is unavailable for this source.
                     </ThemedText>
-                  ) : !isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                  ) : !isSelectedToday &&
+                    (resolvedStepSummary?.steps ?? 0) > 0 ? (
                     <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
                       Hourly step breakdown is only available for today.
                     </ThemedText>
@@ -906,11 +1285,19 @@ export default function FitnessMetricTrend() {
                     color="#DC2626"
                     emptyLabel="No heart rate readings for this day."
                     formatSelectedValue={(value) =>
-                      typeof value === "number" ? `${Math.round(value)} bpm` : "--"
+                      typeof value === "number"
+                        ? `${Math.round(value)} bpm`
+                        : "--"
                     }
                     label="Hourly heart rate"
                     values={heartRateHourlyValues}
                   />
+                ) : selectedDateKey &&
+                  kind === "heart_rate" &&
+                  heartRateDayLoading ? (
+                  <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                    Loading device heart rate...
+                  </ThemedText>
                 ) : null}
 
                 {selectedDateKey &&

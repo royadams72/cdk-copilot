@@ -3,6 +3,10 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { deriveFavouriteMaps, incrementFavouriteMaps } from "@/apps/api/lib/utils/nutritionFavourites";
+import {
+  awardMealLoggingEngagement,
+  awardMealTargetsEngagement,
+} from "@/apps/api/lib/utils/patientEngagement";
 import { attachFoodTaxonomies } from "@/apps/api/lib/utils/foodTaxonomy";
 import {
   NutritionEntry,
@@ -174,6 +178,16 @@ export async function POST(req: NextRequest) {
           patientId: patientObjectId,
         }),
       );
+      await awardMealLoggingEngagement(db, {
+        eatenAt: resolvedEatenAt,
+        orgId: caller.orgId ?? "org_demo",
+        patientId: patientObjectId,
+      });
+      await awardMealTargetsEngagement(db, {
+        eatenAt: resolvedEatenAt,
+        orgId: caller.orgId ?? "org_demo",
+        patientId: patientObjectId,
+      });
     }
 
     return ok("meal saved");

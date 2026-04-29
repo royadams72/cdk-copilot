@@ -2,6 +2,10 @@ import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  awardMealLoggingEngagement,
+  awardMealTargetsEngagement,
+} from "@/apps/api/lib/utils/patientEngagement";
 import { reconcileFavouriteMaps } from "@/apps/api/lib/utils/nutritionFavourites";
 import { attachFoodTaxonomies } from "@/apps/api/lib/utils/foodTaxonomy";
 import {
@@ -180,6 +184,16 @@ export async function POST(req: NextRequest) {
       nextMealType: mealType,
       oldItems: existing.items ?? [],
       oldMealType: existing.mealType,
+      patientId: patientObjectId,
+    });
+    await awardMealLoggingEngagement(db, {
+      eatenAt: resolvedEatenAt,
+      orgId: caller.orgId ?? "org_demo",
+      patientId: patientObjectId,
+    });
+    await awardMealTargetsEngagement(db, {
+      eatenAt: resolvedEatenAt,
+      orgId: caller.orgId ?? "org_demo",
       patientId: patientObjectId,
     });
 
