@@ -3,6 +3,7 @@ import { ExerciseType } from "react-native-health-connect";
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import {
   loadAndroidStepState,
   readHealthConnectStepSummaryRecordForDate,
@@ -786,8 +787,27 @@ export async function syncTodayStepMeasurement(
     return;
   }
 
+  await logHealthConnectEvent({
+    event: "steps-sync-start",
+    payload: { force: Boolean(options.force) },
+    source: "foreground-sync",
+    status: "info",
+    trigger: reason,
+  });
+
   const result = await loadAndroidStepState();
   if (result.status !== "ready" || typeof result.stepsToday !== "number") {
+    await logHealthConnectEvent({
+      event: "steps-sync-skip-not-ready",
+      payload: {
+        status: result.status,
+        stepsToday:
+          typeof result.stepsToday === "number" ? result.stepsToday : null,
+      },
+      source: "foreground-sync",
+      status: "warn",
+      trigger: reason,
+    });
     return;
   }
 
@@ -797,6 +817,13 @@ export async function syncTodayStepMeasurement(
     !options.force &&
     (lastSyncedStepSlotKey === slotKey || inFlightStepSlotKey === slotKey)
   ) {
+    await logHealthConnectEvent({
+      event: "steps-sync-skip-slot",
+      payload: { slotKey },
+      source: "foreground-sync",
+      status: "info",
+      trigger: reason,
+    });
     return;
   }
 
@@ -824,10 +851,31 @@ export async function syncTodayStepMeasurement(
     });
     invalidateMeasurementCaches("steps");
     lastSyncedStepSlotKey = slotKey;
+    await logHealthConnectEvent({
+      event: "steps-sync-success",
+      payload: {
+        dateKey,
+        slotKey,
+        steps: roundedSteps,
+      },
+      source: "foreground-sync",
+      status: "info",
+      trigger: reason,
+    });
   } catch (error) {
     console.log("Step sync failed", {
       error,
       reason,
+    });
+    await logHealthConnectEvent({
+      event: "steps-sync-fail",
+      payload: {
+        error: error instanceof Error ? error.message : String(error),
+        slotKey,
+      },
+      source: "foreground-sync",
+      status: "error",
+      trigger: reason,
     });
   } finally {
     if (inFlightStepSlotKey === slotKey) {
@@ -1004,12 +1052,24 @@ export async function syncRecentHealthConnectMeasurements(
   if (Platform.OS !== "android") return;
 
   if (!options.force && Date.now() < lastHealthConnectQuotaRetryAt) {
+    await logHealthConnectEvent({
+      event: "health-connect-sync-skip-cooldown",
+      source: "health-connect-sync",
+      status: "warn",
+      trigger: reason,
+    });
     return;
   }
 
   if (reason === "background-task") {
     const canReadInBackground = await hasHealthConnectBackgroundReadPermission();
     if (!canReadInBackground) {
+      await logHealthConnectEvent({
+        event: "health-connect-sync-skip-background-permission",
+        source: "health-connect-sync",
+        status: "warn",
+        trigger: reason,
+      });
       return;
     }
   }
@@ -1020,6 +1080,15 @@ export async function syncRecentHealthConnectMeasurements(
     (healthConnectSyncPromise ||
       now - lastHealthConnectSyncStartedAt < MIN_BACKGROUND_SYNC_INTERVAL_MS)
   ) {
+    await logHealthConnectEvent({
+      event: "health-connect-sync-skip-interval",
+      payload: {
+        hasInFlightSync: Boolean(healthConnectSyncPromise),
+      },
+      source: "health-connect-sync",
+      status: "info",
+      trigger: reason,
+    });
     return healthConnectSyncPromise;
   }
 
@@ -1028,6 +1097,13 @@ export async function syncRecentHealthConnectMeasurements(
     let uploads = 0;
     let changedKinds = new Set<CreateMeasurementArgs["kind"]>();
     const latestSyncedAtByType: Partial<Record<SyncStateRecordType, string>> = {};
+    await logHealthConnectEvent({
+      event: "health-connect-sync-start",
+      payload: { force: Boolean(options.force) },
+      source: "health-connect-sync",
+      status: "info",
+      trigger: reason,
+    });
 
     try {
       const healthConnect = await import("react-native-health-connect");
@@ -1133,7 +1209,26 @@ export async function syncRecentHealthConnectMeasurements(
       }
 
       console.log("Health Connect sync failed", error);
+      await logHealthConnectEvent({
+        event: "health-connect-sync-fail",
+        payload: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        source: "health-connect-sync",
+        status: "error",
+        trigger: reason,
+      });
     } finally {
+      await logHealthConnectEvent({
+        event: "health-connect-sync-finish",
+        payload: {
+          changedKinds: [...changedKinds],
+          uploads,
+        },
+        source: "health-connect-sync",
+        status: "info",
+        trigger: reason,
+      });
       if (Object.keys(latestSyncedAtByType).length > 0) {
         await updateServerHealthConnectSyncState(
           Object.fromEntries(

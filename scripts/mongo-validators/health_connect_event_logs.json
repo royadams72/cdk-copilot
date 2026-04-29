@@ -1,0 +1,54 @@
+{
+  "collMod": "health_connect_event_logs",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "at",
+        "env",
+        "event",
+        "patientId",
+        "platform",
+        "source"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "at": { "bsonType": "date" },
+        "env": { "bsonType": "string" },
+        "event": { "bsonType": "string" },
+        "orgId": { "bsonType": "string" },
+        "patientId": { "bsonType": "objectId" },
+        "platform": { "enum": ["android", "ios"] },
+        "source": { "bsonType": "string" },
+        "trigger": { "bsonType": "string" },
+        "deviceId": { "bsonType": "string" },
+        "clientAt": { "bsonType": "date" },
+        "payload": { "bsonType": "object" },
+        "status": { "enum": ["error", "info", "warn"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "at": -1 }, "name": "byAtDesc" },
+    {
+      "key": { "patientId": 1, "at": -1 },
+      "name": "byPatientAt"
+    },
+    {
+      "key": { "event": 1, "at": -1 },
+      "name": "byEventAt"
+    },
+    {
+      "key": { "source": 1, "at": -1 },
+      "name": "bySourceAt"
+    },
+    {
+      "key": { "at": 1 },
+      "name": "ttlByAt",
+      "expireAfterSeconds": 5184000
+    }
+  ]
+}

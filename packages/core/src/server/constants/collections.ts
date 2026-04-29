@@ -24,6 +24,7 @@ export const COLLECTIONS = {
   FitPlans: "fit_plans",
 
   ClinicalReferenceRules: "clinical_reference_rules",
+  HealthConnectEventLogs: "health_connect_event_logs",
   ExerciseReference: "exercise_reference",
   HealthConnectSyncState: "health_connect_sync_state",
   FoodSwapRules: "food_swap_rules",
