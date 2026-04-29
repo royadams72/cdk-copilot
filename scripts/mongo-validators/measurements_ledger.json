@@ -87,6 +87,18 @@
           "additionalProperties": false
         },
         "externalRecordId": { "bsonType": "string" },
+        "sync": {
+          "bsonType": "object",
+          "required": ["provider", "status"],
+          "properties": {
+            "provider": { "enum": ["health_connect"] },
+            "dayKey": { "bsonType": "string" },
+            "status": { "enum": ["provisional", "finalized"] },
+            "lastReconciledAt": { "bsonType": "date" },
+            "finalizedAt": { "bsonType": "date" }
+          },
+          "additionalProperties": false
+        },
         "device": {
           "bsonType": "object",
           "properties": {
@@ -114,6 +126,15 @@
         "durationMin": { "bsonType": ["int", "long", "double", "decimal"] },
         "sleepFromAt": { "bsonType": "date" },
         "sleepToAt": { "bsonType": "date" },
+        "steps": {
+          "bsonType": "object",
+          "properties": {
+            "averageSpeedKph": { "bsonType": ["int", "long", "double", "decimal"] },
+            "caloriesKcal": { "bsonType": ["int", "long", "double", "decimal"] },
+            "distanceMeters": { "bsonType": ["int", "long", "double", "decimal"] }
+          },
+          "additionalProperties": false
+        },
         "exercise": {
           "bsonType": "object",
           "required": [

@@ -41,6 +41,14 @@ export type MeasurementProvider = {
   displayName?: string;
   packageName: string;
 };
+export type MeasurementSyncStatus = "provisional" | "finalized";
+export type MeasurementSyncMeta = {
+  dayKey?: string;
+  finalizedAt?: string;
+  lastReconciledAt?: string;
+  provider: "health_connect";
+  status: MeasurementSyncStatus;
+};
 export type MeasurementDevice = {
   externalId?: string;
   name?: string;
@@ -52,6 +60,7 @@ export type MeasurementProvenanceArgs = {
   externalRecordId?: string;
   provider?: MeasurementProvider;
   source?: MeasurementSource;
+  sync?: MeasurementSyncMeta;
 };
 
 export type MeasurementLatest = {
@@ -74,6 +83,7 @@ export type MeasurementLatest = {
   measuredAt?: string;
   provider?: MeasurementProvider;
   source?: MeasurementSource;
+  sync?: MeasurementSyncMeta;
   systolicMmHg?: number;
   valueKg?: number;
 };
@@ -95,6 +105,7 @@ export type MeasurementDayEntry = {
   measuredAt: string;
   sleepFromAt?: string;
   sleepToAt?: string;
+  sync?: MeasurementSyncMeta;
   value: number | null;
   value2: number | null;
 };

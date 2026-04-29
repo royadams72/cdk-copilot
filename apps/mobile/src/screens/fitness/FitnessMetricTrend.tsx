@@ -82,6 +82,9 @@ type TrendChart = {
   yMin: number;
 };
 
+const STEP_FINALIZATION_BATCH_SIZE = 7;
+const STEP_FINALIZATION_DISCOVERY_DAYS = 30;
+
 function buildHeartRateHourlyValues(
   entries: { measuredAt: string; value: number | null }[],
 ) {
@@ -431,17 +434,40 @@ export default function FitnessMetricTrend() {
   }, [chart.points, selectedDateKey]);
 
   const existingMetricDateKeys = useMemo(() => {
+    if (kind === "steps") {
+      return new Set(
+        Object.entries(entriesByDate)
+          .filter(
+            ([, entries]) => getStepSummaryFromEntries(entries).steps !== null,
+          )
+          .map(([date]) => date),
+      );
+    }
+
     if (
-      kind !== "steps" &&
-      kind !== "sleep" &&
-      kind !== "exercise" &&
-      kind !== "blood_pressure" &&
-      kind !== "heart_rate"
+      kind === "sleep" ||
+      kind === "exercise" ||
+      kind === "blood_pressure" ||
+      kind === "heart_rate"
     ) {
+      return new Set(points.map((point) => point.date));
+    }
+
+    return new Set<string>();
+  }, [entriesByDate, kind, points]);
+  const finalizedStepDateKeys = useMemo(() => {
+    if (kind !== "steps") {
       return new Set<string>();
     }
-    return new Set(points.map((point) => point.date));
-  }, [kind, points]);
+
+    return new Set(
+      Object.entries(entriesByDate)
+        .filter(([, entries]) =>
+          entries.some((entry) => entry.sync?.status === "finalized"),
+        )
+        .map(([date]) => date),
+    );
+  }, [entriesByDate, kind]);
 
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
@@ -450,7 +476,10 @@ export default function FitnessMetricTrend() {
   const selectedDayEntriesSignature = useMemo(
     () =>
       selectedDayEntries
-        .map((entry) => `${entry.measuredAt}:${entry.value ?? "null"}:${entry.value2 ?? "null"}`)
+        .map(
+          (entry) =>
+            `${entry.measuredAt}:${entry.value ?? "null"}:${entry.value2 ?? "null"}`,
+        )
         .join("|"),
     [selectedDayEntries],
   );
@@ -750,14 +779,22 @@ export default function FitnessMetricTrend() {
       return;
     }
 
-    const anchorKey = selectedDateKey ?? dateKey(new Date());
+    const todayKey = dateKey(new Date());
+    const anchorKey =
+      kind === "steps" ? todayKey : (selectedDateKey ?? todayKey);
     const anchorDate = new Date(`${anchorKey}T12:00:00`);
     if (Number.isNaN(anchorDate.getTime())) {
       return;
     }
 
-    const windowEnd = new Date(anchorDate);
-    const lookbackDays = kind === "heart_rate" ? 6 : 29;
+    const windowEnd =
+      kind === "steps" ? addDays(anchorDate, -1) : new Date(anchorDate);
+    const lookbackDays =
+      kind === "steps"
+        ? STEP_FINALIZATION_DISCOVERY_DAYS - 1
+        : kind === "heart_rate"
+          ? 6
+          : 29;
     const windowStart = addDays(windowEnd, -lookbackDays);
     const windowStartKey = dateKey(windowStart);
     const windowEndKey = dateKey(windowEnd);
@@ -774,6 +811,14 @@ export default function FitnessMetricTrend() {
       cursor = addDays(cursor, 1)
     ) {
       const currentKey = dateKey(cursor);
+      if (kind === "steps") {
+        if (finalizedStepDateKeys?.has(currentKey)) {
+          continue;
+        }
+        missingDateKeys.push(currentKey);
+        continue;
+      }
+
       if (!existingMetricDateKeys.has(currentKey)) {
         missingDateKeys.push(currentKey);
       }
@@ -784,11 +829,16 @@ export default function FitnessMetricTrend() {
       return;
     }
 
+    const dateKeysToResolve =
+      kind === "steps"
+        ? missingDateKeys.slice(-STEP_FINALIZATION_BATCH_SIZE).reverse()
+        : missingDateKeys;
+
     let cancelled = false;
     attemptedBackfillWindowsRef.current.add(scopedWindowKey);
     setHistoryBackfillState({
       error: null,
-      missingCount: missingDateKeys.length,
+      missingCount: dateKeysToResolve.length,
       running: true,
     });
 
@@ -797,7 +847,7 @@ export default function FitnessMetricTrend() {
         const metricKind = kind;
         const result =
           metricKind === "steps"
-            ? await backfillHealthConnectStepDates(missingDateKeys, {
+            ? await backfillHealthConnectStepDates(dateKeysToResolve, {
                 reason: "steps-screen",
                 windowKey,
               })
@@ -807,7 +857,7 @@ export default function FitnessMetricTrend() {
                 metricKind === "heart_rate"
               ? await backfillHealthConnectMeasurementDates(
                   metricKind,
-                  missingDateKeys,
+                  dateKeysToResolve,
                   {
                     reason: "metric-screen",
                     windowKey,
@@ -819,7 +869,7 @@ export default function FitnessMetricTrend() {
 
         const remainingMissingCount = Math.max(
           0,
-          missingDateKeys.length - result.resolvedDays,
+          dateKeysToResolve.length - result.resolvedDays,
         );
 
         setHistoryBackfillState({
@@ -844,7 +894,7 @@ export default function FitnessMetricTrend() {
             backfillError instanceof Error
               ? backfillError.message
               : "Could not backfill device history.",
-          missingCount: missingDateKeys.length,
+          missingCount: dateKeysToResolve.length,
           running: false,
         });
       }
@@ -856,6 +906,7 @@ export default function FitnessMetricTrend() {
   }, [
     error,
     existingMetricDateKeys,
+    finalizedStepDateKeys,
     kind,
     loading,
     refetchHistory,
@@ -1097,9 +1148,13 @@ export default function FitnessMetricTrend() {
               kind === "heart_rate") &&
             historyBackfillState.running ? (
               <ThemedText style={{ opacity: 0.72 }}>
-                Filling {historyBackfillState.missingCount} missing day
-                {historyBackfillState.missingCount === 1 ? "" : "s"} from Health
-                Connect...
+                {kind === "steps"
+                  ? `Checking ${historyBackfillState.missingCount} recent step day${
+                      historyBackfillState.missingCount === 1 ? "" : "s"
+                    } from Health Connect...`
+                  : `Filling ${historyBackfillState.missingCount} missing day${
+                      historyBackfillState.missingCount === 1 ? "" : "s"
+                    } from Health Connect...`}
               </ThemedText>
             ) : null}
             {(kind === "steps" ||

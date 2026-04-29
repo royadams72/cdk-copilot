@@ -144,6 +144,20 @@ async function createMeasurementDirect(payload: CreateMeasurementArgs) {
   return body;
 }
 
+function buildHealthConnectStepSyncMeta(
+  dayKey: string,
+  status: "finalized" | "provisional",
+) {
+  const reconciledAt = new Date().toISOString();
+  return {
+    dayKey,
+    finalizedAt: status === "finalized" ? reconciledAt : undefined,
+    lastReconciledAt: reconciledAt,
+    provider: "health_connect" as const,
+    status,
+  };
+}
+
 function invalidateMeasurementCaches(
   kind: CreateMeasurementArgs["kind"],
   options: { includeHistory?: boolean } = {},
@@ -806,6 +820,7 @@ export async function syncTodayStepMeasurement(
       measuredAt: now.toISOString(),
       provider,
       source: "provider",
+      sync: buildHealthConnectStepSyncMeta(dateKey, "provisional"),
     });
     invalidateMeasurementCaches("steps");
     lastSyncedStepSlotKey = slotKey;
@@ -829,15 +844,16 @@ export async function backfillHealthConnectStepDates(
   },
 ) {
   if (Platform.OS !== "android" || !missingDateKeys.length) {
-    return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+    return { attempted: 0, resolvedDateKeys: [] as string[], resolvedDays: 0, uploaded: 0 };
   }
 
   if (inFlightStepBackfillWindowKeys.has(options.windowKey)) {
-    return { attempted: 0, resolvedDays: 0, uploaded: 0 };
+    return { attempted: 0, resolvedDateKeys: [] as string[], resolvedDays: 0, uploaded: 0 };
   }
 
   inFlightStepBackfillWindowKeys.add(options.windowKey);
   let attempted = 0;
+  const resolvedDateKeys: string[] = [];
   let resolvedDays = 0;
   let uploaded = 0;
 
@@ -876,7 +892,9 @@ export async function backfillHealthConnectStepDates(
         measuredAt,
         provider: providerFromPackageName(summary.selectedDataOrigin),
         source: "provider",
+        sync: buildHealthConnectStepSyncMeta(dateKey, "finalized"),
       });
+      resolvedDateKeys.push(dateKey);
       resolvedDays += 1;
       uploaded += 1;
     }
@@ -885,7 +903,7 @@ export async function backfillHealthConnectStepDates(
       invalidateMeasurementCaches("steps", { includeHistory: true });
     }
 
-    return { attempted, resolvedDays, uploaded };
+    return { attempted, resolvedDateKeys, resolvedDays, uploaded };
   } finally {
     inFlightStepBackfillWindowKeys.delete(options.windowKey);
   }
