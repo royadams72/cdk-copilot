@@ -32,6 +32,13 @@ type ProviderMeta = {
   displayName?: string;
   packageName: string;
 };
+type SyncMeta = {
+  dayKey?: string;
+  finalizedAt?: Date;
+  lastReconciledAt?: Date;
+  provider: "health_connect";
+  status: "provisional" | "finalized";
+};
 type ExerciseReferenceDoc = {
   category: string;
   exerciseId: string;
@@ -89,6 +96,40 @@ function asProviderMeta(value: unknown): ProviderMeta | null {
   const displayName = asTrimmedString(input.displayName);
   if (displayName) provider.displayName = displayName;
   return provider;
+}
+
+function asSyncMeta(value: unknown): SyncMeta | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const input = value as Record<string, unknown>;
+  const provider = asTrimmedString(input.provider);
+  const status = asTrimmedString(input.status);
+  if (
+    provider !== "health_connect" ||
+    (status !== "provisional" && status !== "finalized")
+  ) {
+    return null;
+  }
+
+  const sync: SyncMeta = {
+    provider,
+    status,
+  };
+  const dayKey = asTrimmedString(input.dayKey);
+  if (dayKey) {
+    sync.dayKey = dayKey;
+  }
+  const finalizedAt = asDate(input.finalizedAt);
+  if (finalizedAt) {
+    sync.finalizedAt = finalizedAt;
+  }
+  const lastReconciledAt = asDate(input.lastReconciledAt);
+  if (lastReconciledAt) {
+    sync.lastReconciledAt = lastReconciledAt;
+  }
+  return sync;
 }
 
 function startOfUtcDay(date: Date) {
@@ -314,6 +355,7 @@ export async function POST(req: NextRequest) {
     const provider = asProviderMeta(body.provider);
     const externalRecordId = asTrimmedString(body.externalRecordId);
     const device = asDeviceMeta(body.device);
+    const sync = asSyncMeta(body.sync);
 
     const db = await getDb();
     const now = new Date();
@@ -332,6 +374,7 @@ export async function POST(req: NextRequest) {
     if (provider) payload.provider = provider;
     if (externalRecordId) payload.externalRecordId = externalRecordId;
     if (device) payload.device = device;
+    if (sync) payload.sync = sync;
 
     if (kind === "steps") {
       const count = asNumber(body.count);
@@ -536,6 +579,9 @@ export async function POST(req: NextRequest) {
       }
       if (device) {
         setFields.device = device;
+      }
+      if (sync) {
+        setFields.sync = sync;
       }
       if (typeof payload.distanceMeters === "number") {
         setFields.distanceMeters = payload.distanceMeters;

@@ -29,6 +29,13 @@ type MeasurementDoc = {
   durationMin?: number;
   sleepFromAt?: Date;
   sleepToAt?: Date;
+  sync?: {
+    dayKey?: string;
+    finalizedAt?: Date;
+    lastReconciledAt?: Date;
+    provider?: "health_connect";
+    status?: "provisional" | "finalized";
+  };
   exercise?: {
     exerciseId?: string;
     title?: string;
@@ -137,6 +144,7 @@ export async function GET(req: NextRequest) {
             measuredAt: 1,
             sleepFromAt: 1,
             sleepToAt: 1,
+            sync: 1,
             steps: 1,
             systolicMmHg: 1,
             valueKg: 1,
@@ -158,6 +166,13 @@ export async function GET(req: NextRequest) {
         distanceMeters?: number | null;
         sleepFromAt?: string;
         sleepToAt?: string;
+        sync?: {
+          dayKey?: string;
+          finalizedAt?: string;
+          lastReconciledAt?: string;
+          provider: "health_connect";
+          status: "provisional" | "finalized";
+        };
         exerciseId?: string;
         exerciseTitle?: string;
         exerciseName?: string;
@@ -219,6 +234,19 @@ export async function GET(req: NextRequest) {
           kind === "sleep" && doc.sleepToAt
             ? doc.sleepToAt.toISOString()
             : undefined,
+        sync:
+          kind === "steps" &&
+          doc.sync?.provider === "health_connect" &&
+          (doc.sync.status === "provisional" || doc.sync.status === "finalized")
+            ? {
+                dayKey:
+                  typeof doc.sync.dayKey === "string" ? doc.sync.dayKey : undefined,
+                finalizedAt: doc.sync.finalizedAt?.toISOString(),
+                lastReconciledAt: doc.sync.lastReconciledAt?.toISOString(),
+                provider: "health_connect",
+                status: doc.sync.status,
+              }
+            : undefined,
         exerciseId:
           kind === "exercise" && typeof doc.exercise?.exerciseId === "string"
             ? doc.exercise.exerciseId
@@ -249,6 +277,13 @@ export async function GET(req: NextRequest) {
           distanceMeters?: number | null;
           sleepFromAt?: string;
           sleepToAt?: string;
+          sync?: {
+            dayKey?: string;
+            finalizedAt?: string;
+            lastReconciledAt?: string;
+            provider: "health_connect";
+            status: "provisional" | "finalized";
+          };
           exerciseId?: string;
           exerciseTitle?: string;
           exerciseName?: string;

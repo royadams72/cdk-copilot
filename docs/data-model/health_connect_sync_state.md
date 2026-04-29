@@ -21,6 +21,7 @@
 - Cursors are stored per record type so high-frequency metrics like steps do not force the same sync position on lower-frequency metrics like sleep.
 - The backend is the durable source of truth for sync progress.
 - Mobile clients may keep a local optimization cursor, but they should always tolerate the server cursor being newer or older.
+- This collection does **not** track whether an individual daily step aggregate is provisional or finalized. That per-day finalization state lives on the canonical `measurements_ledger` step row via `sync.status`, `sync.dayKey`, `sync.lastReconciledAt`, and `sync.finalizedAt`.
 
 ## Indexes
 
