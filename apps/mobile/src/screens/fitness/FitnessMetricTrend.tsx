@@ -85,6 +85,10 @@ type TrendChart = {
 const STEP_FINALIZATION_BATCH_SIZE = 7;
 const STEP_FINALIZATION_DISCOVERY_DAYS = 30;
 
+function shouldReconcileExistingHealthConnectDays(kind: MeasurementKind) {
+  return kind === "blood_pressure" || kind === "exercise";
+}
+
 function buildHeartRateHourlyValues(
   entries: { measuredAt: string; value: number | null }[],
 ) {
@@ -162,10 +166,12 @@ export default function FitnessMetricTrend() {
   const [weightValue, setWeightValue] = useState(70);
   const [weightDecimal, setWeightDecimal] = useState(5);
   const [historyBackfillState, setHistoryBackfillState] = useState<{
+    attemptedCount: number;
     error: string | null;
     missingCount: number;
     running: boolean;
   }>({
+    attemptedCount: 0,
     error: null,
     missingCount: 0,
     running: false,
@@ -805,12 +811,20 @@ export default function FitnessMetricTrend() {
     }
 
     const missingDateKeys: string[] = [];
+    const candidateDateKeys: string[] = [];
+    const shouldReconcileExistingDays =
+      shouldReconcileExistingHealthConnectDays(kind);
     for (
       let cursor = new Date(windowStart);
       cursor.getTime() <= windowEnd.getTime();
       cursor = addDays(cursor, 1)
     ) {
       const currentKey = dateKey(cursor);
+      if (shouldReconcileExistingDays) {
+        candidateDateKeys.push(currentKey);
+        continue;
+      }
+
       if (kind === "steps") {
         if (finalizedStepDateKeys?.has(currentKey)) {
           continue;
@@ -824,19 +838,21 @@ export default function FitnessMetricTrend() {
       }
     }
 
-    if (!missingDateKeys.length) {
+    const dateKeysToResolve = shouldReconcileExistingDays
+      ? candidateDateKeys
+      : kind === "steps"
+        ? missingDateKeys.slice(-STEP_FINALIZATION_BATCH_SIZE).reverse()
+        : missingDateKeys;
+
+    if (!dateKeysToResolve.length) {
       attemptedBackfillWindowsRef.current.add(scopedWindowKey);
       return;
     }
 
-    const dateKeysToResolve =
-      kind === "steps"
-        ? missingDateKeys.slice(-STEP_FINALIZATION_BATCH_SIZE).reverse()
-        : missingDateKeys;
-
     let cancelled = false;
     attemptedBackfillWindowsRef.current.add(scopedWindowKey);
     setHistoryBackfillState({
+      attemptedCount: dateKeysToResolve.length,
       error: null,
       missingCount: dateKeysToResolve.length,
       running: true,
@@ -873,8 +889,11 @@ export default function FitnessMetricTrend() {
         );
 
         setHistoryBackfillState({
+          attemptedCount: dateKeysToResolve.length,
           error:
-            result.attempted > 0 && result.resolvedDays === 0
+            !shouldReconcileExistingDays &&
+            result.attempted > 0 &&
+            result.resolvedDays === 0
               ? "No matching Health Connect data was found for this window."
               : null,
           missingCount: remainingMissingCount,
@@ -883,13 +902,14 @@ export default function FitnessMetricTrend() {
 
         if (result.uploaded > 0) {
           await refetchHistory();
-        } else {
+        } else if (!shouldReconcileExistingDays) {
           attemptedBackfillWindowsRef.current.delete(scopedWindowKey);
         }
       } catch (backfillError) {
         if (cancelled) return;
         attemptedBackfillWindowsRef.current.delete(scopedWindowKey);
         setHistoryBackfillState({
+          attemptedCount: dateKeysToResolve.length,
           error:
             backfillError instanceof Error
               ? backfillError.message
@@ -1152,6 +1172,10 @@ export default function FitnessMetricTrend() {
                   ? `Checking ${historyBackfillState.missingCount} recent step day${
                       historyBackfillState.missingCount === 1 ? "" : "s"
                     } from Health Connect...`
+                  : shouldReconcileExistingHealthConnectDays(kind)
+                    ? `Checking ${historyBackfillState.attemptedCount} recent day${
+                        historyBackfillState.attemptedCount === 1 ? "" : "s"
+                      } for Health Connect data...`
                   : `Filling ${historyBackfillState.missingCount} missing day${
                       historyBackfillState.missingCount === 1 ? "" : "s"
                     } from Health Connect...`}
@@ -1179,9 +1203,13 @@ export default function FitnessMetricTrend() {
           kind === "heart_rate") &&
         historyBackfillState.running ? (
           <ThemedText style={{ opacity: 0.72 }}>
-            Filling {historyBackfillState.missingCount} missing day
-            {historyBackfillState.missingCount === 1 ? "" : "s"} from Health
-            Connect...
+            {shouldReconcileExistingHealthConnectDays(kind)
+              ? `Checking ${historyBackfillState.attemptedCount} recent day${
+                  historyBackfillState.attemptedCount === 1 ? "" : "s"
+                } for Health Connect data...`
+              : `Filling ${historyBackfillState.missingCount} missing day${
+                  historyBackfillState.missingCount === 1 ? "" : "s"
+                } from Health Connect...`}
           </ThemedText>
         ) : null}
 
