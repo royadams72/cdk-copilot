@@ -25,6 +25,7 @@ import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 
@@ -46,6 +47,7 @@ export default function Dashboard() {
     stepsToday,
   } = useStepCount(10000);
   useSyncStepCount(stepsToday, stepStatus === "ready");
+  useSyncHealthConnectMeasurements(stepStatus === "ready");
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
