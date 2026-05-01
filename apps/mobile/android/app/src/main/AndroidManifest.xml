@@ -64,6 +64,7 @@
         <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
       </intent-filter>
     </activity>
+    <service android:name=".HealthConnectBackgroundSyncTaskService" android:exported="false" />
     <activity-alias android:name="ViewPermissionUsageActivity" android:exported="true" android:targetActivity=".MainActivity" android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
       <intent-filter>
         <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>

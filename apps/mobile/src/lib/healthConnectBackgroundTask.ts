@@ -3,7 +3,10 @@ import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 
 import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
-import { syncRecentHealthConnectMeasurements, syncTodayStepMeasurement } from "@/lib/healthConnectSync";
+import {
+  syncRecentHealthConnectMeasurements,
+  syncTodayStepMeasurement,
+} from "@/lib/healthConnectSync";
 
 const HEALTH_CONNECT_BACKGROUND_TASK = "health-connect-sync";
 
@@ -56,23 +59,6 @@ export async function registerHealthConnectBackgroundTaskAsync() {
     minimumInterval: 15,
   });
 
-  return true;
-}
-
-export async function unregisterHealthConnectBackgroundTaskAsync() {
-  if (Platform.OS !== "android") {
-    return false;
-  }
-
-  const registeredTasks = await TaskManager.getRegisteredTasksAsync();
-  const isRegistered = registeredTasks.some(
-    (task) => task.taskName === HEALTH_CONNECT_BACKGROUND_TASK,
-  );
-  if (!isRegistered) {
-    return false;
-  }
-
-  await BackgroundTask.unregisterTaskAsync(HEALTH_CONNECT_BACKGROUND_TASK);
   return true;
 }
 

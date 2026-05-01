@@ -55,7 +55,7 @@
     "redux-devtools-expo-dev-plugin": "^2.0.0",
     "typescript": "~5.9.2"
   },
-  "main": "expo-router/entry",
+  "main": "index.js",
   "name": "mobile",
   "private": true,
   "scripts": {
