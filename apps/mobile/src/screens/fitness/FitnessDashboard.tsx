@@ -13,8 +13,8 @@ import { useRouter } from "expo-router";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
-import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 import { syncSleepReminderNotification } from "@/lib/pushNotifications";
+import { triggerNativeHealthConnectBackgroundSyncNow } from "@/lib/healthConnectNativeSync";
 import {
   detectInstalledFitnessApps,
   formatFitnessAppName,
@@ -291,8 +291,7 @@ export default function FitnessDashboard() {
 
   const handleTriggerBackgroundTask = async () => {
     try {
-      const triggered =
-        await triggerHealthConnectBackgroundTaskForTestingAsync();
+      const triggered = await triggerNativeHealthConnectBackgroundSyncNow();
       Alert.alert(
         triggered ? "Background task triggered" : "Background task unavailable",
         triggered
