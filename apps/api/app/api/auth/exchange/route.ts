@@ -17,6 +17,7 @@ import { ObjectId } from "mongodb";
 import { randomBytes } from "crypto";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
 import { DEFAULT_SCOPES, SCOPES } from "@ckd/core";
 
 export async function POST(req: NextRequest) {
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
       SCOPES.USERS_PII_WRITE,
     ]);
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const secret = getJwtSecretBytes();
     const jwt = await new SignJWT({
       orgId: res.doc.orgId,
       principalId: res.doc.principalId ?? null,

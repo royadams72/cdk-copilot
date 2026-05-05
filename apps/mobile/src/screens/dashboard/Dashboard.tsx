@@ -39,6 +39,7 @@ export default function Dashboard() {
   );
   const {
     backgroundReadGranted,
+    hasAnyMeasurementAccess,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
@@ -47,7 +48,9 @@ export default function Dashboard() {
     stepsToday,
   } = useStepCount(10000);
   useSyncStepCount(stepsToday, stepStatus === "ready");
-  useSyncHealthConnectMeasurements(stepStatus === "ready");
+  useSyncHealthConnectMeasurements(
+    stepStatus === "ready" || hasAnyMeasurementAccess,
+  );
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });

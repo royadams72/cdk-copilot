@@ -11,6 +11,7 @@ import {
   Role,
 } from "@ckd/core";
 import type { Db } from "mongodb";
+import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
 
 export type AuthProvider =
   | "password"
@@ -38,7 +39,6 @@ export const ROLE_SCOPES: Record<string, Scope[]> = {
   admin: [],
 };
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret";
 const SIGNUP_INIT_KEY = process.env.SIGNUP_INIT_KEY || ""; // set in env for prod
 
 export function getBearer(req: NextRequest) {
@@ -47,7 +47,7 @@ export function getBearer(req: NextRequest) {
 }
 
 async function verifyJWT(token: string) {
-  const secret = new TextEncoder().encode(JWT_SECRET);
+  const secret = getJwtSecretBytes();
   const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
   return payload as Record<string, any>;
 }
@@ -73,7 +73,7 @@ export async function requireUser(
 
   // ===== 1) JWT path (normal) =====
   if (token) {
-    const secret = new TextEncoder().encode(JWT_SECRET);
+    const secret = getJwtSecretBytes();
     let claims;
     try {
       const result = await jwtVerify(token, secret, { algorithms: ["HS256"] });

@@ -246,6 +246,7 @@ export default function FitnessDashboard() {
     backgroundReadGranted,
     dataOrigins: stepDataOrigins,
     debug: stepDebug,
+    hasAnyMeasurementAccess,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
@@ -254,7 +255,9 @@ export default function FitnessDashboard() {
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
   useSyncStepCount(stepsToday, stepStatus === "ready");
-  useSyncHealthConnectMeasurements(stepStatus === "ready");
+  useSyncHealthConnectMeasurements(
+    stepStatus === "ready" || hasAnyMeasurementAccess,
+  );
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",

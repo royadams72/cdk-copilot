@@ -1,5 +1,6 @@
 import {
   ANDROID_HEALTH_PERMISSIONS,
+  ANDROID_HEALTH_RECORD_PERMISSIONS,
   ANDROID_STEP_PERMISSION,
 } from "@/lib/healthConnectPermissions";
 
@@ -41,6 +42,7 @@ export type AndroidStepState = {
   canRequestPermission: boolean;
   dataOrigins: string[];
   debug: StepDebug | null;
+  hasAnyMeasurementAccess: boolean;
   missingHealthPermissions: string[];
   selectedDataOrigin: string | null;
   summary: StepActivitySummary | null;
@@ -643,6 +645,7 @@ async function loadAndroidStepStateFresh() {
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      hasAnyMeasurementAccess: false,
       missingHealthPermissions: [],
       selectedDataOrigin: null,
       summary: null,
@@ -660,6 +663,7 @@ async function loadAndroidStepStateFresh() {
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      hasAnyMeasurementAccess: false,
       missingHealthPermissions: [],
       selectedDataOrigin: null,
       summary: null,
@@ -675,6 +679,7 @@ async function loadAndroidStepStateFresh() {
       canRequestPermission: false,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      hasAnyMeasurementAccess: false,
       missingHealthPermissions: [],
       selectedDataOrigin: null,
       summary: null,
@@ -695,6 +700,9 @@ async function loadAndroidStepStateFresh() {
   const missingHealthPermissions = requestedPermissionKeys.filter(
     (key) => !grantedPermissionKeys.includes(key),
   );
+  const hasAnyMeasurementAccess = ANDROID_HEALTH_RECORD_PERMISSIONS.some(
+    (permission) => grantedPermissionKeySet.has(permissionKey(permission)),
+  );
 
   const hasStepAccess = grantedPermissions.some(
     (permission) =>
@@ -708,6 +716,7 @@ async function loadAndroidStepStateFresh() {
       canRequestPermission: true,
       dataOrigins: [],
       debug: null as StepDebug | null,
+      hasAnyMeasurementAccess,
       missingHealthPermissions,
       selectedDataOrigin: null,
       summary: null,
@@ -791,6 +800,7 @@ async function loadAndroidStepStateFresh() {
       selectedDataOrigin: selected.selectedDataOrigin,
       speedSource,
     },
+    hasAnyMeasurementAccess,
     missingHealthPermissions,
     selectedDataOrigin: selected.selectedDataOrigin,
     summary,

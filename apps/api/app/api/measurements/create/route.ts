@@ -155,7 +155,8 @@ function providerUpsertFilter(payload: Record<string, unknown>) {
     payload.provider &&
     typeof payload.provider === "object" &&
     !Array.isArray(payload.provider) &&
-    typeof (payload.provider as Record<string, unknown>).packageName === "string"
+    typeof (payload.provider as Record<string, unknown>).packageName ===
+      "string"
       ? ((payload.provider as Record<string, unknown>).packageName as string)
       : null;
 
@@ -241,8 +242,8 @@ async function saveMeasurement(
     candidates.push({
       ...payload,
       exercise: {
-        durationMin: legacyExercise.durationMin,
         caloriesKcal: legacyExercise.caloriesKcal,
+        durationMin: legacyExercise.durationMin,
       },
     });
   }
@@ -255,6 +256,7 @@ async function saveMeasurement(
     return fallback;
   });
   candidates.push(...auditStripped);
+  console.dir(candidates, { depth: null });
 
   let result: any = null;
   let lastErr: any = null;
@@ -301,19 +303,29 @@ function formatMongoValidationMessage(err: any) {
   }
 }
 
-async function resolveWeightKg(db: Db, patientId: ObjectId): Promise<number | null> {
-  const latestWeight = await db.collection(COLLECTIONS.MeasurementsLedger).findOne(
-    { kind: "weight", patientId },
-    { projection: { _id: 0, valueKg: 1 }, sort: { measuredAt: -1, receivedAt: -1 } },
-  );
+async function resolveWeightKg(
+  db: Db,
+  patientId: ObjectId,
+): Promise<number | null> {
+  const latestWeight = await db
+    .collection(COLLECTIONS.MeasurementsLedger)
+    .findOne(
+      { kind: "weight", patientId },
+      {
+        projection: { _id: 0, valueKg: 1 },
+        sort: { measuredAt: -1, receivedAt: -1 },
+      },
+    );
   if (typeof latestWeight?.valueKg === "number" && latestWeight.valueKg > 0) {
     return latestWeight.valueKg;
   }
 
-  const clinical = await db.collection(COLLECTIONS.UsersClinical).findOne(
-    { patientId },
-    { projection: { _id: 0, weightKg: 1 }, sort: { updatedAt: -1 } },
-  );
+  const clinical = await db
+    .collection(COLLECTIONS.UsersClinical)
+    .findOne(
+      { patientId },
+      { projection: { _id: 0, weightKg: 1 }, sort: { updatedAt: -1 } },
+    );
   if (typeof clinical?.weightKg === "number" && clinical.weightKg > 0) {
     return clinical.weightKg;
   }
@@ -332,7 +344,10 @@ export async function POST(req: NextRequest) {
       return bad("Patient context missing", undefined, 403);
     }
 
-    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    const body = (await req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
     const kind = body.kind as Kind;
     if (
       kind !== "steps" &&
@@ -346,7 +361,9 @@ export async function POST(req: NextRequest) {
     }
 
     const measuredAtRaw =
-      typeof body.measuredAt === "string" ? new Date(body.measuredAt) : new Date();
+      typeof body.measuredAt === "string"
+        ? new Date(body.measuredAt)
+        : new Date();
     if (Number.isNaN(measuredAtRaw.getTime())) {
       return bad("Invalid measuredAt", undefined, 400);
     }
@@ -360,15 +377,15 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     const now = new Date();
     const payload: Record<string, unknown> = {
+      createdAt: now,
+      createdBy: caller.principalId,
       kind,
-      patientId: new ObjectId(caller.patientId),
-      orgId: caller.orgId ?? "org_demo",
       measuredAt: measuredAtRaw,
+      orgId: caller.orgId ?? "org_demo",
+      patientId: new ObjectId(caller.patientId),
       receivedAt: new Date(),
       source,
-      createdAt: now,
       updatedAt: now,
-      createdBy: caller.principalId,
       updatedBy: caller.principalId,
     };
     if (provider) payload.provider = provider;
@@ -378,7 +395,8 @@ export async function POST(req: NextRequest) {
 
     if (kind === "steps") {
       const count = asNumber(body.count);
-      if (count === null || count < 0) return bad("Invalid count", undefined, 400);
+      if (count === null || count < 0)
+        return bad("Invalid count", undefined, 400);
       payload.count = Math.round(count);
       const distanceMeters = asNumber(body.distanceMeters);
       const caloriesKcal = asNumber(body.caloriesKcal);
@@ -425,11 +443,7 @@ export async function POST(req: NextRequest) {
       const sleepToAt = asDate(body.sleepToAt);
 
       if (!sleepFromAt || !sleepToAt) {
-        return bad(
-          "sleepFromAt and sleepToAt are required",
-          undefined,
-          400,
-        );
+        return bad("sleepFromAt and sleepToAt are required", undefined, 400);
       }
       const msDiff = sleepToAt.getTime() - sleepFromAt.getTime();
       if (msDiff <= 0) {
@@ -454,10 +468,13 @@ export async function POST(req: NextRequest) {
           asTrimmedString(body.name) ??
           "Imported exercise";
         payload.exercise = {
-          exerciseId: exerciseId || "health_connect_exercise",
-          title,
-          name: title,
+          caloriesKcal: Math.max(
+            0,
+            Math.round(asNumber(body.caloriesKcal) ?? 0),
+          ),
           category: asTrimmedString(body.category) ?? "health_connect",
+          durationMin: Math.round(durationMin),
+          exerciseId: exerciseId || "health_connect_exercise",
           intensity:
             body.intensity === "light" ||
             body.intensity === "moderate" ||
@@ -465,8 +482,8 @@ export async function POST(req: NextRequest) {
               ? body.intensity
               : "moderate",
           met: asNumber(body.met) ?? 1,
-          durationMin: Math.round(durationMin),
-          caloriesKcal: Math.max(0, Math.round(asNumber(body.caloriesKcal) ?? 0)),
+          name: title,
+          title,
         };
       } else {
         if (!exerciseId) return bad("exerciseId is required", undefined, 400);
@@ -505,14 +522,14 @@ export async function POST(req: NextRequest) {
         const caloriesKcal =
           exerciseRef.met * weightKg * (Math.round(durationMin) / 60);
         payload.exercise = {
-          exerciseId: exerciseRef.exerciseId,
-          title: exerciseRef.name,
-          name: exerciseRef.name,
+          caloriesKcal: Math.round(caloriesKcal),
           category: exerciseRef.category,
+          durationMin: Math.round(durationMin),
+          exerciseId: exerciseRef.exerciseId,
           intensity: exerciseRef.intensity,
           met: exerciseRef.met,
-          durationMin: Math.round(durationMin),
-          caloriesKcal: Math.round(caloriesKcal),
+          name: exerciseRef.name,
+          title: exerciseRef.name,
         };
       }
     }

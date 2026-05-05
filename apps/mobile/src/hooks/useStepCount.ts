@@ -27,6 +27,7 @@ export function useStepCount(goal = 10000) {
   const [stepsToday, setStepsToday] = useState<number | null>(null);
   const [canRequestPermission, setCanRequestPermission] = useState(false);
   const [dataOrigins, setDataOrigins] = useState<string[]>([]);
+  const [hasAnyMeasurementAccess, setHasAnyMeasurementAccess] = useState(false);
   const [missingHealthPermissions, setMissingHealthPermissions] = useState<
     string[]
   >([]);
@@ -49,6 +50,7 @@ export function useStepCount(goal = 10000) {
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
+      setHasAnyMeasurementAccess(result.hasAnyMeasurementAccess);
       setMissingHealthPermissions(result.missingHealthPermissions);
       setSelectedDataOrigin(result.selectedDataOrigin);
       setSummary(result.summary);
@@ -79,6 +81,7 @@ export function useStepCount(goal = 10000) {
             setCanRequestPermission(false);
             setDataOrigins([]);
             setDebug(null);
+            setHasAnyMeasurementAccess(false);
             setMissingHealthPermissions([]);
             setSelectedDataOrigin(null);
             setSummary(null);
@@ -188,6 +191,7 @@ export function useStepCount(goal = 10000) {
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
+      setHasAnyMeasurementAccess(result.hasAnyMeasurementAccess);
       setMissingHealthPermissions(result.missingHealthPermissions);
       setSelectedDataOrigin(result.selectedDataOrigin);
       setSummary(result.summary);
@@ -214,6 +218,7 @@ export function useStepCount(goal = 10000) {
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
+      setHasAnyMeasurementAccess(result.hasAnyMeasurementAccess);
       setMissingHealthPermissions(result.missingHealthPermissions);
       setSelectedDataOrigin(result.selectedDataOrigin);
       setSummary(result.summary);
@@ -273,6 +278,7 @@ export function useStepCount(goal = 10000) {
     dataOrigins,
     debug,
     goal,
+    hasAnyMeasurementAccess,
     missingHealthPermissions,
     percentOfGoal,
     requestAccess,
