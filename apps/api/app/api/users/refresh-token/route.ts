@@ -9,6 +9,7 @@ import { ROLE_SCOPES } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
+import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
 import {
   AuthTokenDoc,
   b64url,
@@ -16,10 +17,32 @@ import {
   setToken,
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
-import { ObjectId } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 
 export const runtime = "nodejs";
-const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret";
+
+async function revokeRefreshSessionFamily(
+  authTokens: Collection<AuthTokenDoc>,
+  tokenDoc: AuthTokenDoc,
+  revokedAt: Date,
+) {
+  if (tokenDoc.sessionId) {
+    await authTokens.updateMany(
+      {
+        type: COLLECTION_TYPE.Refresh,
+        sessionId: tokenDoc.sessionId,
+        revokedAt: null,
+      },
+      { $set: { revokedAt } },
+    );
+    return;
+  }
+
+  await authTokens.updateOne(
+    { _id: tokenDoc._id, revokedAt: null },
+    { $set: { revokedAt } },
+  );
+}
 
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
@@ -60,9 +83,18 @@ export async function POST(req: NextRequest) {
       );
     }
     if (tokenDoc.rotatedAt) {
-      // Allow stale rotated tokens to recover a session (mobile can miss
-      // persisted rotation updates if app/process exits at the wrong time).
-      console.warn("refresh-token: using previously rotated token");
+      const revokedAt = new Date();
+      console.warn("refresh-token: rotated token replay detected", {
+        principalId: tokenDoc.principalId,
+        sessionId: tokenDoc.sessionId,
+        tokenId: String(tokenDoc._id),
+      });
+      await revokeRefreshSessionFamily(authTokens, tokenDoc, revokedAt);
+      return bad(
+        "Refresh token replay detected",
+        { requestId, code: "refresh_replayed" },
+        401,
+      );
     }
 
     const principalId = tokenDoc.principalId;
@@ -104,7 +136,7 @@ export async function POST(req: NextRequest) {
     const grants = [...(account.scopes ?? []), ...(account.grants ?? [])];
     const scopes = Array.from(new Set([...roleScopes, ...grants]));
 
-    const secret = new TextEncoder().encode(JWT_SECRET);
+    const secret = getJwtSecretBytes();
     const nextJwt = await new SignJWT({
       sub: credentialId,
       principalId,

@@ -9,6 +9,7 @@ import * as SecureStore from "expo-secure-store";
 
 import { API } from "@/constants/api";
 import { formatApiError } from "@/lib/formatApiError";
+import { refreshSessionTokenOnce } from "@/lib/authSession";
 
 type ApiEnvelope<T> = {
   data?: T;
@@ -16,17 +17,6 @@ type ApiEnvelope<T> = {
   message?: string;
   ok?: boolean;
 };
-
-type RefreshResponse = {
-  data?: {
-    jwt?: string;
-    refreshToken?: string;
-  };
-  message?: string;
-  ok?: boolean;
-};
-
-let refreshPromise: Promise<boolean> | null = null;
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API,
@@ -39,48 +29,6 @@ const rawBaseQuery = fetchBaseQuery({
     return headers;
   },
 });
-
-async function refreshSessionToken() {
-  const refreshToken = await SecureStore.getItemAsync("ckd_refresh");
-  if (!refreshToken) {
-    await SecureStore.deleteItemAsync("ckd_jwt");
-    return false;
-  }
-
-  const refreshRes = await fetch(`${API}/api/users/refresh-token`, {
-    body: JSON.stringify({ refreshToken }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-
-  const refreshBody = (await refreshRes
-    .json()
-    .catch(() => null)) as RefreshResponse | null;
-  const nextJwt = refreshBody?.data?.jwt?.trim();
-  if (!refreshRes.ok || !refreshBody?.ok || !nextJwt) {
-    await SecureStore.deleteItemAsync("ckd_jwt");
-    await SecureStore.deleteItemAsync("ckd_refresh");
-    return false;
-  }
-
-  await SecureStore.setItemAsync("ckd_jwt", nextJwt);
-  const nextRefreshToken = refreshBody.data?.refreshToken?.trim();
-  if (nextRefreshToken) {
-    await SecureStore.setItemAsync("ckd_refresh", nextRefreshToken);
-  }
-
-  return true;
-}
-
-async function refreshSessionTokenOnce() {
-  if (!refreshPromise) {
-    refreshPromise = refreshSessionToken().finally(() => {
-      refreshPromise = null;
-    });
-  }
-
-  return refreshPromise;
-}
 
 const baseQueryWithEnvelope: BaseQueryFn<
   string | FetchArgs,

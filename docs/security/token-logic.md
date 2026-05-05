@@ -7,6 +7,8 @@ The session model uses:
 - Access token: JWT (`HS256`), short-lived (`7d`), sent in `Authorization: Bearer <jwt>`.
 - Refresh token: opaque `id.secret` token, long-lived (`30d`), stored server-side as a hashed secret in `AuthTokens` (`type: "refresh"`).
 
+`JWT_SECRET` is required. Auth token issuance and verification must fail fast if it is missing or empty.
+
 Access JWTs are validated on each protected API call. Refresh tokens are used only by `/api/users/refresh-token` to mint a new JWT and rotate refresh state.
 
 ## Issuance Flow
@@ -44,11 +46,16 @@ Access JWTs are validated on each protected API call. Refresh tokens are used on
    - new: active token for future refreshes
 7. Client replaces local `ckd_jwt` and `ckd_refresh`.
 
-## Rotated Token Recovery (Current Behavior)
+## Rotated Token Reuse
 
-To recover from stale mobile state (for example app crash during token update), refresh currently allows a token even when `rotatedAt` is already set, as long as it is still valid and not revoked/expired.
+Rotated refresh tokens are rejected.
 
-This is intentionally more permissive for reliability. If stricter replay protection is required, add a short grace window for rotated tokens.
+If a client presents a refresh token whose document already has `rotatedAt` set, the API treats that as replay or stale-token reuse:
+
+- the request is rejected with `401`
+- the refresh-token session family is revoked via `sessionId` when available
+
+This preserves the core security property of rotation: once token `A` has been exchanged for token `B`, token `A` must no longer be able to mint new sessions.
 
 ## Common 401 Causes
 
