@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +16,6 @@ import {
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
 import {
-  backfillHealthConnectMeasurementDates,
-  backfillHealthConnectStepDates,
   readHealthConnectHeartRateEntriesForDate,
 } from "@/lib/healthConnectSync";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
@@ -81,13 +79,6 @@ type TrendChart = {
   yMax: number;
   yMin: number;
 };
-
-const STEP_FINALIZATION_BATCH_SIZE = 7;
-const STEP_FINALIZATION_DISCOVERY_DAYS = 30;
-
-function shouldReconcileExistingHealthConnectDays(kind: MeasurementKind) {
-  return kind === "blood_pressure" || kind === "exercise";
-}
 
 function buildHeartRateHourlyValues(
   entries: { measuredAt: string; value: number | null }[],
@@ -165,18 +156,6 @@ export default function FitnessMetricTrend() {
   const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [weightValue, setWeightValue] = useState(70);
   const [weightDecimal, setWeightDecimal] = useState(5);
-  const [historyBackfillState, setHistoryBackfillState] = useState<{
-    attemptedCount: number;
-    error: string | null;
-    missingCount: number;
-    running: boolean;
-  }>({
-    attemptedCount: 0,
-    error: null,
-    missingCount: 0,
-    running: false,
-  });
-  const attemptedBackfillWindowsRef = useRef<Set<string>>(new Set());
   const [sleepFromTime, setSleepFromTime] = useState(() => {
     const value = new Date();
     value.setHours(23, 0, 0, 0);
@@ -439,56 +418,10 @@ export default function FitnessMetricTrend() {
     return index >= 0 ? index : null;
   }, [chart.points, selectedDateKey]);
 
-  const existingMetricDateKeys = useMemo(() => {
-    if (kind === "steps") {
-      return new Set(
-        Object.entries(entriesByDate)
-          .filter(
-            ([, entries]) => getStepSummaryFromEntries(entries).steps !== null,
-          )
-          .map(([date]) => date),
-      );
-    }
-
-    if (
-      kind === "sleep" ||
-      kind === "exercise" ||
-      kind === "blood_pressure" ||
-      kind === "heart_rate"
-    ) {
-      return new Set(points.map((point) => point.date));
-    }
-
-    return new Set<string>();
-  }, [entriesByDate, kind, points]);
-  const finalizedStepDateKeys = useMemo(() => {
-    if (kind !== "steps") {
-      return new Set<string>();
-    }
-
-    return new Set(
-      Object.entries(entriesByDate)
-        .filter(([, entries]) =>
-          entries.some((entry) => entry.sync?.status === "finalized"),
-        )
-        .map(([date]) => date),
-    );
-  }, [entriesByDate, kind]);
-
   const selectedDayEntries = useMemo(() => {
     if (!selectedDateKey) return [];
     return sortEntriesForTrendDay(kind, entriesByDate[selectedDateKey] ?? []);
   }, [entriesByDate, kind, selectedDateKey]);
-  const selectedDayEntriesSignature = useMemo(
-    () =>
-      selectedDayEntries
-        .map(
-          (entry) =>
-            `${entry.measuredAt}:${entry.value ?? "null"}:${entry.value2 ?? "null"}`,
-        )
-        .join("|"),
-    [selectedDayEntries],
-  );
 
   const resolvedHeartRateEntries = useMemo(() => {
     if (kind !== "heart_rate") {
@@ -522,20 +455,6 @@ export default function FitnessMetricTrend() {
     selectedDateKey,
     selectedDayEntries,
   ]);
-  const scopedHealthConnectHeartRateEntries = useMemo(
-    () =>
-      kind === "heart_rate" && healthConnectHeartRateDateKey === selectedDateKey
-        ? healthConnectHeartRateEntries
-        : [],
-    [
-      healthConnectHeartRateDateKey,
-      healthConnectHeartRateEntries,
-      kind,
-      selectedDateKey,
-    ],
-  );
-  const shouldShowHeartRateMissingState =
-    kind !== "heart_rate" || scopedHealthConnectHeartRateEntries.length === 0;
 
   const selectedStepSummary = useMemo(() => {
     if (kind !== "steps") return null;
@@ -679,17 +598,6 @@ export default function FitnessMetricTrend() {
           setHealthConnectHeartRateEntries((current) =>
             sameDayEntries(current, entries) ? current : entries,
           );
-          if (entries.length > 0) {
-            setHistoryBackfillState((current) =>
-              current.error || current.missingCount > 0 || current.running
-                ? {
-                    error: null,
-                    missingCount: 0,
-                    running: false,
-                  }
-                : current,
-            );
-          }
           setHeartRateDayLoading(false);
         }
       } catch (heartRateError) {
@@ -715,7 +623,7 @@ export default function FitnessMetricTrend() {
     return () => {
       cancelled = true;
     };
-  }, [kind, selectedDateKey, selectedDayEntriesSignature]);
+  }, [kind, selectedDateKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -770,168 +678,6 @@ export default function FitnessMetricTrend() {
     setShowSleepFromPicker(false);
     setShowSleepToPicker(false);
   }, [kind, modalOpen, preferredWeightUnit]);
-
-  useEffect(() => {
-    if (
-      (kind !== "steps" &&
-        kind !== "sleep" &&
-        kind !== "exercise" &&
-        kind !== "blood_pressure" &&
-        kind !== "heart_rate") ||
-      Platform.OS !== "android" ||
-      loading ||
-      !!error
-    ) {
-      return;
-    }
-
-    const todayKey = dateKey(new Date());
-    const anchorKey =
-      kind === "steps" ? todayKey : (selectedDateKey ?? todayKey);
-    const anchorDate = new Date(`${anchorKey}T12:00:00`);
-    if (Number.isNaN(anchorDate.getTime())) {
-      return;
-    }
-
-    const windowEnd =
-      kind === "steps" ? addDays(anchorDate, -1) : new Date(anchorDate);
-    const lookbackDays =
-      kind === "steps"
-        ? STEP_FINALIZATION_DISCOVERY_DAYS - 1
-        : kind === "heart_rate"
-          ? 6
-          : 29;
-    const windowStart = addDays(windowEnd, -lookbackDays);
-    const windowStartKey = dateKey(windowStart);
-    const windowEndKey = dateKey(windowEnd);
-    const windowKey = `${windowStartKey}:${windowEndKey}`;
-    const scopedWindowKey = `${kind}:${windowKey}`;
-    if (attemptedBackfillWindowsRef.current.has(scopedWindowKey)) {
-      return;
-    }
-
-    const missingDateKeys: string[] = [];
-    const candidateDateKeys: string[] = [];
-    const shouldReconcileExistingDays =
-      shouldReconcileExistingHealthConnectDays(kind);
-    for (
-      let cursor = new Date(windowStart);
-      cursor.getTime() <= windowEnd.getTime();
-      cursor = addDays(cursor, 1)
-    ) {
-      const currentKey = dateKey(cursor);
-      if (shouldReconcileExistingDays) {
-        candidateDateKeys.push(currentKey);
-        continue;
-      }
-
-      if (kind === "steps") {
-        if (finalizedStepDateKeys?.has(currentKey)) {
-          continue;
-        }
-        missingDateKeys.push(currentKey);
-        continue;
-      }
-
-      if (!existingMetricDateKeys.has(currentKey)) {
-        missingDateKeys.push(currentKey);
-      }
-    }
-
-    const dateKeysToResolve = shouldReconcileExistingDays
-      ? candidateDateKeys
-      : kind === "steps"
-        ? missingDateKeys.slice(-STEP_FINALIZATION_BATCH_SIZE).reverse()
-        : missingDateKeys;
-
-    if (!dateKeysToResolve.length) {
-      attemptedBackfillWindowsRef.current.add(scopedWindowKey);
-      return;
-    }
-
-    let cancelled = false;
-    attemptedBackfillWindowsRef.current.add(scopedWindowKey);
-    setHistoryBackfillState({
-      attemptedCount: dateKeysToResolve.length,
-      error: null,
-      missingCount: dateKeysToResolve.length,
-      running: true,
-    });
-
-    void (async () => {
-      try {
-        const metricKind = kind;
-        const result =
-          metricKind === "steps"
-            ? await backfillHealthConnectStepDates(dateKeysToResolve, {
-                reason: "steps-screen",
-                windowKey,
-              })
-            : metricKind === "sleep" ||
-                metricKind === "exercise" ||
-                metricKind === "blood_pressure" ||
-                metricKind === "heart_rate"
-              ? await backfillHealthConnectMeasurementDates(
-                  metricKind,
-                  dateKeysToResolve,
-                  {
-                    reason: "metric-screen",
-                    windowKey,
-                  },
-                )
-              : { attempted: 0, resolvedDays: 0, uploaded: 0 };
-
-        if (cancelled) return;
-
-        const remainingMissingCount = Math.max(
-          0,
-          dateKeysToResolve.length - result.resolvedDays,
-        );
-
-        setHistoryBackfillState({
-          attemptedCount: dateKeysToResolve.length,
-          error:
-            !shouldReconcileExistingDays &&
-            result.attempted > 0 &&
-            result.resolvedDays === 0
-              ? "No matching Health Connect data was found for this window."
-              : null,
-          missingCount: remainingMissingCount,
-          running: false,
-        });
-
-        if (result.uploaded > 0) {
-          await refetchHistory();
-        } else if (!shouldReconcileExistingDays) {
-          attemptedBackfillWindowsRef.current.delete(scopedWindowKey);
-        }
-      } catch (backfillError) {
-        if (cancelled) return;
-        attemptedBackfillWindowsRef.current.delete(scopedWindowKey);
-        setHistoryBackfillState({
-          attemptedCount: dateKeysToResolve.length,
-          error:
-            backfillError instanceof Error
-              ? backfillError.message
-              : "Could not backfill device history.",
-          missingCount: dateKeysToResolve.length,
-          running: false,
-        });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    error,
-    existingMetricDateKeys,
-    finalizedStepDateKeys,
-    kind,
-    loading,
-    refetchHistory,
-    selectedDateKey,
-  ]);
 
   useEffect(() => {
     const latestDate = chart.points[chart.points.length - 1]?.date ?? null;
@@ -1161,70 +907,8 @@ export default function FitnessMetricTrend() {
             <ThemedText style={{ opacity: 0.7 }}>
               Steps are synced from your phone/watch.
             </ThemedText>
-            {(kind === "steps" ||
-              kind === "sleep" ||
-              kind === "exercise" ||
-              kind === "blood_pressure" ||
-              kind === "heart_rate") &&
-            historyBackfillState.running ? (
-              <ThemedText style={{ opacity: 0.72 }}>
-                {kind === "steps"
-                  ? `Checking ${historyBackfillState.missingCount} recent step day${
-                      historyBackfillState.missingCount === 1 ? "" : "s"
-                    } from Health Connect...`
-                  : shouldReconcileExistingHealthConnectDays(kind)
-                    ? `Checking ${historyBackfillState.attemptedCount} recent day${
-                        historyBackfillState.attemptedCount === 1 ? "" : "s"
-                      } for Health Connect data...`
-                  : `Filling ${historyBackfillState.missingCount} missing day${
-                      historyBackfillState.missingCount === 1 ? "" : "s"
-                    } from Health Connect...`}
-              </ThemedText>
-            ) : null}
-            {(kind === "steps" ||
-              kind === "sleep" ||
-              kind === "exercise" ||
-              kind === "blood_pressure" ||
-              kind === "heart_rate") &&
-            !historyBackfillState.running &&
-            historyBackfillState.error &&
-            shouldShowHeartRateMissingState ? (
-              <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
-                {historyBackfillState.error}
-              </ThemedText>
-            ) : null}
           </View>
         )}
-
-        {kind !== "steps" &&
-        (kind === "sleep" ||
-          kind === "exercise" ||
-          kind === "blood_pressure" ||
-          kind === "heart_rate") &&
-        historyBackfillState.running ? (
-          <ThemedText style={{ opacity: 0.72 }}>
-            {shouldReconcileExistingHealthConnectDays(kind)
-              ? `Checking ${historyBackfillState.attemptedCount} recent day${
-                  historyBackfillState.attemptedCount === 1 ? "" : "s"
-                } for Health Connect data...`
-              : `Filling ${historyBackfillState.missingCount} missing day${
-                  historyBackfillState.missingCount === 1 ? "" : "s"
-                } from Health Connect...`}
-          </ThemedText>
-        ) : null}
-
-        {kind !== "steps" &&
-        (kind === "sleep" ||
-          kind === "exercise" ||
-          kind === "blood_pressure" ||
-          kind === "heart_rate") &&
-        !historyBackfillState.running &&
-        historyBackfillState.error &&
-        shouldShowHeartRateMissingState ? (
-          <ThemedText style={{ color: "#B45309", opacity: 0.88 }}>
-            {historyBackfillState.error}
-          </ThemedText>
-        ) : null}
 
         {loading ? (
           <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>

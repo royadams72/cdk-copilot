@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 
-import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
-import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
 import { syncSleepReminderNotification } from "@/lib/pushNotifications";
+import { triggerNativeHealthConnectBackgroundSyncNow } from "@/lib/healthConnectNativeSync";
 import {
   detectInstalledFitnessApps,
   formatFitnessAppName,
@@ -253,6 +254,7 @@ export default function FitnessDashboard() {
     stepsToday,
   } = useStepCount(STEPS_DAILY_TARGET);
   useSyncStepCount(stepsToday, stepStatus === "ready");
+  useSyncHealthConnectMeasurements(stepStatus === "ready");
   const errorMessage = toQueryErrorMessage(
     error,
     "Failed to load fitness readings",
@@ -289,8 +291,7 @@ export default function FitnessDashboard() {
 
   const handleTriggerBackgroundTask = async () => {
     try {
-      const triggered =
-        await triggerHealthConnectBackgroundTaskForTestingAsync();
+      const triggered = await triggerNativeHealthConnectBackgroundSyncNow();
       Alert.alert(
         triggered ? "Background task triggered" : "Background task unavailable",
         triggered
@@ -418,23 +419,20 @@ export default function FitnessDashboard() {
           <TouchableOpacity onPress={() => router.back()}>
             <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
           </TouchableOpacity>
-          <HeaderOverflowMenu
-            accessibilityLabel="Open health actions"
-            items={[
-              {
-                id: "edit-targets",
-                label: "Edit targets",
-                onPress: () =>
-                  router.push({
-                    params: {
-                      domain: "lifestyle",
-                      title: "Health targets",
-                    },
-                    pathname: "/targets",
-                  }),
-              },
-            ]}
-          />
+          <TouchableOpacity
+            accessibilityLabel="Open fitness settings"
+            onPress={() => router.push("/(fitness)/settings")}
+            style={{
+              alignItems: "center",
+              backgroundColor: "rgba(148,163,184,0.18)",
+              borderRadius: 999,
+              height: 40,
+              justifyContent: "center",
+              width: 40,
+            }}
+          >
+            <MaterialIcons color="#0F172A" name="settings" size={22} />
+          </TouchableOpacity>
         </View>
 
         <View style={{ gap: 4 }}>

@@ -25,8 +25,9 @@ import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
-import { triggerHealthConnectBackgroundTaskForTestingAsync } from "@/lib/healthConnectBackgroundTask";
+import { triggerNativeHealthConnectBackgroundSyncNow } from "@/lib/healthConnectNativeSync";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -46,6 +47,7 @@ export default function Dashboard() {
     stepsToday,
   } = useStepCount(10000);
   useSyncStepCount(stepsToday, stepStatus === "ready");
+  useSyncHealthConnectMeasurements(stepStatus === "ready");
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -67,8 +69,7 @@ export default function Dashboard() {
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {
       try {
-        const triggered =
-          await triggerHealthConnectBackgroundTaskForTestingAsync();
+        const triggered = await triggerNativeHealthConnectBackgroundSyncNow();
         Alert.alert(
           triggered ? "Background task triggered" : "Background task unavailable",
           triggered

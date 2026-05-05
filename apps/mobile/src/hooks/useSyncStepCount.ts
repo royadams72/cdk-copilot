@@ -1,8 +1,50 @@
 import { useEffect } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState, type AppStateStatus, Platform } from "react-native";
 
 import { flushHealthConnectEventLogs } from "@/lib/healthConnectEventLogger";
 import { syncTodayStepMeasurement } from "@/lib/healthConnectSync";
+
+let stepSyncConsumers = 0;
+let stepSyncInterval: ReturnType<typeof setInterval> | null = null;
+let stepSyncAppStateSubscription: { remove: () => void } | null = null;
+let lastStepSyncAppState: AppStateStatus = AppState.currentState;
+
+function startStepSyncLoop() {
+  if (stepSyncInterval || stepSyncAppStateSubscription) {
+    return;
+  }
+
+  void flushHealthConnectEventLogs();
+  void syncTodayStepMeasurement("mount");
+
+  stepSyncInterval = setInterval(() => {
+    void syncTodayStepMeasurement("interval");
+  }, 5 * 60_000);
+
+  stepSyncAppStateSubscription = AppState.addEventListener("change", (state) => {
+    const previousState = lastStepSyncAppState;
+    lastStepSyncAppState = state;
+
+    if (state === "active" && previousState !== "active") {
+      void flushHealthConnectEventLogs();
+      void syncTodayStepMeasurement("active");
+    }
+  });
+}
+
+function stopStepSyncLoop() {
+  if (stepSyncConsumers > 0) {
+    return;
+  }
+
+  if (stepSyncInterval) {
+    clearInterval(stepSyncInterval);
+    stepSyncInterval = null;
+  }
+
+  stepSyncAppStateSubscription?.remove();
+  stepSyncAppStateSubscription = null;
+}
 
 export function useSyncStepCount(
   _stepsToday: number | null,
@@ -13,26 +55,12 @@ export function useSyncStepCount(
       return;
     }
 
-    void flushHealthConnectEventLogs();
-    void syncTodayStepMeasurement("mount");
-
-    const interval = setInterval(() => {
-      void syncTodayStepMeasurement("interval");
-    }, 5 * 60_000);
-
-    const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void flushHealthConnectEventLogs();
-        void syncTodayStepMeasurement("active", { force: true });
-      }
-      if (state === "background") {
-        void syncTodayStepMeasurement("background", { force: true });
-      }
-    });
+    stepSyncConsumers += 1;
+    startStepSyncLoop();
 
     return () => {
-      clearInterval(interval);
-      appStateSubscription.remove();
+      stepSyncConsumers = Math.max(0, stepSyncConsumers - 1);
+      stopStepSyncLoop();
     };
   }, [isReady]);
 }
