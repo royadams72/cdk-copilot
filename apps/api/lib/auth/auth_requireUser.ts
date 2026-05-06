@@ -87,6 +87,7 @@ export async function requireUser(
     }
     const credentialId = claims.sub as string;
     const principalIdFromClaims = claims.principalId as string | undefined;
+
     if (!credentialId)
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
     const link = await db
@@ -96,6 +97,7 @@ export async function requireUser(
         { projection: { principalId: 1, provider: 1 } },
       );
     const principalId = link?.principalId ?? principalIdFromClaims;
+    console.log("link::", link);
     if (!principalId) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
     }
