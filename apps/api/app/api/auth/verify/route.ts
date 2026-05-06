@@ -17,47 +17,65 @@ import {
 import { DEFAULT_SCOPES, TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad } from "@/apps/api/lib/http/responses";
+import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
 
 export async function GET(req: NextRequest) {
-  const user = await requireUser(req, DEFAULT_SCOPES, {
-    allowBootstrap: true,
-  });
+  try {
+    const user = await requireUser(req, DEFAULT_SCOPES, {
+      allowBootstrap: true,
+    });
 
-  if (!user) return bad("Forbidden", "", 403);
-  const db = await getDb();
-  const sp = req.nextUrl.searchParams;
-  const rawToken = sp.get("token") ?? "";
-  const parsed = parseToken(rawToken);
+    if (!user) return bad("Forbidden", "", 403);
+    const db = await getDb();
+    await enforceRateLimit([
+      {
+        bucket: "verify_ip",
+        key: getClientIp(req),
+        limit: 30,
+        windowMs: 15 * 60 * 1000,
+      },
+    ]);
+    const sp = req.nextUrl.searchParams;
+    const rawToken = sp.get("token") ?? "";
+    const parsed = parseToken(rawToken);
 
-  if (!rawToken || !parsed) throw new Error("bad_token");
-  const auth_tokens = db.collection<AuthTokenDoc>(COLLECTIONS.AuthTokens);
+    if (!rawToken || !parsed) throw new Error("bad_token");
+    const auth_tokens = db.collection<AuthTokenDoc>(COLLECTIONS.AuthTokens);
 
-  const res = await validateAuth(
-    auth_tokens,
-    COLLECTION_TYPE.EmailVerify,
-    parsed,
-  );
-
-  if (!res.ok)
-    return NextResponse.json({ error: res.error, ok: false }, { status: 400 });
-
-  const { principalId, patientId, email, role, scopes } = res.doc;
-
-  if (!email || !principalId)
-    return NextResponse.json(
-      { error: "missing information_v" },
-      { status: 400 },
+    const res = await validateAuth(
+      auth_tokens,
+      COLLECTION_TYPE.EmailVerify,
+      parsed,
     );
 
-  const tokenPatientId: ObjectId =
-    typeof patientId === "string" ? new ObjectId(patientId) : patientId;
-  const emailLower = email.trim().toLowerCase();
+    if (!res.ok)
+      return NextResponse.json({ error: res.error, ok: false }, { status: 400 });
 
-  const now = new Date();
-  const users_pii = db.collection(COLLECTIONS.UsersPII);
-  const accounts = db.collection(COLLECTIONS.UsersAccounts);
+    const consumed = await consumeAuth(auth_tokens, res.doc._id);
 
-  const existingPii = await users_pii.findOne(
+    if (!consumed.ok)
+      return NextResponse.json(
+        { error: consumed.error, ok: false },
+        { status: 400 },
+      );
+
+    const { principalId, patientId, email, role, scopes } = res.doc;
+
+    if (!email || !principalId)
+      return NextResponse.json(
+        { error: "missing information_v" },
+        { status: 400 },
+      );
+
+    const tokenPatientId: ObjectId =
+      typeof patientId === "string" ? new ObjectId(patientId) : patientId;
+    const emailLower = email.trim().toLowerCase();
+
+    const now = new Date();
+    const users_pii = db.collection(COLLECTIONS.UsersPII);
+    const accounts = db.collection(COLLECTIONS.UsersAccounts);
+
+    const existingPii = await users_pii.findOne(
     { email: emailLower },
     {
       collation: { locale: "en", strength: 2 },
@@ -65,12 +83,12 @@ export async function GET(req: NextRequest) {
     },
   );
 
-  const existingAccount = await accounts.findOne(
+    const existingAccount = await accounts.findOne(
     { isActive: true, principalId },
     { projection: { principalId: 1 } },
   );
 
-  const base_user_acc = {
+    const base_user_acc = {
     createdAt: now,
     email: emailLower,
     isActive: true,
@@ -80,7 +98,7 @@ export async function GET(req: NextRequest) {
     updatedAt: now,
   };
 
-  const user_pii_dto: TUserPIICreate = {
+    const user_pii_dto: TUserPIICreate = {
     ...base_user_acc,
     emailVerifiedAt: now,
     lastActiveAt: now,
@@ -91,62 +109,64 @@ export async function GET(req: NextRequest) {
     status: "active",
   };
 
-  const users_account_doc: TUsersAccountCreate = {
+    const users_account_doc: TUsersAccountCreate = {
     ...base_user_acc,
     createdBy: principalId,
     updatedBy: principalId,
   };
 
   // New-user provisioning path. Existing records are treated as idempotent no-op.
-  if (!existingPii) {
-    await users_pii.insertOne({
-      ...user_pii_dto,
-      ...(res.doc.orgId ? { orgId: res.doc.orgId } : {}),
+    if (!existingPii) {
+      await users_pii.insertOne({
+        ...user_pii_dto,
+        ...(res.doc.orgId ? { orgId: res.doc.orgId } : {}),
+        patientId: tokenPatientId,
+      });
+    }
+    if (!existingAccount) {
+      await accounts.insertOne(users_account_doc);
+    }
+
+    const redirectUri = res.doc.redirectUri;
+
+    if (!redirectUri || redirectUri !== process.env.REDIRECT_URI) {
+      return NextResponse.json(
+        { error: "Issue with params", ok: false },
+        { status: 400 },
+      );
+    }
+
+    const { id, token, secretHash } = setToken();
+
+    const new_auth_token_doc = {
+      _id: new ObjectId(),
+      type: COLLECTION_TYPE.OauthCode,
+      deviceId: res.doc.deviceId,
+      id: b64url(id), // public lookup key
+      secretHash: secretHash.toString("base64"),
+      principalId,
       patientId: tokenPatientId,
-    });
+      orgId: res.doc.orgId ?? null,
+      scopes, // consider narrowing
+      role,
+      email,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
+      usedAt: null,
+      redirectUri,
+    };
+    await auth_tokens.insertOne(new_auth_token_doc);
+
+    const url = new URL(redirectUri);
+    url.searchParams.set("token", token);
+    return NextResponse.redirect(url);
+  } catch (error: any) {
+    if (error?.status === 429) {
+      return NextResponse.json(
+        { error: "Too many requests", ok: false },
+        { status: 429 },
+      );
+    }
+    throw error;
   }
-  if (!existingAccount) {
-    await accounts.insertOne(users_account_doc);
-  }
-
-  const consumed = await consumeAuth(auth_tokens, res.doc._id);
-
-  if (!consumed.ok)
-    return NextResponse.json(
-      { error: consumed.error, ok: false },
-      { status: 400 },
-    );
-
-  const redirectUri = res.doc.redirectUri;
-
-  if (!redirectUri || redirectUri !== process.env.REDIRECT_URI) {
-    return NextResponse.json(
-      { error: "Issue with params", ok: false },
-      { status: 400 },
-    );
-  }
-
-  const { id, token, secretHash } = setToken();
-
-  const new_auth_token_doc = {
-    _id: new ObjectId(),
-    type: COLLECTION_TYPE.OauthCode,
-    id: b64url(id), // public lookup key
-    secretHash: secretHash.toString("base64"),
-    principalId,
-    patientId: tokenPatientId,
-    orgId: res.doc.orgId ?? null,
-    scopes, // consider narrowing
-    role,
-    email,
-    createdAt: now,
-    expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
-    usedAt: null,
-    redirectUri,
-  };
-  await auth_tokens.insertOne(new_auth_token_doc);
-
-  const url = new URL(redirectUri);
-  url.searchParams.set("token", token);
-  return NextResponse.redirect(url);
 }

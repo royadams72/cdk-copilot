@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { API } from "@/constants/api";
 import { ONBOARDING_ROUTES } from "@/lib/onboarding";
+import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 
 export default function VerifyScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
@@ -14,8 +15,9 @@ export default function VerifyScreen() {
     (async () => {
       if (!token) return; // fallback could be router.replace('/')
       // exchange for JWT
+      const deviceId = await getOrCreateAuthDeviceId();
       const res = await fetch(`${API}/api/auth/exchange`, {
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ deviceId, token }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });

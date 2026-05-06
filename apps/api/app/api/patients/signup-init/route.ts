@@ -7,11 +7,15 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
+import { getClientIp, enforceRateLimit } from "@/apps/api/lib/auth/rateLimit";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { AuthTokenDoc, b64url, setToken } from "@/apps/api/lib/auth/auth_token";
 import { COLLECTIONS } from "@ckd/core/server";
 import { DEFAULT_SCOPES, ROLES, TUsersAccount } from "@ckd/core";
-const Body = z.object({ email: z.email() });
+const Body = z.object({
+  deviceId: z.string().min(16).max(128),
+  email: z.email(),
+});
 
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
@@ -46,7 +50,23 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    const clientIp = getClientIp(req);
+    await enforceRateLimit([
+      {
+        bucket: "signup_init_ip",
+        key: clientIp,
+        limit: 20,
+        windowMs: 15 * 60 * 1000,
+      },
+      {
+        bucket: "signup_init_email",
+        key: parsed.data.email.trim().toLowerCase(),
+        limit: 5,
+        windowMs: 15 * 60 * 1000,
+      },
+    ]);
     const email = parsed.data.email.trim().toLowerCase();
+    const { deviceId } = parsed.data;
 
     // Create patient record
     const patients = db.collection(COLLECTIONS.Patients);
@@ -236,6 +256,7 @@ export async function POST(req: NextRequest) {
       const { id, token, secretHash } = setToken();
       const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
       const auth_tokens_doc: AuthTokenDoc = {
+        deviceId,
         id: b64url(id),
         _id: new ObjectId(),
         type: COLLECTION_TYPE.OauthCode,
@@ -272,7 +293,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return NextResponse.json({ existingUser: true, status: "ok" });
+      return NextResponse.json({ status: "ok" });
     }
 
     // New user: issue verification token and continue provisioning via /api/auth/verify.
@@ -290,6 +311,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
 
     const auth_tokens_doc: AuthTokenDoc = {
+      deviceId,
       id: b64url(id),
       _id: new ObjectId(),
       type: COLLECTION_TYPE.EmailVerify,
@@ -329,8 +351,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ existingUser: false, status: "ok" });
+    return NextResponse.json({ status: "ok" });
   } catch (e: any) {
+    if (e?.status === 429) {
+      return NextResponse.json(
+        { error: "Too many requests", ok: false },
+        { status: 429 },
+      );
+    }
     console.error(
       "There was an error",
       JSON.stringify(e?.errInfo ?? e, null, 2),

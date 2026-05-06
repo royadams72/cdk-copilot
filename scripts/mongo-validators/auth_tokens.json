@@ -39,6 +39,12 @@
 
         "patientId": { "bsonType": "objectId" },
 
+        "deviceId": {
+          "bsonType": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+
         "principalId": {
           "bsonType": "string",
           "minLength": 1
