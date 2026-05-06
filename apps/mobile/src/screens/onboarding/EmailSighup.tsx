@@ -2,34 +2,24 @@
 import { useState } from "react";
 import { Alert, Button, Text, TextInput, View } from "react-native";
 import { API } from "@/constants/api";
+import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 export default function EmailSignup() {
   const [email, setEmail] = useState("");
 
   async function submit() {
     try {
+      const deviceId = await getOrCreateAuthDeviceId();
       const res = await fetch(`${API}/api/patients/signup-init`, {
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ deviceId, email }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
 
       const data = await res.json().catch(() => ({}));
-      // if (res.ok) {
-      //   Alert.alert("Check your email", "Tap the link to continue in the app.");
-      //   return;
-      // }
       if (!res.ok) {
         Alert.alert(
           "Signup failed",
           `Status ${res.status}\n${String(data?.error ?? data?.message ?? "Unknown error").slice(0, 500)}`,
-        );
-        return;
-      }
-
-      if (data?.existingUser) {
-        Alert.alert(
-          "Check your email",
-          "We found your account and sent you a sign-in link.",
         );
         return;
       }

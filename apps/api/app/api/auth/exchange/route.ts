@@ -19,6 +19,7 @@ import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
 import { DEFAULT_SCOPES, ONBOARDING_STEPS, SCOPES } from "@ckd/core";
+import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
 
 function resolveOnboardingRoute(
   onboardingCompleted?: boolean,
@@ -62,7 +63,15 @@ export async function POST(req: NextRequest) {
     });
 
     const db = await getDb();
-    const { token } = await req.json().catch(() => ({}));
+    await enforceRateLimit([
+      {
+        bucket: "exchange_ip",
+        key: getClientIp(req),
+        limit: 30,
+        windowMs: 15 * 60 * 1000,
+      },
+    ]);
+    const { deviceId, token } = await req.json().catch(() => ({}));
 
     const parsed = parseToken(token);
 
@@ -82,6 +91,13 @@ export async function POST(req: NextRequest) {
         { error: res.error, ok: false },
         { status: 400 },
       );
+
+    if (res.doc.deviceId && res.doc.deviceId !== deviceId) {
+      return NextResponse.json(
+        { error: "device_mismatch", ok: false },
+        { status: 403 },
+      );
+    }
 
     const patients = db.collection(COLLECTIONS.Patients);
     const patient = await patients.findOne<{ _id: ObjectId }>(
@@ -201,6 +217,12 @@ export async function POST(req: NextRequest) {
       refreshToken: refreshToken.token,
     });
   } catch (e) {
+    if ((e as any)?.status === 429) {
+      return NextResponse.json(
+        { error: "Too many requests", ok: false },
+        { status: 429 },
+      );
+    }
     console.error(e);
     return NextResponse.json(
       { e, error: "Error in exchange" },

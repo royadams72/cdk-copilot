@@ -59,7 +59,7 @@ export async function findPatientIdForPrincipal(db: Db, principalId: string) {
 export async function requireUser(
   req: NextRequest,
   neededScopes: Scope | Scope[] = [],
-  opts: { allowBootstrap?: boolean } = {},
+  opts: { allowAccountRecovery?: boolean; allowBootstrap?: boolean } = {},
 ): Promise<SessionUser> {
   const db = await getDb();
   const token = getBearer(req);
@@ -112,7 +112,7 @@ export async function requireUser(
         },
       );
 
-    if (!acct) {
+    if (!acct && opts.allowAccountRecovery) {
       const pii = await db.collection<TUserPII>(COLLECTIONS.UsersPII).findOne(
         { principalId },
         {

@@ -79,6 +79,7 @@ export type AuthTokenDoc = {
   id: string; // base64url
   secretHash: string; // base64 of 32-byte HMAC
   patientId: ObjectId;
+  deviceId?: string;
   principalId?: string;
   credentialId?: string;
   sessionId?: string;

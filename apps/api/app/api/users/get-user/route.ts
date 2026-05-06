@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
   const requestId = makeRandomId();
 
   try {
-    const user: SessionUser = await requireUser(req);
+    const user: SessionUser = await requireUser(req, [], {
+      allowAccountRecovery: true,
+    });
     if (!user.patientId) {
       return bad("Patient context missing", { requestId }, 403);
     }

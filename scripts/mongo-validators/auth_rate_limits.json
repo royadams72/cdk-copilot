@@ -1,0 +1,32 @@
+{
+  "create": "auth_rate_limits",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["bucket", "key", "count", "createdAt", "updatedAt", "windowStart", "expiresAt"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "bucket": { "bsonType": "string", "minLength": 1 },
+        "key": { "bsonType": "string", "minLength": 1 },
+        "count": { "bsonType": "int", "minimum": 1 },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "windowStart": { "bsonType": "date" },
+        "expiresAt": { "bsonType": "date" }
+      }
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "bucket": 1, "key": 1, "windowStart": 1 },
+      "options": { "name": "byBucketKeyWindow", "unique": true }
+    },
+    {
+      "key": { "expiresAt": 1 },
+      "options": { "name": "ttlExpiresAt", "expireAfterSeconds": 0 }
+    }
+  ]
+}

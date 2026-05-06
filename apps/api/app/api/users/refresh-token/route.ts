@@ -18,6 +18,7 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 import { Collection, ObjectId } from "mongodb";
+import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -55,6 +56,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await enforceRateLimit([
+      {
+        bucket: "refresh_ip",
+        key: getClientIp(req),
+        limit: 120,
+        windowMs: 15 * 60 * 1000,
+      },
+    ]);
     const db = await getDb();
     const parsed = parseToken(refreshToken);
     if (!parsed) {
@@ -182,6 +191,9 @@ export async function POST(req: NextRequest) {
       200,
     );
   } catch (err: any) {
+    if (err?.status === 429) {
+      return bad("Too many requests", { requestId, code: "rate_limited" }, 429);
+    }
     console.error("refresh-token error", err);
     const status = err?.status || 500;
     return bad(err?.message || "Server error", { requestId }, status);
