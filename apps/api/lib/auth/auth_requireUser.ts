@@ -8,6 +8,7 @@ import {
   Role,
   Scope,
   SCOPES,
+  TUserPII,
   TUsersAccount,
 } from "@ckd/core";
 import type { Db } from "mongodb";
@@ -39,17 +40,9 @@ export const ROLE_SCOPES: Record<string, Scope[]> = {
   patient: [SCOPES.PATIENTS_READ, SCOPES.PATIENTS_FLAGS_WRITE],
 };
 
-const SIGNUP_INIT_KEY = process.env.SIGNUP_INIT_KEY || ""; // set in env for prod
-
 export function getBearer(req: NextRequest) {
   const h = req.headers.get("authorization") || "";
   return h.startsWith("Bearer ") ? h.slice(7) : "";
-}
-
-async function verifyJWT(token: string) {
-  const secret = getJwtSecretBytes();
-  const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-  return payload as Record<string, any>;
 }
 
 export async function findPatientIdForPrincipal(db: Db, principalId: string) {
@@ -97,13 +90,12 @@ export async function requireUser(
         { projection: { principalId: 1, provider: 1 } },
       );
     const principalId = link?.principalId ?? principalIdFromClaims;
-    console.log("link::", link);
     if (!principalId) {
       throw Object.assign(new Error("Forbidden"), { status: 403 });
     }
     const provider = (link?.provider as AuthProvider | undefined) ?? "magic";
 
-    const acct = await db
+    let acct = await db
       .collection<TUsersAccount>(COLLECTIONS.UsersAccounts)
       .findOne(
         { isActive: true, principalId },
@@ -119,6 +111,65 @@ export async function requireUser(
           },
         },
       );
+
+    if (!acct) {
+      const pii = await db.collection<TUserPII>(COLLECTIONS.UsersPII).findOne(
+        { principalId },
+        {
+          projection: {
+            email: 1,
+            orgId: 1,
+          },
+        },
+      );
+
+      if (pii?.email) {
+        const now = new Date();
+        const recoveredScopes = Array.from(
+          new Set([
+            ...(Array.isArray(claims.scopes) ? claims.scopes : []),
+            ...DEFAULT_SCOPES,
+            SCOPES.USERS_PII_READ,
+            SCOPES.USERS_PII_WRITE,
+          ]),
+        ) as Scope[];
+
+        await db.collection(COLLECTIONS.UsersAccounts).updateOne(
+          { principalId },
+          {
+            $set: {
+              email: pii.email,
+              isActive: true,
+              orgId: pii.orgId ?? "org_demo",
+              role: "patient",
+              scopes: recoveredScopes,
+              updatedAt: now,
+              updatedBy: principalId,
+            },
+            $setOnInsert: {
+              createdAt: now,
+              createdBy: principalId,
+              principalId,
+            },
+          },
+          { upsert: true },
+        );
+        acct = await db.collection<TUsersAccount>(COLLECTIONS.UsersAccounts).findOne(
+          { isActive: true, principalId },
+          {
+            projection: {
+              allowedPatientIds: 1,
+              careTeamIds: 1,
+              facilityIds: 1,
+              grants: 1,
+              orgId: 1,
+              role: 1,
+              scopes: 1,
+            },
+          },
+        );
+      }
+    }
 
     if (!acct) throw Object.assign(new Error("Forbidden"), { status: 403 });
 
