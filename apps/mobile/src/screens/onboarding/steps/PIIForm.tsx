@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,12 @@ import {
   Switch,
   Platform,
 } from "react-native";
-import { useForm, Controller, type Resolver } from "react-hook-form";
+import {
+  useForm,
+  Controller,
+  type Path,
+  type Resolver,
+} from "react-hook-form";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +23,7 @@ import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import { API } from "@/constants/api";
 import { useRouter } from "expo-router";
+import { onboardingDrafts } from "@/lib/onboarding";
 
 type SexAtBirth = TPiiInput["sexAtBirth"];
 type Units = TPiiInput["units"];
@@ -31,9 +37,11 @@ export default function OnboardingPiiForm({
   const router = useRouter();
   const {
     control,
+    getValues,
     handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
+    reset,
+    trigger,
+    formState: { errors, isSubmitting, isLoading },
   } = useForm<TPiiInput>({
     resolver: zodResolver(PiiForm) as unknown as Resolver<TPiiInput>,
     defaultValues: {
@@ -51,6 +59,27 @@ export default function OnboardingPiiForm({
     mode: "onSubmit",
   });
 
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const draft = await onboardingDrafts.loadPiiDraft<TPiiInput>();
+      if (active && draft) {
+        reset({ ...getValues(), ...draft });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [getValues, reset]);
+
+  async function persistIfValid(fieldName: Path<TPiiInput>) {
+    const valid = await trigger(fieldName);
+    if (!valid) return;
+    await onboardingDrafts.savePiiDraft<TPiiInput>(getValues());
+  }
+
   async function onSubmit(payload: TPiiInput) {
     try {
       setSaving(true);
@@ -66,6 +95,7 @@ export default function OnboardingPiiForm({
         const errBody = await res.json().catch(() => null);
         throw new Error(formatApiError(res.status, errBody));
       }
+      await onboardingDrafts.clearPiiDraft();
       router.push("/(auth)/onboarding/clinical-form");
     } catch (e: any) {
       Alert.alert("Error", e?.message ?? "Failed");
@@ -86,7 +116,10 @@ export default function OnboardingPiiForm({
             <TextInput
               value={value}
               onChangeText={onChange}
-              onBlur={onBlur}
+              onBlur={() => {
+                onBlur();
+                void persistIfValid("firstName");
+              }}
               placeholder="Jane"
               autoCapitalize="words"
               style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
@@ -110,7 +143,13 @@ export default function OnboardingPiiForm({
             <TextInput
               value={value}
               onChangeText={onChange}
-              onBlur={onBlur}
+              onBlur={() => {
+                onBlur();
+                void persistIfValid("lastName");
+              }}
+              onFocus={() => {
+                void persistIfValid("firstName");
+              }}
               placeholder="Doe"
               autoCapitalize="words"
               style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
@@ -134,6 +173,12 @@ export default function OnboardingPiiForm({
             <TextInput
               value={value ?? ""}
               onChangeText={(t) => onChange(t.trim() === "" ? null : t.trim())}
+              onBlur={() => {
+                void persistIfValid("phoneE164");
+              }}
+              onFocus={() => {
+                void persistIfValid("lastName");
+              }}
               placeholder="+447911123456"
               keyboardType="phone-pad"
               autoCapitalize="none"
@@ -160,7 +205,10 @@ export default function OnboardingPiiForm({
             <View>
               <Text>Date of birth</Text>
               <Text
-                onPress={() => setShow(true)}
+                onPress={() => {
+                  void persistIfValid("phoneE164");
+                  setShow(true);
+                }}
                 style={{
                   borderWidth: 1,
                   padding: 10,
@@ -187,6 +235,7 @@ export default function OnboardingPiiForm({
                         )
                       ).toISOString();
                       onChange(iso);
+                      void persistIfValid("dateOfBirth");
                     }
                   }}
                 />
@@ -211,7 +260,10 @@ export default function OnboardingPiiForm({
             <View style={{ borderWidth: 1, borderRadius: 8 }}>
               <Picker
                 selectedValue={value as SexAtBirth}
-                onValueChange={(v) => onChange(v as SexAtBirth)}
+                onValueChange={(v) => {
+                  onChange(v as SexAtBirth);
+                  void persistIfValid("sexAtBirth");
+                }}
               >
                 <Picker.Item label="female" value="female" />
                 <Picker.Item label="male" value="male" />
@@ -238,6 +290,12 @@ export default function OnboardingPiiForm({
             <TextInput
               value={value ?? ""}
               onChangeText={(t) => onChange(t.trim() === "" ? null : t)}
+              onBlur={() => {
+                void persistIfValid("genderIdentity");
+              }}
+              onFocus={() => {
+                void persistIfValid("sexAtBirth");
+              }}
               style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
             />
             {!!errors.genderIdentity && (
@@ -259,6 +317,12 @@ export default function OnboardingPiiForm({
             <TextInput
               value={value ?? ""}
               onChangeText={(t) => onChange(t.trim() === "" ? null : t)}
+              onBlur={() => {
+                void persistIfValid("ethnicity");
+              }}
+              onFocus={() => {
+                void persistIfValid("genderIdentity");
+              }}
               style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
             />
             {!!errors.ethnicity && (
@@ -280,7 +344,10 @@ export default function OnboardingPiiForm({
             <View style={{ borderWidth: 1, borderRadius: 8 }}>
               <Picker
                 selectedValue={value as Units}
-                onValueChange={(v) => onChange(v as Units)}
+                onValueChange={(v) => {
+                  onChange(v as Units);
+                  void persistIfValid("units");
+                }}
               >
                 <Picker.Item label="metric" value="metric" />
                 <Picker.Item label="imperial" value="imperial" />
@@ -303,7 +370,13 @@ export default function OnboardingPiiForm({
         name="notificationPrefs.email"
         render={({ field: { onChange, value } }) => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Switch value={!!value} onValueChange={onChange} />
+            <Switch
+              value={!!value}
+              onValueChange={(nextValue) => {
+                onChange(nextValue);
+                void persistIfValid("notificationPrefs.email");
+              }}
+            />
             <Text>Email</Text>
           </View>
         )}
@@ -313,7 +386,13 @@ export default function OnboardingPiiForm({
         name="notificationPrefs.push"
         render={({ field: { onChange, value } }) => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Switch value={!!value} onValueChange={onChange} />
+            <Switch
+              value={!!value}
+              onValueChange={(nextValue) => {
+                onChange(nextValue);
+                void persistIfValid("notificationPrefs.push");
+              }}
+            />
             <Text>Push</Text>
           </View>
         )}
@@ -323,7 +402,13 @@ export default function OnboardingPiiForm({
         name="notificationPrefs.sms"
         render={({ field: { onChange, value } }) => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Switch value={!!value} onValueChange={onChange} />
+            <Switch
+              value={!!value}
+              onValueChange={(nextValue) => {
+                onChange(nextValue);
+                void persistIfValid("notificationPrefs.sms");
+              }}
+            />
             <Text>SMS</Text>
           </View>
         )}
@@ -334,8 +419,8 @@ export default function OnboardingPiiForm({
       )}
 
       <Button
-        title={isSubmitting || saving ? "Saving…" : "Save"}
-        disabled={isSubmitting || saving}
+        title={isSubmitting || saving || isLoading ? "Saving…" : "Save"}
+        disabled={isSubmitting || saving || isLoading}
         onPress={handleSubmit(onSubmit)}
       />
     </View>

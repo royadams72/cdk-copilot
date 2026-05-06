@@ -7,8 +7,10 @@ import { treeifyError } from "zod";
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import {
   STEP3,
+  ONBOARDING_STEPS,
   TUserClinical,
   TUserClinicalCreate,
+  TUserPII,
   UserClinical_Create,
 } from "@ckd/core";
 
@@ -59,10 +61,51 @@ export async function POST(req: NextRequest) {
       db,
       COLLECTIONS.UsersClinical,
     );
+    const piiCollection = getCollection<TUserPII>(db, COLLECTIONS.UsersPII);
 
-    const { insertedId } = await collection.insertOne(doc);
+    await collection.updateOne(
+      { patientId: doc.patientId },
+      {
+        $set: {
+          acrCategory: doc.acrCategory,
+          allergies: doc.allergies,
+          careTeam: doc.careTeam,
+          ckdStage: doc.ckdStage,
+          contraindications: doc.contraindications,
+          diagnoses: doc.diagnoses,
+          dialysisStatus: doc.dialysisStatus,
+          dietaryPreferences: doc.dietaryPreferences,
+          egfrCurrent: doc.egfrCurrent,
+          heightCm: doc.heightCm,
+          lastClinicalUpdateAt: doc.lastClinicalUpdateAt,
+          medications: doc.medications,
+          orgId: doc.orgId,
+          principalId: doc.principalId,
+          updatedAt: now,
+          updatedBy: user.principalId,
+          weightKg: doc.weightKg,
+        },
+        $setOnInsert: {
+          createdAt: now,
+          createdBy: user.principalId,
+          patientId: doc.patientId,
+        },
+      },
+      { upsert: true },
+    );
 
-    return ok({ _id: insertedId, requestId }, 201);
+    await piiCollection.updateOne(
+      { patientId: user.patientId },
+      {
+        $addToSet: { onboardingSteps: ONBOARDING_STEPS.Clinical },
+        $set: {
+          onboardingCompleted: true,
+          updatedAt: now,
+        },
+      },
+    );
+
+    return ok({ patientId: user.patientId, requestId }, 201);
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", { requestId }, status);

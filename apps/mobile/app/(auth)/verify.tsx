@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { API } from "@/constants/api";
+import { ONBOARDING_ROUTES } from "@/lib/onboarding";
 
 export default function VerifyScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
@@ -20,15 +21,16 @@ export default function VerifyScreen() {
       });
 
       if (res.ok) {
-        const { jwt, refreshToken, onboardingCompleted } = await res.json();
+        const { jwt, refreshToken, nextOnboardingRoute, onboardingCompleted } =
+          await res.json();
         await SecureStore.setItemAsync("ckd_jwt", jwt);
         if (refreshToken) {
           await SecureStore.setItemAsync("ckd_refresh", refreshToken);
         }
         if (onboardingCompleted) {
-          router.replace("/(dashboard)/dashboard");
+          router.replace(ONBOARDING_ROUTES.dashboard);
         } else {
-          router.replace("./onboarding/pii-form");
+          router.replace(nextOnboardingRoute ?? ONBOARDING_ROUTES.pii);
         }
       } else {
         router.replace("./check-email");

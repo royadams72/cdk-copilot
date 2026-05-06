@@ -18,7 +18,18 @@ import { randomBytes } from "crypto";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
-import { DEFAULT_SCOPES, SCOPES } from "@ckd/core";
+import { DEFAULT_SCOPES, ONBOARDING_STEPS, SCOPES } from "@ckd/core";
+
+function resolveOnboardingRoute(
+  onboardingCompleted?: boolean,
+  onboardingSteps?: string[],
+) {
+  if (onboardingCompleted) return null;
+  if (onboardingSteps?.includes(ONBOARDING_STEPS.Pii)) {
+    return "/(auth)/onboarding/clinical-form";
+  }
+  return "/(auth)/onboarding/pii-form";
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -144,12 +155,17 @@ export async function POST(req: NextRequest) {
       { email: res.doc.email ?? "" },
       {
         collation: { locale: "en", strength: 2 },
-        projection: { onboardingCompleted: 1 },
+        projection: { onboardingCompleted: 1, onboardingSteps: 1 },
       },
     );
     return NextResponse.json({
       jwt,
       onboardingCompleted: !!pii?.onboardingCompleted,
+      onboardingSteps: pii?.onboardingSteps ?? [],
+      nextOnboardingRoute: resolveOnboardingRoute(
+        pii?.onboardingCompleted,
+        pii?.onboardingSteps,
+      ),
       refreshToken: refreshToken.token,
     });
   } catch (e) {
