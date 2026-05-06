@@ -7,6 +7,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ActivityIndicator, View } from "react-native";
 import { styles } from "../dashboard/styles";
 import { ErrorState } from "../dashboard/Dashboard";
+import { resolveOnboardingRoute } from "@/lib/onboarding";
 
 async function restoreUserSession() {
   const res = await authFetch(`${API}/api/users/get-user`);
@@ -40,7 +41,12 @@ const Bootstrap = () => {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
-              router.replace("/(dashboard)/dashboard");
+              router.replace(
+                resolveOnboardingRoute(
+                  retried.data?.onboardingCompleted,
+                  retried.data?.onboardingSteps,
+                ),
+              );
               return;
             }
 
@@ -57,14 +63,24 @@ const Bootstrap = () => {
         const { res, data } = await restoreUserSession();
 
         if (data.ok) {
-          router.replace("/(dashboard)/dashboard");
+          router.replace(
+            resolveOnboardingRoute(
+              data?.onboardingCompleted,
+              data?.onboardingSteps,
+            ),
+          );
         } else if (res.status === 401) {
           const refreshed = await refreshSessionTokenOnce();
           if (refreshed) {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
-              router.replace("/(dashboard)/dashboard");
+              router.replace(
+                resolveOnboardingRoute(
+                  retried.data?.onboardingCompleted,
+                  retried.data?.onboardingSteps,
+                ),
+              );
               return;
             }
 

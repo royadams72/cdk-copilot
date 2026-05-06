@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Alert, Button, ScrollView, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
   type Control,
+  type Path,
   useFieldArray,
   useForm,
   type Resolver,
@@ -23,11 +24,11 @@ import {
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
-import { DateField, LabeledInput } from "./FormFields";
+import { LabeledInput } from "./FormFields";
 import { useRouter } from "expo-router";
+import { onboardingDrafts } from "@/lib/onboarding";
 
 const emptyDiagnosis = { label: "", code: "" };
-const emptyCareTeamMember = { role: "", name: "", org: "", contact: "" };
 
 export default function ClinicalForm({
   defaults,
@@ -37,7 +38,10 @@ export default function ClinicalForm({
   const router = useRouter();
   const {
     control,
+    getValues,
     handleSubmit,
+    reset,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm<TClinicalFormValues>({
     resolver: zodResolver(
@@ -53,13 +57,38 @@ export default function ClinicalForm({
       diagnoses: defaults?.diagnoses ?? [],
       allergies: defaults?.allergies ?? [],
       dietaryPreferences: defaults?.dietaryPreferences ?? [],
+      careTeam: defaults?.careTeam ?? [],
     },
   });
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const draft = await onboardingDrafts.loadClinicalDraft<TClinicalFormValues>();
+      if (active && draft) {
+        reset({ ...getValues(), ...draft });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [getValues, reset]);
 
   const diagnosesArray = useFieldArray({ control, name: "diagnoses" });
   const allergiesArray = useFieldArray({ control, name: "allergies" });
   const dietArray = useFieldArray({ control, name: "dietaryPreferences" });
-  const careTeamArray = useFieldArray({ control, name: "careTeam" });
+
+  async function persistIfValid(fieldName: Path<TClinicalFormValues>) {
+    const valid = await trigger(fieldName);
+    if (!valid) return;
+    await onboardingDrafts.saveClinicalDraft<TClinicalFormValues>(getValues());
+  }
+
+  async function persistDraftSnapshot() {
+    await onboardingDrafts.saveClinicalDraft<TClinicalFormValues>(getValues());
+  }
 
   async function onSubmit(values: TClinicalFormValues) {
     const payload: Partial<TUserClinicalUpdate> = {
@@ -106,6 +135,7 @@ export default function ClinicalForm({
         const errBody = await res.json().catch(() => null);
         throw new Error(formatApiError(res.status, errBody));
       }
+      await onboardingDrafts.clearClinicalDraft();
       router.push("/(dashboard)/dashboard");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "Failed to save clinical data");
@@ -123,7 +153,13 @@ export default function ClinicalForm({
           render={({ field: { value, onChange } }) => (
             <View>
               <Text>CKD stage</Text>
-              <Picker selectedValue={value} onValueChange={onChange}>
+              <Picker
+                selectedValue={value}
+                onValueChange={(nextValue) => {
+                  onChange(nextValue);
+                  void persistIfValid("ckdStage");
+                }}
+              >
                 <Picker.Item label="Select" value="" />
                 {CKD_STAGE_VALUES.map((option) => (
                   <Picker.Item
@@ -145,6 +181,9 @@ export default function ClinicalForm({
               label="eGFR (mL/min/1.73m²)"
               value={value ?? ""}
               onChangeText={onChange}
+              onBlur={() => {
+                void persistIfValid("egfrCurrent");
+              }}
               keyboardType="numeric"
               placeholder="42"
               error={errors.egfrCurrent?.message}
@@ -158,7 +197,13 @@ export default function ClinicalForm({
           render={({ field: { value, onChange } }) => (
             <View>
               <Text>ACR category</Text>
-              <Picker selectedValue={value} onValueChange={onChange}>
+              <Picker
+                selectedValue={value}
+                onValueChange={(nextValue) => {
+                  onChange(nextValue);
+                  void persistIfValid("acrCategory");
+                }}
+              >
                 <Picker.Item label="Select" value="" />
                 {ACR.options.map((option) => (
                   <Picker.Item key={option} label={option} value={option} />
@@ -174,7 +219,13 @@ export default function ClinicalForm({
           render={({ field: { value, onChange } }) => (
             <View>
               <Text>Dialysis status</Text>
-              <Picker selectedValue={value} onValueChange={onChange}>
+              <Picker
+                selectedValue={value}
+                onValueChange={(nextValue) => {
+                  onChange(nextValue);
+                  void persistIfValid("dialysisStatus");
+                }}
+              >
                 {DialysisStatus.options.map((option) => (
                   <Picker.Item
                     key={option}
@@ -198,6 +249,9 @@ export default function ClinicalForm({
               label="Weight (kg)"
               value={value ?? ""}
               onChangeText={onChange}
+              onBlur={() => {
+                void persistIfValid("weightKg");
+              }}
               keyboardType="numeric"
             />
           )}
@@ -211,6 +265,9 @@ export default function ClinicalForm({
               label="Height (cm)"
               value={value ?? ""}
               onChangeText={onChange}
+              onBlur={() => {
+                void persistIfValid("heightCm");
+              }}
               keyboardType="numeric"
             />
           )}
@@ -220,7 +277,10 @@ export default function ClinicalForm({
         title="Other conditions"
         emptyLabel="No conditions added"
         addLabel="Add condition"
-        onAdd={() => diagnosesArray.append({ ...emptyDiagnosis })}
+        onAdd={() => {
+          diagnosesArray.append({ ...emptyDiagnosis });
+          void persistDraftSnapshot();
+        }}
       >
         {diagnosesArray.fields.map((field, index) => {
           const dxErrors = errors.diagnoses?.[index];
@@ -235,12 +295,15 @@ export default function ClinicalForm({
                 name={`${base}.label`}
                 render={({ field: { value, onChange } }) => (
                   <LabeledInput
-                    label="Label"
-                    value={value}
-                    onChangeText={onChange}
-                    placeholder="Hypertension"
-                    error={dxErrors?.label?.message as string | undefined}
-                  />
+                  label="Label"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={() => {
+                    void persistIfValid(`${base}.label`);
+                  }}
+                  placeholder="Hypertension"
+                  error={dxErrors?.label?.message as string | undefined}
+                />
                 )}
               />
               <Controller
@@ -248,17 +311,23 @@ export default function ClinicalForm({
                 name={`${base}.code`}
                 render={({ field: { value, onChange } }) => (
                   <LabeledInput
-                    label="Code (optional)"
-                    value={value ?? ""}
-                    onChangeText={onChange}
-                    placeholder="I10"
-                  />
-                )}
+                  label="Code (optional)"
+                  value={value ?? ""}
+                  onChangeText={onChange}
+                  onBlur={() => {
+                    void persistIfValid(`${base}.code`);
+                  }}
+                  placeholder="I10"
+                />
+              )}
               />
               <Button
                 color="#b91c1c"
                 title="Remove condition"
-                onPress={() => diagnosesArray.remove(index)}
+                onPress={() => {
+                  diagnosesArray.remove(index);
+                  void persistDraftSnapshot();
+                }}
               />
             </View>
           );
@@ -272,9 +341,16 @@ export default function ClinicalForm({
         fields={allergiesArray.fields}
         control={control}
         fieldName="allergies"
-        onAdd={() => allergiesArray.append({ value: "" })}
-        onRemove={allergiesArray.remove}
+        onAdd={() => {
+          allergiesArray.append({ value: "" });
+          void persistDraftSnapshot();
+        }}
+        onRemove={(index) => {
+          allergiesArray.remove(index);
+          void persistDraftSnapshot();
+        }}
         placeholder="Penicillin"
+        onPersistField={persistIfValid}
       />
 
       <StringArraySection
@@ -284,9 +360,16 @@ export default function ClinicalForm({
         fields={dietArray.fields}
         control={control}
         fieldName="dietaryPreferences"
-        onAdd={() => dietArray.append({ value: "" })}
-        onRemove={dietArray.remove}
+        onAdd={() => {
+          dietArray.append({ value: "" });
+          void persistDraftSnapshot();
+        }}
+        onRemove={(index) => {
+          dietArray.remove(index);
+          void persistDraftSnapshot();
+        }}
         placeholder="Vegetarian"
+        onPersistField={persistIfValid}
       />
 
       <Button
@@ -334,6 +417,7 @@ function StringArraySection({
   onAdd,
   onRemove,
   errors,
+  onPersistField,
 }: {
   title: string;
   itemLabel: string;
@@ -344,6 +428,7 @@ function StringArraySection({
   onAdd: () => void;
   onRemove: (index: number) => void;
   errors?: any;
+  onPersistField: (fieldName: Path<TClinicalFormValues>) => Promise<void>;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -365,6 +450,9 @@ function StringArraySection({
                   label={`${itemLabel} ${index + 1}`}
                   value={value ?? ""}
                   onChangeText={onChange}
+                  onBlur={() => {
+                    void onPersistField(`${fieldName}.${index}.value`);
+                  }}
                   placeholder={placeholder}
                   error={errors?.[index]?.value?.message as string | undefined}
                 />

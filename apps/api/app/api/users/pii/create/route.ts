@@ -7,7 +7,13 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { PiiForm, SCOPES, STEP2, TUserPII } from "@ckd/core";
+import {
+  ONBOARDING_STEPS,
+  PiiForm,
+  SCOPES,
+  STEP2,
+  TUserPII,
+} from "@ckd/core";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 
 export const runtime = "nodejs";
@@ -40,10 +46,10 @@ export async function POST(req: NextRequest) {
     await userPII_db.updateOne(
       { patientId: user.patientId },
       {
-        $addToSet: { onboardingSteps: "pii" },
+        $addToSet: { onboardingSteps: ONBOARDING_STEPS.Pii },
         $set: {
           ...doc,
-          onboardingCompleted: true,
+          onboardingCompleted: false,
         },
       },
     );

@@ -4,11 +4,11 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
 import {
   DEFAULT_SCOPES,
-  SCOPES,
-  Scope,
-  TUsersAccount,
   hasScopes,
   Role,
+  Scope,
+  SCOPES,
+  TUsersAccount,
 } from "@ckd/core";
 import type { Db } from "mongodb";
 import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
@@ -21,22 +21,22 @@ export type AuthProvider =
   | "azuread"
   | "magic";
 export type SessionUser = {
-  authId: string;
-  provider: AuthProvider;
-  principalId: string;
-  role: "patient" | "clinician" | "dietitian" | "admin";
-  orgId?: string;
-  facilityIds?: string[];
-  careTeamIds?: string[];
-  patientId?: string;
   allowedPatientIds?: string[];
+  authId: string;
+  careTeamIds?: string[];
+  facilityIds?: string[];
+  orgId?: string;
+  patientId?: string;
+  principalId: string;
+  provider: AuthProvider;
+  role: "patient" | "clinician" | "dietitian" | "admin";
   scopes: string[];
 };
 
 export const ROLE_SCOPES: Record<string, Scope[]> = {
-  patient: [SCOPES.PATIENTS_READ, SCOPES.PATIENTS_FLAGS_WRITE],
-  clinician: [SCOPES.USERS_CLINICAL_READ],
   admin: [],
+  clinician: [SCOPES.USERS_CLINICAL_READ],
+  patient: [SCOPES.PATIENTS_READ, SCOPES.PATIENTS_FLAGS_WRITE],
 };
 
 const SIGNUP_INIT_KEY = process.env.SIGNUP_INIT_KEY || ""; // set in env for prod
@@ -66,7 +66,7 @@ export async function findPatientIdForPrincipal(db: Db, principalId: string) {
 export async function requireUser(
   req: NextRequest,
   neededScopes: Scope | Scope[] = [],
-  opts: { allowBootstrap?: boolean } = {}
+  opts: { allowBootstrap?: boolean } = {},
 ): Promise<SessionUser> {
   const db = await getDb();
   const token = getBearer(req);
@@ -82,36 +82,42 @@ export async function requireUser(
       console.error("jwtVerify failed", err);
       throw Object.assign(
         new Error(err instanceof Error ? err.message : "Unauthorized"),
-        { status: 401 }
+        { status: 401 },
       );
     }
     const credentialId = claims.sub as string;
+    const principalIdFromClaims = claims.principalId as string | undefined;
+
     if (!credentialId)
       throw Object.assign(new Error("Unauthorized"), { status: 401 });
     const link = await db
       .collection(COLLECTIONS.AuthLinks)
       .findOne(
-        { credentialId, active: true },
-        { projection: { provider: 1, principalId: 1 } }
+        { active: true, credentialId },
+        { projection: { principalId: 1, provider: 1 } },
       );
-    if (!link) throw Object.assign(new Error("Forbidden"), { status: 403 });
-    const provider = link.provider as AuthProvider;
+    const principalId = link?.principalId ?? principalIdFromClaims;
+    console.log("link::", link);
+    if (!principalId) {
+      throw Object.assign(new Error("Forbidden"), { status: 403 });
+    }
+    const provider = (link?.provider as AuthProvider | undefined) ?? "magic";
 
     const acct = await db
       .collection<TUsersAccount>(COLLECTIONS.UsersAccounts)
       .findOne(
-        { principalId: link.principalId, isActive: true },
+        { isActive: true, principalId },
         {
           projection: {
-            role: 1,
-            orgId: 1,
-            facilityIds: 1,
-            careTeamIds: 1,
-            scopes: 1,
-            grants: 1,
             allowedPatientIds: 1,
+            careTeamIds: 1,
+            facilityIds: 1,
+            grants: 1,
+            orgId: 1,
+            role: 1,
+            scopes: 1,
           },
-        }
+        },
       );
 
     if (!acct) throw Object.assign(new Error("Forbidden"), { status: 403 });
@@ -125,7 +131,7 @@ export async function requireUser(
 
     let patientId: string | undefined;
     if (acct.role === "patient") {
-      patientId = await findPatientIdForPrincipal(db, link.principalId);
+      patientId = await findPatientIdForPrincipal(db, principalId);
       if (!patientId) {
         throw Object.assign(new Error("Patient context missing"), {
           status: 403,
@@ -134,17 +140,17 @@ export async function requireUser(
     }
 
     return {
-      authId: credentialId,
-      provider,
-      principalId: link.principalId,
-      role: acct.role as Role,
-      orgId: acct.orgId,
-      facilityIds: acct.facilityIds ?? [],
-      careTeamIds: acct.careTeamIds ?? [],
-      patientId,
       allowedPatientIds: (acct.allowedPatientIds ?? []).map((id: any) =>
-        String(id)
+        String(id),
       ),
+      authId: credentialId,
+      careTeamIds: acct.careTeamIds ?? [],
+      facilityIds: acct.facilityIds ?? [],
+      orgId: acct.orgId,
+      patientId,
+      principalId,
+      provider,
+      role: acct.role as Role,
       scopes,
     };
   }
@@ -156,13 +162,13 @@ export async function requireUser(
     opts.allowBootstrap &&
     hasScopes(
       Array.isArray(neededScopes) ? neededScopes : [neededScopes],
-      DEFAULT_SCOPES
+      DEFAULT_SCOPES,
     )
   ) {
     return {
       authId: "bootstrap",
-      provider: "magic",
       principalId: "provisional",
+      provider: "magic",
       role: "patient",
       scopes: DEFAULT_SCOPES,
     };
