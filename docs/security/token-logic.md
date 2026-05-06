@@ -17,6 +17,7 @@ Access JWTs are validated on each protected API call. Refresh tokens are used on
 2. API issues:
    - `jwt` (claims include `sub` = credential ID, plus `principalId`, `orgId`, `scopes`).
    - `refreshToken` (opaque `id.secret` string).
+3. Before storing the new refresh token, the API revokes any older still-active refresh tokens for the same `principalId + credentialId`.
 3. API stores refresh token document in `AuthTokens`:
    - `id` (lookup key),
    - `secretHash` (HMAC hash of secret bytes),
@@ -45,6 +46,14 @@ Access JWTs are validated on each protected API call. Refresh tokens are used on
    - old: `rotatedAt = now`, `replacedById = new._id`
    - new: active token for future refreshes
 7. Client replaces local `ckd_jwt` and `ckd_refresh`.
+
+## Cleanup Strategy
+
+- `auth_tokens.expiresAt` has a TTL index (`expireAfterSeconds: 0`) so expired auth tokens are deleted automatically by MongoDB.
+- TTL cleanup is asynchronous, so recently expired rows may still be visible for a short period.
+- Active refresh-token duplication is handled separately:
+  - new sign-in exchange revokes older still-active refresh tokens for the same credential
+  - `pnpm db:cleanup:auth-tokens` can revoke duplicate active refresh rows already present in the database
 
 ## Rotated Token Reuse
 

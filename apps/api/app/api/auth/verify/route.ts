@@ -24,8 +24,6 @@ export async function GET(req: NextRequest) {
   });
 
   if (!user) return bad("Forbidden", "", 403);
-  // console.log("verify user:: ", user);
-
   const db = await getDb();
   const sp = req.nextUrl.searchParams;
   const rawToken = sp.get("token") ?? "";
@@ -66,13 +64,12 @@ export async function GET(req: NextRequest) {
       projection: { patientId: 1, principalId: 1 },
     },
   );
-  console.log("existingPii", existingPii, "emailLower:", emailLower);
 
   const existingAccount = await accounts.findOne(
     { isActive: true, principalId },
     { projection: { principalId: 1 } },
   );
-  console.log("existingAccount", existingAccount);
+
   const base_user_acc = {
     createdAt: now,
     email: emailLower,
@@ -102,8 +99,6 @@ export async function GET(req: NextRequest) {
 
   // New-user provisioning path. Existing records are treated as idempotent no-op.
   if (!existingPii) {
-    console.log("user_pii_dto:", user_pii_dto);
-
     await users_pii.insertOne({
       ...user_pii_dto,
       ...(res.doc.orgId ? { orgId: res.doc.orgId } : {}),
@@ -111,7 +106,6 @@ export async function GET(req: NextRequest) {
     });
   }
   if (!existingAccount) {
-    console.log("users_account_doc:", users_account_doc);
     await accounts.insertOne(users_account_doc);
   }
 

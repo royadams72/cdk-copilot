@@ -170,7 +170,6 @@ export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {
 
     // default: keep as is
     out.push({ ...item, normalised });
-    console.log("out::::::", out);
   }
 
   return out;
