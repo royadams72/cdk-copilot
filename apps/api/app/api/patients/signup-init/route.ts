@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
           $in: [COLLECTION_TYPE.EmailVerify, COLLECTION_TYPE.OauthCode],
         },
         email,
+        expiresAt: { $gt: now },
         usedAt: null,
       },
       {
@@ -155,8 +156,7 @@ export async function POST(req: NextRequest) {
       existingAccount ||
       existingAccountByEmail ||
       patientByPiiId ||
-      patientByPrincipal ||
-      pendingAuth,
+      patientByPrincipal,
     );
 
     if (existingPii && !existingAccount) {

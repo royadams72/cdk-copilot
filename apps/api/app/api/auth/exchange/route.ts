@@ -31,6 +31,30 @@ function resolveOnboardingRoute(
   return "/(auth)/onboarding/pii-form";
 }
 
+async function revokeActiveRefreshTokensForCredential(
+  authTokens: import("mongodb").Collection<AuthTokenDoc>,
+  args: {
+    credentialId: string;
+    principalId: string;
+    revokedAt: Date;
+  },
+) {
+  await authTokens.updateMany(
+    {
+      type: COLLECTION_TYPE.Refresh,
+      credentialId: args.credentialId,
+      principalId: args.principalId,
+      revokedAt: null,
+      rotatedAt: null,
+    },
+    {
+      $set: {
+        revokedAt: args.revokedAt,
+      },
+    },
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user: SessionUser = await requireUser(req, DEFAULT_SCOPES, {
@@ -130,11 +154,19 @@ export async function POST(req: NextRequest) {
     const refreshTtlMs = 1000 * 60 * 60 * 24 * 30;
     const refreshExpiresAt = new Date(Date.now() + refreshTtlMs);
     const refreshToken = setToken();
+    const refreshIssuedAt = new Date();
+
+    await revokeActiveRefreshTokensForCredential(auth_tokens, {
+      credentialId,
+      principalId: String(res.doc.principalId),
+      revokedAt: refreshIssuedAt,
+    });
+
     const refreshDoc: AuthTokenDoc = {
       id: b64url(refreshToken.id),
       _id: new ObjectId(),
       type: COLLECTION_TYPE.Refresh,
-      createdAt: new Date(),
+      createdAt: refreshIssuedAt,
       credentialId,
       email: res.doc.email,
       expiresAt: refreshExpiresAt,
