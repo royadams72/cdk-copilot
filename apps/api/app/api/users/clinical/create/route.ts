@@ -23,13 +23,30 @@ type UserClinicalDoc = Omit<TUserClinical, "patientId"> & {
   patientId: ObjectId;
 };
 
+function compactDefined<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined),
+  ) as Partial<T>;
+}
+
+function formatMongoValidationMessage(err: any) {
+  if (!err || err?.code !== 121) return err?.message || "Server error";
+  const details = err?.errInfo?.details;
+  if (!details) return err?.message || "Document failed validation";
+  try {
+    return `Document failed validation: ${JSON.stringify(details)}`;
+  } catch {
+    return err?.message || "Document failed validation";
+  }
+}
+
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
 
   try {
     const user = await requireUser(req, STEP3);
 
-    if (!user.patientId) {
+    if (!user.patientId || !ObjectId.isValid(user.patientId)) {
       return bad("Patient context missing", { requestId }, 403);
     }
 
@@ -66,7 +83,7 @@ export async function POST(req: NextRequest) {
     await collection.updateOne(
       { patientId: doc.patientId },
       {
-        $set: {
+        $set: compactDefined({
           acrCategory: doc.acrCategory,
           allergies: doc.allergies,
           careTeam: doc.careTeam,
@@ -79,12 +96,12 @@ export async function POST(req: NextRequest) {
           heightCm: doc.heightCm,
           lastClinicalUpdateAt: doc.lastClinicalUpdateAt,
           medications: doc.medications,
-          orgId: doc.orgId,
-          principalId: doc.principalId,
+          ...(user.orgId ? { orgId: user.orgId } : {}),
+          principalId: user.principalId,
           updatedAt: now,
           updatedBy: user.principalId,
           weightKg: doc.weightKg,
-        },
+        }),
         $setOnInsert: {
           createdAt: now,
           createdBy: user.principalId,
@@ -107,7 +124,7 @@ export async function POST(req: NextRequest) {
 
     return ok({ patientId: user.patientId, requestId }, 201);
   } catch (err: any) {
-    const status = err?.status || 500;
-    return bad(err?.message || "Server error", { requestId }, status);
+    const status = err?.code === 121 ? 400 : err?.status || 500;
+    return bad(formatMongoValidationMessage(err), { requestId }, status);
   }
 }
