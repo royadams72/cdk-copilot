@@ -19,6 +19,12 @@ import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 
 export const runtime = "nodejs";
 
+type UserPiiDoc = Omit<TUserPII, "patientId"> & {
+  patientId: ObjectId;
+};
+
+type UserPiiUpdateFields = Partial<Omit<UserPiiDoc, "patientId">>;
+
 export async function POST(req: NextRequest) {
   const requestId = makeRandomId();
 
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
     const formData = parsed.data;
-    const doc: Partial<TUserPII> = {
+    const doc: UserPiiUpdateFields = {
       ...formData,
       firstName: formData.firstName?.trim(),
       lastName: formData.lastName?.trim(),
@@ -45,7 +51,10 @@ export async function POST(req: NextRequest) {
     };
 
     const database = await getDb();
-    const userPII_db = getCollection(database, COLLECTIONS.UsersPII);
+    const userPII_db = getCollection<UserPiiDoc>(
+      database,
+      COLLECTIONS.UsersPII,
+    );
 
     await userPII_db.updateOne(
       { patientId: new ObjectId(user.patientId) },
