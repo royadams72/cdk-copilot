@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { ObjectId } from "mongodb";
 import { treeifyError } from "zod";
 
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const user: SessionUser = await requireUser(req, STEP2);
+    if (!user.patientId || !ObjectId.isValid(user.patientId)) {
+      return bad("Patient context missing", { requestId }, 403);
+    }
     const body = await req.json();
 
     const parsed = PiiForm.safeParse(body);
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
     const userPII_db = getCollection(database, COLLECTIONS.UsersPII);
 
     await userPII_db.updateOne(
-      { patientId: user.patientId },
+      { patientId: new ObjectId(user.patientId) },
       {
         $addToSet: { onboardingSteps: ONBOARDING_STEPS.Pii },
         $set: {

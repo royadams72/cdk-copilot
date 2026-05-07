@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     );
 
     await piiCollection.updateOne(
-      { patientId: user.patientId },
+      { patientId: new ObjectId(user.patientId) },
       {
         $addToSet: { onboardingSteps: ONBOARDING_STEPS.Clinical },
         $set: {
