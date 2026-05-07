@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
-import { Alert, Button, ScrollView, Text, View } from "react-native";
+import { Alert, Button, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
-  Controller,
   type Control,
+  Controller,
   type Path,
+  type Resolver,
   useFieldArray,
   useForm,
-  type Resolver,
 } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,11 +24,13 @@ import {
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
-import { LabeledInput } from "./FormFields";
+import { LabeledInput } from "@/screens/onboarding/components/FormFields";
 import { useRouter } from "expo-router";
 import { onboardingDrafts } from "@/lib/onboarding";
+import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
+import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
 
-const emptyDiagnosis = { label: "", code: "" };
+const emptyDiagnosis = { code: "", label: "" };
 
 export default function ClinicalForm({
   defaults,
@@ -44,9 +46,6 @@ export default function ClinicalForm({
     trigger,
     formState: { errors, isSubmitting },
   } = useForm<TClinicalFormValues>({
-    resolver: zodResolver(
-      ClinicalFormSchema
-    ) as unknown as Resolver<TClinicalFormValues>,
     defaultValues: {
       ckdStage: defaults?.ckdStage ?? "",
       egfrCurrent: defaults?.egfrCurrent ?? "",
@@ -59,13 +58,17 @@ export default function ClinicalForm({
       dietaryPreferences: defaults?.dietaryPreferences ?? [],
       careTeam: defaults?.careTeam ?? [],
     },
+    resolver: zodResolver(
+      ClinicalFormSchema,
+    ) as unknown as Resolver<TClinicalFormValues>,
   });
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      const draft = await onboardingDrafts.loadClinicalDraft<TClinicalFormValues>();
+      const draft =
+        await onboardingDrafts.loadClinicalDraft<TClinicalFormValues>();
       if (active && draft) {
         reset({ ...getValues(), ...draft });
       }
@@ -92,28 +95,10 @@ export default function ClinicalForm({
 
   async function onSubmit(values: TClinicalFormValues) {
     const payload: Partial<TUserClinicalUpdate> = {
-      ckdStage: values.ckdStage
-        ? (values.ckdStage as TUserClinicalUpdate["ckdStage"])
-        : null,
-      egfrCurrent: values.egfrCurrent?.trim()
-        ? Number(values.egfrCurrent)
-        : undefined,
       acrCategory: values.acrCategory
         ? (values.acrCategory as TUserClinicalUpdate["acrCategory"])
         : null,
-      dialysisStatus: values.dialysisStatus,
-      weightKg: values.weightKg?.trim() ? Number(values.weightKg) : undefined,
-      heightCm: values.heightCm?.trim() ? Number(values.heightCm) : undefined,
-      diagnoses: values.diagnoses
-        .filter((dx) => dx.label.trim().length)
-        .map((dx) => ({
-          label: dx.label.trim(),
-          ...(dx.code?.trim() ? { code: dx.code.trim() } : {}),
-        })),
       allergies: values.allergies
-        .map((item) => item.value.trim())
-        .filter(Boolean),
-      dietaryPreferences: values.dietaryPreferences
         .map((item) => item.value.trim())
         .filter(Boolean),
       careTeam: values.careTeam
@@ -124,17 +109,36 @@ export default function ClinicalForm({
           ...(member.org?.trim() ? { org: member.org.trim() } : {}),
           ...(member.contact?.trim() ? { contact: member.contact.trim() } : {}),
         })),
+      ckdStage: values.ckdStage
+        ? (values.ckdStage as TUserClinicalUpdate["ckdStage"])
+        : null,
+      diagnoses: values.diagnoses
+        .filter((dx) => dx.label.trim().length)
+        .map((dx) => ({
+          label: dx.label.trim(),
+          ...(dx.code?.trim() ? { code: dx.code.trim() } : {}),
+        })),
+      dialysisStatus: values.dialysisStatus,
+      dietaryPreferences: values.dietaryPreferences
+        .map((item) => item.value.trim())
+        .filter(Boolean),
+      egfrCurrent: values.egfrCurrent?.trim()
+        ? Number(values.egfrCurrent)
+        : undefined,
+      heightCm: values.heightCm?.trim() ? Number(values.heightCm) : undefined,
+      weightKg: values.weightKg?.trim() ? Number(values.weightKg) : undefined,
     };
 
     try {
       const res = await authFetch(`${API}/api/users/clinical/create`, {
-        method: "POST",
         body: JSON.stringify(payload),
+        method: "POST",
       });
       if (!res.ok) {
         const errBody = await res.json().catch(() => null);
         throw new Error(formatApiError(res.status, errBody));
       }
+      await onboardingDrafts.clearPiiDraft();
       await onboardingDrafts.clearClinicalDraft();
       router.push("/(dashboard)/dashboard");
     } catch (err: any) {
@@ -143,7 +147,7 @@ export default function ClinicalForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 24 }}>
+    <OnboardingFormScreen contentContainerStyle={{ gap: 24 }}>
       <View style={{ gap: 12 }}>
         <Text style={{ fontWeight: "700" }}>Kidney status</Text>
 
@@ -288,22 +292,22 @@ export default function ClinicalForm({
           return (
             <View
               key={field.id}
-              style={{ borderWidth: 1, borderRadius: 12, padding: 12, gap: 8 }}
+              style={{ borderRadius: 12, borderWidth: 1, gap: 8, padding: 12 }}
             >
               <Controller
                 control={control}
                 name={`${base}.label`}
                 render={({ field: { value, onChange } }) => (
                   <LabeledInput
-                  label="Label"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={() => {
-                    void persistIfValid(`${base}.label`);
-                  }}
-                  placeholder="Hypertension"
-                  error={dxErrors?.label?.message as string | undefined}
-                />
+                    label="Label"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={() => {
+                      void persistIfValid(`${base}.label`);
+                    }}
+                    placeholder="Hypertension"
+                    error={dxErrors?.label?.message as string | undefined}
+                  />
                 )}
               />
               <Controller
@@ -311,15 +315,15 @@ export default function ClinicalForm({
                 name={`${base}.code`}
                 render={({ field: { value, onChange } }) => (
                   <LabeledInput
-                  label="Code (optional)"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  onBlur={() => {
-                    void persistIfValid(`${base}.code`);
-                  }}
-                  placeholder="I10"
-                />
-              )}
+                    label="Code (optional)"
+                    value={value ?? ""}
+                    onChangeText={onChange}
+                    onBlur={() => {
+                      void persistIfValid(`${base}.code`);
+                    }}
+                    placeholder="I10"
+                  />
+                )}
               />
               <Button
                 color="#b91c1c"
@@ -372,12 +376,12 @@ export default function ClinicalForm({
         onPersistField={persistIfValid}
       />
 
-      <Button
-        title={isSubmitting ? "Saving..." : "Save Profile"}
+      <PrimaryButton
+        label={isSubmitting ? "Saving..." : "Save Profile"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit)}
       />
-    </ScrollView>
+    </OnboardingFormScreen>
   );
 }
 
@@ -388,11 +392,11 @@ function Section({
   onAdd,
   children,
 }: {
-  title: string;
-  emptyLabel: string;
   addLabel: string;
-  onAdd: () => void;
   children: React.ReactNode;
+  emptyLabel: string;
+  onAdd: () => void;
+  title: string;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -419,16 +423,16 @@ function StringArraySection({
   errors,
   onPersistField,
 }: {
-  title: string;
-  itemLabel: string;
-  fields: { id: string; value?: string }[];
   control: Control<TClinicalFormValues>;
-  fieldName: "allergies" | "dietaryPreferences";
-  placeholder: string;
-  onAdd: () => void;
-  onRemove: (index: number) => void;
   errors?: any;
+  fieldName: "allergies" | "dietaryPreferences";
+  fields: { id: string; value?: string }[];
+  itemLabel: string;
+  onAdd: () => void;
   onPersistField: (fieldName: Path<TClinicalFormValues>) => Promise<void>;
+  onRemove: (index: number) => void;
+  placeholder: string;
+  title: string;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -439,7 +443,7 @@ function StringArraySection({
       {fields.map((field, index) => (
         <View
           key={field.id}
-          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+          style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
         >
           <View style={{ flex: 1 }}>
             <Controller

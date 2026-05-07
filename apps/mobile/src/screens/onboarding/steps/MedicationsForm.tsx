@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert, Button, ScrollView, Text, View } from "react-native";
+import { Alert, Button, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
@@ -14,7 +14,12 @@ import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-import { DateField, LabeledInput } from "./FormFields";
+import {
+  DateField,
+  LabeledInput,
+  OnboardingFormScreen,
+  PrimaryButton,
+} from "../components/FormFields";
 import { useRouter } from "expo-router";
 
 const emptyMedication: TMedicationFormValues["medications"][number] = {
@@ -91,7 +96,7 @@ export default function MedicationsForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={{ gap: 24, padding: 16 }}>
+    <OnboardingFormScreen contentContainerStyle={{ gap: 24 }}>
       {fields.map((field, index) => {
         const base = `medications.${index}` as const;
         const medErrors =
@@ -284,14 +289,12 @@ export default function MedicationsForm({
         <Text style={{ color: "red" }}>{errors.medications.message}</Text>
       )}
 
-      <Button
-        title={isSubmitting ? "Saving..." : "Save medications"}
-        // disabled={isSubmitting}
-        // onPress={handleSubmit(onSubmit)}
+      <PrimaryButton
+        label={isSubmitting ? "Saving..." : "Save medications"}
         onPress={() => {
           router.push("/(auth)/onboarding/labs-form");
         }}
       />
-    </ScrollView>
+    </OnboardingFormScreen>
   );
 }

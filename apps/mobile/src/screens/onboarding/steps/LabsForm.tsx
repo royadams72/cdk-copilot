@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert, Button, ScrollView, Text, View } from "react-native";
+import { Alert, Button, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
@@ -12,7 +12,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { TLabsFormValues, LabsSchema } from "@ckd/core";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
-import { DateField, LabeledInput } from "./FormFields";
+import {
+  DateField,
+  LabeledInput,
+  OnboardingFormScreen,
+  PrimaryButton,
+} from "../components/FormFields";
 import { useRouter } from "expo-router";
 
 const emptyLab: TLabsFormValues["labs"][number] = {
@@ -109,7 +114,7 @@ export default function LabsForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 24 }}>
+    <OnboardingFormScreen contentContainerStyle={{ gap: 24 }}>
       {fields.map((field, index) => {
         const base = `labs.${index}` as const;
         const labErrors = errors.labs?.[index];
@@ -327,11 +332,11 @@ export default function LabsForm({
         <Text style={{ color: "red" }}>{errors.labs.message}</Text>
       )}
 
-      <Button
-        title={isSubmitting ? "Saving..." : "Save labs"}
+      <PrimaryButton
+        label={isSubmitting ? "Saving..." : "Save labs"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit)}
       />
-    </ScrollView>
+    </OnboardingFormScreen>
   );
 }
