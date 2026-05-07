@@ -23,6 +23,10 @@ type UserClinicalDoc = Omit<TUserClinical, "patientId"> & {
   patientId: ObjectId;
 };
 
+type UserPiiDoc = Omit<TUserPII, "patientId"> & {
+  patientId: ObjectId;
+};
+
 function compactDefined<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined),
@@ -78,7 +82,7 @@ export async function POST(req: NextRequest) {
       db,
       COLLECTIONS.UsersClinical,
     );
-    const piiCollection = getCollection<TUserPII>(db, COLLECTIONS.UsersPII);
+    const piiCollection = getCollection<UserPiiDoc>(db, COLLECTIONS.UsersPII);
 
     await collection.updateOne(
       { patientId: doc.patientId },
