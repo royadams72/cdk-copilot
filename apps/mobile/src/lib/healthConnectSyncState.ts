@@ -12,6 +12,9 @@ type StoredHealthConnectChangesState = {
 export const syncedMeasurementKeys = new Set<string>();
 export const failedMeasurementRetryAt = new Map<string, number>();
 
+// Tracks backfill windows that have already run this app session. Cleared on app restart.
+export const completedBackfillWindowKeys = new Set<string>();
+
 export const healthConnectRuntimeState: {
   healthConnectSyncPromise: Promise<void> | null;
   inFlightBackfillWindowKeys: Set<string>;

@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { authFetch } from "@/lib/authFetch";
+import { API } from "@/constants/api";
 import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import {
   loadAndroidStepState,
@@ -175,23 +177,18 @@ export async function backfillHealthConnectStepDates(
   healthConnectRuntimeState.inFlightBackfillWindowKeys.add(options.windowKey);
   let attempted = 0;
   const resolvedDateKeys: string[] = [];
-  let resolvedDays = 0;
-  let uploaded = 0;
 
   try {
     const orderedDateKeys = [...new Set(missingDateKeys)].sort();
+    const payloads: Parameters<typeof createMeasurementDirect>[0][] = [];
 
     for (const dateKey of orderedDateKeys) {
       const date = new Date(`${dateKey}T12:00:00`);
-      if (Number.isNaN(date.getTime())) {
-        continue;
-      }
+      if (Number.isNaN(date.getTime())) continue;
 
       attempted += 1;
       const summary = await readHealthConnectStepSummaryRecordForDate(date);
-      if (!summary) {
-        continue;
-      }
+      if (!summary) continue;
 
       const measuredAt = new Date(
         date.getFullYear(),
@@ -203,7 +200,7 @@ export async function backfillHealthConnectStepDates(
         0,
       ).toISOString();
 
-      await createMeasurementDirect({
+      payloads.push({
         averageSpeedKph: summary.averageSpeedKph ?? undefined,
         caloriesKcal: summary.caloriesKcal ?? undefined,
         count: Math.max(0, Math.round(summary.steps ?? 0)),
@@ -216,16 +213,44 @@ export async function backfillHealthConnectStepDates(
         sync: buildHealthConnectStepSyncMeta(dateKey, "finalized"),
       });
       resolvedDateKeys.push(dateKey);
-      resolvedDays += 1;
-      uploaded += 1;
     }
 
-    if (uploaded > 0) {
-      invalidateMeasurementCaches("steps", { includeHistory: true });
+    if (!payloads.length) {
+      return { attempted, resolvedDateKeys: [], resolvedDays: 0, uploaded: 0 };
     }
 
-    return { attempted, resolvedDateKeys, resolvedDays, uploaded };
+    await stepsBatchUpsert(payloads);
+    invalidateMeasurementCaches("steps", { includeHistory: true });
+
+    return { attempted, resolvedDateKeys, resolvedDays: payloads.length, uploaded: payloads.length };
   } finally {
     healthConnectRuntimeState.inFlightBackfillWindowKeys.delete(options.windowKey);
+  }
+}
+
+async function stepsBatchUpsert(
+  payloads: Parameters<typeof createMeasurementDirect>[0][],
+) {
+  const items = payloads.map((p) => ({
+    averageSpeedKph: p.averageSpeedKph,
+    caloriesKcal: p.caloriesKcal,
+    count: p.count,
+    distanceMeters: p.distanceMeters,
+    externalRecordId: p.externalRecordId,
+    measuredAt: p.measuredAt,
+    provider: p.provider,
+    sync: p.sync,
+  }));
+
+  const response = await authFetch(`${API}/api/measurements/steps-batch-upsert`, {
+    body: JSON.stringify({ items }),
+    method: "POST",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Batch upsert failed");
   }
 }

@@ -18,6 +18,13 @@ import {
 import {
   readHealthConnectHeartRateEntriesForDate,
 } from "@/lib/healthConnectSync";
+import { backfillHealthConnectStepDates } from "@/lib/healthConnectStepSync";
+import {
+  getServerHealthConnectSyncState,
+  updateServerStepsBackfilledFrom,
+} from "@/lib/healthConnectSyncCommon";
+import { localDateKey } from "@/lib/healthConnectSyncPipeline";
+import { completedBackfillWindowKeys } from "@/lib/healthConnectSyncState";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
@@ -693,6 +700,78 @@ export default function FitnessMetricTrend() {
         : latestDate;
     });
   }, [chart.points, kind]);
+
+  // Cursor-based historical backfill: runs once per session when steps history loads.
+  // Reads the server-side backfilledFrom cursor, checks a 60-day window for missing
+  // or provisional entries, uploads them in one batch, then advances the cursor.
+  // Also re-checks the last 7 days every session to catch partially-filled days.
+  useEffect(() => {
+    if (kind !== "steps" || Platform.OS !== "android" || !history) return;
+
+    const sessionKey = "steps-history-backfill";
+    if (completedBackfillWindowKeys.has(sessionKey)) return;
+    completedBackfillWindowKeys.add(sessionKey);
+
+    const run = async () => {
+      try {
+        const syncState = await getServerHealthConnectSyncState();
+        const backfilledFromStr = syncState.recordTypes?.steps?.backfilledFrom;
+
+        const today = new Date();
+        const todayKey = localDateKey(today);
+
+        const windowEnd = backfilledFromStr ? new Date(backfilledFromStr) : today;
+        const windowStart = new Date(windowEnd.getTime() - 60 * 24 * 60 * 60_000);
+        const floor = new Date(today.getTime() - 365 * 24 * 60 * 60_000);
+        if (windowStart < floor) windowStart.setTime(floor.getTime());
+
+        if (windowEnd <= windowStart) return;
+
+        const windowStartKey = localDateKey(windowStart);
+        const windowKey = `steps-cursor:${windowStartKey}:${localDateKey(new Date(windowEnd.getTime() - 1))}`;
+
+        // Collect all date keys in the 60-day window
+        const datesToCheck: string[] = [];
+        let cursor = new Date(windowStart);
+        while (localDateKey(cursor) < localDateKey(windowEnd)) {
+          datesToCheck.push(localDateKey(cursor));
+          cursor = new Date(cursor.getTime() + 24 * 60 * 60_000);
+        }
+
+        // Always re-check the last 7 days for provisional entries
+        for (let i = 1; i <= 7; i++) {
+          const key = localDateKey(new Date(today.getTime() - i * 24 * 60 * 60_000));
+          if (!datesToCheck.includes(key)) datesToCheck.push(key);
+        }
+
+        const datesToBackfill = datesToCheck.filter((dateKey) => {
+          if (dateKey >= todayKey) return false;
+          const entries = entriesByDate[dateKey];
+          if (!entries || entries.length === 0) return true;
+          const preferred = sortEntriesForTrendDay("steps", entries);
+          return preferred[0]?.sync?.status !== "finalized";
+        });
+
+        // Advance cursor regardless so the next session checks a new window
+        await updateServerStepsBackfilledFrom(windowStartKey);
+
+        if (!datesToBackfill.length) return;
+
+        await backfillHealthConnectStepDates(datesToBackfill, {
+          reason: "steps-screen",
+          windowKey,
+        });
+      } catch (err) {
+        // Allow retry next session
+        completedBackfillWindowKeys.delete(sessionKey);
+        console.log("Steps history backfill failed", err instanceof Error ? err.message : err);
+      }
+    };
+
+    void run();
+  // entriesByDate reference is stable per history load; history is the trigger
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history, kind]);
 
   const onSave = useCallback(async () => {
     if (kind === "steps") return;

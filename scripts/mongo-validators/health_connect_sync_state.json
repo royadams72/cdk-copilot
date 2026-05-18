@@ -17,9 +17,9 @@
           "properties": {
             "steps": {
               "bsonType": "object",
-              "required": ["lastSyncedAt"],
               "properties": {
-                "lastSyncedAt": { "bsonType": "date" }
+                "lastSyncedAt": { "bsonType": "date" },
+                "backfilledFrom": { "bsonType": "date" }
               },
               "additionalProperties": false
             },

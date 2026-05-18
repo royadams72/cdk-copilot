@@ -35,6 +35,26 @@ pnpm mobile:dev
 
 The env var is read at bundle time, so changing it requires a Metro restart.
 
+## Steps Sync Strategy
+
+Steps data has two layers:
+
+**Layer 1 — Today (foreground + background tasks)**
+`syncTodayStepMeasurement` runs on app foreground and via a native Android WorkManager task. It writes today's aggregate as `sync.status: "provisional"` and overwrites on each run. The initial lookback when no `lastSyncedAt` exists is 7 days, giving a head start after fresh install.
+
+**Layer 2 — History (cursor-based backfill)**
+When the steps trend screen loads, a one-per-session backfill runs:
+1. Fetches `recordTypes.steps.backfilledFrom` from the server sync state (`health_connect_sync_state` collection).
+2. Computes a 60-day window ending at `backfilledFrom` (or today if not set), floored at 1 year ago.
+3. Also re-checks the last 7 days for entries that are still `provisional`.
+4. Queries Health Connect for any date that is missing from the DB or has `sync.status !== "finalized"` (today excluded — that's Layer 1's job).
+5. Sends all payloads in a single `POST /api/measurements/steps-batch-upsert` call (MongoDB `bulkWrite`, upsert-safe).
+6. Advances `backfilledFrom` to the start of the processed window so the next session checks the preceding 60 days.
+
+Each app session processes one 60-day window. Over multiple sessions the backfill walks backwards through history. `backfilledFrom` is stored server-side so it survives reinstalls, app data clears, and device changes. The only time it starts from scratch is a brand-new account.
+
+**New device**: Health Connect data does not carry over between devices unless the user's health app syncs from a cloud account (Samsung Health, Garmin Connect, etc.). The MongoDB history is always complete regardless — clinicians always see accurate data. Gaps only appear in the period since the new device was set up.
+
 ## Health Connect Sync
 
 Android health readings are read from Health Connect, so the app can pick up phone or watch data that has already been written there by the user's chosen health app. The app is not tied to Samsung Health; Samsung Health, Google Fit/Fitbit bridges, Garmin bridges, the phone's own source, or any other Health Connect data origin can contribute.
