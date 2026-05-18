@@ -27,14 +27,16 @@ export type BackfillableMeasurementKind =
 
 export type HealthConnectSyncStateResponse = {
   provider: "health_connect";
-  recordTypes?: Partial<
-    Record<
-      SyncStateRecordType,
-      {
-        lastSyncedAt?: string;
-      }
-    >
-  >;
+  recordTypes?: {
+    steps?: {
+      lastSyncedAt?: string;
+      backfilledFrom?: string;
+    };
+    heart_rate?: { lastSyncedAt?: string };
+    sleep?: { lastSyncedAt?: string };
+    exercise?: { lastSyncedAt?: string };
+    blood_pressure?: { lastSyncedAt?: string };
+  };
   updatedAt?: string | null;
 };
 
@@ -43,7 +45,7 @@ const INITIAL_SYNC_LOOKBACK_MS: Record<SyncStateRecordType, number> = {
   exercise: 3 * 24 * 60 * 60_000,
   heart_rate: 24 * 60 * 60_000,
   sleep: 7 * 24 * 60 * 60_000,
-  steps: 24 * 60 * 60_000,
+  steps: 7 * 24 * 60 * 60_000,
 };
 
 export function stepSyncEventSource(
@@ -120,6 +122,20 @@ export async function updateServerHealthConnectSyncState(
 
   if (!response.ok || !body?.ok) {
     throw new Error(body?.message ?? "Failed to update Health Connect sync state");
+  }
+}
+
+export async function updateServerStepsBackfilledFrom(backfilledFrom: string) {
+  const response = await authFetch(`${API}/api/users/health-connect/sync-state`, {
+    body: JSON.stringify({ recordTypes: { steps: { backfilledFrom } } }),
+    method: "PATCH",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Failed to update steps backfilledFrom");
   }
 }
 

@@ -118,6 +118,15 @@ export function AddMeasurementModal({
   weightUnit,
   weightValue,
 }: Props) {
+  if (
+    !modalOpen &&
+    !showDatePicker &&
+    !showSleepFromPicker &&
+    !showSleepToPicker
+  ) {
+    return null;
+  }
+
   return (
     <>
       <Modal
@@ -450,7 +459,7 @@ export function AddMeasurementModal({
                   }}
                 >
                   <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
-                    If "from" is later than "to", it will be saved as overnight
+                    If &quot;from&quot; is later than &quot;to&quot;, it will be saved as overnight
                     sleep.
                   </ThemedText>
                 </View>

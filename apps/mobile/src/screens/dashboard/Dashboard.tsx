@@ -24,6 +24,10 @@ import { Card } from "./components/Card";
 import { StackedRadialsCard } from "./components/StackedRadials";
 import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
+import { useStepCount } from "@/hooks/useStepCount";
+import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
+import { useSyncStepCount } from "@/hooks/useSyncStepCount";
+import { triggerNativeHealthConnectBackgroundSyncNow } from "@/lib/healthConnectNativeSync";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -32,6 +36,20 @@ export default function Dashboard() {
     {
       refetchOnMountOrArgChange: true,
     },
+  );
+  const {
+    backgroundReadGranted,
+    hasAnyMeasurementAccess,
+    missingHealthPermissions,
+    percentOfGoal,
+    requestAccess,
+    requestBackgroundReadAccess,
+    status: stepStatus,
+    stepsToday,
+  } = useStepCount(10000);
+  useSyncStepCount(stepsToday, stepStatus === "ready");
+  useSyncHealthConnectMeasurements(
+    stepStatus === "ready" || hasAnyMeasurementAccess,
   );
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -44,10 +62,31 @@ export default function Dashboard() {
     error,
     "We couldn't refresh your dashboard.",
   );
+  const healthSubtitle = getHealthSubtitle(stepStatus);
+  const hasMissingHealthPermissions = missingHealthPermissions.length > 0;
 
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const handleTriggerBackgroundTask = useCallback(() => {
+    void (async () => {
+      try {
+        const triggered = await triggerNativeHealthConnectBackgroundSyncNow();
+        Alert.alert(
+          triggered ? "Background task triggered" : "Background task unavailable",
+          triggered
+            ? "The Health Connect background worker was triggered for testing."
+            : "Background task testing is unavailable on this build or device.",
+        );
+      } catch (error) {
+        Alert.alert(
+          "Background task failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    })();
+  }, []);
 
   const handleOpenEngagement = useCallback(() => {
     if (!pendingEngagement?.key) return;
@@ -76,9 +115,9 @@ export default function Dashboard() {
     () => [
       {
         id: "steps",
-        actual: null,
+        actual: stepsToday,
         label: "Steps",
-        percent: null,
+        percent: percentOfGoal,
         target: 10000,
         unit: "steps",
       },
@@ -99,9 +138,8 @@ export default function Dashboard() {
         unit: "kcal",
       },
     ],
-    [],
+    [percentOfGoal, stepsToday],
   );
-
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -184,18 +222,92 @@ export default function Dashboard() {
               <StackedRadialsCard
                 centerLabel="Health"
                 radials={healthRadials}
-                subtitle="Health sync temporarily unavailable"
+                subtitle={healthSubtitle}
                 title="Health"
               />
             </Pressable>
 
-            <Card>
-              <ThemedText type="defaultSemiBold">Health sync</ThemedText>
-              <ThemedText style={styles.helperText}>
-                Health Connect sync is temporarily disabled while the dashboard
-                startup crash is being isolated.
-              </ThemedText>
-            </Card>
+            {stepStatus !== "idle" &&
+            (stepStatus !== "ready" || hasMissingHealthPermissions) ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Health Connect setup
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  {getHealthStatusMessage(
+                    stepStatus,
+                    hasMissingHealthPermissions,
+                  )}
+                </ThemedText>
+                {(stepStatus === "permission-required" ||
+                  stepStatus === "permission-denied" ||
+                  hasMissingHealthPermissions) && (
+                  <Pressable
+                    style={styles.primaryActionButton}
+                    onPress={() => {
+                      void requestAccess();
+                    }}
+                  >
+                    <ThemedText style={styles.primaryActionText}>
+                      {hasMissingHealthPermissions
+                        ? "Allow more Health Connect access"
+                        : "Allow step access"}
+                    </ThemedText>
+                  </Pressable>
+                )}
+              </Card>
+            ) : null}
+
+            {stepStatus === "ready" && !backgroundReadGranted ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Background Health Connect sync
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Allow background Health Connect access if you want steps,
+                  exercise, sleep, heart rate, and blood pressure to sync when
+                  the app is not open.
+                </ThemedText>
+                <Pressable
+                  style={styles.primaryActionButton}
+                  onPress={() => {
+                    void requestBackgroundReadAccess();
+                  }}
+                >
+                  <ThemedText style={styles.primaryActionText}>
+                    Allow background health access
+                  </ThemedText>
+                </Pressable>
+                {__DEV__ ? (
+                  <ThemedText style={styles.helperText}>
+                    Debug: background read permission is missing.
+                  </ThemedText>
+                ) : null}
+              </Card>
+            ) : null}
+
+            {__DEV__ ? (
+              <Card>
+                <ThemedText type="defaultSemiBold">
+                  Dev: Background sync
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Trigger the Health Connect background worker immediately for testing.
+                </ThemedText>
+                <ThemedText style={styles.helperText}>
+                  Background read permission:{" "}
+                  {backgroundReadGranted ? "granted" : "missing"}
+                </ThemedText>
+                <Pressable
+                  style={styles.primaryActionButton}
+                  onPress={handleTriggerBackgroundTask}
+                >
+                  <ThemedText style={styles.primaryActionText}>
+                    Run background sync now
+                  </ThemedText>
+                </Pressable>
+              </Card>
+            ) : null}
 
             <Pressable
               style={styles.selectableCard}
@@ -240,4 +352,47 @@ function InlineError({ message }: { message: string }) {
       <ThemedText style={styles.helperText}>Pull down to retry.</ThemedText>
     </Card>
   );
+}
+
+function getHealthSubtitle(stepStatus: ReturnType<typeof useStepCount>["status"]) {
+  switch (stepStatus) {
+    case "ready":
+      return "Today's step total";
+    case "permission-required":
+      return "Connect Health Connect";
+    case "permission-denied":
+      return "Step access denied";
+    case "health-connect-unavailable":
+      return "Health Connect unavailable";
+    case "health-connect-update-required":
+      return "Update Health Connect";
+    case "error":
+      return "Couldn't load step data";
+    default:
+      return "Daily activity";
+  }
+}
+
+function getHealthStatusMessage(
+  stepStatus: ReturnType<typeof useStepCount>["status"],
+  hasMissingHealthPermissions = false,
+) {
+  if (hasMissingHealthPermissions && stepStatus === "ready") {
+    return "Steps are connected, but Health Connect access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too.";
+  }
+
+  switch (stepStatus) {
+    case "permission-required":
+      return "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
+    case "permission-denied":
+      return "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
+    case "health-connect-unavailable":
+      return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";
+    case "health-connect-update-required":
+      return "Health Connect needs an update before this app can read steps.";
+    case "unsupported":
+      return "Step tracking is not supported on this device.";
+    default:
+      return "We couldn't load stored step data right now.";
+  }
 }

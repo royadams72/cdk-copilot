@@ -1,3 +1,5 @@
+import { ExerciseType } from "react-native-health-connect";
+
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import type {
@@ -36,6 +38,20 @@ export type HealthRecord = {
   time?: string;
   title?: string;
 };
+
+const EXERCISE_TYPE_LABELS = Object.entries(ExerciseType).reduce<
+  Record<number, string>
+>((acc, [key, value]) => {
+  if (typeof value !== "number") {
+    return acc;
+  }
+  acc[value] = key
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  return acc;
+}, {});
 
 export function localDateKey(date: Date) {
   const year = date.getFullYear();
@@ -187,6 +203,9 @@ function exerciseTitle(record: HealthRecord) {
   const explicitTitle = record.title?.trim();
   if (explicitTitle) {
     return explicitTitle;
+  }
+  if (typeof record.exerciseType === "number") {
+    return EXERCISE_TYPE_LABELS[record.exerciseType] ?? "Imported exercise";
   }
   return "Imported exercise";
 }

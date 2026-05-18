@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { Alert, Button, Text, View } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import {
   type Control,
   Controller,
@@ -24,7 +23,10 @@ import {
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
-import { LabeledInput } from "@/screens/onboarding/components/FormFields";
+import {
+  LabeledInput,
+  OptionSelectField,
+} from "@/screens/onboarding/components/FormFields";
 import { useRouter } from "expo-router";
 import { onboardingDrafts } from "@/lib/onboarding";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
@@ -140,7 +142,7 @@ export default function ClinicalForm({
       }
       await onboardingDrafts.clearPiiDraft();
       await onboardingDrafts.clearClinicalDraft();
-      router.push("/(dashboard)/dashboard");
+      router.replace("/(dashboard)/dashboard");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "Failed to save clinical data");
     }
@@ -155,25 +157,19 @@ export default function ClinicalForm({
           control={control}
           name="ckdStage"
           render={({ field: { value, onChange } }) => (
-            <View>
-              <Text>CKD stage</Text>
-              <Picker
-                selectedValue={value}
-                onValueChange={(nextValue) => {
-                  onChange(nextValue);
-                  void persistIfValid("ckdStage");
-                }}
-              >
-                <Picker.Item label="Select" value="" />
-                {CKD_STAGE_VALUES.map((option) => (
-                  <Picker.Item
-                    key={option}
-                    label={`Stage ${option.toUpperCase()}`}
-                    value={option}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <OptionSelectField
+              label="CKD stage"
+              value={value}
+              options={CKD_STAGE_VALUES.map((option) => ({
+                label: `Stage ${option.toUpperCase()}`,
+                value: option,
+              }))}
+              onChange={(nextValue) => {
+                onChange(nextValue);
+                void persistIfValid("ckdStage");
+              }}
+              error={errors.ckdStage?.message}
+            />
           )}
         />
 
@@ -199,21 +195,19 @@ export default function ClinicalForm({
           control={control}
           name="acrCategory"
           render={({ field: { value, onChange } }) => (
-            <View>
-              <Text>ACR category</Text>
-              <Picker
-                selectedValue={value}
-                onValueChange={(nextValue) => {
-                  onChange(nextValue);
-                  void persistIfValid("acrCategory");
-                }}
-              >
-                <Picker.Item label="Select" value="" />
-                {ACR.options.map((option) => (
-                  <Picker.Item key={option} label={option} value={option} />
-                ))}
-              </Picker>
-            </View>
+            <OptionSelectField
+              label="ACR category"
+              value={value}
+              options={ACR.options.map((option) => ({
+                label: option,
+                value: option,
+              }))}
+              onChange={(nextValue) => {
+                onChange(nextValue);
+                void persistIfValid("acrCategory");
+              }}
+              error={errors.acrCategory?.message}
+            />
           )}
         />
 
@@ -221,24 +215,19 @@ export default function ClinicalForm({
           control={control}
           name="dialysisStatus"
           render={({ field: { value, onChange } }) => (
-            <View>
-              <Text>Dialysis status</Text>
-              <Picker
-                selectedValue={value}
-                onValueChange={(nextValue) => {
-                  onChange(nextValue);
-                  void persistIfValid("dialysisStatus");
-                }}
-              >
-                {DialysisStatus.options.map((option) => (
-                  <Picker.Item
-                    key={option}
-                    label={option.replace("-", " ")}
-                    value={option}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <OptionSelectField
+              label="Dialysis status"
+              value={value}
+              options={DialysisStatus.options.map((option) => ({
+                label: option.replace("-", " "),
+                value: option,
+              }))}
+              onChange={(nextValue) => {
+                onChange(nextValue);
+                void persistIfValid("dialysisStatus");
+              }}
+              error={errors.dialysisStatus?.message}
+            />
           )}
         />
       </View>
