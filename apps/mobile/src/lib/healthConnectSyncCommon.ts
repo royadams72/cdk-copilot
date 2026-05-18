@@ -26,6 +26,7 @@ export type BackfillableMeasurementKind =
   | "steps";
 
 export type HealthConnectSyncStateResponse = {
+  accountCreatedAt?: string | null;
   provider: "health_connect";
   recordTypes?: {
     steps?: {

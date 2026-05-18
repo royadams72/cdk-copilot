@@ -188,7 +188,9 @@ export async function backfillHealthConnectStepDates(
 
       attempted += 1;
       const summary = await readHealthConnectStepSummaryRecordForDate(date);
-      if (!summary) continue;
+      // Skip days with no HC data or genuinely zero steps — don't write a
+      // finalized zero entry that would block future re-checks.
+      if (!summary || !summary.steps || summary.steps <= 0) continue;
 
       const measuredAt = new Date(
         date.getFullYear(),

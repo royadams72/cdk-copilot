@@ -124,14 +124,23 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
-    const syncState = await db
-      .collection<SyncStateDoc>(COLLECTIONS.HealthConnectSyncState)
-      .findOne({
-        patientId,
-        provider: "health_connect",
-      });
 
-    return ok(toResponse(syncState));
+    const [syncState, account] = await Promise.all([
+      db
+        .collection<SyncStateDoc>(COLLECTIONS.HealthConnectSyncState)
+        .findOne({ patientId, provider: "health_connect" }),
+      db
+        .collection<{ createdAt?: Date }>(COLLECTIONS.UsersAccounts)
+        .findOne(
+          { principalId: caller.principalId, isActive: true },
+          { projection: { _id: 0, createdAt: 1 } },
+        ),
+    ]);
+
+    return ok({
+      ...toResponse(syncState),
+      accountCreatedAt: account?.createdAt ? account.createdAt.toISOString() : null,
+    });
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);
