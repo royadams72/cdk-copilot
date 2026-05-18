@@ -140,7 +140,6 @@ export default function Dashboard() {
     ],
     [percentOfGoal, stepsToday],
   );
-
   if (loading) {
     return (
       <View style={styles.loading}>

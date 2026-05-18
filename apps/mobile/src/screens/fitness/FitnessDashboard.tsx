@@ -233,6 +233,35 @@ function getStepSubtext(
     : stepStatusLabel(status);
 }
 
+function getFitnessHealthSetupMessage(
+  stepStatus: ReturnType<typeof useStepCount>["status"],
+  hasMissingHealthPermissions: boolean,
+  backgroundReadGranted: boolean,
+) {
+  if (stepStatus === "ready" && !backgroundReadGranted) {
+    return "Allow background Health Connect access if you want steps, exercise, sleep, heart rate, and blood pressure to sync when the app is not open.";
+  }
+
+  if (hasMissingHealthPermissions && stepStatus === "ready") {
+    return "Steps are connected, but Health Connect access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too.";
+  }
+
+  switch (stepStatus) {
+    case "permission-required":
+      return "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
+    case "permission-denied":
+      return "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
+    case "health-connect-unavailable":
+      return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";
+    case "health-connect-update-required":
+      return "Health Connect needs an update before this app can read steps.";
+    case "unsupported":
+      return "Step tracking is not supported on this device.";
+    default:
+      return "We couldn't load stored step data right now.";
+  }
+}
+
 export default function FitnessDashboard() {
   const router = useRouter();
   const [installedFitnessApps, setInstalledFitnessApps] = useState<
@@ -402,7 +431,6 @@ export default function FitnessDashboard() {
       stepStatus,
     ],
   );
-
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
@@ -465,34 +493,6 @@ export default function FitnessDashboard() {
           </Card>
         ) : null}
 
-        {!loading && stepStatus === "ready" && !backgroundReadGranted ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">
-              Background Health Connect sync
-            </ThemedText>
-            <ThemedText style={{ opacity: 0.7 }}>
-              Allow background Health Connect access if you want steps,
-              exercise, sleep, heart rate, and blood pressure to sync when the
-              app is not open.
-            </ThemedText>
-            <TouchableOpacity
-              onPress={() => {
-                void requestBackgroundReadAccess();
-              }}
-              style={{ marginTop: 8 }}
-            >
-              <ThemedText style={{ fontWeight: "700" }}>
-                Allow background health access
-              </ThemedText>
-            </TouchableOpacity>
-            {__DEV__ ? (
-              <ThemedText style={{ marginTop: 8, opacity: 0.7 }}>
-                Debug: background read permission is missing.
-              </ThemedText>
-            ) : null}
-          </Card>
-        ) : null}
-
         {!loading && fitnessSetupGuidance ? (
           <Card>
             <ThemedText type="defaultSemiBold">
@@ -501,6 +501,46 @@ export default function FitnessDashboard() {
             <ThemedText style={{ opacity: 0.7 }}>
               {fitnessSetupGuidance.body}
             </ThemedText>
+          </Card>
+        ) : null}
+
+        {!loading &&
+        (stepStatus === "permission-required" ||
+          stepStatus === "permission-denied" ||
+          hasMissingHealthPermissions ||
+          (stepStatus === "ready" && !backgroundReadGranted)) ? (
+          <Card>
+            <ThemedText type="defaultSemiBold">Health Connect setup</ThemedText>
+            <ThemedText style={{ opacity: 0.7 }}>
+              {getFitnessHealthSetupMessage(
+                stepStatus,
+                hasMissingHealthPermissions,
+                backgroundReadGranted,
+              )}
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => {
+                if (stepStatus === "ready" && !backgroundReadGranted) {
+                  void requestBackgroundReadAccess();
+                  return;
+                }
+                void requestAccess();
+              }}
+              style={{ marginTop: 8 }}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>
+                {stepStatus === "ready" && !backgroundReadGranted
+                  ? "Allow background health access"
+                  : hasMissingHealthPermissions
+                    ? "Allow more Health Connect access"
+                    : "Allow Health Connect access"}
+              </ThemedText>
+            </TouchableOpacity>
+            {__DEV__ && stepStatus === "ready" && !backgroundReadGranted ? (
+              <ThemedText style={{ marginTop: 8, opacity: 0.7 }}>
+                Debug: background read permission is missing.
+              </ThemedText>
+            ) : null}
           </Card>
         ) : null}
 
