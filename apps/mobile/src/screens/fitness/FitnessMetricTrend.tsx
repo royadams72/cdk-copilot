@@ -722,7 +722,11 @@ export default function FitnessMetricTrend() {
 
         const windowEnd = backfilledFromStr ? new Date(backfilledFromStr) : today;
         const windowStart = new Date(windowEnd.getTime() - 60 * 24 * 60 * 60_000);
-        const floor = new Date(today.getTime() - 365 * 24 * 60 * 60_000);
+        // Floor at account creation date so we never backfill before the user existed.
+        const accountCreatedAt = syncState.accountCreatedAt
+          ? new Date(syncState.accountCreatedAt)
+          : null;
+        const floor = accountCreatedAt ?? new Date(today.getTime() - 365 * 24 * 60 * 60_000);
         if (windowStart < floor) windowStart.setTime(floor.getTime());
 
         if (windowEnd <= windowStart) return;
@@ -749,7 +753,13 @@ export default function FitnessMetricTrend() {
           const entries = entriesByDate[dateKey];
           if (!entries || entries.length === 0) return true;
           const preferred = sortEntriesForTrendDay("steps", entries);
-          return preferred[0]?.sync?.status !== "finalized";
+          const entry = preferred[0];
+          if (!entry) return true;
+          if (entry.sync?.status !== "finalized") return true;
+          // Re-check finalized zero-step entries — HC may have real data
+          // that was unavailable when the entry was first written.
+          if (typeof entry.value !== "number" || entry.value <= 0) return true;
+          return false;
         });
 
         // Advance cursor regardless so the next session checks a new window
