@@ -138,7 +138,15 @@ export async function POST(req: NextRequest) {
         updatedBy: caller.principalId,
       };
 
-      if (item.sync) setFields.sync = item.sync;
+      if (item.sync) {
+        setFields.sync = {
+          provider: item.sync.provider,
+          status: item.sync.status,
+          ...(item.sync.dayKey ? { dayKey: item.sync.dayKey } : {}),
+          ...(item.sync.finalizedAt ? { finalizedAt: new Date(item.sync.finalizedAt) } : {}),
+          ...(item.sync.lastReconciledAt ? { lastReconciledAt: new Date(item.sync.lastReconciledAt) } : {}),
+        };
+      }
       if (typeof item.distanceMeters === "number") setFields.distanceMeters = item.distanceMeters;
       if (typeof item.caloriesKcal === "number") setFields.caloriesKcal = item.caloriesKcal;
       if (typeof item.averageSpeedKph === "number") setFields.averageSpeedKph = item.averageSpeedKph;
