@@ -76,6 +76,51 @@ export async function createMeasurementDirect(payload: CreateMeasurementArgs) {
   return body;
 }
 
+export async function measurementsBatchUpsert(payloads: CreateMeasurementArgs[]) {
+  const items = payloads.map((p) => {
+    const item: Record<string, unknown> = {
+      externalRecordId: p.externalRecordId,
+      kind: p.kind,
+      measuredAt: p.measuredAt,
+      provider: p.provider,
+    };
+    if (p.device) item.device = p.device;
+
+    if (p.kind === "heart_rate") item.bpm = p.bpm;
+    if (p.kind === "sleep") {
+      item.sleepFromAt = p.sleepFromAt;
+      item.sleepToAt = p.sleepToAt;
+      item.durationMin = p.durationMin;
+    }
+    if (p.kind === "exercise") {
+      item.durationMin = p.durationMin;
+      item.caloriesKcal = p.caloriesKcal;
+      item.exerciseId = p.exerciseId;
+      item.exerciseTitle = p.exerciseTitle;
+      item.category = p.category;
+      item.intensity = p.intensity;
+      item.met = p.met;
+    }
+    if (p.kind === "blood_pressure") {
+      item.systolicMmHg = p.systolicMmHg;
+      item.diastolicMmHg = p.diastolicMmHg;
+    }
+    return item;
+  });
+
+  const response = await authFetch(`${API}/api/measurements/provider-batch-upsert`, {
+    body: JSON.stringify({ items }),
+    method: "POST",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Batch upsert failed");
+  }
+}
+
 export function buildHealthConnectStepSyncMeta(
   dayKey: string,
   status: "finalized" | "provisional",

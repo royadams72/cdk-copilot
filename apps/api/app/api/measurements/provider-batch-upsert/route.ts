@@ -189,7 +189,6 @@ export async function POST(req: NextRequest) {
         orgId,
         provider: item.provider,
         receivedAt: now,
-        source: "provider",
         updatedAt: now,
         updatedBy: caller.principalId,
       };
@@ -250,9 +249,44 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const result = await db
-      .collection(COLLECTIONS.MeasurementsLedger)
-      .bulkWrite(operations, { ordered: false });
+    let result;
+    try {
+      result = await db
+        .collection(COLLECTIONS.MeasurementsLedger)
+        .bulkWrite(operations, { ordered: false });
+    } catch (bulkErr: any) {
+      // MongoBulkWriteError is thrown even with ordered:false when any write
+      // fails. The partial result is available on err.result — use it so
+      // successful operations are not silently lost.
+      const partialResult = bulkErr?.result;
+      const writeErrors: unknown[] = bulkErr?.writeErrors ?? [];
+      const firstMessage: string =
+        writeErrors.length > 0
+          ? (writeErrors[0] as any)?.errmsg ?? (writeErrors[0] as any)?.message ?? bulkErr.message
+          : bulkErr.message ?? "Bulk write error";
+
+      console.error("provider-batch-upsert bulkWrite error", {
+        firstMessage,
+        writeErrorCount: writeErrors.length,
+        inserted: partialResult?.upsertedCount ?? 0,
+        matched: partialResult?.matchedCount ?? 0,
+        modified: partialResult?.modifiedCount ?? 0,
+      });
+
+      // If some operations succeeded, return them alongside the error count.
+      if (partialResult && (partialResult.upsertedCount + partialResult.matchedCount) > 0) {
+        return ok({
+          errors: writeErrors.length,
+          firstError: firstMessage,
+          inserted: partialResult.upsertedCount,
+          matched: partialResult.matchedCount,
+          modified: partialResult.modifiedCount,
+          total: items.length,
+        });
+      }
+
+      return bad(firstMessage, undefined, 422);
+    }
 
     return ok({
       inserted: result.upsertedCount,
