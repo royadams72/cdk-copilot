@@ -198,6 +198,26 @@ export function useStepCount(goal = 10000) {
       setStatus(result.status);
       setStepsToday(result.stepsToday);
       setBackgroundReadGranted(result.backgroundReadGranted);
+
+      // Continue into background access as part of the same setup flow.
+      // Opens HC > CKD Copilot > Additional access immediately after the
+      // main permission grant so the user completes both steps in one pass.
+      if (!result.backgroundReadGranted) {
+        await healthConnect.requestPermission([
+          ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
+        ]);
+        const refreshed = await loadAndroidStepState();
+        setCanRequestPermission(refreshed.canRequestPermission);
+        setDataOrigins(refreshed.dataOrigins);
+        setDebug(refreshed.debug);
+        setHasAnyMeasurementAccess(refreshed.hasAnyMeasurementAccess);
+        setMissingHealthPermissions(refreshed.missingHealthPermissions);
+        setSelectedDataOrigin(refreshed.selectedDataOrigin);
+        setSummary(refreshed.summary);
+        setStatus(refreshed.status);
+        setStepsToday(refreshed.stepsToday);
+        setBackgroundReadGranted(refreshed.backgroundReadGranted);
+      }
     } catch (error) {
       console.log("Health Connect permission request failed", {
         error: toErrorMessage(error),

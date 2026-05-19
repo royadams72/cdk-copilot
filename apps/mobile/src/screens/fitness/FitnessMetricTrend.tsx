@@ -16,6 +16,7 @@ import {
   type StepActivitySummary,
 } from "@/lib/healthConnectStepSummary";
 import {
+  backfillHealthConnectMeasurementDates,
   readHealthConnectHeartRateEntriesForDate,
 } from "@/lib/healthConnectSync";
 import { backfillHealthConnectStepDates } from "@/lib/healthConnectStepSync";
@@ -780,6 +781,52 @@ export default function FitnessMetricTrend() {
 
     void run();
   // entriesByDate reference is stable per history load; history is the trigger
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history, kind]);
+
+  // Backfill sleep, exercise, and heart_rate when their trend screens load.
+  // Checks the last 30 days for missing entries and imports any HC data found.
+  useEffect(() => {
+    if (
+      kind !== "sleep" && kind !== "exercise" && kind !== "heart_rate" ||
+      Platform.OS !== "android" ||
+      !history
+    ) return;
+
+    const sessionKey = `${kind}-history-backfill`;
+    if (completedBackfillWindowKeys.has(sessionKey)) return;
+    completedBackfillWindowKeys.add(sessionKey);
+
+    const run = async () => {
+      try {
+        const today = new Date();
+        const todayKey = localDateKey(today);
+        const missingDateKeys: string[] = [];
+
+        for (let i = 1; i <= 30; i++) {
+          const dk = localDateKey(new Date(today.getTime() - i * 24 * 60 * 60_000));
+          if (dk >= todayKey) continue;
+          const entries = entriesByDate[dk];
+          if (!entries || entries.length === 0) {
+            missingDateKeys.push(dk);
+          }
+        }
+
+        if (!missingDateKeys.length) return;
+
+        await backfillHealthConnectMeasurementDates(
+          kind as "sleep" | "exercise" | "heart_rate",
+          missingDateKeys,
+          { windowKey: `${kind}-screen-30d` },
+        );
+      } catch (err) {
+        completedBackfillWindowKeys.delete(sessionKey);
+        console.log(`${kind} history backfill failed`, err instanceof Error ? err.message : err);
+      }
+    };
+
+    void run();
+  // entriesByDate is stable per history load; history is the trigger
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history, kind]);
 

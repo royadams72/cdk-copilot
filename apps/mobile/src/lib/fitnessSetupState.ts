@@ -77,6 +77,13 @@ export function buildFitnessSetupGuidance(args: {
   stepDataOrigins: string[];
   stepStatus: string;
 }) {
+  // No measurements at all means the user just signed up and nothing has synced yet —
+  // not that their health app is misconfigured. Show nothing until we have at least
+  // one measurement to reason about.
+  if (!args.items.length) {
+    return null;
+  }
+
   const missing = missingKinds(args.items);
   if (!missing.length || args.stepStatus === "health-connect-unavailable") {
     return null;

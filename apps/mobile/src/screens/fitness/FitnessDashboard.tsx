@@ -239,7 +239,7 @@ function getFitnessHealthSetupMessage(
   backgroundReadGranted: boolean,
 ) {
   if (stepStatus === "ready" && !backgroundReadGranted) {
-    return "Allow background Health Connect access if you want steps, exercise, sleep, heart rate, and blood pressure to sync when the app is not open.";
+    return "Background sync is not yet enabled. In Health Connect, open CKD Copilot, scroll to Additional access, and allow background reading so data syncs while the app is closed.";
   }
 
   if (hasMissingHealthPermissions && stepStatus === "ready") {
@@ -510,7 +510,11 @@ export default function FitnessDashboard() {
           hasMissingHealthPermissions ||
           (stepStatus === "ready" && !backgroundReadGranted)) ? (
           <Card>
-            <ThemedText type="defaultSemiBold">Health Connect setup</ThemedText>
+            <ThemedText type="defaultSemiBold">
+              {stepStatus === "ready" && !backgroundReadGranted
+                ? "Allow additional Health Connect access"
+                : "Health Connect setup"}
+            </ThemedText>
             <ThemedText style={{ opacity: 0.7 }}>
               {getFitnessHealthSetupMessage(
                 stepStatus,
@@ -530,17 +534,12 @@ export default function FitnessDashboard() {
             >
               <ThemedText style={{ fontWeight: "700" }}>
                 {stepStatus === "ready" && !backgroundReadGranted
-                  ? "Allow background health access"
+                  ? "Open Additional access in Health Connect"
                   : hasMissingHealthPermissions
                     ? "Allow more Health Connect access"
                     : "Allow Health Connect access"}
               </ThemedText>
             </TouchableOpacity>
-            {__DEV__ && stepStatus === "ready" && !backgroundReadGranted ? (
-              <ThemedText style={{ marginTop: 8, opacity: 0.7 }}>
-                Debug: background read permission is missing.
-              </ThemedText>
-            ) : null}
           </Card>
         ) : null}
 
