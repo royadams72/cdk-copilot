@@ -1,7 +1,5 @@
 import { Platform } from "react-native";
 
-import { authFetch } from "@/lib/authFetch";
-import { API } from "@/constants/api";
 import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import { ANDROID_HEALTH_RECORD_PERMISSIONS } from "@/lib/healthConnectPermissions";
 import {
@@ -10,6 +8,7 @@ import {
   type HealthRecord,
   isHealthConnectQuotaError,
   localDateKey,
+  measurementsBatchUpsert,
   readRecentRecords,
   representativeHeartRatePayload,
   toMeasurementPayloads,
@@ -92,62 +91,33 @@ async function syncHealthConnectRecordsFromWindows(
   recordTypes: HealthRecordType[],
   syncState: HealthConnectSyncStateResponse,
 ) {
-  let uploads = 0;
   const changedKinds = new Set<CreateMeasurementArgs["kind"]>();
   const latestSyncedAtByType: Partial<Record<SyncStateRecordType, string>> = {};
 
+  // Collect qualifying payloads across all record types first.
+  const batch: CreateMeasurementArgs[] = [];
+  const batchKeys: string[] = [];
+  const batchRecordTypes: HealthRecordType[] = [];
+  let quotaExceeded = false;
+
   for (const recordType of recordTypes) {
-    if (uploads >= MAX_UPLOADS_PER_SYNC) {
-      break;
-    }
+    if (batch.length >= MAX_UPLOADS_PER_SYNC) break;
 
     try {
       const syncWindow = healthConnectSyncWindow(syncState, recordType);
-      const records = await readRecentRecords(
-        healthConnect,
-        recordType,
-        syncWindow,
-      );
+      const records = await readRecentRecords(healthConnect, recordType, syncWindow);
       const payloads = toMeasurementPayloads(recordType, records).sort((a, b) =>
         String(b.measuredAt ?? "").localeCompare(String(a.measuredAt ?? "")),
       );
 
       for (const payload of payloads) {
-        if (!payload.externalRecordId || uploads >= MAX_UPLOADS_PER_SYNC) {
-          continue;
-        }
-
+        if (!payload.externalRecordId || batch.length >= MAX_UPLOADS_PER_SYNC) continue;
         const syncKey = `${payload.externalRecordId}:${payload.measuredAt}`;
         const retryAfter = failedMeasurementRetryAt.get(syncKey) ?? 0;
-
-        if (syncedMeasurementKeys.has(syncKey) || retryAfter > Date.now()) {
-          continue;
-        }
-
-        try {
-          await createMeasurementDirect(payload);
-          syncedMeasurementKeys.add(syncKey);
-          failedMeasurementRetryAt.delete(syncKey);
-          changedKinds.add(payload.kind);
-          const syncType = syncStateRecordType(recordType);
-          if (
-            payload.measuredAt &&
-            (!latestSyncedAtByType[syncType] ||
-              payload.measuredAt.localeCompare(latestSyncedAtByType[syncType]!) > 0)
-          ) {
-            latestSyncedAtByType[syncType] = payload.measuredAt;
-          }
-          uploads += 1;
-        } catch (error) {
-          failedMeasurementRetryAt.set(syncKey, Date.now() + failedMeasurementRetryMs());
-          console.log("Health Connect record sync failed", {
-            error,
-            externalRecordId: payload.externalRecordId,
-            kind: payload.kind,
-            measuredAt: payload.measuredAt,
-            recordType,
-          });
-        }
+        if (syncedMeasurementKeys.has(syncKey) || retryAfter > Date.now()) continue;
+        batch.push(payload);
+        batchKeys.push(syncKey);
+        batchRecordTypes.push(recordType);
       }
     } catch (error) {
       if (isHealthConnectQuotaError(error)) {
@@ -155,21 +125,38 @@ async function syncHealthConnectRecordsFromWindows(
           Date.now() + HEALTH_CONNECT_QUOTA_COOLDOWN_MS;
         console.log("Health Connect quota exceeded, pausing sync", {
           recordType,
-          retryAt: new Date(
-            healthConnectRuntimeState.lastHealthConnectQuotaRetryAt,
-          ).toISOString(),
+          retryAt: new Date(healthConnectRuntimeState.lastHealthConnectQuotaRetryAt).toISOString(),
         });
+        quotaExceeded = true;
         break;
       }
-
-      console.log("Health Connect record read failed", {
-        error,
-        recordType,
-      });
+      console.log("Health Connect record read failed", { error, recordType });
     }
   }
 
-  return { changedKinds, latestSyncedAtByType, uploads };
+  if (!quotaExceeded && batch.length > 0) {
+    try {
+      await measurementsBatchUpsert(batch);
+      for (let i = 0; i < batch.length; i++) {
+        syncedMeasurementKeys.add(batchKeys[i]!);
+        failedMeasurementRetryAt.delete(batchKeys[i]!);
+        changedKinds.add(batch[i]!.kind);
+        const syncType = syncStateRecordType(batchRecordTypes[i]!);
+        const measuredAt = batch[i]!.measuredAt;
+        if (measuredAt && (!latestSyncedAtByType[syncType] || measuredAt.localeCompare(latestSyncedAtByType[syncType]!) > 0)) {
+          latestSyncedAtByType[syncType] = measuredAt;
+        }
+      }
+    } catch (error) {
+      const retryAt = Date.now() + failedMeasurementRetryMs();
+      for (const key of batchKeys) {
+        failedMeasurementRetryAt.set(key, retryAt);
+      }
+      console.log("Health Connect window sync batch failed", { error, count: batch.length });
+    }
+  }
+
+  return { changedKinds, latestSyncedAtByType, uploads: batch.length };
 }
 
 async function syncHealthConnectRecordsFromChanges(
@@ -177,11 +164,15 @@ async function syncHealthConnectRecordsFromChanges(
   token: string,
   recordTypes: ReadonlySet<HealthRecordType>,
 ) {
-  let uploads = 0;
   let deletionCount = 0;
   let nextToken = token;
   const changedKinds = new Set<CreateMeasurementArgs["kind"]>();
   const latestSyncedAtByType: Partial<Record<SyncStateRecordType, string>> = {};
+
+  // Collect qualifying payloads across all change pages first.
+  const batch: CreateMeasurementArgs[] = [];
+  const batchKeys: string[] = [];
+  const batchRecordTypes: HealthRecordType[] = [];
 
   for (;;) {
     const changes = await healthConnect.getChanges({ changesToken: nextToken });
@@ -192,7 +183,7 @@ async function syncHealthConnectRecordsFromChanges(
         deletionCount,
         latestSyncedAtByType,
         nextToken: null,
-        uploads,
+        uploads: 0,
       };
     }
 
@@ -200,63 +191,52 @@ async function syncHealthConnectRecordsFromChanges(
     deletionCount += changes.deletionChanges.length;
 
     for (const upsertion of changes.upsertionChanges) {
-      const record = upsertion.record as unknown as HealthRecord & {
-        recordType?: string;
-      };
+      if (batch.length >= MAX_UPLOADS_PER_SYNC) break;
+      const record = upsertion.record as unknown as HealthRecord & { recordType?: string };
       const recordType = record.recordType;
       if (
         typeof recordType !== "string" ||
         !isHealthConnectSyncRecordType(recordType) ||
         !recordTypes.has(recordType)
-      ) {
-        continue;
-      }
+      ) continue;
 
       const payloads = toMeasurementPayloads(recordType, [record]).sort(
         (a, b) => String(b.measuredAt ?? "").localeCompare(String(a.measuredAt ?? "")),
       );
 
       for (const payload of payloads) {
-        if (!payload.externalRecordId || uploads >= MAX_UPLOADS_PER_SYNC) {
-          continue;
-        }
-
+        if (!payload.externalRecordId || batch.length >= MAX_UPLOADS_PER_SYNC) continue;
         const syncKey = `${payload.externalRecordId}:${payload.measuredAt}`;
         const retryAfter = failedMeasurementRetryAt.get(syncKey) ?? 0;
-
-        if (syncedMeasurementKeys.has(syncKey) || retryAfter > Date.now()) {
-          continue;
-        }
-
-        try {
-          await createMeasurementDirect(payload);
-          syncedMeasurementKeys.add(syncKey);
-          failedMeasurementRetryAt.delete(syncKey);
-          changedKinds.add(payload.kind);
-          const syncType = syncStateRecordType(recordType);
-          if (
-            payload.measuredAt &&
-            (!latestSyncedAtByType[syncType] ||
-              payload.measuredAt.localeCompare(latestSyncedAtByType[syncType]!) > 0)
-          ) {
-            latestSyncedAtByType[syncType] = payload.measuredAt;
-          }
-          uploads += 1;
-        } catch (error) {
-          failedMeasurementRetryAt.set(syncKey, Date.now() + failedMeasurementRetryMs());
-          console.log("Health Connect change sync failed", {
-            error,
-            externalRecordId: payload.externalRecordId,
-            kind: payload.kind,
-            measuredAt: payload.measuredAt,
-            recordType,
-          });
-        }
+        if (syncedMeasurementKeys.has(syncKey) || retryAfter > Date.now()) continue;
+        batch.push(payload);
+        batchKeys.push(syncKey);
+        batchRecordTypes.push(recordType as HealthRecordType);
       }
     }
 
-    if (!changes.hasMore || uploads >= MAX_UPLOADS_PER_SYNC) {
-      break;
+    if (!changes.hasMore || batch.length >= MAX_UPLOADS_PER_SYNC) break;
+  }
+
+  if (batch.length > 0) {
+    try {
+      await measurementsBatchUpsert(batch);
+      for (let i = 0; i < batch.length; i++) {
+        syncedMeasurementKeys.add(batchKeys[i]!);
+        failedMeasurementRetryAt.delete(batchKeys[i]!);
+        changedKinds.add(batch[i]!.kind);
+        const syncType = syncStateRecordType(batchRecordTypes[i]!);
+        const measuredAt = batch[i]!.measuredAt;
+        if (measuredAt && (!latestSyncedAtByType[syncType] || measuredAt.localeCompare(latestSyncedAtByType[syncType]!) > 0)) {
+          latestSyncedAtByType[syncType] = measuredAt;
+        }
+      }
+    } catch (error) {
+      const retryAt = Date.now() + failedMeasurementRetryMs();
+      for (const key of batchKeys) {
+        failedMeasurementRetryAt.set(key, retryAt);
+      }
+      console.log("Health Connect changes sync batch failed", { error, count: batch.length });
     }
   }
 
@@ -266,7 +246,7 @@ async function syncHealthConnectRecordsFromChanges(
     deletionCount,
     latestSyncedAtByType,
     nextToken,
-    uploads,
+    uploads: batch.length,
   };
 }
 
@@ -486,53 +466,6 @@ export async function backfillHealthConnectMeasurementDates(
     return { attempted, resolvedDays: resolvedDateKeys.size, uploaded: allPayloads.length };
   } finally {
     healthConnectRuntimeState.inFlightBackfillWindowKeys.delete(inFlightKey);
-  }
-}
-
-async function measurementsBatchUpsert(payloads: CreateMeasurementArgs[]) {
-  const items = payloads.map((p) => {
-    const item: Record<string, unknown> = {
-      externalRecordId: p.externalRecordId,
-      kind: p.kind,
-      measuredAt: p.measuredAt,
-      provider: p.provider,
-    };
-    if (p.device) item.device = p.device;
-
-    if (p.kind === "heart_rate") {
-      item.bpm = p.bpm;
-    }
-    if (p.kind === "sleep") {
-      item.sleepFromAt = p.sleepFromAt;
-      item.sleepToAt = p.sleepToAt;
-      item.durationMin = p.durationMin;
-    }
-    if (p.kind === "exercise") {
-      item.durationMin = p.durationMin;
-      item.caloriesKcal = p.caloriesKcal;
-      item.exerciseId = p.exerciseId;
-      item.exerciseTitle = p.exerciseTitle;
-      item.category = p.category;
-      item.intensity = p.intensity;
-      item.met = p.met;
-    }
-    if (p.kind === "blood_pressure") {
-      item.systolicMmHg = p.systolicMmHg;
-      item.diastolicMmHg = p.diastolicMmHg;
-    }
-    return item;
-  });
-
-  const response = await authFetch(`${API}/api/measurements/provider-batch-upsert`, {
-    body: JSON.stringify({ items }),
-    method: "POST",
-  });
-  const body = (await response.json().catch(() => null)) as
-    | { message?: string; ok?: boolean }
-    | null;
-
-  if (!response.ok || !body?.ok) {
-    throw new Error(body?.message ?? "Batch upsert failed");
   }
 }
 

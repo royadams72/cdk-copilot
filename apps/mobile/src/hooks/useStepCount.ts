@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AppState, Platform } from "react-native";
 
 import {
@@ -37,6 +37,7 @@ export function useStepCount(goal = 10000) {
   );
   const [debug, setDebug] = useState<StepDebug | null>(null);
   const [backgroundReadGranted, setBackgroundReadGranted] = useState(false);
+  const isRequestingPermissionRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -164,6 +165,8 @@ export function useStepCount(goal = 10000) {
 
   const requestAccess = async () => {
     if (Platform.OS !== "android" || !canRequestPermission) return;
+    if (isRequestingPermissionRef.current) return;
+    isRequestingPermissionRef.current = true;
 
     try {
       const healthConnect = await import("react-native-health-connect");
@@ -223,11 +226,15 @@ export function useStepCount(goal = 10000) {
         error: toErrorMessage(error),
       });
       setStatus("error");
+    } finally {
+      isRequestingPermissionRef.current = false;
     }
   };
 
   const requestBackgroundReadAccess = async () => {
     if (Platform.OS !== "android") return;
+    if (isRequestingPermissionRef.current) return;
+    isRequestingPermissionRef.current = true;
 
     try {
       const healthConnect = await import("react-native-health-connect");
@@ -285,6 +292,8 @@ export function useStepCount(goal = 10000) {
           },
         ],
       );
+    } finally {
+      isRequestingPermissionRef.current = false;
     }
   };
 
