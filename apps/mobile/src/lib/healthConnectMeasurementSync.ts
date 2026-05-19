@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { authFetch } from "@/lib/authFetch";
+import { API } from "@/constants/api";
 import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import { ANDROID_HEALTH_RECORD_PERMISSIONS } from "@/lib/healthConnectPermissions";
 import {
@@ -421,8 +423,6 @@ export async function backfillHealthConnectMeasurementDates(
 
   healthConnectRuntimeState.inFlightBackfillWindowKeys.add(inFlightKey);
   let attempted = 0;
-  let resolvedDays = 0;
-  let uploaded = 0;
 
   try {
     const healthConnect = await import("react-native-health-connect");
@@ -446,47 +446,93 @@ export async function backfillHealthConnectMeasurementDates(
       throw new Error("Health Connect permission is missing for this metric.");
     }
 
+    // Collect all payloads across every day first, then send as one batch.
+    const allPayloads: CreateMeasurementArgs[] = [];
+
     for (const dateKey of orderedDateKeys) {
       const timeRange = dayRangeForDateKey(dateKey);
-      if (!timeRange) {
-        continue;
-      }
-
+      if (!timeRange) continue;
       attempted += 1;
-      let resolvedForDay = false;
 
       for (const recordType of recordTypes) {
         const records = await readRecentRecords(healthConnect, recordType, timeRange);
-        const payloads = toMeasurementPayloads(recordType, records);
+        const dayPayloads = toMeasurementPayloads(recordType, records);
+
         if (kind === "heart_rate") {
-          const representativePayload = representativeHeartRatePayload(payloads);
-          if (representativePayload) {
-            await createMeasurementDirect(representativePayload);
-            resolvedForDay = true;
-            uploaded += 1;
-          }
+          // One representative reading per record-type per day to avoid
+          // uploading 20+ individual samples per day.
+          const representative = representativeHeartRatePayload(dayPayloads);
+          if (representative) allPayloads.push(representative);
           continue;
         }
 
-        for (const payload of payloads) {
-          await createMeasurementDirect(payload);
-          resolvedForDay = true;
-          uploaded += 1;
-        }
-      }
-
-      if (resolvedForDay) {
-        resolvedDays += 1;
+        allPayloads.push(...dayPayloads);
       }
     }
 
-    if (uploaded > 0) {
-      invalidateMeasurementCaches(kind, { includeHistory: true });
+    if (!allPayloads.length) {
+      return { attempted, resolvedDays: 0, uploaded: 0 };
     }
 
-    return { attempted, resolvedDays, uploaded };
+    await measurementsBatchUpsert(allPayloads);
+    invalidateMeasurementCaches(kind, { includeHistory: true });
+
+    const resolvedDateKeys = new Set(
+      allPayloads
+        .map((p) => (p.measuredAt ? localDateKey(new Date(p.measuredAt)) : null))
+        .filter((dk): dk is string => dk !== null),
+    );
+
+    return { attempted, resolvedDays: resolvedDateKeys.size, uploaded: allPayloads.length };
   } finally {
     healthConnectRuntimeState.inFlightBackfillWindowKeys.delete(inFlightKey);
+  }
+}
+
+async function measurementsBatchUpsert(payloads: CreateMeasurementArgs[]) {
+  const items = payloads.map((p) => {
+    const item: Record<string, unknown> = {
+      externalRecordId: p.externalRecordId,
+      kind: p.kind,
+      measuredAt: p.measuredAt,
+      provider: p.provider,
+    };
+    if (p.device) item.device = p.device;
+
+    if (p.kind === "heart_rate") {
+      item.bpm = p.bpm;
+    }
+    if (p.kind === "sleep") {
+      item.sleepFromAt = p.sleepFromAt;
+      item.sleepToAt = p.sleepToAt;
+      item.durationMin = p.durationMin;
+    }
+    if (p.kind === "exercise") {
+      item.durationMin = p.durationMin;
+      item.caloriesKcal = p.caloriesKcal;
+      item.exerciseId = p.exerciseId;
+      item.exerciseTitle = p.exerciseTitle;
+      item.category = p.category;
+      item.intensity = p.intensity;
+      item.met = p.met;
+    }
+    if (p.kind === "blood_pressure") {
+      item.systolicMmHg = p.systolicMmHg;
+      item.diastolicMmHg = p.diastolicMmHg;
+    }
+    return item;
+  });
+
+  const response = await authFetch(`${API}/api/measurements/provider-batch-upsert`, {
+    body: JSON.stringify({ items }),
+    method: "POST",
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { message?: string; ok?: boolean }
+    | null;
+
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message ?? "Batch upsert failed");
   }
 }
 

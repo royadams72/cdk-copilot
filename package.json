@@ -37,6 +37,7 @@
     "db:cleanup:auth-tokens": "tsx scripts/cleanup-auth-tokens.ts",
     "db:cleanup:steps": "tsx scripts/cleanup-steps-ledger.ts",
     "db:cleanup:heart-rate": "tsx scripts/cleanup-heart-rate-ledger.ts",
+    "db:delete:user": "tsx scripts/delete-user-by-patient-id.ts",
     "ingest:dmd": "tsx scripts/ingest-dmd.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "mobile:reverse": "pnpm --filter ./apps/mobile run android:reverse",
