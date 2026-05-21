@@ -25,11 +25,12 @@ import { PrimaryButton, SecondaryButton } from "../components/Buttons";
 import { DateField } from "../components/DateField";
 import { OnboardingFormScreen } from "../components/Onboarding";
 
-type SexAtBirth = TPiiInput["sexAtBirth"];
+type SexAtBirth = TPiiInput["sexAtBirth"] | "";
 type Units = TPiiInput["units"];
 type GenderIdentitySameAsBirth = "yes" | "no" | "prefer_not_to_say" | "unknown";
 
 const SEX_AT_BIRTH_OPTIONS: Array<{ label: string; value: SexAtBirth }> = [
+  { label: "Select", value: "" },
   { label: "Female", value: "female" },
   { label: "Male", value: "male" },
   { label: "Intersex", value: "intersex" },
@@ -172,13 +173,11 @@ function toUkPhoneE164(input: string) {
   return `+44${digits}`;
 }
 
-function normalizePiiFormValues(
-  value: Partial<TPiiInput>,
-): Partial<TPiiInput> {
+function normalizePiiFormValues(value: Partial<TPiiInput>): Partial<TPiiInput> {
   const normalizedDob =
     value.dateOfBirth instanceof Date
       ? value.dateOfBirth.toISOString()
-      : value.dateOfBirth ?? null;
+      : (value.dateOfBirth ?? null);
 
   return {
     ...value,
@@ -217,7 +216,7 @@ export default function OnboardingPiiForm({
       firstName: "",
       lastName: "",
       dateOfBirth: null,
-      sexAtBirth: "unknown",
+      sexAtBirth: "" as TPiiInput["sexAtBirth"],
       genderIdentity: null,
       ethnicity: null,
       units: "metric",

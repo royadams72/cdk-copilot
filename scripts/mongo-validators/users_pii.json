@@ -9,18 +9,18 @@
         "orgId": { "bsonType": "string" },
         "firstName": { "bsonType": "string" },
         "lastName": { "bsonType": "string" },
-        "dateOfBirth": { "bsonType": "date" },
+        "dateOfBirth": { "bsonType": ["date", "null"] },
         "sexAtBirth": {
           "bsonType": "string",
           "enum": ["female", "male", "intersex", "unknown"]
         },
-        "genderIdentity": { "bsonType": "string" },
-        "ethnicity": { "bsonType": "string" },
+        "genderIdentity": { "bsonType": ["string", "null"] },
+        "ethnicity": { "bsonType": ["string", "null"] },
         "units": {
           "bsonType": "string",
           "enum": ["metric", "imperial"]
         },
-        "phoneE164": { "bsonType": "string" },
+        "phoneE164": { "bsonType": ["string", "null"] },
         "email": { "bsonType": "string" },
         "address": {
           "bsonType": "object",

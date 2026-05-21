@@ -23,44 +23,46 @@ const IanaTz = z
 const LangTag = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/);
 
 const Device = z.object({
+  lastSeenAt: z.coerce.date().optional(),
   platform: Platform,
   pushToken: z.string().optional(),
-  lastSeenAt: z.coerce.date().optional(),
 });
 
 const Integrations = z.object({
   appleHealth: z
-    .object({ linked: z.boolean(), lastSyncAt: z.coerce.date().optional() })
+    .object({ lastSyncAt: z.coerce.date().optional(), linked: z.boolean() })
     .optional(),
   googleFit: z
-    .object({ linked: z.boolean(), lastSyncAt: z.coerce.date().optional() })
+    .object({ lastSyncAt: z.coerce.date().optional(), linked: z.boolean() })
     .optional(),
   withings: z
-    .object({ linked: z.boolean(), lastSyncAt: z.coerce.date().optional() })
+    .object({ lastSyncAt: z.coerce.date().optional(), linked: z.boolean() })
     .optional(),
 });
 
 export const UserPII_Common = z.object({
-  email: EmailLower,
-  orgId: z.string().optional(),
-  emailVerifiedAt: z.coerce.date().nullable().optional(),
-  phoneE164: E164.nullable().optional(),
-  principalId: PrincipalId,
-
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  dateOfBirth: z.coerce.date().nullable().optional(),
-  sexAtBirth: SexAtBirth.optional(),
-  genderIdentity: z.string().nullable().optional(),
-  ethnicity: z.string().nullable().optional(),
-
+  consentAppTosAt: z.coerce.date(),
+  consentPrivacyAt: z.coerce.date(),
+  consentResearchAt: z.coerce.date().nullable().optional(),
   country: IsoCountry2.default("GB"),
-  timeZone: IanaTz.default("Europe/London"),
-  units: Units.default("metric"),
-  language: LangTag.default("en-GB"),
+  createdAt: z.coerce.date().optional(),
 
-  onboardingCompleted: z.boolean().default(false),
-  onboardingSteps: z.array(z.string()).default([]),
+  createdBy: z.string().optional(),
+  dataSharingScope: DataSharingScope.default("standard"),
+  dateOfBirth: z.coerce.date().nullable().optional(),
+  devices: z.array(Device).default([]),
+  email: EmailLower,
+  emailVerifiedAt: z.coerce.date().nullable().optional(),
+
+  ethnicity: z.string().nullable().optional(),
+  firstName: z.string().optional(),
+  genderIdentity: z.string().nullable().optional(),
+  integrations: Integrations.default({}),
+
+  language: LangTag.default("en-GB"),
+  lastActiveAt: z.coerce.date().nullable().optional(),
+
+  lastName: z.string().optional(),
 
   notificationPrefs: z
     .object({
@@ -69,21 +71,19 @@ export const UserPII_Common = z.object({
       sms: z.boolean().default(false),
     })
     .default({ email: true, push: true, sms: false }),
+  onboardingCompleted: z.boolean().default(false),
 
-  integrations: Integrations.default({}),
-  devices: z.array(Device).default([]),
+  onboardingSteps: z.array(z.string()).default([]),
+  orgId: z.string().optional(),
+  phoneE164: E164.nullable().optional(),
 
-  consentAppTosAt: z.coerce.date(),
-  consentPrivacyAt: z.coerce.date(),
-  consentResearchAt: z.coerce.date().nullable().optional(),
-
+  principalId: PrincipalId,
   pseudonymId: PseudonymId,
-  dataSharingScope: DataSharingScope.default("standard"),
 
-  lastActiveAt: z.coerce.date().nullable().optional(),
-  status: UserStatus.default("active"),
-  createdAt: z.coerce.date().optional(),
-  createdBy: z.string().optional(),
   requestId: z.string().optional(),
+  sexAtBirth: SexAtBirth.optional(),
+  status: UserStatus.default("active"),
+  timeZone: IanaTz.default("Europe/London"),
+  units: Units.default("metric"),
   updatedAt: z.coerce.date().optional(),
 });

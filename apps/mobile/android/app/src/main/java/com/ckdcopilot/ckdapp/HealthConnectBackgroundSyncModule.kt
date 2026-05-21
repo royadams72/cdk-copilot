@@ -1,9 +1,7 @@
 package com.ckdcopilot.ckdapp
 
-import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -29,14 +27,10 @@ class HealthConnectBackgroundSyncModule(
   fun ensureScheduled(promise: Promise) {
     executor.execute {
       try {
-        val constraints = Constraints.Builder()
-          .setRequiredNetworkType(NetworkType.CONNECTED)
-          .build()
         val request = PeriodicWorkRequestBuilder<HealthConnectBackgroundSyncWorker>(
           15,
           TimeUnit.MINUTES
         )
-          .setConstraints(constraints)
           .build()
 
         WorkManager.getInstance(reactApplicationContext).enqueueUniquePeriodicWork(
@@ -57,11 +51,6 @@ class HealthConnectBackgroundSyncModule(
     executor.execute {
       try {
         val request = OneTimeWorkRequestBuilder<HealthConnectBackgroundSyncWorker>()
-          .setConstraints(
-            Constraints.Builder()
-              .setRequiredNetworkType(NetworkType.CONNECTED)
-              .build()
-          )
           .build()
 
         WorkManager.getInstance(reactApplicationContext).enqueueUniqueWork(
