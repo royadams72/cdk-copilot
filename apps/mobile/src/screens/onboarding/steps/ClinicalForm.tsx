@@ -49,7 +49,7 @@ export default function ClinicalForm({
     formState: { errors, isSubmitting },
   } = useForm<TClinicalFormValues>({
     defaultValues: {
-      ckdStage: defaults?.ckdStage ?? "",
+      ckdStage: defaults?.ckdStage ?? undefined,
       egfrCurrent: defaults?.egfrCurrent ?? "",
       acrCategory: defaults?.acrCategory ?? "",
       dialysisStatus: defaults?.dialysisStatus ?? "none",
@@ -111,9 +111,7 @@ export default function ClinicalForm({
           ...(member.org?.trim() ? { org: member.org.trim() } : {}),
           ...(member.contact?.trim() ? { contact: member.contact.trim() } : {}),
         })),
-      ckdStage: values.ckdStage
-        ? (values.ckdStage as TUserClinicalUpdate["ckdStage"])
-        : null,
+      ckdStage: values.ckdStage as TUserClinicalUpdate["ckdStage"],
       diagnoses: values.diagnoses
         .filter((dx) => dx.label.trim().length)
         .map((dx) => ({
@@ -124,11 +122,9 @@ export default function ClinicalForm({
       dietaryPreferences: values.dietaryPreferences
         .map((item) => item.value.trim())
         .filter(Boolean),
-      egfrCurrent: values.egfrCurrent?.trim()
-        ? Number(values.egfrCurrent)
-        : undefined,
-      heightCm: values.heightCm?.trim() ? Number(values.heightCm) : undefined,
-      weightKg: values.weightKg?.trim() ? Number(values.weightKg) : undefined,
+      egfrCurrent: Number(values.egfrCurrent),
+      heightCm: Number(values.heightCm),
+      weightKg: Number(values.weightKg),
     };
 
     try {
@@ -246,6 +242,7 @@ export default function ClinicalForm({
                 void persistIfValid("weightKg");
               }}
               keyboardType="numeric"
+              error={errors.weightKg?.message}
             />
           )}
         />
@@ -262,6 +259,7 @@ export default function ClinicalForm({
                 void persistIfValid("heightCm");
               }}
               keyboardType="numeric"
+              error={errors.heightCm?.message}
             />
           )}
         />

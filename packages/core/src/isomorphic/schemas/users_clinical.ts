@@ -5,6 +5,11 @@ import {
   ObjectIdString,
   PrincipalId,
 } from "./common";
+const errors = {
+  egfr: "Please enter a valid eGFR",
+  height: "Please enter a valid height",
+  weight: "Please enter a valid weight",
+};
 
 export const DialysisStatus = z.enum([
   "none",
@@ -35,7 +40,14 @@ export const UserClinical_Base = z.object({
   patientId: ObjectIdString, // Foreign Key (FK) → patients._id
   principalId: PrincipalId.optional(),
   ckdStage: CKDStage.nullable().optional(), // CKD = Chronic Kidney Disease
-  egfrCurrent: z.number().positive().max(200).nullable().optional(), // eGFR = estimated Glomerular Filtration Rate (mL/min/1.73m²)
+  egfrCurrent: z
+    .number()
+    .positive()
+    .max(3)
+    .nullable()
+    .refine((v) => v !== null, {
+      message: "Please enter your last eGFR reading",
+    }), // eGFR = estimated Glomerular Filtration Rate (mL/min/1.73m²)
   acrCategory: ACR.nullable().optional(),
   dialysisStatus: DialysisStatus.default("none"),
 
@@ -47,8 +59,18 @@ export const UserClinical_Base = z.object({
 
   careTeam: z.array(CareTeamMember).default([]),
 
-  weightKg: z.number().positive().max(400).nullable().optional(),
-  heightCm: z.number().positive().max(260).nullable().optional(),
+  weightKg: z
+    .number()
+    .positive()
+    .max(400)
+    .nullable()
+    .refine((v) => v !== null, { message: "Please enter your weight" }),
+  heightCm: z
+    .number()
+    .positive()
+    .max(260)
+    .nullable()
+    .refine((v) => v !== null, { message: "Please enter your weight" }),
 
   lastClinicalUpdateAt: z.coerce.date().nullable().optional(),
   createdAt: z.coerce.date().optional(),
@@ -65,13 +87,14 @@ export const UserClinical_Create = UserClinical_Base.omit({
 });
 
 // --- Form ---
-const numberLike = z
-  .string()
-  .optional()
-  .refine(
-    (val) => !val || val.trim() === "" || !Number.isNaN(Number(val)),
-    "Enter a number",
-  );
+const numberLike = (options?: { invalid?: string; required?: string }) => {
+  const requiredMsg = options?.required ?? "This field is required";
+  const invalidMsg = options?.invalid ?? "Enter a valid number";
+  return z
+    .string()
+    .min(1, requiredMsg)
+    .refine((val) => !Number.isNaN(Number(val)), invalidMsg);
+};
 
 const LabeledString = z.object({
   value: z.string().min(1),
@@ -90,7 +113,7 @@ export const ClinicalFormSchema = z.object({
       }),
     )
     .default([]),
-  ckdStage: z.enum(["", ...CKD_STAGE_VALUES] as const),
+  ckdStage: z.enum(CKD_STAGE_VALUES, { message: "CKD stage is required" }),
   contraindications: z.array(LabeledString).default([]).optional(),
   diagnoses: z
     .array(
@@ -102,9 +125,9 @@ export const ClinicalFormSchema = z.object({
     .default([]),
   dialysisStatus: DialysisStatus,
   dietaryPreferences: z.array(LabeledString).default([]),
-  egfrCurrent: numberLike,
-  heightCm: numberLike,
-  weightKg: numberLike,
+  egfrCurrent: numberLike({ invalid: errors.egfr, required: errors.egfr }),
+  heightCm: numberLike({ invalid: errors.height, required: errors.height }),
+  weightKg: numberLike({ invalid: errors.weight, required: errors.weight }),
 });
 export const UserClinicalSummary = UserClinical_Base.pick({
   ckdStage: true,

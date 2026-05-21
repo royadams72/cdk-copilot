@@ -11,6 +11,7 @@ import {
   syncPushToken,
   syncSleepReminderNotification,
 } from "@/lib/pushNotifications";
+import { syncNativeAuthSessionMirrorFromSecureStore } from "@/lib/authSession";
 import { ensureNativeHealthConnectBackgroundSyncScheduled } from "@/lib/healthConnectNativeSync";
 import { store, persistor } from "@/store";
 
@@ -31,6 +32,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync("#FFFFFF");
+    void syncNativeAuthSessionMirrorFromSecureStore();
     void syncPushToken();
     void syncSleepReminderNotification();
     void ensureNativeHealthConnectBackgroundSyncScheduled();

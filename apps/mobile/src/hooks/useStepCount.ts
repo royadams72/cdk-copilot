@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, AppState, Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import {
   ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
@@ -150,7 +150,7 @@ export function useStepCount(goal = 10000) {
     void load();
 
     appStateSubscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active") {
+      if (nextState === "active" && !isRequestingPermissionRef.current) {
         void load();
       }
     });
@@ -190,7 +190,7 @@ export function useStepCount(goal = 10000) {
         return;
       }
 
-      const result = await loadAndroidStepState();
+      const result = await loadAndroidStepState({ forceRefresh: true });
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
@@ -221,7 +221,7 @@ export function useStepCount(goal = 10000) {
       await healthConnect.requestPermission([
         ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
       ]);
-      const result = await loadAndroidStepState();
+      const result = await loadAndroidStepState({ forceRefresh: true });
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
@@ -232,46 +232,10 @@ export function useStepCount(goal = 10000) {
       setStatus(result.status);
       setStepsToday(result.stepsToday);
       setBackgroundReadGranted(result.backgroundReadGranted);
-
-      if (!result.backgroundReadGranted) {
-        Alert.alert(
-          "Background access still missing",
-          "Health Connect did not grant background access yet. You can enable it manually in Health Connect settings under Additional access.",
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Open Health Connect",
-              onPress: () => {
-                healthConnect.openHealthConnectSettings();
-              },
-            },
-          ],
-        );
-      }
     } catch (error) {
       console.log("Health Connect background read permission request failed", {
         error: toErrorMessage(error),
       });
-      Alert.alert(
-        "Could not request background access",
-        "Open Health Connect settings and enable background access manually.",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Open Health Connect",
-            onPress: async () => {
-              const healthConnect = await import("react-native-health-connect");
-              healthConnect.openHealthConnectSettings();
-            },
-          },
-        ],
-      );
     } finally {
       isRequestingPermissionRef.current = false;
     }

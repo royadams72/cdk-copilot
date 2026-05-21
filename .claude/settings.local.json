@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm tsc *)"
+      "Bash(pnpm tsc *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
+      "Bash(pnpm core:build)",
+      "Bash(npx tsc *)"
     ]
   }
 }
