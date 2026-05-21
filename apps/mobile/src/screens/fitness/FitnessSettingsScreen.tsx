@@ -9,6 +9,11 @@ import { getNativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectN
 
 import { Card } from "../dashboard/components/Card";
 
+function formatTimestamp(value: number | null | undefined) {
+  if (!value) return "Never";
+  return new Date(value).toLocaleString();
+}
+
 export default function FitnessSettingsScreen() {
   const router = useRouter();
   const {
@@ -129,10 +134,41 @@ export default function FitnessSettingsScreen() {
                 <ActivityIndicator />
               </View>
             ) : (
-              <ThemedText style={{ opacity: 0.72 }}>
-                Native background worker:{" "}
-                {workerStatus?.nativeWorkerEnabled ? "scheduled" : "not scheduled"}
-              </ThemedText>
+              <View style={{ gap: 4 }}>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Native background worker:{" "}
+                  {workerStatus?.nativeWorkerEnabled ? "scheduled" : "not scheduled"}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Periodic work: {workerStatus?.periodicWorkState ?? "unknown"}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Immediate work: {workerStatus?.immediateWorkState ?? "unknown"}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Last task status: {workerStatus?.lastTaskStatus ?? "unknown"}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Last scheduled: {formatTimestamp(workerStatus?.lastScheduledAt)}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Last trigger: {formatTimestamp(workerStatus?.lastTriggeredAt)}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Last worker start: {formatTimestamp(workerStatus?.lastWorkerStartedAt)}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Last task start: {formatTimestamp(workerStatus?.lastTaskStartedAt)}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Last task finish: {formatTimestamp(workerStatus?.lastTaskFinishedAt)}
+                </ThemedText>
+                {workerStatus?.lastFailureReason ? (
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last failure: {workerStatus.lastFailureReason}
+                  </ThemedText>
+                ) : null}
+              </View>
             )}
           </View>
         </Card>

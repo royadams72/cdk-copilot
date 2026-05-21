@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { API } from "@/constants/api";
+import { syncNativeAuthSessionMirror } from "@/lib/authSession";
 import { ONBOARDING_ROUTES } from "@/lib/onboarding";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 
@@ -29,6 +30,7 @@ export default function VerifyScreen() {
         if (refreshToken) {
           await SecureStore.setItemAsync("ckd_refresh", refreshToken);
         }
+        await syncNativeAuthSessionMirror(jwt, refreshToken ?? null);
         if (onboardingCompleted) {
           router.replace(ONBOARDING_ROUTES.dashboard);
         } else {

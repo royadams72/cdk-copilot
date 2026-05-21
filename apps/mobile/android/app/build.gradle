@@ -3,6 +3,24 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+def repoRoot = rootDir.getAbsoluteFile().getParentFile().getParentFile().getParentFile().getAbsolutePath()
+
+def readEnvValue = { String key ->
+    def direct = System.getenv(key)
+    if (direct != null && direct.trim()) {
+        return direct.trim()
+    }
+    def envFile = new File(repoRoot, ".env.local")
+    if (!envFile.exists()) {
+        return null
+    }
+    def prefix = "${key}="
+    def line = envFile.readLines().find { it.startsWith(prefix) }
+    if (line == null) {
+        return null
+    }
+    return line.substring(prefix.length()).trim().replaceAll(/^['"]|['"]$/, "")
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -96,6 +114,8 @@ android {
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        def apiUrl = readEnvValue("EXPO_PUBLIC_API_URL") ?: readEnvValue("APP_ORIGIN") ?: "http://10.0.2.2:3000"
+        buildConfigField "String", "API_BASE_URL", "\"${apiUrl.replaceAll('/+\$','')}\""
     }
     signingConfigs {
         debug {
@@ -155,6 +175,7 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha11")
     implementation("androidx.work:work-runtime-ktx:2.10.3")
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
