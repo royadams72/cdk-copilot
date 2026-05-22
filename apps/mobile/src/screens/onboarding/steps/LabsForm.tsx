@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert, Button, Text, View } from "react-native";
+import { Button, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
@@ -10,15 +10,11 @@ import {
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TLabsFormValues, LabsSchema } from "@ckd/core";
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
-import {
-  DateField,
-  LabeledInput,
-  OnboardingFormScreen,
-  PrimaryButton,
-} from "../components/FormFields";
 import { useRouter } from "expo-router";
+import { PrimaryButton } from "../components/Buttons";
+import { DateField } from "../components/DateField";
+import { LabeledInput } from "../components/FormFields";
+import { OnboardingFormScreen } from "../components/Onboarding";
 
 const emptyLab: TLabsFormValues["labs"][number] = {
   code: "",
@@ -32,7 +28,7 @@ const emptyLab: TLabsFormValues["labs"][number] = {
   reportedAt: null,
   source: "manual",
   status: "final",
-  abnormalFlag: "",
+  sourceAbnormalFlag: null,
   note: "",
 };
 
@@ -93,7 +89,7 @@ export default function LabsForm({
         reportedAt: lab.reportedAt ?? undefined,
         source: lab.source,
         status: lab.status,
-        abnormalFlag: lab.abnormalFlag ? lab.abnormalFlag : undefined,
+        sourceAbnormalFlag: lab.sourceAbnormalFlag ?? undefined,
         note: lab.note?.trim() || undefined,
       };
     });
@@ -260,11 +256,16 @@ export default function LabsForm({
 
             <Controller
               control={control}
-              name={`${base}.abnormalFlag`}
+              name={`${base}.sourceAbnormalFlag`}
               render={({ field: { value, onChange } }) => (
                 <View>
                   <Text>Abnormal flag</Text>
-                  <Picker selectedValue={value ?? ""} onValueChange={onChange}>
+                  <Picker
+                    selectedValue={value ?? ""}
+                    onValueChange={(nextValue: string) =>
+                      onChange(nextValue === "" ? null : nextValue)
+                    }
+                  >
                     <Picker.Item label="None" value="" />
                     <Picker.Item label="Low (L)" value="L" />
                     <Picker.Item label="Critical low (LL)" value="LL" />
@@ -298,7 +299,9 @@ export default function LabsForm({
                 <DateField
                   label="Sample collected"
                   value={value ? value.toISOString() : null}
-                  onChange={(v) => onChange(v ? new Date(v) : null)}
+                  onChange={(nextValue: string | null) =>
+                    onChange(nextValue ? new Date(nextValue) : null)
+                  }
                 />
               )}
             />
@@ -310,7 +313,9 @@ export default function LabsForm({
                 <DateField
                   label="Result reported"
                   value={value ? value.toISOString() : null}
-                  onChange={(v) => onChange(v ? new Date(v) : null)}
+                  onChange={(nextValue: string | null) =>
+                    onChange(nextValue ? new Date(nextValue) : null)
+                  }
                 />
               )}
             />

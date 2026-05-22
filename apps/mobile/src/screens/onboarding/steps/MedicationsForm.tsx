@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert, Button, Text, View } from "react-native";
+import { Button, Text, View } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
@@ -11,16 +11,11 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
-
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
-import {
-  DateField,
-  LabeledInput,
-  OnboardingFormScreen,
-  PrimaryButton,
-} from "../components/FormFields";
 import { useRouter } from "expo-router";
+import { PrimaryButton } from "../components/Buttons";
+import { DateField } from "../components/DateField";
+import { LabeledInput } from "../components/FormFields";
+import { OnboardingFormScreen } from "../components/Onboarding";
 
 const emptyMedication: TMedicationFormValues["medications"][number] = {
   dmplusdCode: "",
@@ -251,8 +246,10 @@ export default function MedicationsForm({
               render={({ field: { value, onChange } }) => (
                 <DateField
                   label="Start date"
-                  value={value as any}
-                  onChange={onChange}
+                  value={value ? value.toISOString() : null}
+                  onChange={(nextValue) =>
+                    onChange(nextValue ? new Date(nextValue) : null)
+                  }
                 />
               )}
             />
@@ -263,8 +260,10 @@ export default function MedicationsForm({
               render={({ field: { value, onChange } }) => (
                 <DateField
                   label="End date"
-                  value={value as any}
-                  onChange={onChange}
+                  value={value ? value.toISOString() : null}
+                  onChange={(nextValue) =>
+                    onChange(nextValue ? new Date(nextValue) : null)
+                  }
                 />
               )}
             />
@@ -291,9 +290,8 @@ export default function MedicationsForm({
 
       <PrimaryButton
         label={isSubmitting ? "Saving..." : "Save medications"}
-        onPress={() => {
-          router.push("/(auth)/onboarding/labs-form");
-        }}
+        disabled={isSubmitting}
+        onPress={handleSubmit(onSubmit)}
       />
     </OnboardingFormScreen>
   );
