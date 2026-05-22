@@ -36,10 +36,11 @@ import kotlin.reflect.KClass
 class NativeHealthConnectSyncRunner(
   private val context: Context,
 ) {
-  private val apiBaseUrl = BuildConfig.API_BASE_URL.trimEnd('/')
+  private val apiBaseUrl = BuildConfig.API_BASE_URL.trim().trimEnd('/')
   private val zoneId = ZoneId.systemDefault()
 
   suspend fun sync(runId: String, reason: String, force: Boolean) {
+    Log.i(TAG, "Starting native Health Connect sync runId=$runId reason=$reason apiBaseUrl=$apiBaseUrl")
     val auth = NativeBackgroundAuthStore(context)
     val client = HealthConnectClient.getOrCreate(context)
     val granted = client.permissionController.getGrantedPermissions()

@@ -28,9 +28,10 @@ class NativeBackgroundAuthStore(
   private fun currentRefreshToken(): String? = prefs.getString(KEY_REFRESH, null)?.trim()?.ifBlank { null }
 
   fun refreshTokens(apiBaseUrl: String): Boolean {
+    val normalizedApiBaseUrl = apiBaseUrl.trim().trimEnd('/')
     val refreshToken = currentRefreshToken() ?: return false
     return try {
-      val connection = (URL("$apiBaseUrl/api/users/refresh-token").openConnection() as HttpURLConnection).apply {
+      val connection = (URL("$normalizedApiBaseUrl/api/users/refresh-token").openConnection() as HttpURLConnection).apply {
         requestMethod = "POST"
         connectTimeout = 15_000
         readTimeout = 30_000
