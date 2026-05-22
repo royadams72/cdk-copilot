@@ -6,7 +6,7 @@ Purpose:
 
 - Append-only audit history of all changes to patient targets.
 - Supports compliance, traceability, and clinical review.
-- Mirrors your existing `*_ledger` pattern.
+- Mirrors existing `*_ledger` pattern.
 
 This collection should NEVER be updated in-place (except controlled supersession).
 
