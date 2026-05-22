@@ -10,16 +10,33 @@ def readEnvValue = { String key ->
     if (direct != null && direct.trim()) {
         return direct.trim()
     }
-    def envFile = new File(repoRoot, ".env.local")
-    if (!envFile.exists()) {
-        return null
-    }
+    def envFiles = [
+        new File(projectRoot, ".env.local"),
+        new File(projectRoot, ".env"),
+        new File(projectRoot, ".env.production"),
+        new File(repoRoot, ".env.local"),
+        new File(repoRoot, ".env"),
+    ]
     def prefix = "${key}="
-    def line = envFile.readLines().find { it.startsWith(prefix) }
-    if (line == null) {
-        return null
+
+    for (envFile in envFiles) {
+        if (!envFile.exists()) {
+            continue
+        }
+        def line = envFile.readLines().find { it.startsWith(prefix) }
+        if (line == null) {
+            continue
+        }
+        def rawValue = line.substring(prefix.length()).trim()
+        def unquoted = rawValue.replaceAll(/^['"]|['"]$/, "").trim()
+        if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
+            unquoted = unquoted.replaceAll(/\s+#.*$/, "").trim()
+        }
+        if (unquoted) {
+            return unquoted
+        }
     }
-    return line.substring(prefix.length()).trim().replaceAll(/^['"]|['"]$/, "")
+    return null
 }
 
 /**
