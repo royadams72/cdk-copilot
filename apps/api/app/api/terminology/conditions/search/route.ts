@@ -9,9 +9,7 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 
 const TOKEN_URL =
   "https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token";
-const FHIR_BASE_URL =
-  process.env.NHS_TERMINOLOGY_FHIR_BASE_URL ??
-  "https://ontology.nhs.uk/production2/fhir";
+const FHIR_BASE_URL = process.env.NHS_TERMINOLOGY_FHIR_BASE_URL;
 const CONDITION_VALUESET_URL = "http://snomed.info/sct?fhir_vs=ecl/<404684003";
 
 type TerminologyExpandResponse = {
@@ -27,11 +25,19 @@ type TerminologyContainsItem = {
   system?: string;
 };
 
+type FhirOperationOutcome = {
+  issue?: Array<{
+    code?: string;
+    details?: { text?: string };
+    diagnostics?: string;
+    severity?: string;
+  }>;
+  resourceType?: string;
+};
+
 function getClientCredentials() {
-  const clientId =
-    process.env.NHS_TERMINOLOGY_CLIENT_ID ?? process.env.Client_id;
-  const clientSecret =
-    process.env.NHS_TERMINOLOGY_CLIENT_SECRET ?? process.env.Client_secret;
+  const clientId = process.env.NHS_TERMINOLOGY_CLIENT_ID;
+  const clientSecret = process.env.NHS_TERMINOLOGY_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
     throw Object.assign(
@@ -41,6 +47,21 @@ function getClientCredentials() {
   }
 
   return { clientId, clientSecret };
+}
+
+function extractOperationOutcomeMessage(bodyText: string) {
+  try {
+    const parsed = JSON.parse(bodyText) as FhirOperationOutcome;
+    if (parsed.resourceType !== "OperationOutcome") return null;
+    const firstIssue = parsed.issue?.[0];
+    return (
+      firstIssue?.diagnostics ??
+      firstIssue?.details?.text ??
+      (firstIssue?.code ? `Terminology server error: ${firstIssue.code}` : null)
+    );
+  } catch {
+    return null;
+  }
 }
 
 async function getAccessToken() {
@@ -60,9 +81,12 @@ async function getAccessToken() {
   });
 
   if (!response.ok) {
-    throw Object.assign(new Error("Failed to obtain terminology access token"), {
-      status: 502,
-    });
+    throw Object.assign(
+      new Error("Failed to obtain terminology access token"),
+      {
+        status: 502,
+      },
+    );
   }
 
   const data = (await response.json()) as { access_token?: string };
@@ -113,6 +137,14 @@ export async function GET(req: NextRequest) {
       ? Math.max(1, Math.min(20, Math.floor(limitRaw)))
       : 8;
 
+    if (!FHIR_BASE_URL) {
+      return bad(
+        "NHS terminology FHIR base URL is not configured",
+        undefined,
+        500,
+      );
+    }
+
     const token = await getAccessToken();
     const url = new URL(`${FHIR_BASE_URL}/ValueSet/$expand`);
     url.searchParams.set("url", CONDITION_VALUESET_URL);
@@ -129,8 +161,13 @@ export async function GET(req: NextRequest) {
 
     if (!response.ok) {
       const message = await response.text().catch(() => "");
+      const operationOutcomeMessage = extractOperationOutcomeMessage(message);
       throw Object.assign(
-        new Error(message || "Terminology search request failed"),
+        new Error(
+          operationOutcomeMessage ||
+            message ||
+            "Terminology search request failed",
+        ),
         { status: 502 },
       );
     }
