@@ -67,8 +67,8 @@ function extractOperationOutcomeMessage(bodyText: string) {
 async function getAccessToken() {
   const { clientId, clientSecret } = getClientCredentials();
   const body = new URLSearchParams({
-    Client_id: clientId,
-    Client_secret: clientSecret,
+    client_id: clientId,
+    client_secret: clientSecret,
     grant_type: "client_credentials",
   });
 
@@ -81,19 +81,37 @@ async function getAccessToken() {
   });
 
   if (!response.ok) {
+    const responseText = await response.text().catch(() => "");
     throw Object.assign(
-      new Error("Failed to obtain terminology access token"),
+      new Error(
+        `Failed to obtain terminology access token (${response.status} ${response.statusText})${
+          responseText ? `: ${responseText}` : ""
+        }`,
+      ),
       {
         status: 502,
       },
     );
   }
 
-  const data = (await response.json()) as { access_token?: string };
+  const data = (await response.json()) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
   if (!data.access_token) {
-    throw Object.assign(new Error("Terminology access token missing"), {
-      status: 502,
-    });
+    throw Object.assign(
+      new Error(
+        `Terminology access token missing${
+          data.error
+            ? `: ${data.error}${data.error_description ? ` - ${data.error_description}` : ""}`
+            : ""
+        }`,
+      ),
+      {
+        status: 502,
+      },
+    );
   }
 
   return data.access_token;
