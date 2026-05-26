@@ -179,6 +179,7 @@ export async function GET(req: NextRequest) {
     url.searchParams.set("url", CONDITION_VALUESET_URL);
     url.searchParams.set("filter", query);
     url.searchParams.set("count", String(limit));
+    console.log("health ledger");
 
     const response = await fetch(url, {
       headers: {
@@ -224,9 +225,7 @@ export async function GET(req: NextRequest) {
     const status = err?.status || 500;
     const message = err?.message || "Server error";
     const userMessage =
-      status >= 500
-        ? "Condition search is temporarily unavailable"
-        : message;
+      status >= 500 ? "Condition search is temporarily unavailable" : message;
     return bad(userMessage, { detail: message }, status);
   }
 }
