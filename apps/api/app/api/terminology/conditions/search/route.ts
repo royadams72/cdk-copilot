@@ -10,7 +10,7 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 const TOKEN_URL =
   "https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token";
 const FHIR_BASE_URL = process.env.NHS_TERMINOLOGY_FHIR_BASE_URL;
-const CONDITION_VALUESET_URL = "http://snomed.info/sct?fhir_vs=ecl/<404684003";
+const CONDITION_VALUESET_URL = "http://snomed.info/sct?fhir_vs=ecl%2F404684003";
 
 type TerminologyExpandResponse = {
   expansion?: {
@@ -75,6 +75,7 @@ async function getAccessToken() {
     client_id: clientId,
     client_secret: clientSecret,
     grant_type: "client_credentials",
+    scope: "terminology",
   });
 
   const response = await fetch(TOKEN_URL, {
@@ -185,6 +186,7 @@ export async function GET(req: NextRequest) {
       headers: {
         Accept: "application/fhir+json, application/json",
         Authorization: `Bearer ${token}`,
+        Prefer: "return=representation",
       },
       method: "GET",
     });
