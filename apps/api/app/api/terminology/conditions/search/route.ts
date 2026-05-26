@@ -67,8 +67,8 @@ function extractOperationOutcomeMessage(bodyText: string) {
 async function getAccessToken() {
   const { clientId, clientSecret } = getClientCredentials();
   const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
+    Client_id: clientId,
+    Client_secret: clientSecret,
     grant_type: "client_credentials",
   });
 
