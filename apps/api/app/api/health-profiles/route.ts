@@ -30,6 +30,10 @@ type THealthProfileCurrentEntry = z.infer<typeof HealthProfileCurrentEntry>;
 type THealthProfileFormValues = z.infer<typeof HealthProfilesUpsertRequest>;
 type THealthProfileLedgerEvent = z.infer<typeof HealthProfileLedgerEvent>;
 type THealthProfileValue = z.infer<typeof HealthProfileValue>;
+type TAllergyCurrentEntry = THealthProfileCurrent["allergies"][number];
+type TConditionCurrentEntry = THealthProfileCurrent["conditions"][number];
+type TDietaryPreferenceCurrentEntry =
+  THealthProfileCurrent["dietaryPreferences"][number];
 
 type HealthProfilesCurrentDoc = Omit<THealthProfileCurrent, "patientId"> & {
   patientId: ObjectId;
@@ -108,45 +112,46 @@ function makeConditionEntryId(item: TConditionFormItem) {
   ])}`;
 }
 
-function toCurrentEntry(value: THealthProfileValue): THealthProfileCurrentEntry {
-  switch (value.kind) {
-    case "allergy":
-      return {
-        entryId: makeAllergyEntryId(value.allergy),
-        value,
-      };
-    case "dietary_preference":
-      return {
-        entryId: makeDietaryPreferenceEntryId(value.dietaryPreference),
-        value,
-      };
-    case "condition":
-      return {
-        entryId: makeConditionEntryId(value.condition),
-        value,
-      };
-  }
+function toAllergyCurrentEntry(allergy: TAllergyFormItem): TAllergyCurrentEntry {
+  return {
+    entryId: makeAllergyEntryId(allergy),
+    value: { allergy, kind: "allergy" },
+  };
 }
 
-function sortEntries(entries: THealthProfileCurrentEntry[]) {
+function toDietaryPreferenceCurrentEntry(
+  dietaryPreference: TDietaryPreferenceFormItem,
+): TDietaryPreferenceCurrentEntry {
+  return {
+    entryId: makeDietaryPreferenceEntryId(dietaryPreference),
+    value: { dietaryPreference, kind: "dietary_preference" },
+  };
+}
+
+function toConditionCurrentEntry(
+  condition: TConditionFormItem,
+): TConditionCurrentEntry {
+  return {
+    entryId: makeConditionEntryId(condition),
+    value: { condition, kind: "condition" },
+  };
+}
+
+function sortEntries<TEntry extends { entryId: string }>(entries: TEntry[]) {
   return [...entries].sort((a, b) => a.entryId.localeCompare(b.entryId));
 }
 
 function buildCurrentEntries(values: THealthProfileFormValues) {
   return {
     allergies: sortEntries(
-      values.allergies.map((allergy) =>
-        toCurrentEntry({ allergy, kind: "allergy" }),
-      ),
+      values.allergies.map((allergy) => toAllergyCurrentEntry(allergy)),
     ),
     conditions: sortEntries(
-      values.conditions.map((condition) =>
-        toCurrentEntry({ condition, kind: "condition" }),
-      ),
+      values.conditions.map((condition) => toConditionCurrentEntry(condition)),
     ),
     dietaryPreferences: sortEntries(
       values.dietaryPreferences.map((dietaryPreference) =>
-        toCurrentEntry({ dietaryPreference, kind: "dietary_preference" }),
+        toDietaryPreferenceCurrentEntry(dietaryPreference),
       ),
     ),
   };
