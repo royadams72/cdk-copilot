@@ -29,6 +29,8 @@ export const COLLECTIONS = {
   HealthConnectSyncState: "health_connect_sync_state",
   FoodSwapRules: "food_swap_rules",
   FoodTaxonomy: "food_taxonomy",
+  HealthProfilesCurrent: "health_profiles_current",
+  HealthProfilesLedger: "health_profiles_ledger",
   LabsLedger: "labs_ledger",
   LabsCurrent: "labs_current",
   // Deprecated alias kept for compatibility while callers migrate.

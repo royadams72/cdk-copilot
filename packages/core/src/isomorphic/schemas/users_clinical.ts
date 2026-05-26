@@ -19,7 +19,6 @@ export const DialysisStatus = z.enum([
 ]);
 export const ACR = z.enum(["A1", "A2", "A3"]); // Albumin-to-Creatinine Ratio category
 
-const Dx = z.object({ code: z.string().optional(), label: z.string().min(1) });
 const Med = z.object({
   dose: z.string().optional(),
   frequency: z.string().optional(),
@@ -51,10 +50,7 @@ export const UserClinical_Base = z.object({
   acrCategory: ACR.nullable().optional(),
   dialysisStatus: DialysisStatus.default("none"),
 
-  diagnoses: z.array(Dx).default([]),
   medications: z.array(Med).default([]),
-  allergies: z.array(z.string()).default([]),
-  dietaryPreferences: z.array(z.string()).default([]),
   contraindications: z.array(z.string()).default([]),
 
   careTeam: z.array(CareTeamMember).default([]),
@@ -102,7 +98,6 @@ const LabeledString = z.object({
 
 export const ClinicalFormSchema = z.object({
   acrCategory: z.enum(["", ...ACR.options]),
-  allergies: z.array(LabeledString).default([]),
   careTeam: z
     .array(
       z.object({
@@ -115,16 +110,7 @@ export const ClinicalFormSchema = z.object({
     .default([]),
   ckdStage: z.enum(CKD_STAGE_VALUES, { message: "CKD stage is required" }),
   contraindications: z.array(LabeledString).default([]).optional(),
-  diagnoses: z
-    .array(
-      z.object({
-        code: z.string().optional(),
-        label: z.string().min(1, "Diagnosis label required"),
-      }),
-    )
-    .default([]),
   dialysisStatus: DialysisStatus,
-  dietaryPreferences: z.array(LabeledString).default([]),
   egfrCurrent: numberLike({ invalid: errors.egfr, required: errors.egfr }),
   heightCm: numberLike({ invalid: errors.height, required: errors.height }),
   weightKg: numberLike({ invalid: errors.weight, required: errors.weight }),

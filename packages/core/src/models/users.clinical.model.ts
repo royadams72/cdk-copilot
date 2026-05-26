@@ -1,10 +1,6 @@
 // db/models/users.clinical.model.ts
 import { Schema, model, Types } from "mongoose";
 
-const DxSchema = new Schema(
-  { code: String, label: { type: String, required: true } },
-  { _id: false }
-);
 const MedSchema = new Schema(
   {
     name: { type: String, required: true },
@@ -44,10 +40,7 @@ const UserClinicalSchema = new Schema(
       default: "none",
     },
 
-    diagnoses: { type: [DxSchema], default: [] },
     medications: { type: [MedSchema], default: [] },
-    allergies: { type: [String], default: [] },
-    dietaryPreferences: { type: [String], default: [] },
     contraindications: { type: [String], default: [] },
 
     careTeam: { type: [CareTeamSchema], default: [] },

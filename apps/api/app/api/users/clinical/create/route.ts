@@ -89,13 +89,10 @@ export async function POST(req: NextRequest) {
       {
         $set: compactDefined({
           acrCategory: doc.acrCategory,
-          allergies: doc.allergies,
           careTeam: doc.careTeam,
           ckdStage: doc.ckdStage,
           contraindications: doc.contraindications,
-          diagnoses: doc.diagnoses,
           dialysisStatus: doc.dialysisStatus,
-          dietaryPreferences: doc.dietaryPreferences,
           egfrCurrent: doc.egfrCurrent,
           heightCm: doc.heightCm,
           lastClinicalUpdateAt: doc.lastClinicalUpdateAt,

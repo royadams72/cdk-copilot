@@ -13,10 +13,7 @@
 - `egfrCurrent` · number|null (mL/min/1.73m²) (**eGFR = estimated Glomerular Filtration Rate**)
 - `acrCategory` · `A1|A2|A3|null` (**ACR = Albumin‑to‑Creatinine Ratio**)
 - `dialysisStatus` · enum (`none|hemodialysis|peritoneal|post-transplant`)
-- `diagnoses` · array of { code?, label }
 - `medications` · array of { name, dose?, frequency?, startedAt?, stoppedAt? }
-- `allergies` · string[]
-- `dietaryPreferences` · string[]
 - `heightCm` . number
 - `weightKg` . number
 - `contraindications` · string[]
@@ -77,4 +74,5 @@ db.users_clinical.updateOne(
 
 - `labs_ledger` / `labs_current` for observed lab results
 - `measurements_ledger` for observed activity/vitals
+- `health_profiles_ledger` / `health_profiles_current` for allergies, dietary preferences, and terminology-backed conditions
 - `targets_ledger` / `targets_current` for goal state and changes

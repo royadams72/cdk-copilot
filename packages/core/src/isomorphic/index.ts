@@ -3,6 +3,7 @@ export * from "./schemas/edamam";
 export * from "./schemas/exercise_reference";
 export * from "./schemas/food_taxonomy";
 export * from "./schemas/food_search";
+export * from "./schemas/health_profiles";
 export * from "./schemas/log_meal";
 export * from "./schemas/labs";
 export * from "./schemas/measurements";
