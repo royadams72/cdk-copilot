@@ -64,6 +64,11 @@ function extractOperationOutcomeMessage(bodyText: string) {
   }
 }
 
+function truncateForLog(value: string, max = 800) {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}...`;
+}
+
 async function getAccessToken() {
   const { clientId, clientSecret } = getClientCredentials();
   const body = new URLSearchParams({
@@ -82,6 +87,12 @@ async function getAccessToken() {
 
   if (!response.ok) {
     const responseText = await response.text().catch(() => "");
+    console.error("NHS terminology token request failed", {
+      responseText: truncateForLog(responseText),
+      status: response.status,
+      statusText: response.statusText,
+      tokenUrl: TOKEN_URL,
+    });
     throw Object.assign(
       new Error(
         `Failed to obtain terminology access token (${response.status} ${response.statusText})${
@@ -180,6 +191,14 @@ export async function GET(req: NextRequest) {
     if (!response.ok) {
       const message = await response.text().catch(() => "");
       const operationOutcomeMessage = extractOperationOutcomeMessage(message);
+      console.error("NHS terminology FHIR request failed", {
+        operationOutcomeMessage,
+        query,
+        requestUrl: url.toString(),
+        responseText: truncateForLog(message),
+        status: response.status,
+        statusText: response.statusText,
+      });
       throw Object.assign(
         new Error(
           operationOutcomeMessage ||
@@ -203,6 +222,11 @@ export async function GET(req: NextRequest) {
     return ok({ items });
   } catch (err: any) {
     const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    const message = err?.message || "Server error";
+    const userMessage =
+      status >= 500
+        ? "Condition search is temporarily unavailable"
+        : message;
+    return bad(userMessage, { detail: message }, status);
   }
 }
