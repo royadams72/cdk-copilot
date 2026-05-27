@@ -52,3 +52,29 @@ export function SecondaryButton({
     </Pressable>
   );
 }
+
+export function TertiaryDangerButton({
+  label,
+  onPress,
+  disabled,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.button,
+        styles.tertiaryDangerButton,
+        pressed && !disabled ? styles.tertiaryDangerButtonPressed : null,
+        disabled ? styles.buttonDisabled : null,
+      ]}
+    >
+      <Text style={styles.tertiaryDangerButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
