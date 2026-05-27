@@ -75,7 +75,6 @@ async function getAccessToken() {
     client_id: clientId,
     client_secret: clientSecret,
     grant_type: "client_credentials",
-    scope: "terminology",
   });
 
   const response = await fetch(TOKEN_URL, {
