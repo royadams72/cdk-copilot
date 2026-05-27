@@ -1,6 +1,6 @@
 # health_profiles_ledger
 
-This document defines the proposed `health_profiles_ledger` MongoDB collection.
+This document defines `health_profiles_ledger` MongoDB collection.
 
 Purpose:
 
@@ -62,19 +62,19 @@ For now, this document only defines the ledger.
 
 ## Top-level schema
 
-| Field          | Type               | Required | Description |
-| -------------- | ------------------ | -------- | ----------- |
-| `_id`          | `ObjectId`         | ✅       | Mongo document id |
-| `orgId`        | `string`           | ❌       | Organisation id |
-| `patientId`    | `ObjectId`         | ✅       | Patient id |
-| `entryId`      | `string`           | ✅       | Stable logical id for one allergy/preference/condition |
-| `createdAt`    | `date`             | ✅       | Event timestamp |
-| `createdBy`    | `object`           | ✅       | Actor who made the change |
+| Field          | Type               | Required | Description                                                      |
+| -------------- | ------------------ | -------- | ---------------------------------------------------------------- |
+| `_id`          | `ObjectId`         | ✅       | Mongo document id                                                |
+| `orgId`        | `string`           | ❌       | Organisation id                                                  |
+| `patientId`    | `ObjectId`         | ✅       | Patient id                                                       |
+| `entryId`      | `string`           | ✅       | Stable logical id for one allergy/preference/condition           |
+| `createdAt`    | `date`             | ✅       | Event timestamp                                                  |
+| `createdBy`    | `object`           | ✅       | Actor who made the change                                        |
 | `eventType`    | `string`           | ✅       | `created`, `updated`, `removed`, `restored`, `ledger_correction` |
-| `before`       | `object \| null`   | ✅       | State before the event |
-| `after`        | `object \| null`   | ✅       | State after the event |
-| `correctionOf` | `ObjectId \| null` | ❌       | Prior event corrected by this event |
-| `superseded`   | `boolean`          | ✅       | Default `false` |
+| `before`       | `object \| null`   | ✅       | State before the event                                           |
+| `after`        | `object \| null`   | ✅       | State after the event                                            |
+| `correctionOf` | `ObjectId \| null` | ❌       | Prior event corrected by this event                              |
+| `superseded`   | `boolean`          | ✅       | Default `false`                                                  |
 
 At least one of `before` or `after` must be present.
 
@@ -82,11 +82,11 @@ At least one of `before` or `after` must be present.
 
 ## `createdBy`
 
-| Field         | Type                                                    | Required |
-| ------------- | ------------------------------------------------------- | -------- |
-| `principalId` | `string`                                                | ✅       |
+| Field         | Type                                                             | Required |
+| ------------- | ---------------------------------------------------------------- | -------- |
+| `principalId` | `string`                                                         | ✅       |
 | `actorType`   | `"patient" \| "clinician" \| "dietitian" \| "admin" \| "system"` | ✅       |
-| `displayName` | `string \| null`                                        | ❌       |
+| `displayName` | `string \| null`                                                 | ❌       |
 
 ---
 
@@ -100,29 +100,29 @@ At least one of `before` or `after` must be present.
 
 ### Allergy value
 
-| Field                  | Type                                               | Required | Notes |
-| ---------------------- | -------------------------------------------------- | -------- | ----- |
-| `kind`                 | `"allergy"`                                        | ✅       | Discriminator |
-| `allergy.group`        | `"food" \| "medication" \| "environmental" \| "latex" \| "other"` | ✅ | |
-| `allergy.label`        | `string`                                           | ✅       | Human-readable label |
-| `allergy.key`          | `string`                                           | ❌       | Controlled option key for non-medication groups |
-| `allergy.childKey`     | `string`                                           | ❌       | Optional nested food/environmental choice |
-| `allergy.childLabel`   | `string`                                           | ❌       | Optional nested food/environmental choice label |
-| `allergy.severity`     | `"mild" \| "moderate" \| "severe" \| "unknown"`    | ✅       | |
-| `allergy.notes`        | `string`                                           | ❌       | Optional free text |
-| `allergy.medicationCode` | `string`                                         | ❌       | For medication allergies |
-| `allergy.medicationCodeSystem` | `"DM_D" \| "SNOMED_CT" \| "CUSTOM"`       | ❌       | For medication allergies |
-| `allergy.medicationRefId` | `ObjectId`                                      | ❌       | Optional internal drug ref |
-| `allergy.dmplusdCode`  | `string`                                           | ❌       | Optional dm+d |
-| `allergy.snomedCode`   | `string`                                           | ❌       | Optional SNOMED code |
+| Field                          | Type                                                              | Required | Notes                                           |
+| ------------------------------ | ----------------------------------------------------------------- | -------- | ----------------------------------------------- |
+| `kind`                         | `"allergy"`                                                       | ✅       | Discriminator                                   |
+| `allergy.group`                | `"food" \| "medication" \| "environmental" \| "latex" \| "other"` | ✅       |                                                 |
+| `allergy.label`                | `string`                                                          | ✅       | Human-readable label                            |
+| `allergy.key`                  | `string`                                                          | ❌       | Controlled option key for non-medication groups |
+| `allergy.childKey`             | `string`                                                          | ❌       | Optional nested food/environmental choice       |
+| `allergy.childLabel`           | `string`                                                          | ❌       | Optional nested food/environmental choice label |
+| `allergy.severity`             | `"mild" \| "moderate" \| "severe" \| "unknown"`                   | ✅       |                                                 |
+| `allergy.notes`                | `string`                                                          | ❌       | Optional free text                              |
+| `allergy.medicationCode`       | `string`                                                          | ❌       | For medication allergies                        |
+| `allergy.medicationCodeSystem` | `"DM_D" \| "SNOMED_CT" \| "CUSTOM"`                               | ❌       | For medication allergies                        |
+| `allergy.medicationRefId`      | `ObjectId`                                                        | ❌       | Optional internal drug ref                      |
+| `allergy.dmplusdCode`          | `string`                                                          | ❌       | Optional dm+d                                   |
+| `allergy.snomedCode`           | `string`                                                          | ❌       | Optional SNOMED code                            |
 
 ### Dietary preference value
 
-| Field                        | Type | Required | Notes |
-| ---------------------------- | ---- | -------- | ----- |
-| `kind`                       | `"dietary_preference"` | ✅ | Discriminator |
-| `dietaryPreference.key`      | enum | ✅ | Controlled app taxonomy |
-| `dietaryPreference.label`    | `string` | ✅ | Display label |
+| Field                     | Type                   | Required | Notes                   |
+| ------------------------- | ---------------------- | -------- | ----------------------- |
+| `kind`                    | `"dietary_preference"` | ✅       | Discriminator           |
+| `dietaryPreference.key`   | enum                   | ✅       | Controlled app taxonomy |
+| `dietaryPreference.label` | `string`               | ✅       | Display label           |
 
 Suggested initial options:
 
@@ -146,14 +146,14 @@ Suggested initial options:
 
 ### Condition value
 
-| Field               | Type                                            | Required | Notes |
-| ------------------- | ----------------------------------------------- | -------- | ----- |
-| `kind`              | `"condition"`                                   | ✅       | Discriminator |
-| `condition.code`    | `string`                                        | ✅       | Terminology code |
-| `condition.codeSystem` | `"SNOMED_CT" \| "CUSTOM"`                    | ✅       | Prefer `SNOMED_CT` |
-| `condition.label`   | `string`                                        | ✅       | Preferred term text |
-| `condition.status`  | `"active" \| "inactive" \| "resolved" \| "unknown"` | ✅ | |
-| `condition.notes`   | `string`                                        | ❌       | Optional comment |
+| Field                  | Type                                                | Required | Notes               |
+| ---------------------- | --------------------------------------------------- | -------- | ------------------- |
+| `kind`                 | `"condition"`                                       | ✅       | Discriminator       |
+| `condition.code`       | `string`                                            | ✅       | Terminology code    |
+| `condition.codeSystem` | `"SNOMED_CT" \| "CUSTOM"`                           | ✅       | Prefer `SNOMED_CT`  |
+| `condition.label`      | `string`                                            | ✅       | Preferred term text |
+| `condition.status`     | `"active" \| "inactive" \| "resolved" \| "unknown"` | ✅       |                     |
+| `condition.notes`      | `string`                                            | ❌       | Optional comment    |
 
 ---
 

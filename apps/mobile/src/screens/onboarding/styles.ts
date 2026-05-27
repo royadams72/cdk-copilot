@@ -7,6 +7,9 @@ const PRIMARY_COLOR_PRESSED = "#115E59";
 const PRIMARY_TEXT_COLOR = "#FFFFFF";
 const GHOST_SURFACE = "rgba(15,23,42,0.08)";
 const GHOST_TEXT = "#0F172A";
+const DANGER_SURFACE = "rgba(185,28,28,0.1)";
+const DANGER_SURFACE_PRESSED = "rgba(185,28,28,0.16)";
+const DANGER_TEXT = "#B91C1C";
 const ERROR_TEXT = "#B91C1C";
 export const PLACEHOLDER_COLOR = "#64748B";
 export const styles = StyleSheet.create({
@@ -174,6 +177,17 @@ export const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: GHOST_TEXT,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  tertiaryDangerButton: {
+    backgroundColor: DANGER_SURFACE,
+  },
+  tertiaryDangerButtonPressed: {
+    backgroundColor: DANGER_SURFACE_PRESSED,
+  },
+  tertiaryDangerButtonText: {
+    color: DANGER_TEXT,
     fontSize: 16,
     fontWeight: "700",
   },

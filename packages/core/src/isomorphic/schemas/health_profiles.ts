@@ -223,17 +223,10 @@ export const DIETARY_PREFERENCE_OPTIONS = [
   { key: "low_salt", label: "Low salt" },
   { key: "low_sugar", label: "Low sugar" },
   { key: "low_fat", label: "Low fat" },
-  { key: "low_potassium", label: "Low potassium" },
-  { key: "low_phosphorus", label: "Low phosphorus" },
-  { key: "renal_friendly", label: "Renal friendly" },
   { key: "diabetic_friendly", label: "Diabetic friendly" },
 ] as const;
 
-const optionalTrimmedText = z
-  .string()
-  .trim()
-  .min(1)
-  .optional();
+const optionalTrimmedText = z.string().trim().min(1).optional();
 
 const AllergyCommon = {
   notes: optionalTrimmedText,
@@ -242,11 +235,11 @@ const AllergyCommon = {
 
 export const FoodAllergyFormItem = z
   .object({
+    childKey: z.string().min(1).optional(),
+    childLabel: z.string().min(1).optional(),
     group: z.literal("food"),
     key: z.string().min(1),
     label: z.string().min(1),
-    childKey: z.string().min(1).optional(),
-    childLabel: z.string().min(1).optional(),
     ...AllergyCommon,
   })
   .refine(
@@ -260,23 +253,23 @@ export const FoodAllergyFormItem = z
   );
 
 export const MedicationAllergyFormItem = z.object({
+  dmplusdCode: z.string().min(1).optional(),
   group: z.literal("medication"),
   label: z.string().min(1),
   medicationCode: z.string().min(1).optional(),
   medicationCodeSystem: MedicationCodeSystem.optional(),
   medicationRefId: objectIdHex.optional(),
   snomedCode: z.string().min(1).optional(),
-  dmplusdCode: z.string().min(1).optional(),
   ...AllergyCommon,
 });
 
 export const EnvironmentalAllergyFormItem = z
   .object({
+    childKey: z.string().min(1).optional(),
+    childLabel: z.string().min(1).optional(),
     group: z.literal("environmental"),
     key: z.string().min(1),
     label: z.string().min(1),
-    childKey: z.string().min(1).optional(),
-    childLabel: z.string().min(1).optional(),
     ...AllergyCommon,
   })
   .refine(
