@@ -42,11 +42,11 @@ export const UserClinical_Base = z.object({
   egfrCurrent: z
     .number()
     .positive()
-    .max(3)
+    .max(300)
     .nullable()
     .refine((v) => v !== null, {
       message: "Please enter your last eGFR reading",
-    }), // eGFR = estimated Glomerular Filtration Rate (mL/min/1.73m²)
+    }),
   acrCategory: ACR.nullable().optional(),
   dialysisStatus: DialysisStatus.default("none"),
 
