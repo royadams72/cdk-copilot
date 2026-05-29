@@ -1,6 +1,6 @@
 # CareTeams
 
-**Purpose:** Teams of clinicians/staff within an organisation used to group responsibility for patients, tasks, and care plans.
+**Purpose:** Teams of clinicians/staff within an organisation used to group responsibility for patients, tasks, care plans, and patient assignment boundaries.
 **Contains PII:** No direct PII. References users by their `patientId` (`application auth id`) rather than names/emails.
 **Access:** Read: org admins; members of the team; services with careteams:read. Write: org admins; services with careteams:write. Audit: All writes logged with actorAuthId, requestId, timestamps.
 
@@ -9,6 +9,7 @@
 - `orgId` (string, required) – owning organisation
 - `name` (string, required)
 - `memberUserIds` (string[], optional) – list of user ids in the team
+- `facilityId` (string, optional but recommended) – site/clinic boundary when teams are facility-specific
 - `createdAt` / `updatedAt`
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts
 - Additional properties allowed
@@ -17,7 +18,7 @@
 
 ```js
 [
-  { key: { orgId: 1, name: 1 }, options: { unique: true } },
+  { key: { orgId: 1, facilityId: 1, name: 1 }, options: { unique: true } },
   { key: { orgId: 1, updatedAt: -1 } },
   { key: { orgId: 1, memberUserIds: 1 } },
 ];
@@ -25,14 +26,19 @@
 
 ## Why
 
-- Unique { orgId, name } prevents duplicate team names within an org.
+- Unique { orgId, facilityId, name } prevents duplicate team names within the same facility boundary.
 - { orgId, updatedAt } powers “recently changed teams” views.
 - { orgId, memberUserIds } lets you quickly find teams a user belongs to.
+
+## Assignment Notes
+
+- Patients should reference teams through `patients.assignments[].careTeamId`.
+- Adding a patient to a new care team should create a new or updated assignment and, where required, a matching `patient_consents` row.
 
 ## Common queries
 
 ```js
 db.care_teams.find({ orgId }).sort({ updatedAt: -1 }).limit(50);
 db.care_teams.find({ orgId, memberUserIds: patientId });
-db.care_teams.findOne({ orgId, name });
+db.care_teams.findOne({ orgId, facilityId, name });
 ```

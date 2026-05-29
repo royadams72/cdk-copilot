@@ -6,10 +6,19 @@
 
 ## Fields (summary)
 
-- `_id` · ObjectId · **Primary Key (PK)** (mapped to patientId across the system)
-- `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
+- `_id` · ObjectId · **Primary Key (PK)** (mapped to `patientId` across the system)
+- `principalId` · string · unique · app-generated once at signup; use to log `updatedBy` and `createdBy`
 - `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`
-- `orgId` · string · owning organisation optional
+- `assignments` · object[] · required · the patient's care-access boundaries
+  - `assignmentId` · string · stable identifier for this patient/org/facility/team relationship
+  - `orgId` · string · owning organisation
+  - `facilityId` · string · site/clinic identifier
+  - `careTeamId` · string · team identifier
+  - `status` · enum (`pending|active|inactive|ended`) · assignment lifecycle
+  - `consentStatus` · enum (`pending|accepted|declined|revoked`) · latest patient decision for the assignment
+  - `startsAt` · Date · optional
+  - `endsAt` · Date · optional
+  - `createdAt` / `updatedAt` · Date
 - `summary` · object · lightweight UI summary (safe fields only)
   - `lastContactAt` · Date · optional
   - `risk` · enum (`green|amber|red`) · optional
@@ -23,9 +32,21 @@
 ```json
 {
   "_id": { "$oid": "66f1b7e9c2ab4a0c9f3a1e21" },
-  "orgId": "org_rf_london",
-  "facilityId": "edgware_renal",
-  "careTeamId": "ctm_northwest",
+  "principalId": "pr_demo_jane",
+  "assignments": [
+    {
+      "assignmentId": "asg_barts_renal_north_001",
+      "orgId": "org_rf_london",
+      "facilityId": "edgware_renal",
+      "careTeamId": "ctm_northwest",
+      "status": "active",
+      "consentStatus": "accepted",
+      "startsAt": "2025-07-12T10:00:00.000Z",
+      "endsAt": null,
+      "createdAt": "2025-07-12T10:00:00.000Z",
+      "updatedAt": "2025-10-08T18:44:00.000Z"
+    }
+  ],
   "summary": {
     "lastContactAt": "2025-10-03T09:20:00.000Z",
     "risk": "amber",
@@ -38,44 +59,62 @@
 }
 ```
 
+## Indexes
+
 ```js
-db.patients.createIndex({ orgId: 1, facilityId: 1, updatedAt: -1 });
-db.patients.createIndex({ orgId: 1, careTeamId: 1, updatedAt: -1 });
-db.patients.createIndex({ orgId: 1, _id: 1 }); // helps when using allowedPatientIds
+db.patients.createIndex(
+  {
+    "assignments.orgId": 1,
+    "assignments.facilityId": 1,
+    "assignments.careTeamId": 1,
+    "assignments.status": 1,
+    updatedAt: -1,
+  },
+  { name: "byAssignmentAccess" },
+);
+db.patients.createIndex(
+  {
+    "assignments.assignmentId": 1,
+  },
+  { name: "byAssignmentId" },
+);
+db.patients.createIndex({ _id: 1, "assignments.status": 1 }, { name: "byPatientStatus" });
 ```
 
-**Access Control:**
+## Access Control
 
-- Scopes required: at minimum patients.read.
-
+- Scopes required: at minimum `patients.read`.
 - Roles allowed (example): `clinician, dietitian, admin`.
-
 - Row-level filter (MongoDB find):
 
-- Always `orgId === user.orgId`
+- `patientId ∈ user.allowedPatientIds`
 
-AND one of:
+OR
 
-- facilityId user.facilityIds
+- patient has at least one assignment where:
+  - `assignment.orgId === user.orgId`
+  - `assignment.status === "active"`
+  - and one of:
+    - `assignment.facilityId ∈ user.facilityIds`
+    - `assignment.careTeamId ∈ user.careTeamIds`
 
-- careTeamId user.careTeamIds
+- If the user has no facility/team/grants, consider returning nothing.
 
-- patientId user.allowedPatientIds (as ObjectIds)
+## Consent Notes
 
-- If the user has no facility/team/grants, consider returning nothing (see “Hardening” note below).
+- `assignments[]` is the operational source of truth for patient access boundaries.
+- The detailed patient decision history should live in `patient_consents`.
+- Initial signup creates a `pending` assignment and matching pending consent.
+- Patient acceptance activates the assignment.
+- New care-team or clinician additions should create new consent rows scoped to an existing or new assignment.
 
-**Retention**
+## Retention
 
 - Keep operational records as long as clinically/contractually required.
+- When a patient is deleted, purge or archive per `/docs/security/data-retention.md` and local policy.
 
-- When a patient is deleted, purge or archive per /docs/security/data-retention.md and local policy.
+## Notes
 
-**Notes**
-
-- This collection deliberately excludes name, date of birth, address, contact details (those are in users_pii).
-
-- Use projections in read routes to keep responses lean, e.g. { summary: 1, stage: 1, flags: 1, updatedAt: 1 }.
-
-- Hardening (optional)
-
-- If the user has no facilityIds, no careTeamIds, and no allowedPatientIds, return nothing:
+- This collection deliberately excludes name, date of birth, address, contact details; those are in `users_pii`.
+- Use projections in read routes to keep responses lean, e.g. `{ assignments: 1, summary: 1, stage: 1, flags: 1, updatedAt: 1 }`.
+- Prefer treating old top-level `orgId`, `facilityId`, and `careTeamId` usage as deprecated. New code should read the active assignment instead.

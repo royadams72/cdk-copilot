@@ -7,6 +7,7 @@ export default function RootLayout() {
         name="check-email"
         options={{ title: "Check your email" }}
       />
+      <Stack.Screen name="consent" options={{ title: "Consent required" }} />
       <Stack.Screen
         name="onboarding/pii-form"
         options={{ title: "Your information" }}

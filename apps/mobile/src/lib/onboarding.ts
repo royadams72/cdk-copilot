@@ -3,6 +3,7 @@ import { ONBOARDING_STEPS } from "@ckd/core";
 import { secureStorage } from "./secureStorage";
 
 export const ONBOARDING_ROUTES = {
+  consent: "/(auth)/consent",
   clinical: "/(auth)/onboarding/clinical-form",
   dashboard: "/(dashboard)/dashboard",
   pii: "/(auth)/onboarding/pii-form",
@@ -40,6 +41,28 @@ export function resolveOnboardingRoute(
   }
 
   return ONBOARDING_ROUTES.pii;
+}
+
+export function resolvePostAuthRoute(args: {
+  activeAssignmentCount?: number | null;
+  hasActiveAssignments?: boolean | null;
+  hasPendingConsents?: boolean | null;
+  onboardingCompleted?: boolean;
+  onboardingSteps?: string[] | null;
+}) {
+  if (
+    args.hasPendingConsents ||
+    args.hasActiveAssignments === false ||
+    (typeof args.activeAssignmentCount === "number" &&
+      args.activeAssignmentCount <= 0)
+  ) {
+    return ONBOARDING_ROUTES.consent;
+  }
+
+  return resolveOnboardingRoute(
+    args.onboardingCompleted,
+    args.onboardingSteps,
+  );
 }
 
 export const onboardingDrafts = {

@@ -48,6 +48,7 @@ export const COLLECTIONS = {
   PatientGoalsCurrent: "patient_goals_current",
   PatientGoalsLedger: "patient_goals_ledger",
   PatientEngagementLedger: "patient_engagement_ledger",
+  PatientConsents: "patient_consents",
   Patients: "patients",
 
   UsersAccounts: "users_accounts",

@@ -1,6 +1,6 @@
 # facilities (collection)
 
-**Purpose:** Master list of an organisation’s sites/clinics/wards used for scoping patients, staff and reporting.
+**Purpose:** Master list of an organisation’s sites/clinics/wards used for scoping patient assignments, staff access, and reporting.
 
 ## Schema (summary)
 
@@ -51,3 +51,9 @@ db.facilities.find({ orgId }).sort({ updatedAt: -1 }).limit(50);
 const f = await db.facilities.findOne({ orgId, code });
 if (!f) throw new Error("Unknown facility code");
 ```
+
+## Assignment Notes
+
+- `facilities` provides the valid `facilityId` values used in `patients.assignments[]`.
+- A patient may have assignments in more than one organisation, but each assignment must reference exactly one facility within exactly one org.
+- Clinician access should be evaluated against patient assignments, not facility membership alone.

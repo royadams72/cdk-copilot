@@ -9,14 +9,14 @@
 - `_id` · ObjectId · **Primary Key (PK)**
 - `principalId` · string · unique · App generated once at signup - use to log `updatedBy` - `createdBy`
 - `email` · string · unique · example: `roy@example.com` only added for clinicians patients email is in users_pii
-- `orgId` · string · organisation identifier (NHS Trust / provider)
+- `orgId` · string · organisation identifier for the staff/user account (NHS Trust / provider)
 - `role` · enum (`patient|clinician|dietitian|admin`)
 - `scopes` · string[] · e.g. `["patients.read","patients.flags.write"]`
 - `facilityIds` · string[] · optional · site/clinic identifiers
 - `careTeamIds` · string[] · optional · team identifier
 
 - `allowedPatientIds` · string[] · optional · patient `_id` hex strings for explicit per-patient grants
-- Most access is handled by membership: same orgId and (facility OR care team). Sometimes you need one-off access:
+- Most patient access is handled by membership intersection against `patients.assignments[]`: same `orgId` and matching facility or care team. Sometimes you need one-off access:
 - Covering a colleague’s caseload this weekend
 - MDT (Multidisciplinary Team) review of a few specific patients
 - Temporary research cohort
@@ -46,9 +46,18 @@
 
 **Relations:** Resolves access to documents in patients, users_clinical, and users_pii via:
 
-- `orgId` (must match),
-- `facilityIds/careTeamIds` (membership),
+- `orgId` (must match a patient assignment `orgId`),
+- `facilityIds/careTeamIds` (must intersect an active patient assignment),
 - `allowedPatientIds` (explicit grants)
+
+**Access rule:** a clinician normally sees a patient when at least one active patient assignment matches:
+
+- `assignment.orgId === user.orgId`
+- and one of:
+  - `assignment.facilityId ∈ user.facilityIds`
+  - `assignment.careTeamId ∈ user.careTeamIds`
+
+`allowedPatientIds` remains the explicit override path for temporary/manual access.
 
 ## Indexes
 
