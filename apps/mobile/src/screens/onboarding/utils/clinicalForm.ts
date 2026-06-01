@@ -118,7 +118,6 @@ export async function searchConditions(
   return (body.data?.items ?? []).map((item) => ({
     key: item.code,
     label: item.label,
-    supportingText: item.code,
     value: item,
   }));
 }
