@@ -11,6 +11,23 @@ const TOKEN_URL =
   "https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token";
 const FHIR_BASE_URL = process.env.NHS_TERMINOLOGY_FHIR_BASE_URL;
 const CONDITION_VALUESET_URL = "http://snomed.info/sct?fhir_vs=ecl%2F404684003";
+const CONDITION_DESCENDANTS_VALUE_SET = {
+  resourceType: "ValueSet" as const,
+  compose: {
+    include: [
+      {
+        system: "http://snomed.info/sct",
+        filter: [
+          {
+            property: "concept",
+            op: "is-a",
+            value: "404684003",
+          },
+        ],
+      },
+    ],
+  },
+};
 
 type TerminologyExpandResponse = {
   expansion?: {
@@ -67,6 +84,15 @@ function extractOperationOutcomeMessage(bodyText: string) {
 function truncateForLog(value: string, max = 800) {
   if (value.length <= max) return value;
   return `${value.slice(0, max)}...`;
+}
+
+function isMissingImplicitValueSetError(message: string | null) {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("could not find value set") &&
+    normalized.includes("http://snomed.info/sct?fhir_vs=ecl")
+  );
 }
 
 async function getAccessToken() {
@@ -147,6 +173,66 @@ function flattenContains(
   return results;
 }
 
+async function expandValueSetWithCanonicalUrl(
+  token: string,
+  query: string,
+  limit: number,
+) {
+  const url = new URL(`${FHIR_BASE_URL}/ValueSet/$expand`);
+  url.searchParams.set("url", CONDITION_VALUESET_URL);
+  url.searchParams.set("filter", query);
+  url.searchParams.set("count", String(limit));
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/fhir+json, application/json",
+      Authorization: `Bearer ${token}`,
+      Prefer: "return=representation",
+    },
+    method: "GET",
+  });
+
+  return { response, requestDescription: url.toString() };
+}
+
+async function expandValueSetWithExplicitCompose(
+  token: string,
+  query: string,
+  limit: number,
+) {
+  const url = new URL(`${FHIR_BASE_URL}/ValueSet/$expand`);
+  const body = {
+    resourceType: "Parameters" as const,
+    parameter: [
+      {
+        name: "valueSet",
+        resource: CONDITION_DESCENDANTS_VALUE_SET,
+      },
+      {
+        name: "filter",
+        valueString: query,
+      },
+      {
+        name: "count",
+        valueInteger: limit,
+      },
+    ],
+  };
+
+  const response = await fetch(url, {
+    body: JSON.stringify(body),
+    headers: {
+      Accept: "application/fhir+json, application/json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/fhir+json",
+      Prefer: "return=representation",
+    },
+    method: "POST",
+  });
+
+  return { response, requestDescription: `${url.toString()} [explicit ValueSet]` };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const caller = await requireUser(req);
@@ -175,20 +261,35 @@ export async function GET(req: NextRequest) {
     }
 
     const token = await getAccessToken();
-    const url = new URL(`${FHIR_BASE_URL}/ValueSet/$expand`);
-    url.searchParams.set("url", CONDITION_VALUESET_URL);
-    url.searchParams.set("filter", query);
-    url.searchParams.set("count", String(limit));
-    console.log("health ledger");
+    let { response, requestDescription } =
+      await expandValueSetWithCanonicalUrl(token, query, limit);
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/fhir+json, application/json",
-        Authorization: `Bearer ${token}`,
-        Prefer: "return=representation",
-      },
-      method: "GET",
-    });
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      const operationOutcomeMessage = extractOperationOutcomeMessage(message);
+
+      if (isMissingImplicitValueSetError(operationOutcomeMessage || message)) {
+        ({ response, requestDescription } =
+          await expandValueSetWithExplicitCompose(token, query, limit));
+      } else {
+        console.error("NHS terminology FHIR request failed", {
+          operationOutcomeMessage,
+          query,
+          requestUrl: requestDescription,
+          responseText: truncateForLog(message),
+          status: response.status,
+          statusText: response.statusText,
+        });
+        throw Object.assign(
+          new Error(
+            operationOutcomeMessage ||
+              message ||
+              "Terminology search request failed",
+          ),
+          { status: 502 },
+        );
+      }
+    }
 
     if (!response.ok) {
       const message = await response.text().catch(() => "");
@@ -196,7 +297,7 @@ export async function GET(req: NextRequest) {
       console.error("NHS terminology FHIR request failed", {
         operationOutcomeMessage,
         query,
-        requestUrl: url.toString(),
+        requestUrl: requestDescription,
         responseText: truncateForLog(message),
         status: response.status,
         statusText: response.statusText,
