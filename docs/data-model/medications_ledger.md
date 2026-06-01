@@ -55,7 +55,7 @@
 
 - Scopes: medications.read (GET), medications.write (POST/PATCH).
 - Row-level scope: same lane logic as patients:
-- orgId === user.orgId AND (facilityId/careTeamId via patient join or patientId ∈ allowedPatientIds).
+- user has a matching active patient assignment (`orgId` plus `facilityId` or `careTeamId`) via patient join, or `patientId ∈ allowedPatientIds`.
 
 ```js
 db.medications.createIndex({ orgId: 1, patientId: 1, status: 1 });
@@ -185,7 +185,7 @@ A separate projection collection (`medications_current`) stores the current snap
 
 - Scopes: `medications.read` (GET), `medications.write` (POST/PATCH)
 - Row-level scope: same lane logic as patients:
-  - `orgId === user.orgId` AND (facilityId/careTeamId via patient join or `patientId ∈ allowedPatientIds`).
+  - matching active patient assignment via patient join (`orgId` plus `facilityId` or `careTeamId`), or `patientId ∈ allowedPatientIds`.
 
 ---
 

@@ -17,6 +17,7 @@ export const makePrefixedHexId = (prefix: string) =>
 export const PrincipalId = makePrefixedHexId("pr"); // pr_<24hex>
 export const CredentialId = makePrefixedHexId("cred"); // cred_<24hex>
 export const PseudonymId = makePrefixedHexId("ps"); // ps_<24hex>
+export const AssignmentId = makePrefixedHexId("asg"); // asg_<24hex>
 
 export const EmailLower = z.email().transform((e) => e.toLowerCase());
 

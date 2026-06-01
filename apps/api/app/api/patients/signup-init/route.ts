@@ -208,9 +208,9 @@ export async function POST(req: NextRequest) {
           $set: { updatedAt: now },
           $setOnInsert: {
             _id: patientId,
+            assignments: [],
             createdAt: now,
             flags: [],
-            orgId: "",
             principalId,
             summary: {},
           },

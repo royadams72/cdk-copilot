@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
 
     const auth_links = db.collection(COLLECTIONS.AuthLinks);
     const usersPii = db.collection(COLLECTIONS.UsersPII);
+    const patientConsents = db.collection(COLLECTIONS.PatientConsents);
     const provider = "password";
     const existingAuthLink = await auth_links.findOne(
       { active: true, email: res.doc.email, provider },
@@ -206,7 +207,12 @@ export async function POST(req: NextRequest) {
         projection: { onboardingCompleted: 1, onboardingSteps: 1 },
       },
     );
+    const pendingConsentCount = await patientConsents.countDocuments({
+      patientId: patient._id,
+      status: "pending",
+    });
     return NextResponse.json({
+      hasPendingConsents: pendingConsentCount > 0,
       jwt,
       onboardingCompleted: !!pii?.onboardingCompleted,
       onboardingSteps: pii?.onboardingSteps ?? [],
@@ -214,6 +220,7 @@ export async function POST(req: NextRequest) {
         pii?.onboardingCompleted,
         pii?.onboardingSteps,
       ),
+      pendingConsentCount,
       refreshToken: refreshToken.token,
     });
   } catch (e) {

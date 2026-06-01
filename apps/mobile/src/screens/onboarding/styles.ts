@@ -27,6 +27,31 @@ export const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  consentCard: {
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderRadius: 18,
+    backgroundColor: SUBTLE_SURFACE_COLOR,
+    padding: 18,
+    gap: 8,
+  },
+  consentLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  consentMeta: {
+    fontSize: 13,
+    color: "#475569",
+    marginTop: 4,
+  },
+  consentValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
   datePickerColumn: {
     flex: 1,
     borderWidth: 1,
@@ -70,6 +95,12 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#0F172A",
+  },
+  loadingBlock: {
+    minHeight: 220,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
   },
   modalBackdrop: {
     flex: 1,

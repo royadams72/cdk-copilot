@@ -6,6 +6,7 @@ import { getDb } from "@/apps/api/lib/db/mongodb";
 import { COLLECTIONS } from "@/packages/core/dist/server";
 import { TUsersAccount } from "@/packages/core/dist/isomorphic";
 import { ONBOARDING_STEPS, TUserPII } from "@ckd/core";
+import { ObjectId } from "mongodb";
 
 function resolveOnboardingRoute(
   onboardingCompleted?: boolean,
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
       COLLECTIONS.UsersAccounts,
     );
     const usersPii = database.collection<TUserPII>(COLLECTIONS.UsersPII);
+    const patientConsents = database.collection(COLLECTIONS.PatientConsents);
     const activeUser = await usersAccounts.findOne({
       isActive: true,
       principalId: user.principalId,
@@ -47,6 +49,10 @@ export async function GET(req: NextRequest) {
         },
       },
     );
+    const pendingConsentCount = await patientConsents.countDocuments({
+      patientId: new ObjectId(user.patientId),
+      status: "pending",
+    });
 
     if (!activeUser) {
       return bad("Not found", { requestId }, 404);
@@ -59,12 +65,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         ok: true,
+        hasPendingConsents: pendingConsentCount > 0,
         onboardingCompleted: !!pii?.onboardingCompleted,
         onboardingSteps: pii?.onboardingSteps ?? [],
         nextOnboardingRoute: resolveOnboardingRoute(
           pii?.onboardingCompleted,
           pii?.onboardingSteps,
         ),
+        pendingConsentCount,
       },
       { status: 200 },
     );

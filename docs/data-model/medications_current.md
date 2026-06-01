@@ -86,7 +86,7 @@
 
 - • `Scopes`: medications.read (GET), medications.write (POST/PATCH)
 - • `Row-level scope`: same lane logic as patients:
-- • orgId === user.orgId AND (facilityId/careTeamId via patient join or patientId ∈ allowedPatientIds).
+- • matching active patient assignment via patient join (`orgId` plus `facilityId` or `careTeamId`), or `patientId ∈ allowedPatientIds`.
 
 ⸻
 
