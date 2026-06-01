@@ -52,6 +52,40 @@ type FhirOperationOutcome = {
   resourceType?: string;
 };
 
+type ConditionSearchResult = {
+  code: string;
+  display: string;
+  system: string;
+};
+
+const EXCLUDED_LABEL_PATTERNS = [
+  /\bdiet\b/i,
+  /\bprogramme\b/i,
+  /\bprogram\b/i,
+  /\bdistress\b/i,
+  /\bresolved\b/i,
+  /\bremission\b/i,
+  /\bscreening\b/i,
+  /\beducation\b/i,
+  /\btherapy\b/i,
+  /\bmonitoring\b/i,
+  /\bassessment\b/i,
+  /\breferral\b/i,
+  /\bcare plan\b/i,
+  /\bprocedure\b/i,
+  /\bsituation\b/i,
+];
+
+const PREFERRED_LABEL_PATTERNS = [
+  /\bdisorder\b/i,
+  /\bdisease\b/i,
+  /\bsyndrome\b/i,
+  /\bfinding\b/i,
+  /\bmellitus\b/i,
+  /\bhypertension\b/i,
+  /\bdiabetes\b/i,
+];
+
 function getClientCredentials() {
   const clientId = process.env.NHS_TERMINOLOGY_CLIENT_ID;
   const clientSecret = process.env.NHS_TERMINOLOGY_CLIENT_SECRET;
@@ -156,7 +190,7 @@ async function getAccessToken() {
 
 function flattenContains(
   contains: TerminologyContainsItem[] | undefined,
-  results: Array<{ code: string; display: string; system: string }> = [],
+  results: ConditionSearchResult[] = [],
 ) {
   for (const item of contains ?? []) {
     if (item.code && item.display) {
@@ -171,6 +205,72 @@ function flattenContains(
     }
   }
   return results;
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w\s]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function computeConditionSearchScore(item: ConditionSearchResult, query: string) {
+  const label = item.display;
+  const normalizedLabel = normalizeText(label);
+  const normalizedQuery = normalizeText(query);
+  const terms = normalizedQuery.split(" ").filter(Boolean);
+
+  let score = 0;
+
+  if (normalizedLabel === normalizedQuery) score += 200;
+  if (normalizedLabel.startsWith(normalizedQuery)) score += 120;
+  if (normalizedLabel.includes(` ${normalizedQuery}`)) score += 90;
+  if (normalizedLabel.includes(normalizedQuery)) score += 60;
+
+  for (const term of terms) {
+    if (normalizedLabel.startsWith(term)) score += 25;
+    else if (normalizedLabel.includes(` ${term}`)) score += 18;
+    else if (normalizedLabel.includes(term)) score += 10;
+  }
+
+  for (const pattern of PREFERRED_LABEL_PATTERNS) {
+    if (pattern.test(label)) score += 12;
+  }
+
+  for (const pattern of EXCLUDED_LABEL_PATTERNS) {
+    if (pattern.test(label)) score -= 80;
+  }
+
+  if (/\(.+\)$/.test(label)) score -= 5;
+
+  return score;
+}
+
+function rankConditionResults(items: ConditionSearchResult[], query: string, limit: number) {
+  const deduped = new Map<string, ConditionSearchResult>();
+
+  for (const item of items) {
+    const labelKey = normalizeText(item.display);
+    if (!labelKey) continue;
+    if (EXCLUDED_LABEL_PATTERNS.some((pattern) => pattern.test(item.display))) {
+      continue;
+    }
+    if (!deduped.has(labelKey)) {
+      deduped.set(labelKey, item);
+    }
+  }
+
+  return Array.from(deduped.values())
+    .map((item) => ({
+      item,
+      score: computeConditionSearchScore(item, query),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.item.display.localeCompare(b.item.display))
+    .slice(0, limit)
+    .map(({ item }) => item);
 }
 
 async function expandValueSetWithCanonicalUrl(
@@ -313,8 +413,11 @@ export async function GET(req: NextRequest) {
     }
 
     const data = (await response.json()) as TerminologyExpandResponse;
-    const items = flattenContains(data.expansion?.contains)
-      .slice(0, limit)
+    const items = rankConditionResults(
+      flattenContains(data.expansion?.contains),
+      query,
+      limit,
+    )
       .map((item) => ({
         code: item.code,
         codeSystem: "SNOMED_CT" as const,
