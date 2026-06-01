@@ -46,11 +46,18 @@
     "redux-persist": "^6.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.0",
+    "@testing-library/react-native": "^13.0.0",
+    "@types/jest": "^29.5.0",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "^54.0.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "jest": "^29.7.0",
+    "jest-mock-extended": "^3.0.0",
     "redux-devtools-expo-dev-plugin": "^2.0.0",
+    "redux-mock-store": "^1.5.4",
+    "ts-jest": "^29.1.0",
     "typescript": "~5.9.2"
   },
   "main": "index.js",
@@ -60,6 +67,8 @@
     "dev": "expo start",
     "dev:tunnel": "expo start --tunnel -c",
     "reset-project": "node ./scripts/reset-project.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "android": "expo run:android",
     "android:reverse": "adb start-server && adb wait-for-device && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:8081 tcp:8081 && adb reverse tcp:19000 tcp:19000 && adb reverse tcp:19001 tcp:19001",
     "android:dev": "EXPO_USE_POLLING=1 CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=100 expo start --tunnel --android",
