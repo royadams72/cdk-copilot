@@ -35,12 +35,21 @@ const PiiPatchSchema = z
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   const requestId = makeRandomId();
   try {
     const { userId } = await params;
     const caller = await requireUser(req, ["users:pii:write"]);
+
+    // Authorization check: verify caller owns the record being modified
+    if (caller.principalId !== userId && caller.patientId !== userId) {
+      return NextResponse.json(
+        { ok: false, message: "Unauthorized", requestId },
+        { status: 403 },
+      );
+    }
+
     const body = await req.json();
     const parsed = PiiPatchSchema.safeParse(body);
     if (!parsed.success) {
@@ -51,7 +60,7 @@ export async function PATCH(
           errors: parsed.error.flatten(),
           requestId,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,23 +75,23 @@ export async function PATCH(
           requestId,
         },
       },
-      { upsert: false }
+      { upsert: false },
     );
 
     if (res.matchedCount === 0) {
       return NextResponse.json(
         { ok: false, message: "Not found", requestId },
-        { status: 404 }
+        { status: 404 },
       );
     }
     return NextResponse.json(
       { ok: true, modified: res.modifiedCount, requestId },
-      { status: 200, headers: { "x-request-id": requestId } }
+      { status: 200, headers: { "x-request-id": requestId } },
     );
   } catch (err: any) {
     return NextResponse.json(
       { ok: false, message: err?.message || "Server error", requestId },
-      { status: err?.status || 500 }
+      { status: err?.status || 500 },
     );
   }
 }
