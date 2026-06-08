@@ -3,9 +3,10 @@ import { makeRandomId } from "@/apps/api/lib/http/request";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad } from "@/apps/api/lib/http/responses";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 import { COLLECTIONS } from "@/packages/core/dist/server";
 import { TUsersAccount } from "@/packages/core/dist/isomorphic";
-import { ONBOARDING_STEPS, TUserPII } from "@ckd/core";
+import { ONBOARDING_STEPS, TPatientAssignment, TUserPII } from "@ckd/core";
 import { ObjectId } from "mongodb";
 
 function resolveOnboardingRoute(
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
     );
     const usersPii = database.collection<TUserPII>(COLLECTIONS.UsersPII);
     const patientConsents = database.collection(COLLECTIONS.PatientConsents);
+    const patients = database.collection(COLLECTIONS.Patients);
     const activeUser = await usersAccounts.findOne({
       isActive: true,
       principalId: user.principalId,
@@ -53,6 +55,13 @@ export async function GET(req: NextRequest) {
       patientId: new ObjectId(user.patientId),
       status: "pending",
     });
+    const patient = await patients.findOne<{
+      assignments?: TPatientAssignment[];
+    }>(
+      { _id: new ObjectId(user.patientId) },
+      { projection: { assignments: 1 } },
+    );
+    const assignmentState = summarizeAssignmentState(patient?.assignments);
 
     if (!activeUser) {
       return bad("Not found", { requestId }, 404);
@@ -64,6 +73,8 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json(
       {
+        activeAssignmentCount: assignmentState.activeAssignmentCount,
+        hasActiveAssignments: assignmentState.hasActiveAssignments,
         ok: true,
         hasPendingConsents: pendingConsentCount > 0,
         onboardingCompleted: !!pii?.onboardingCompleted,

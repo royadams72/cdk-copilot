@@ -104,9 +104,10 @@ OR
 
 - `assignments[]` is the operational source of truth for patient access boundaries.
 - The detailed patient decision history should live in `patient_consents`.
-- Initial signup creates a `pending` assignment and matching pending consent.
-- Patient acceptance activates the assignment.
-- New care-team or clinician additions should create new consent rows scoped to an existing or new assignment.
+- Initial signup no longer requires a separate assignment-consent gate.
+- When a patient is added to a new care team or clinician relationship that requires approval, set the assignment to `pending`, set `consentStatus="pending"`, and create a matching `patient_consents` row.
+- Patient acceptance activates the pending assignment or access change.
+- The clinician-portal access rules for when to skip consent for in-team clinicians are tracked in `/docs/clinician-portal-consent-spec.md`.
 
 ## Retention
 

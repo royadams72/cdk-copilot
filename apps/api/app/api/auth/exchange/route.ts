@@ -15,10 +15,11 @@ import {
 } from "@/apps/api/lib/auth/auth_token";
 import { ObjectId } from "mongodb";
 import { randomBytes } from "crypto";
+import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
-import { DEFAULT_SCOPES, ONBOARDING_STEPS, SCOPES } from "@ckd/core";
+import { DEFAULT_SCOPES, ONBOARDING_STEPS, SCOPES, TPatientAssignment } from "@ckd/core";
 import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
 
 function resolveOnboardingRoute(
@@ -100,11 +101,14 @@ export async function POST(req: NextRequest) {
     }
 
     const patients = db.collection(COLLECTIONS.Patients);
-    const patient = await patients.findOne<{ _id: ObjectId }>(
+    const patient = await patients.findOne<{
+      _id: ObjectId;
+      assignments?: TPatientAssignment[];
+    }>(
       {
         _id: res.doc.patientId,
       },
-      { projection: { _id: 1 } },
+      { projection: { _id: 1, assignments: 1 } },
     );
 
     if (!patient)
@@ -211,7 +215,10 @@ export async function POST(req: NextRequest) {
       patientId: patient._id,
       status: "pending",
     });
+    const assignmentState = summarizeAssignmentState(patient.assignments);
     return NextResponse.json({
+      activeAssignmentCount: assignmentState.activeAssignmentCount,
+      hasActiveAssignments: assignmentState.hasActiveAssignments,
       hasPendingConsents: pendingConsentCount > 0,
       jwt,
       onboardingCompleted: !!pii?.onboardingCompleted,

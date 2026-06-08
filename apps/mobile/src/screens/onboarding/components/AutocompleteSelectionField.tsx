@@ -23,12 +23,22 @@ export function AutocompleteSelectionField({
   const [options, setOptions] = React.useState<AutocompleteOption[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [searchError, setSearchError] = React.useState<string | null>(null);
+  const skipNextSearchRef = React.useRef(true);
 
   useEffect(() => {
+    skipNextSearchRef.current = true;
     setQuery(value ?? "");
+    setOptions([]);
+    setLoading(false);
+    setSearchError(null);
   }, [value]);
 
   useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
+
     const trimmed = query.trim();
     if (trimmed.length < 2) {
       setOptions([]);
@@ -69,7 +79,10 @@ export function AutocompleteSelectionField({
       <LabeledInput
         label={label}
         value={query}
-        onChangeText={setQuery}
+        onChangeText={(nextQuery) => {
+          setQuery(nextQuery);
+          setSearchError(null);
+        }}
         placeholder={placeholder}
         error={error}
       />
@@ -88,8 +101,10 @@ export function AutocompleteSelectionField({
             <Pressable
               key={option.key}
               onPress={() => {
+                skipNextSearchRef.current = true;
                 setQuery(option.label);
                 setOptions([]);
+                setSearchError(null);
                 onSelect(option);
               }}
               style={{
