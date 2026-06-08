@@ -1,6 +1,6 @@
 # patient_consents
 
-**Purpose:** Track patient consent decisions for assignment-scoped care access at signup and when new clinicians or care teams are added later.
+**Purpose:** Track patient consent decisions for assignment-scoped care access when new clinicians or care teams are added after the patient account already exists.
 **Contains PII:** No direct PII. References patient, assignment, and clinician identifiers.
 **Access:** App server only for writes. Patient may read and decide their own pending items through API routes. Staff/admin access should be audited.
 
@@ -14,10 +14,10 @@
 - `facilityId` · string · required
 - `careTeamId` · string · required
 - `clinicianPrincipalId` · string · optional · present when the consent is for a named clinician rather than team-only assignment
-- `type` · enum (`signup_assignment|care_team_added|clinician_added`)
+- `type` · enum (`care_team_added|clinician_added`)
 - `status` · enum (`pending|accepted|declined|superseded|revoked`)
 - `decision` · enum (`agree|disagree|null`)
-- `decisionSource` · enum (`signup|in_app|push_open|admin_reset|null`)
+- `decisionSource` · enum (`download_link|in_app|push_open|admin_reset|null`)
 - `requestedAt` · Date · required
 - `decidedAt` · Date · optional
 - `copy` · object · prebuilt patient-facing content
@@ -57,15 +57,11 @@
 
 ## Behaviour
 
-- Initial signup:
-  - create patient assignment with `status="pending"` and `consentStatus="pending"`
-  - create matching `patient_consents` row with `type="signup_assignment"`
-  - block app flow until the patient agrees or disagrees
-
 - Ad hoc care-team or clinician addition:
+  - create or update the patient assignment with `status="pending"` and `consentStatus="pending"`
   - create a new `patient_consents` row
+  - surface the consent when the patient opens the secure download/sign-in link or opens the app
   - send push notification if available
-  - show the same blocking in-app screen on open until a decision is made
 
 - Decision effects:
   - `agree`:
@@ -98,3 +94,4 @@ db.patient_consents.createIndex(
 
 - Keep only one active `pending` consent per exact `patientId + assignmentId + clinicianPrincipalId?` key.
 - `patient_consents` stores decision history; `patients.assignments[]` stores current operational access state.
+- Clinician-portal implementation rules for when to create consent vs grant access immediately are tracked in `docs/clinician-portal-consent-spec.md`.

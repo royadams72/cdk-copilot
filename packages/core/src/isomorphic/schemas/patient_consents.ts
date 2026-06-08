@@ -8,7 +8,6 @@ import {
 } from "./common";
 
 export const PatientConsentType = z.enum([
-  "signup_assignment",
   "care_team_added",
   "clinician_added",
 ]);
@@ -24,7 +23,7 @@ export const PatientConsentStatus = z.enum([
 export const PatientConsentDecision = z.enum(["agree", "disagree"]);
 
 export const PatientConsentDecisionSource = z.enum([
-  "signup",
+  "download_link",
   "in_app",
   "push_open",
   "admin_reset",
