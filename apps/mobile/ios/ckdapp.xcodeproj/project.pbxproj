@@ -10,6 +10,9 @@
 		079DFB3518253A42FF9EE04A /* libPods-ckdapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B3C55237EBFCDDBB452E3CA6 /* libPods-ckdapp.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		1F5048C2E60A84F4C85D77DB /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DEA42826C932AE5B7255CF9 /* ExpoModulesProvider.swift */; };
+		2A7B17312F10A0010044C1D9 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A7B17302F10A0010044C1D9 /* HealthKit.framework */; };
+		2A7B17332F10A0020044C1D9 /* HealthKitSyncModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A7B17322F10A0020044C1D9 /* HealthKitSyncModule.swift */; };
+		2A7B17352F10A0030044C1D9 /* HealthKitSyncModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 2A7B17342F10A0030044C1D9 /* HealthKitSyncModule.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		7E995ADB1B5CFE693E27C7B4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 94DA677C8D2FDCBE3298C808 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
@@ -20,6 +23,9 @@
 		13B07F961A680F5B00A75B9A /* ckdapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ckdapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ckdapp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ckdapp/Info.plist; sourceTree = "<group>"; };
+		2A7B17302F10A0010044C1D9 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		2A7B17322F10A0020044C1D9 /* HealthKitSyncModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSyncModule.swift; path = ckdapp/HealthKitSyncModule.swift; sourceTree = "<group>"; };
+		2A7B17342F10A0030044C1D9 /* HealthKitSyncModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HealthKitSyncModule.m; path = ckdapp/HealthKitSyncModule.m; sourceTree = "<group>"; };
 		3DEA42826C932AE5B7255CF9 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ckdapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		6051A4519384C1E419489D60 /* Pods-ckdapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ckdapp.debug.xcconfig"; path = "Target Support Files/Pods-ckdapp/Pods-ckdapp.debug.xcconfig"; sourceTree = "<group>"; };
 		64757E451EE99D689048B898 /* Pods-ckdapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ckdapp.release.xcconfig"; path = "Target Support Files/Pods-ckdapp/Pods-ckdapp.release.xcconfig"; sourceTree = "<group>"; };
@@ -38,6 +44,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				079DFB3518253A42FF9EE04A /* libPods-ckdapp.a in Frameworks */,
+				2A7B17312F10A0010044C1D9 /* HealthKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,6 +73,8 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				2A7B17322F10A0020044C1D9 /* HealthKitSyncModule.swift */,
+				2A7B17342F10A0030044C1D9 /* HealthKitSyncModule.m */,
 				F11748442D0722820044C1D9 /* ckdapp-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -80,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
+				2A7B17302F10A0010044C1D9 /* HealthKit.framework */,
 				B3C55237EBFCDDBB452E3CA6 /* libPods-ckdapp.a */,
 			);
 			name = Frameworks;
@@ -338,6 +348,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				2A7B17332F10A0020044C1D9 /* HealthKitSyncModule.swift in Sources */,
+				2A7B17352F10A0030044C1D9 /* HealthKitSyncModule.m in Sources */,
 				1F5048C2E60A84F4C85D77DB /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

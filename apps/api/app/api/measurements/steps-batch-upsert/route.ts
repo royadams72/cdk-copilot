@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { isHealthSyncProvider, type HealthSyncProvider } from "@/apps/api/lib/healthSync/provider";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -23,7 +24,7 @@ type StepsBatchItem = {
     dayKey?: string;
     finalizedAt?: string;
     lastReconciledAt?: string;
-    provider: "health_connect";
+    provider: HealthSyncProvider;
     status: "provisional" | "finalized";
   };
 };
@@ -80,9 +81,12 @@ function parseItem(raw: unknown): StepsBatchItem | null {
     const s = syncRaw as Record<string, unknown>;
     const syncProvider = asTrimmedString(s.provider);
     const syncStatus = asTrimmedString(s.status);
-    if (syncProvider === "health_connect" && (syncStatus === "provisional" || syncStatus === "finalized")) {
+    if (
+      isHealthSyncProvider(syncProvider) &&
+      (syncStatus === "provisional" || syncStatus === "finalized")
+    ) {
       item.sync = {
-        provider: "health_connect",
+        provider: syncProvider,
         status: syncStatus,
         dayKey: asTrimmedString(s.dayKey) ?? undefined,
         finalizedAt: asTrimmedString(s.finalizedAt) ?? undefined,

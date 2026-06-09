@@ -1,5 +1,6 @@
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { getCurrentHealthSyncProviderName } from "@/lib/currentHealthSyncProvider";
 import { store } from "@/store";
 import { measurementsApi } from "@/store/services/measurementsApi";
 import type { CreateMeasurementArgs } from "@/store/services/types";
@@ -27,7 +28,7 @@ export type BackfillableMeasurementKind =
 
 export type HealthConnectSyncStateResponse = {
   accountCreatedAt?: string | null;
-  provider: "health_connect";
+  provider: "health_connect" | "healthkit";
   recordTypes?: {
     steps?: {
       lastSyncedAt?: string;
@@ -98,7 +99,10 @@ export function syncStateRecordType(
 }
 
 export async function getServerHealthConnectSyncState() {
-  const response = await authFetch(`${API}/api/users/health-connect/sync-state`);
+  const provider = getCurrentHealthSyncProviderName();
+  const response = await authFetch(
+    `${API}/api/users/health-connect/sync-state?provider=${provider}`,
+  );
   const body = (await response.json().catch(() => null)) as
     | { data?: HealthConnectSyncStateResponse; message?: string; ok?: boolean }
     | null;
@@ -113,8 +117,9 @@ export async function getServerHealthConnectSyncState() {
 export async function updateServerHealthConnectSyncState(
   recordTypes: Partial<Record<SyncStateRecordType, { lastSyncedAt: string }>>,
 ) {
+  const provider = getCurrentHealthSyncProviderName();
   const response = await authFetch(`${API}/api/users/health-connect/sync-state`, {
-    body: JSON.stringify({ recordTypes }),
+    body: JSON.stringify({ provider, recordTypes }),
     method: "PATCH",
   });
   const body = (await response.json().catch(() => null)) as
@@ -127,8 +132,12 @@ export async function updateServerHealthConnectSyncState(
 }
 
 export async function updateServerStepsBackfilledFrom(backfilledFrom: string) {
+  const provider = getCurrentHealthSyncProviderName();
   const response = await authFetch(`${API}/api/users/health-connect/sync-state`, {
-    body: JSON.stringify({ recordTypes: { steps: { backfilledFrom } } }),
+    body: JSON.stringify({
+      provider,
+      recordTypes: { steps: { backfilledFrom } },
+    }),
     method: "PATCH",
   });
   const body = (await response.json().catch(() => null)) as
@@ -162,4 +171,3 @@ export function healthConnectSyncWindow(
     startTime: start.toISOString(),
   };
 }
-

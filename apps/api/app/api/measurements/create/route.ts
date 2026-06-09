@@ -5,6 +5,7 @@ import { Db, ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { isHealthSyncProvider, type HealthSyncProvider } from "@/apps/api/lib/healthSync/provider";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   awardExerciseDaysEngagement,
@@ -36,7 +37,7 @@ type SyncMeta = {
   dayKey?: string;
   finalizedAt?: Date;
   lastReconciledAt?: Date;
-  provider: "health_connect";
+  provider: HealthSyncProvider;
   status: "provisional" | "finalized";
 };
 type ExerciseReferenceDoc = {
@@ -107,7 +108,7 @@ function asSyncMeta(value: unknown): SyncMeta | null {
   const provider = asTrimmedString(input.provider);
   const status = asTrimmedString(input.status);
   if (
-    provider !== "health_connect" ||
+    !isHealthSyncProvider(provider) ||
     (status !== "provisional" && status !== "finalized")
   ) {
     return null;

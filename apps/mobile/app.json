@@ -14,6 +14,8 @@
       "bundleIdentifier": "com.ckdcopilot.ckdapp",
       "associatedDomains": ["applinks:ckd.app"],
       "infoPlist": {
+        "NSHealthShareUsageDescription": "CKD Copilot reads your health data to sync steps, heart rate, sleep, exercise, and blood pressure.",
+        "NSHealthUpdateUsageDescription": "CKD Copilot may write health data only if you choose to enable future Apple Health integrations.",
         "NSMotionUsageDescription": "CKD Copilot uses motion data to count your daily steps.",
         "UIBackgroundModes": ["processing"]
       }

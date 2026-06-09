@@ -52,9 +52,13 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSMotionUsageDescription</key>
-    <string>CKD Copilot uses motion data to count your daily steps.</string>
-    <key>NSUserActivityTypes</key>
+	<key>NSMotionUsageDescription</key>
+	<string>CKD Copilot uses motion data to count your daily steps.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>CKD Copilot reads your health data to sync steps, heart rate, sleep, exercise, and blood pressure.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>CKD Copilot may write health data only if you choose to enable future Apple Health integrations.</string>
+	<key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>

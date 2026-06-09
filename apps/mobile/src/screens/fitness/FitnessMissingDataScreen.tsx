@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, ScrollView, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
-import {
-  backfillHealthConnectMeasurementDates,
-  backfillHealthConnectStepDates,
-} from "@/lib/healthConnectSync";
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import type { MeasurementKind } from "@/store/services/types";
 
 import { Card } from "../dashboard/components/Card";
@@ -66,6 +63,12 @@ export default function FitnessMissingDataScreen() {
   const dateKeys = useMemo(() => buildHistoricalDateKeys(30), []);
 
   const runRepair = async (kind: RepairKind) => {
+    const provider = getCurrentHealthSyncProvider();
+    if (!provider) {
+      Alert.alert("Repair unavailable", "Health sync is not available on this device.");
+      return;
+    }
+
     setRepairState((current) => ({
       ...current,
       [kind]: { error: null, running: true, summary: null },
@@ -74,12 +77,12 @@ export default function FitnessMissingDataScreen() {
     try {
       const result =
         kind === "steps"
-          ? await backfillHealthConnectStepDates(dateKeys, {
+          ? await provider.backfillStepDates(dateKeys, {
               reason: "steps-screen",
               windowKey: `manual-repair:${kind}:30d`,
             })
-          : await backfillHealthConnectMeasurementDates(
-              kind as Exclude<MeasurementKind, "weight">,
+          : await provider.backfillMeasurementDates(
+              kind as Exclude<MeasurementKind, "weight" | "steps">,
               dateKeys,
               {
                 reason: "metric-screen",
@@ -131,7 +134,9 @@ export default function FitnessMissingDataScreen() {
         <View style={{ gap: 4 }}>
           <ThemedText type="title">Missing data</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
-            Repair historical Health Connect gaps for the last 30 completed days.
+            {Platform.OS === "ios"
+              ? "Repair historical Apple Health gaps for the last 30 completed days."
+              : "Repair historical Health Connect gaps for the last 30 completed days."}
           </ThemedText>
         </View>
 
@@ -144,9 +149,13 @@ export default function FitnessMissingDataScreen() {
                 <View style={{ gap: 4 }}>
                   <ThemedText type="defaultSemiBold">{REPAIR_LABELS[kind]}</ThemedText>
                   <ThemedText style={{ opacity: 0.72 }}>
-                    Check Health Connect for missing historical {REPAIR_LABELS[
-                      kind
-                    ].toLowerCase()} data and import any gaps found.
+                    {Platform.OS === "ios"
+                      ? `Check Apple Health for missing historical ${REPAIR_LABELS[
+                          kind
+                        ].toLowerCase()} data and import any gaps found.`
+                      : `Check Health Connect for missing historical ${REPAIR_LABELS[
+                          kind
+                        ].toLowerCase()} data and import any gaps found.`}
                   </ThemedText>
                   {state.summary ? (
                     <ThemedText style={{ color: "#0F766E", opacity: 0.9 }}>
