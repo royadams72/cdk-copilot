@@ -66,7 +66,10 @@ export async function GET(req: NextRequest) {
         rangeEndExclusive,
       ),
       hasOlderNutritionEntries(db, patientObjectId, rangeStart),
-      getMappedNutritionTargets(db, patientObjectId),
+      getMappedNutritionTargets(db, patientObjectId, {
+        orgId: caller.orgId,
+        seedPrincipalId: caller.principalId,
+      }),
     ]);
 
     const nutrition = summarizeNutrition(
