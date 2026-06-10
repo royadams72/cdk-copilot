@@ -112,8 +112,8 @@ function makeSymptomId(input: {
   return `sym_${hash}`;
 }
 
-function nextResolvedAt(status: TSymptomStatus, recordedAt: Date) {
-  return status === "resolved" ? recordedAt : null;
+function nextResolvedAt(status: TSymptomStatus, resolvedAt: Date | null) {
+  return status === "resolved" ? resolvedAt : null;
 }
 
 function toEntryDoc(input: {
@@ -124,6 +124,7 @@ function toEntryDoc(input: {
   orgId?: string | null;
   patientId: ObjectId;
   recordedAt: Date;
+  resolvedAt?: Date | null;
   severity: number;
   source: TSymptomActor["actorType"];
   startedAt?: Date | null;
@@ -141,7 +142,7 @@ function toEntryDoc(input: {
     orgId: input.orgId ?? null,
     patientId: input.patientId,
     recordedAt: input.recordedAt,
-    resolvedAt: nextResolvedAt(input.status, input.recordedAt),
+    resolvedAt: nextResolvedAt(input.status, input.resolvedAt ?? null),
     severity: input.severity,
     source: input.source,
     startedAt: input.startedAt ?? null,
@@ -276,6 +277,7 @@ export async function createPatientSymptom(
     orgId: caller.orgId,
     patientId,
     recordedAt,
+    resolvedAt: parsed.data.status === "resolved" ? recordedAt : null,
     severity: parsed.data.severity,
     source: actor.actorType,
     startedAt: parsed.data.startedAt ?? null,
@@ -353,6 +355,10 @@ export async function updatePatientSymptom(
     orgId: caller.orgId ?? existing.orgId ?? null,
     patientId,
     recordedAt,
+    resolvedAt:
+      nextStatus === "resolved"
+        ? parsed.data.recordedAt ?? updatedAt
+        : null,
     severity: parsed.data.severity ?? existing.severity,
     source: existing.source,
     startedAt:
@@ -367,7 +373,6 @@ export async function updatePatientSymptom(
         : (existing.triggers ?? []),
     updatedAt,
   });
-
   const event: SymptomLedgerEventDoc = {
     after: updated,
     before: existing,
