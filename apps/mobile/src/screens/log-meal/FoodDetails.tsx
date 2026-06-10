@@ -25,9 +25,14 @@ import {
 import { NutritionStyles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
 import { logMealStyles } from "./styles";
-import { hasMissingCoreNutrients } from "./utils";
+import {
+  buildNutritionRequestKey,
+  filterUnreservedNutritionKeys,
+  releaseRecentNutritionRequests,
+  reserveRecentNutritionRequests,
+} from "./nutritionRequestRegistry";
 
-type PortionMode = "gram" | "serving";
+type PortionMode = "direct" | "serving";
 
 type PickerOption = {
   label: string;
@@ -55,7 +60,7 @@ export default function FoodDetails() {
   const selectedFood = useAppSelector(selectActiveItem);
   const editingEntryId = useAppSelector(selectEditingEntryId);
   const foods = useAppSelector(selectAcitveGroupSummaries);
-  const requestedNutritionByUidRef = useRef(new Set<string>());
+  const requestedNutritionKeysRef = useRef(new Set<string>());
   const groupInfo = useAppSelector((state) => {
     const groupId = selectedFood?.groupId;
     if (!groupId) return null;
@@ -64,17 +69,26 @@ export default function FoodDetails() {
 
   useEffect(() => {
     if (!selectedFood || !groupInfo || !selectedFood.uid) return;
-    if (!hasMissingCoreNutrients(selectedFood)) {
-      return;
-    }
-    if (requestedNutritionByUidRef.current.has(selectedFood.uid)) return;
+    const requestKey = buildNutritionRequestKey(
+      selectedFood.uid,
+      groupInfo.quantity,
+      normalizeUnit(groupInfo.unit ?? selectedFood.unit),
+    );
+    if (requestedNutritionKeysRef.current.has(requestKey)) return;
+    const requestable = filterUnreservedNutritionKeys([requestKey], (key) => key);
+    if (!requestable.length) return;
 
-    requestedNutritionByUidRef.current.add(selectedFood.uid);
+    requestedNutritionKeysRef.current.add(requestKey);
+    reserveRecentNutritionRequests([requestKey]);
 
     void (async () => {
       try {
         const results = await fetchNutritionData({
-          foodItems: selectedFood,
+          foodItems: {
+            ...selectedFood,
+            quantity: groupInfo.quantity,
+            unit: groupInfo.unit ?? selectedFood.unit,
+          },
         }).unwrap();
         dispatch(
           applyNutritionResults({
@@ -83,6 +97,8 @@ export default function FoodDetails() {
           }),
         );
       } catch (error) {
+        requestedNutritionKeysRef.current.delete(requestKey);
+        releaseRecentNutritionRequests([requestKey]);
         console.log("fetchNutritionData failed", error);
       }
     })();
@@ -121,21 +137,16 @@ export default function FoodDetails() {
       return;
     }
 
-    const currentMode = portionConfig.mode;
     const currentQuantity = groupInfo.quantity ?? selectedFood.quantity;
-    const currentWeight = quantityToWeight(
-      currentQuantity,
-      currentMode,
-      portionConfig.servingWeight,
-    );
     const nextQuantity = sanitizeQuantity(nextQuantityRaw, nextMode);
-    const nextWeight = quantityToWeight(
-      nextQuantity,
+    const nutrientRatio = calculateNutrientRatio({
+      currentDirectUnit: portionConfig.directUnit,
+      currentMode: portionConfig.mode,
+      currentQuantity,
       nextMode,
-      portionConfig.servingWeight,
-    );
-    const nutrientRatio =
-      currentWeight > 0 && nextWeight > 0 ? nextWeight / currentWeight : 1;
+      nextQuantity,
+      servingWeight: portionConfig.servingWeight,
+    });
 
     dispatch(
       setPortion({
@@ -144,25 +155,26 @@ export default function FoodDetails() {
         nutrientRatio,
         quantity: nextQuantity,
         uid: selectedFood.uid,
-        unit: nextMode === "gram" ? "gram" : portionConfig.servingLabel,
+        unit:
+          nextMode === "direct"
+            ? portionConfig.directUnit
+            : portionConfig.servingLabel,
       }),
     );
   };
 
   const handleModeChange = (nextModeValue: string) => {
     if (!portionConfig || !groupInfo) return;
-    const nextMode = nextModeValue === "gram" ? "gram" : "serving";
+    const nextMode = nextModeValue === "direct" ? "direct" : "serving";
     if (nextMode === portionConfig.mode) return;
 
-    const currentWeight = quantityToWeight(
+    const convertedQuantity = convertQuantityForModeChange(
       groupInfo.quantity,
       portionConfig.mode,
+      nextMode,
+      portionConfig.directUnit,
       portionConfig.servingWeight,
     );
-    const convertedQuantity =
-      nextMode === "gram"
-        ? currentWeight
-        : currentWeight / (portionConfig.servingWeight || 1);
     applyPortionChange(nextMode, convertedQuantity);
   };
 
@@ -210,7 +222,11 @@ export default function FoodDetails() {
                       {portionConfig.availableModes.map((mode) => (
                         <Picker.Item
                           key={mode}
-                          label={mode === "gram" ? "Grams" : "Serving"}
+                          label={
+                            mode === "direct"
+                              ? formatDirectUnitLabel(portionConfig.directUnit)
+                              : "Serving"
+                          }
                           value={mode}
                         />
                       ))}
@@ -315,8 +331,8 @@ export default function FoodDetails() {
                   groupInfo
                 ) {
                   const nextUnit =
-                    portionConfig.mode === "gram"
-                      ? "gram"
+                    portionConfig.mode === "direct"
+                      ? portionConfig.directUnit
                       : portionConfig.servingLabel;
                   const nextQuantity = sanitizeQuantity(
                     portionConfig.quantity,
@@ -324,30 +340,24 @@ export default function FoodDetails() {
                   );
                   const currentQuantity =
                     groupInfo.quantity ?? selectedFood.quantity;
-                  const currentMode = isGramUnit(
+                  const currentMode = isDirectMeasureUnit(
                     normalizeUnit(groupInfo.unit ?? selectedFood.unit),
                   )
-                    ? "gram"
+                    ? "direct"
                     : "serving";
-                  const currentWeight = quantityToWeight(
-                    currentQuantity,
-                    currentMode,
-                    portionConfig.servingWeight,
-                  );
-                  const nextWeight = quantityToWeight(
-                    nextQuantity,
-                    portionConfig.mode,
-                    portionConfig.servingWeight,
-                  );
 
                   dispatch(
                     setPortion({
                       foodId: selectedFood.foodId,
                       groupId: selectedFood.groupId,
-                      nutrientRatio:
-                        currentWeight > 0 && nextWeight > 0
-                          ? nextWeight / currentWeight
-                          : 1,
+                      nutrientRatio: calculateNutrientRatio({
+                        currentDirectUnit: portionConfig.directUnit,
+                        currentMode,
+                        currentQuantity,
+                        nextMode: portionConfig.mode,
+                        nextQuantity,
+                        servingWeight: portionConfig.servingWeight,
+                      }),
                       quantity: nextQuantity,
                       uid: selectedFood.uid,
                       unit: nextUnit,
@@ -478,34 +488,39 @@ function resolvePortionConfig(
   const currentUnit = (groupUnit || itemUnit || "").trim();
   const currentUnitNorm = normalizeUnit(currentUnit);
   const measureLookup = createMeasureLookup(measures);
-  const currentMeasure = measureLookup.get(currentUnitNorm);
+  const currentMeasure = findMeasureByUnit(measureLookup, currentUnitNorm);
   const fallbackServingMeasure = findServingMeasure(measureLookup);
-  const fallbackPortionMeasure = findFirstNonGramMeasure(measures);
+  const fallbackPortionMeasure = findFirstNonDirectMeasure(measures);
   const preferredPortionMeasure =
     fallbackServingMeasure ?? fallbackPortionMeasure;
   const shouldDefaultToServing =
-    isGramUnit(currentUnitNorm) && !currentMeasure && !!preferredPortionMeasure;
+    isDirectMeasureUnit(currentUnitNorm) &&
+    !currentMeasure &&
+    !!preferredPortionMeasure;
 
   const servingMeasure = shouldDefaultToServing
     ? preferredPortionMeasure
-    : isGramUnit(currentUnitNorm)
+    : isDirectMeasureUnit(currentUnitNorm)
       ? preferredPortionMeasure
       : (currentMeasure ?? preferredPortionMeasure);
 
   const servingWeight = servingMeasure?.weight;
   const servingLabel = servingMeasure?.label?.trim() || "serving";
+  const directUnit = resolveDirectUnit(currentUnitNorm);
+  const availableModes: PortionMode[] = preferredPortionMeasure
+    ? ["serving", "direct"]
+    : ["direct"];
   const mode: PortionMode =
-    shouldDefaultToServing || !isGramUnit(currentUnitNorm) ? "serving" : "gram";
-  const availableModes: PortionMode[] = servingWeight
-    ? ["serving", "gram"]
-    : mode === "gram"
-      ? ["gram"]
-      : ["serving"];
+    preferredPortionMeasure &&
+    (shouldDefaultToServing || !isDirectMeasureUnit(currentUnitNorm))
+      ? "serving"
+      : "direct";
 
   const normalizedQuantity = sanitizeQuantity(quantity, mode);
 
   return {
     availableModes,
+    directUnit,
     mode,
     quantity: normalizedQuantity,
     servingLabel,
@@ -520,7 +535,7 @@ function buildQuantityOptions(
   const values = new Set<number>();
   const safeCurrent = sanitizeQuantity(currentQuantity, mode);
 
-  if (mode === "gram") {
+  if (mode === "direct") {
     for (let value = GRAM_MIN; value <= GRAM_MAX; value += 1) {
       values.add(value);
     }
@@ -573,25 +588,33 @@ function findServingMeasure(measuresByLabel: Map<string, TEdamamMeasure>) {
   return measuresByLabel.get("serving");
 }
 
-function findFirstNonGramMeasure(measures: TEdamamMeasure[]) {
-  return measures.find((measure) => !isGramUnit(normalizeUnit(measure.label)));
+function findFirstNonDirectMeasure(measures: TEdamamMeasure[]) {
+  return measures.find(
+    (measure) => !isDirectMeasureUnit(normalizeUnit(measure.label)),
+  );
 }
 
 function quantityToWeight(
   quantity: number,
   mode: PortionMode,
   servingWeight?: number,
+  directUnit?: string,
 ) {
-  if (mode === "gram") return quantity;
+  if (mode === "direct") {
+    const normalizedDirectUnit = canonicalizeDirectUnit(
+      normalizeUnit(directUnit ?? "gram"),
+    );
+    return normalizedDirectUnit === "liter" ? quantity * 1000 : quantity;
+  }
   if (!servingWeight) return quantity;
   return quantity * servingWeight;
 }
 
 function sanitizeQuantity(quantity: number, mode: PortionMode) {
   if (!Number.isFinite(quantity) || quantity <= 0) {
-    return mode === "gram" ? 150 : 1;
+    return mode === "direct" ? 150 : 1;
   }
-  return mode === "gram"
+  return mode === "direct"
     ? Math.max(GRAM_MIN, Math.round(quantity))
     : roundToStep(Math.max(0.05, quantity), SERVING_STEP);
 }
@@ -605,12 +628,122 @@ function normalizeUnit(unit: string) {
   return unit.trim().toLowerCase();
 }
 
-function isGramUnit(unit: string) {
-  return ["g", "gram", "grams"].includes(unit);
+function canonicalizeDirectUnit(unit: string) {
+  if (["g", "gram", "grams"].includes(unit)) return "gram";
+  if (["ml", "milliliter", "milliliters"].includes(unit)) return "milliliter";
+  if (["l", "liter", "liters"].includes(unit)) return "liter";
+  return unit;
+}
+
+function resolveDirectUnit(unit: string) {
+  const canonicalUnit = canonicalizeDirectUnit(unit);
+  if (isDirectMeasureUnit(canonicalUnit)) return canonicalUnit;
+  return "gram";
+}
+
+function isDirectMeasureUnit(unit: string) {
+  return ["gram", "milliliter", "liter"].includes(canonicalizeDirectUnit(unit));
 }
 
 function formatMeasureUnit(unit: string) {
-  return isGramUnit(normalizeUnit(unit)) ? "g" : unit;
+  const canonicalUnit = canonicalizeDirectUnit(normalizeUnit(unit));
+  if (canonicalUnit === "gram") return "g";
+  if (canonicalUnit === "milliliter") return "ml";
+  if (canonicalUnit === "liter") return "L";
+  return unit;
+}
+
+function formatDirectUnitLabel(unit: string) {
+  const canonicalUnit = canonicalizeDirectUnit(normalizeUnit(unit));
+  if (canonicalUnit === "gram") return "Grams";
+  if (canonicalUnit === "milliliter") return "Millilitres";
+  if (canonicalUnit === "liter") return "Litres";
+  return "Amount";
+}
+
+function findMeasureByUnit(
+  measuresByLabel: Map<string, TEdamamMeasure>,
+  unit: string,
+) {
+  const normalizedUnit = canonicalizeDirectUnit(unit);
+  if (measuresByLabel.has(normalizedUnit)) {
+    return measuresByLabel.get(normalizedUnit);
+  }
+  if (normalizedUnit === "gram") {
+    return measuresByLabel.get("g") ?? measuresByLabel.get("grams");
+  }
+  if (normalizedUnit === "milliliter") {
+    return measuresByLabel.get("ml") ?? measuresByLabel.get("milliliters");
+  }
+  if (normalizedUnit === "liter") {
+    return measuresByLabel.get("l") ?? measuresByLabel.get("liters");
+  }
+  return undefined;
+}
+
+function convertQuantityForModeChange(
+  quantity: number,
+  currentMode: PortionMode,
+  nextMode: PortionMode,
+  directUnit: string,
+  servingWeight?: number,
+) {
+  if (currentMode === nextMode) return quantity;
+  if (canonicalizeDirectUnit(directUnit) !== "gram" || !servingWeight) {
+    return nextMode === "serving" ? 1 : quantity;
+  }
+
+  const currentComparable = quantityToWeight(
+    quantity,
+    currentMode,
+    servingWeight,
+    directUnit,
+  );
+  return nextMode === "direct"
+    ? currentComparable
+    : currentComparable / servingWeight;
+}
+
+function calculateNutrientRatio({
+  currentDirectUnit,
+  currentMode,
+  currentQuantity,
+  nextMode,
+  nextQuantity,
+  servingWeight,
+}: {
+  currentDirectUnit: string;
+  currentMode: PortionMode;
+  currentQuantity: number;
+  nextMode: PortionMode;
+  nextQuantity: number;
+  servingWeight?: number;
+}) {
+  if (
+    Number.isFinite(currentQuantity) &&
+    currentQuantity > 0 &&
+    Number.isFinite(nextQuantity) &&
+    nextQuantity > 0 &&
+    currentMode === nextMode
+  ) {
+    return nextQuantity / currentQuantity;
+  }
+
+  const currentComparable = quantityToWeight(
+    currentQuantity,
+    currentMode,
+    servingWeight,
+    currentDirectUnit,
+  );
+  const nextComparable = quantityToWeight(
+    nextQuantity,
+    nextMode,
+    servingWeight,
+    currentDirectUnit,
+  );
+  return currentComparable > 0 && nextComparable > 0
+    ? nextComparable / currentComparable
+    : 1;
 }
 
 function formatNumber(value: number) {

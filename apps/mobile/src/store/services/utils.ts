@@ -19,6 +19,11 @@ export function setNutrientsBody({
   const items = (Array.isArray(foodItems) ? foodItems : [foodItems]) as FoodItemWithEstimateContext[];
   return items.map((foodItem) => {
     const normalizedFoodName = normalizeForEdamamLookup(foodItem.name);
+    const normalizedUnit = (foodItem.unit ?? "").trim().toLowerCase();
+    const originalText = normalizedUnit
+      ? `${foodItem.quantity} ${normalizedUnit} ${normalizedFoodName}`.trim()
+      : normalizedFoodName;
+
     return {
       brand: foodItem.brand,
       foodId: foodItem.foodId,
@@ -26,7 +31,7 @@ export function setNutrientsBody({
       foodContentsLabel: foodItem.foodContentsLabel,
       ingredientCandidates: foodItem.ingredientCandidates,
       measures: foodItem.measures ?? [],
-      originalText: normalizedFoodName,
+      originalText,
       quantity: foodItem.quantity,
       source: foodItem.source,
       unit: sanitizeUnitForLookup(foodItem.unit),

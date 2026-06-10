@@ -19,6 +19,7 @@
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
         "platform": { "enum": ["android", "ios"] },
+        "provider": { "enum": ["health_connect", "healthkit"] },
         "source": { "bsonType": "string" },
         "trigger": { "bsonType": "string" },
         "deviceId": { "bsonType": "string" },

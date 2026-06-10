@@ -59,6 +59,12 @@ import {
 } from "@/store/services/logMealApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { hasMissingCoreNutrients, mapForSaveOrUpdate } from "./utils";
+import {
+  buildNutritionRequestKey,
+  filterUnreservedNutritionKeys,
+  releaseRecentNutritionRequests,
+  reserveRecentNutritionRequests,
+} from "./nutritionRequestRegistry";
 
 type LogMealTab = "current" | "foods" | "meals";
 
@@ -221,24 +227,41 @@ export default function LogMeal() {
       return hasMissingCoreNutrients(item);
     });
 
-    if (!itemsMissingNutrition.length) return;
+    const requestableItems = filterUnreservedNutritionKeys(
+      itemsMissingNutrition,
+      (item) =>
+        item.uid
+          ? buildNutritionRequestKey(item.uid, item.quantity, item.unit)
+          : null,
+    );
 
-    itemsMissingNutrition.forEach((item) => {
+    if (!requestableItems.length) return;
+
+    requestableItems.forEach((item) => {
       if (item.uid) requestedNutritionUidsRef.current.add(item.uid);
     });
+    const requestKeys = requestableItems
+      .map((item) =>
+        item.uid
+          ? buildNutritionRequestKey(item.uid, item.quantity, item.unit)
+          : null,
+      )
+      .filter((key): key is string => Boolean(key));
+    reserveRecentNutritionRequests(requestKeys);
 
     void (async () => {
       try {
         const results = await fetchNutritionData({
-          foodItems: itemsMissingNutrition,
+          foodItems: requestableItems,
         }).unwrap();
         dispatch(
           applyNutritionResults({
-            requestedUids: itemsMissingNutrition.map((item) => item.uid),
+            requestedUids: requestableItems.map((item) => item.uid),
             results,
           }),
         );
       } catch (error) {
+        releaseRecentNutritionRequests(requestKeys);
         console.log("fetchNutritionData failed", error);
       }
     })();
@@ -499,7 +522,7 @@ export default function LogMeal() {
         </View>
         <View style={logMealStyles.searchWrap}>
           <TextInput
-            placeholder="100g roast chicken thighs with 150g white rice"
+            placeholder="100g of carrots"
             autoCapitalize="none"
             keyboardType="default"
             value={searchTerm}
@@ -529,6 +552,10 @@ export default function LogMeal() {
             </ThemedText>
           </TouchableOpacity>
         </View>
+        <ThemedText style={logMealStyles.helperText}>
+          Search one food at a time with an amount, like "100g of carrots" or
+          "50g of rice".
+        </ThemedText>
         {searchError ? (
           <View style={logMealStyles.searchErrorBanner}>
             <ThemedText style={logMealStyles.searchErrorText}>
@@ -647,7 +674,7 @@ export default function LogMeal() {
                 </ThemedText>
                 <ThemedText style={logMealStyles.emptyText}>
                   {hasSearched && searchTerm.trim().length > 0
-                    ? "Try a different search phrase."
+                    ? 'Try a simple single-food search like "100g of carrots", then add the next item separately.'
                     : "Foods you log twice will appear here automatically."}
                 </ThemedText>
               </View>

@@ -915,20 +915,13 @@ function resolveLookupNutrient(
   lookedUpValue: number | undefined,
 ) {
   if (
-    typeof currentValue === "number" &&
-    Number.isFinite(currentValue) &&
-    currentValue > 0
-  ) {
-    return currentValue;
-  }
-  if (
     typeof lookedUpValue === "number" &&
     Number.isFinite(lookedUpValue) &&
     lookedUpValue > 0
   ) {
     return lookedUpValue;
   }
-  return currentValue ?? lookedUpValue;
+  return currentValue;
 }
 
 function setMealItems(items: FoodItemsObj[] | null): TFoodItem[] {
@@ -1184,7 +1177,7 @@ function extractNutrition(
     const estimate =
       (item.uid ? estimateByUid.get(item.uid) : undefined) ??
       estimateByFoodId.get(item.foodId);
-    const resolvedUnit = shouldPreserveExplicitWeightUnit
+    const resolvedUnitCandidate = shouldPreserveExplicitWeightUnit
       ? item.unit
       : (item.uid ? parsedMeasureByUid.get(item.uid) : undefined) ??
         (item.uid ? measureByUid.get(item.uid) : undefined) ??
@@ -1196,26 +1189,44 @@ function extractNutrition(
         ? item.quantity
         : (item.uid ? weightByUid.get(item.uid) : undefined) ??
           weightByFoodId.get(item.foodId);
-    const normalizedResolvedUnit = (resolvedUnit ?? "").trim().toLowerCase();
+    const normalizedResolvedUnit = (resolvedUnitCandidate ?? "")
+      .trim()
+      .toLowerCase();
+    const shouldKeepOriginalServingUnit =
+      !shouldPreserveExplicitWeightUnit &&
+      item.quantity <= 1 &&
+      (originalUnit === "serving" || originalUnit === "") &&
+      (normalizedResolvedUnit === "gram" ||
+        normalizedResolvedUnit === "grams" ||
+        normalizedResolvedUnit === "g") &&
+      !(
+        typeof resolvedWeight === "number" &&
+        Number.isFinite(resolvedWeight) &&
+        resolvedWeight > 1
+      );
+    const resolvedUnit = shouldKeepOriginalServingUnit
+      ? item.unit
+      : resolvedUnitCandidate;
+    const normalizedFinalUnit = (resolvedUnit ?? "").trim().toLowerCase();
     const resolvedMeasure = item.measures?.find(
       (measure) =>
-        (measure.label ?? "").trim().toLowerCase() === normalizedResolvedUnit,
+        (measure.label ?? "").trim().toLowerCase() === normalizedFinalUnit,
     );
     const shouldAdoptResolvedWeight =
       typeof resolvedWeight === "number" &&
       Number.isFinite(resolvedWeight) &&
       resolvedWeight > 1 &&
       item.quantity <= 1 &&
-      (normalizedResolvedUnit === "gram" ||
-        normalizedResolvedUnit === "grams" ||
-        normalizedResolvedUnit === "g");
+      (normalizedFinalUnit === "gram" ||
+        normalizedFinalUnit === "grams" ||
+        normalizedFinalUnit === "g");
     const shouldConvertResolvedWeightToServings =
       typeof resolvedWeight === "number" &&
       Number.isFinite(resolvedWeight) &&
       resolvedWeight > 0 &&
-      normalizedResolvedUnit !== "gram" &&
-      normalizedResolvedUnit !== "grams" &&
-      normalizedResolvedUnit !== "g" &&
+      normalizedFinalUnit !== "gram" &&
+      normalizedFinalUnit !== "grams" &&
+      normalizedFinalUnit !== "g" &&
       typeof resolvedMeasure?.weight === "number" &&
       Number.isFinite(resolvedMeasure.weight) &&
       resolvedMeasure.weight > 0;
@@ -1238,18 +1249,18 @@ function extractNutrition(
       ...item,
       nutrients: {
         ...item.nutrients,
-        caloriesKcal: item.nutrients.caloriesKcal ?? n.ENERC_KCAL?.quantity,
-        carbsG: item.nutrients.carbsG ?? n.CHOCDF?.quantity,
-        fatG: item.nutrients.fatG ?? n.FAT?.quantity,
+        caloriesKcal: n.ENERC_KCAL?.quantity ?? item.nutrients.caloriesKcal,
+        carbsG: n.CHOCDF?.quantity ?? item.nutrients.carbsG,
+        fatG: n.FAT?.quantity ?? item.nutrients.fatG,
         fiberG: n.FIBTG?.quantity ?? item.nutrients.fiberG,
         phosphorus_protein_ratio: phosphorus_protein_ratio(
           phosphorusMg,
-          item.nutrients.proteinG ?? n.PROCNT?.quantity,
+          n.PROCNT?.quantity ?? item.nutrients.proteinG,
         ),
         phosphorusMg,
         potassiumMg,
-        proteinG: item.nutrients.proteinG ?? n.PROCNT?.quantity,
-        sodiumMg: item.nutrients.sodiumMg ?? n.NA?.quantity,
+        proteinG: n.PROCNT?.quantity ?? item.nutrients.proteinG,
+        sodiumMg: n.NA?.quantity ?? item.nutrients.sodiumMg,
         estimate: estimate ?? itemWithEstimate.nutrients.estimate,
       },
       quantity: nextQuantity,
