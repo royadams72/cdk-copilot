@@ -62,7 +62,10 @@ export async function GET(req: NextRequest) {
       fetchRecentLabs(db, patientObjectId),
       fetchNutritionEntries(db, patientObjectId),
       fetchRecentMedications(db, patientObjectId),
-      getMappedNutritionTargets(db, patientObjectId),
+      getMappedNutritionTargets(db, patientObjectId, {
+        orgId: caller.orgId,
+        seedPrincipalId: caller.principalId,
+      }),
     ]);
 
     const scope = req.nextUrl.searchParams.get("scope");

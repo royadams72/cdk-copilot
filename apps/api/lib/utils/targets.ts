@@ -456,7 +456,22 @@ export function mapNutritionTargets(
   return mapped;
 }
 
-export async function getMappedNutritionTargets(db: Db, patientId: ObjectId) {
+export async function getMappedNutritionTargets(
+  db: Db,
+  patientId: ObjectId,
+  seedInput?: {
+    orgId?: string | null;
+    seedPrincipalId?: string | null;
+  },
+) {
+  if (seedInput) {
+    await ensurePatientTargetsSeeded(db, {
+      orgId: seedInput.orgId,
+      patientId,
+      seedPrincipalId: seedInput.seedPrincipalId,
+    });
+  }
+
   const [targetsCurrentDoc, weightKg] = await Promise.all([
     findTargetsCurrentDoc(db, patientId),
     resolvePatientWeightKg(db, patientId),
