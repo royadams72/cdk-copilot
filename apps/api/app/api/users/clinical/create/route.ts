@@ -18,6 +18,7 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { ensurePatientTargetsSeeded } from "@/apps/api/lib/utils/targets";
 
 type UserClinicalDoc = Omit<TUserClinical, "patientId"> & {
   patientId: ObjectId;
@@ -122,6 +123,12 @@ export async function POST(req: NextRequest) {
         },
       },
     );
+
+    await ensurePatientTargetsSeeded(db, {
+      orgId: user.orgId,
+      patientId: doc.patientId,
+      seedPrincipalId: user.principalId,
+    });
 
     return ok({ patientId: user.patientId, requestId }, 201);
   } catch (err: any) {

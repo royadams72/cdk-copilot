@@ -18,6 +18,7 @@ import { DEFAULT_SCOPES, TUserPIICreate, TUsersAccountCreate } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad } from "@/apps/api/lib/http/responses";
 import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
+import { ensurePatientTargetsSeeded } from "@/apps/api/lib/utils/targets";
 
 export async function GET(req: NextRequest) {
   try {
@@ -126,6 +127,12 @@ export async function GET(req: NextRequest) {
     if (!existingAccount) {
       await accounts.insertOne(users_account_doc);
     }
+
+    await ensurePatientTargetsSeeded(db, {
+      orgId: res.doc.orgId,
+      patientId: tokenPatientId,
+      seedPrincipalId: principalId,
+    });
 
     const redirectUri = res.doc.redirectUri;
 

@@ -57,10 +57,13 @@ export default function SymptomsScreen() {
   const [updateSymptom, { isLoading: isUpdating }] = useUpdateSymptomMutation();
 
   const [editing, setEditing] = useState<SymptomCurrent | null>(null);
-  const [prefillSource, setPrefillSource] = useState<SymptomCurrent | null>(null);
+  const [prefillSource, setPrefillSource] = useState<SymptomCurrent | null>(
+    null,
+  );
   const [name, setName] = useState("");
   const [severity, setSeverity] = useState<(typeof severityOptions)[number]>(3);
-  const [status, setStatus] = useState<(typeof statusOptions)[number]>("active");
+  const [status, setStatus] =
+    useState<(typeof statusOptions)[number]>("active");
   const [note, setNote] = useState("");
   const [triggersText, setTriggersText] = useState("");
   const [startedAt, setStartedAt] = useState<Date | null>(null);
@@ -263,9 +266,9 @@ export default function SymptomsScreen() {
                 borderColor: "#CBD5E1",
                 borderRadius: 10,
                 borderWidth: 1,
+                opacity: editing ? 0.6 : 1,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
-                opacity: editing ? 0.6 : 1,
               }}
               value={name}
             />
@@ -428,7 +431,9 @@ export default function SymptomsScreen() {
                   paddingTop: 10,
                 }}
               >
-                <ThemedText style={{ fontWeight: "700" }}>{item.name}</ThemedText>
+                <ThemedText style={{ fontWeight: "700" }}>
+                  {item.name}
+                </ThemedText>
                 <ThemedText style={styles.helperText}>
                   {symptomMetaLine(item)}
                 </ThemedText>
@@ -441,7 +446,9 @@ export default function SymptomsScreen() {
                     onPress={() => beginEditing(item)}
                     style={styles.secondaryActionButton}
                   >
-                    <ThemedText style={styles.secondaryActionText}>Edit</ThemedText>
+                    <ThemedText style={styles.secondaryActionText}>
+                      Edit
+                    </ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => startPrefilledReport(item)}
@@ -482,7 +489,9 @@ export default function SymptomsScreen() {
                   paddingTop: 10,
                 }}
               >
-                <ThemedText style={{ fontWeight: "700" }}>{item.name}</ThemedText>
+                <ThemedText style={{ fontWeight: "700" }}>
+                  {item.name}
+                </ThemedText>
                 <ThemedText style={styles.helperText}>
                   Resolved {formatDateTime(item.resolvedAt ?? item.recordedAt)}
                 </ThemedText>
@@ -500,7 +509,9 @@ export default function SymptomsScreen() {
                     onPress={() => onQuickStatusChange(item, "active")}
                     style={styles.secondaryActionButton}
                   >
-                    <ThemedText style={styles.secondaryActionText}>Reopen</ThemedText>
+                    <ThemedText style={styles.secondaryActionText}>
+                      Reopen
+                    </ThemedText>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -512,7 +523,7 @@ export default function SymptomsScreen() {
           )}
         </Card>
 
-        <Card>
+        {/* <Card>
           <ThemedText type="defaultSemiBold">Recent activity</ThemedText>
           {timeline.length ? (
             timeline.slice(0, 12).map((entry: SymptomCurrent) => (
@@ -546,7 +557,7 @@ export default function SymptomsScreen() {
               Your symptom timeline will appear here after you log entries.
             </ThemedText>
           )}
-        </Card>
+        </Card> */}
       </ScrollView>
 
       <DateTimeModal
