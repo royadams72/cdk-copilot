@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { AppState, type AppStateStatus, Platform } from "react-native";
 
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { flushHealthConnectEventLogs } from "@/lib/healthConnectEventLogger";
-import { syncTodayStepMeasurement } from "@/lib/healthConnectSync";
 
 let stepSyncConsumers = 0;
 let stepSyncInterval: ReturnType<typeof setInterval> | null = null;
@@ -14,11 +14,16 @@ function startStepSyncLoop() {
     return;
   }
 
+  const provider = getCurrentHealthSyncProvider();
+  if (!provider) {
+    return;
+  }
+
   void flushHealthConnectEventLogs();
-  void syncTodayStepMeasurement("mount");
+  void provider.syncTodaySteps("mount");
 
   stepSyncInterval = setInterval(() => {
-    void syncTodayStepMeasurement("interval");
+    void provider.syncTodaySteps("interval");
   }, 5 * 60_000);
 
   stepSyncAppStateSubscription = AppState.addEventListener("change", (state) => {
@@ -27,7 +32,7 @@ function startStepSyncLoop() {
 
     if (state === "active" && previousState !== "active") {
       void flushHealthConnectEventLogs();
-      void syncTodayStepMeasurement("active");
+      void provider.syncTodaySteps("active");
     }
   });
 }
@@ -51,7 +56,7 @@ export function useSyncStepCount(
   isReady: boolean,
 ) {
   useEffect(() => {
-    if (Platform.OS !== "android" || !isReady) {
+    if (Platform.OS === "web" || !isReady) {
       return;
     }
 

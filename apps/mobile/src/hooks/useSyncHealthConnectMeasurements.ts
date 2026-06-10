@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AppState, type AppStateStatus, Platform } from "react-native";
 
-import { syncRecentHealthConnectMeasurements } from "@/lib/healthConnectSync";
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 
 let measurementSyncConsumers = 0;
 let measurementSyncInterval: ReturnType<typeof setInterval> | null = null;
@@ -13,10 +13,15 @@ function startMeasurementSyncLoop() {
     return;
   }
 
-  void syncRecentHealthConnectMeasurements("mount");
+  const provider = getCurrentHealthSyncProvider();
+  if (!provider) {
+    return;
+  }
+
+  void provider.syncRecentMeasurements("mount");
 
   measurementSyncInterval = setInterval(() => {
-    void syncRecentHealthConnectMeasurements("interval");
+    void provider.syncRecentMeasurements("interval");
   }, 5 * 60_000);
 
   measurementSyncAppStateSubscription = AppState.addEventListener("change", (state) => {
@@ -24,7 +29,7 @@ function startMeasurementSyncLoop() {
     lastMeasurementSyncAppState = state;
 
     if (state === "active" && previousState !== "active") {
-      void syncRecentHealthConnectMeasurements("active");
+      void provider.syncRecentMeasurements("active");
     }
   });
 }
@@ -45,7 +50,7 @@ function stopMeasurementSyncLoop() {
 
 export function useSyncHealthConnectMeasurements(enabled: boolean) {
   useEffect(() => {
-    if (!enabled || Platform.OS !== "android") return;
+    if (!enabled || Platform.OS === "web") return;
 
     measurementSyncConsumers += 1;
     startMeasurementSyncLoop();

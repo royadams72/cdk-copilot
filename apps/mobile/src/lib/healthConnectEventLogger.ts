@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { getCurrentHealthSyncProviderName } from "@/lib/currentHealthSyncProvider";
 
 const STORAGE_KEY = "health-connect:event-log-queue:v1";
 const MAX_QUEUED_EVENTS = 200;
@@ -24,6 +25,7 @@ function withTimestamp(event: HealthConnectLogEvent) {
     ...event,
     clientAt: event.clientAt ?? new Date().toISOString(),
     platform: Platform.OS === "ios" ? "ios" : "android",
+    provider: getCurrentHealthSyncProviderName(),
   };
 }
 
@@ -59,7 +61,10 @@ export async function flushHealthConnectEventLogs() {
       }
 
       const response = await authFetch(`${API}/api/users/health-connect/event-log`, {
-        body: JSON.stringify({ events }),
+        body: JSON.stringify({
+          events,
+          provider: getCurrentHealthSyncProviderName(),
+        }),
         method: "POST",
       });
       const body = (await response.json().catch(() => null)) as

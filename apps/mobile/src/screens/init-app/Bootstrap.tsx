@@ -7,7 +7,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ActivityIndicator, View } from "react-native";
 import { styles } from "../dashboard/styles";
 import { ErrorState } from "../dashboard/Dashboard";
-import { resolvePostAuthRoute } from "@/lib/onboarding";
+import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
 
 async function restoreUserSession() {
   const res = await authFetch(`${API}/api/users/get-user`);
@@ -41,6 +41,7 @@ const Bootstrap = () => {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
+              logPostAuthRouteDecision("bootstrap:refresh-only", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;
             }
@@ -58,6 +59,7 @@ const Bootstrap = () => {
         const { res, data } = await restoreUserSession();
 
         if (data.ok) {
+          logPostAuthRouteDecision("bootstrap", data ?? {});
           router.replace(resolvePostAuthRoute(data ?? {}) as never);
         } else if (res.status === 401) {
           const refreshed = await refreshSessionTokenOnce();
@@ -65,6 +67,7 @@ const Bootstrap = () => {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
+              logPostAuthRouteDecision("bootstrap:retry", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;
             }

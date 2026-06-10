@@ -9,6 +9,19 @@ export const ONBOARDING_ROUTES = {
   pii: "/(auth)/onboarding/pii-form",
 } as const;
 
+type PostAuthRouteArgs = {
+  activeAssignmentCount?: number | null;
+  hasActiveAssignments?: boolean | null;
+  hasPendingConsents?: boolean | null;
+  onboardingCompleted?: boolean;
+  onboardingSteps?: string[] | null;
+};
+
+export type PostAuthRouteDecisionReason =
+  | "pending-consents"
+  | "onboarding-complete"
+  | "onboarding-incomplete";
+
 const PII_DRAFT_KEY = "onboarding.pii.draft";
 const CLINICAL_DRAFT_KEY = "onboarding.clinical.draft";
 
@@ -43,26 +56,50 @@ export function resolveOnboardingRoute(
   return ONBOARDING_ROUTES.pii;
 }
 
-export function resolvePostAuthRoute(args: {
-  activeAssignmentCount?: number | null;
-  hasActiveAssignments?: boolean | null;
-  hasPendingConsents?: boolean | null;
-  onboardingCompleted?: boolean;
-  onboardingSteps?: string[] | null;
-}) {
-  if (
-    args.hasPendingConsents ||
-    args.hasActiveAssignments === false ||
-    (typeof args.activeAssignmentCount === "number" &&
-      args.activeAssignmentCount <= 0)
-  ) {
-    return ONBOARDING_ROUTES.consent;
+export function getPostAuthRouteDecision(args: PostAuthRouteArgs) {
+  if (args.hasPendingConsents) {
+    return {
+      reason: "pending-consents" as const,
+      route: ONBOARDING_ROUTES.consent,
+    };
   }
 
-  return resolveOnboardingRoute(
+  const route = resolveOnboardingRoute(
     args.onboardingCompleted,
     args.onboardingSteps,
   );
+
+  return {
+    reason:
+      route === ONBOARDING_ROUTES.dashboard
+        ? ("onboarding-complete" as const)
+        : ("onboarding-incomplete" as const),
+    route,
+  };
+}
+
+export function logPostAuthRouteDecision(
+  source: string,
+  args: PostAuthRouteArgs,
+) {
+  if (!__DEV__) {
+    return;
+  }
+
+  const decision = getPostAuthRouteDecision(args);
+  console.log(`[post-auth-route:${source}]`, {
+    activeAssignmentCount: args.activeAssignmentCount ?? null,
+    hasActiveAssignments: args.hasActiveAssignments ?? null,
+    hasPendingConsents: args.hasPendingConsents ?? null,
+    onboardingCompleted: args.onboardingCompleted ?? null,
+    onboardingSteps: args.onboardingSteps ?? [],
+    reason: decision.reason,
+    route: decision.route,
+  });
+}
+
+export function resolvePostAuthRoute(args: PostAuthRouteArgs) {
+  return getPostAuthRouteDecision(args).route;
 }
 
 export const onboardingDrafts = {

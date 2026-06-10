@@ -1,21 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState } from "react-native";
 
 import {
-  ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
-  ANDROID_HEALTH_PERMISSIONS,
-  ANDROID_STEP_PERMISSION,
-} from "@/lib/healthConnectPermissions";
-import {
-  loadAndroidStepState,
   type StepActivitySummary,
   type StepDebug,
   type StepStatus,
 } from "@/lib/healthConnectStepSummary";
-
-function permissionKey(permission: { accessType: string; recordType: string }) {
-  return `${permission.accessType}:${permission.recordType}`;
-}
+import {
+  loadCurrentStepAccessState,
+  openCurrentHealthAccessSettings,
+  requestCurrentBackgroundStepAccess,
+  requestCurrentStepAccess,
+  watchCurrentStepAccess,
+} from "@/lib/currentStepAccess";
 
 function toErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -42,11 +39,11 @@ export function useStepCount(goal = 10000) {
   useEffect(() => {
     let mounted = true;
     let interval: ReturnType<typeof setInterval> | null = null;
-    let watchSubscription: { remove: () => void } | null = null;
+    let watchSubscription: { stop: () => void } | null = null;
     let appStateSubscription: { remove: () => void } | null = null;
 
-    const applyAndroidState = async () => {
-      const result = await loadAndroidStepState();
+    const applyStepState = async (options: { forceRefresh?: boolean } = {}) => {
+      const result = await loadCurrentStepAccessState(options);
       if (!mounted) return;
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
@@ -61,89 +58,31 @@ export function useStepCount(goal = 10000) {
     };
 
     const load = async () => {
-      if (Platform.OS === "web") {
-        if (mounted) setStatus("unsupported");
-        return;
-      }
-
-      if (Platform.OS === "android") {
-        try {
-          await applyAndroidState();
-          if (!interval) {
-            interval = setInterval(() => {
-              void applyAndroidState();
-            }, 60_000);
-          }
-        } catch (error) {
-          console.log("Health Connect step load failed", {
-            error: toErrorMessage(error),
-          });
-          if (mounted) {
-            setCanRequestPermission(false);
-            setDataOrigins([]);
-            setDebug(null);
-            setHasAnyMeasurementAccess(false);
-            setMissingHealthPermissions([]);
-            setSelectedDataOrigin(null);
-            setSummary(null);
-            setStatus("error");
-          }
-        }
-        return;
-      }
-
       try {
-        const { Pedometer } = await import("expo-sensors");
-        const available = await Pedometer.isAvailableAsync();
-        if (!available) {
-          if (mounted) setStatus("unsupported");
-          return;
+        await applyStepState();
+        if (!interval) {
+          interval = setInterval(() => {
+            void applyStepState();
+          }, 60_000);
         }
 
-        const currentPermissions = Pedometer.getPermissionsAsync
-          ? await Pedometer.getPermissionsAsync()
-          : null;
-
-        let granted =
-          typeof currentPermissions?.granted === "boolean"
-            ? currentPermissions.granted
-            : true;
-
-        if (!granted && Pedometer.requestPermissionsAsync) {
-          const requested = await Pedometer.requestPermissionsAsync();
-          granted = !!requested.granted;
-        }
-
-        if (!granted) {
-          if (mounted) setStatus("permission-denied");
-          return;
-        }
-
-        const refreshTodaySteps = async () => {
-          const startOfDay = new Date();
-          startOfDay.setHours(0, 0, 0, 0);
-          const now = new Date();
-          const result = await Pedometer.getStepCountAsync(startOfDay, now);
-          if (!mounted) return;
-          setStepsToday(result.steps ?? 0);
-          setSelectedDataOrigin("expo-sensors.pedometer");
-          setStatus("ready");
-        };
-
-        await refreshTodaySteps();
-
-        watchSubscription = Pedometer.watchStepCount(() => {
-          void refreshTodaySteps();
+        watchSubscription = await watchCurrentStepAccess(() => {
+          void applyStepState({ forceRefresh: true });
         });
-
-        interval = setInterval(() => {
-          void refreshTodaySteps();
-        }, 60_000);
       } catch (error) {
-        console.log("iOS pedometer step load failed", {
+        console.log("Step access load failed", {
           error: toErrorMessage(error),
         });
-        if (mounted) setStatus("error");
+        if (mounted) {
+          setCanRequestPermission(false);
+          setDataOrigins([]);
+          setDebug(null);
+          setHasAnyMeasurementAccess(false);
+          setMissingHealthPermissions([]);
+          setSelectedDataOrigin(null);
+          setSummary(null);
+          setStatus("error");
+        }
       }
     };
 
@@ -159,38 +98,17 @@ export function useStepCount(goal = 10000) {
       mounted = false;
       if (interval) clearInterval(interval);
       appStateSubscription?.remove();
-      watchSubscription?.remove();
+      watchSubscription?.stop();
     };
   }, []);
 
   const requestAccess = async () => {
-    if (Platform.OS !== "android" || !canRequestPermission) return;
+    if (!canRequestPermission) return;
     if (isRequestingPermissionRef.current) return;
     isRequestingPermissionRef.current = true;
 
     try {
-      const healthConnect = await import("react-native-health-connect");
-      console.log("Health Connect permissions requested", {
-        requested: ANDROID_HEALTH_PERMISSIONS.map(permissionKey),
-      });
-      const grantedPermissions = await healthConnect.requestPermission([
-        ...ANDROID_HEALTH_PERMISSIONS,
-      ]);
-      console.log("Health Connect permission request result", {
-        granted: grantedPermissions.map(permissionKey),
-      });
-      const hasStepAccess = grantedPermissions.some(
-        (permission) =>
-          permission.accessType === ANDROID_STEP_PERMISSION.accessType &&
-          permission.recordType === ANDROID_STEP_PERMISSION.recordType,
-      );
-
-      if (!hasStepAccess) {
-        setStatus("permission-denied");
-        return;
-      }
-
-      const result = await loadAndroidStepState({ forceRefresh: true });
+      const result = await requestCurrentStepAccess();
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
@@ -212,16 +130,14 @@ export function useStepCount(goal = 10000) {
   };
 
   const requestBackgroundReadAccess = async () => {
-    if (Platform.OS !== "android") return;
     if (isRequestingPermissionRef.current) return;
     isRequestingPermissionRef.current = true;
 
     try {
-      const healthConnect = await import("react-native-health-connect");
-      await healthConnect.requestPermission([
-        ANDROID_HEALTH_BACKGROUND_READ_PERMISSION,
-      ]);
-      const result = await loadAndroidStepState({ forceRefresh: true });
+      const result = await requestCurrentBackgroundStepAccess();
+      if (!result) {
+        return;
+      }
       setCanRequestPermission(result.canRequestPermission);
       setDataOrigins(result.dataOrigins);
       setDebug(result.debug);
@@ -254,6 +170,7 @@ export function useStepCount(goal = 10000) {
     hasAnyMeasurementAccess,
     missingHealthPermissions,
     percentOfGoal,
+    openHealthAccessSettings: openCurrentHealthAccessSettings,
     requestAccess,
     requestBackgroundReadAccess,
     selectedDataOrigin,

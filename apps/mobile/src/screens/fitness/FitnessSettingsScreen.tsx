@@ -1,17 +1,23 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { useStepCount } from "@/hooks/useStepCount";
-import { getNativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectNativeSync";
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
+import type { NativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectNativeBridge";
+import type { NativeHealthKitStatus } from "@/lib/healthKitNativeBridge";
 
 import { Card } from "../dashboard/components/Card";
 
 function formatTimestamp(value: number | null | undefined) {
   if (!value) return "Never";
   return new Date(value).toLocaleString();
+}
+
+function providerDisplayName() {
+  return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
 }
 
 export default function FitnessSettingsScreen() {
@@ -22,18 +28,19 @@ export default function FitnessSettingsScreen() {
     status: stepStatus,
   } = useStepCount(10000);
   const [workerStatus, setWorkerStatus] = useState<
-    Awaited<ReturnType<typeof getNativeHealthConnectBackgroundSyncStatus>> | null
+    NativeHealthConnectBackgroundSyncStatus | NativeHealthKitStatus | null
   >(null);
   const [loadingWorkerStatus, setLoadingWorkerStatus] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    const provider = getCurrentHealthSyncProvider();
 
     void (async () => {
       try {
-        const status = await getNativeHealthConnectBackgroundSyncStatus();
+        const status = await provider?.getBackgroundSyncStatus();
         if (!cancelled) {
-          setWorkerStatus(status);
+          setWorkerStatus(status ?? null);
         }
       } finally {
         if (!cancelled) {
@@ -50,13 +57,22 @@ export default function FitnessSettingsScreen() {
   const permissionSummary =
     stepStatus === "ready"
       ? missingHealthPermissions.length > 0
-        ? `${missingHealthPermissions.length} Health Connect permissions still missing`
-        : "Health Connect permissions look complete"
-      : "Health Connect is not fully ready on this device";
+        ? `${missingHealthPermissions.length} ${providerDisplayName()} permissions still missing`
+        : `${providerDisplayName()} permissions look complete`
+      : `${providerDisplayName()} is not fully ready on this device`;
 
   const backgroundSummary = backgroundReadGranted
-    ? "Background Health Connect access is enabled"
-    : "Background Health Connect access is not enabled";
+    ? `Background ${providerDisplayName()} access is enabled`
+    : `Background ${providerDisplayName()} access is not enabled`;
+
+  const isAndroidWorkerStatus =
+    workerStatus &&
+    "nativeWorkerEnabled" in workerStatus &&
+    workerStatus.platform === "android";
+  const isIosHealthKitStatus =
+    workerStatus &&
+    "provider" in workerStatus &&
+    workerStatus.provider === "healthkit";
 
   return (
     <View style={{ flex: 1 }}>
@@ -80,7 +96,7 @@ export default function FitnessSettingsScreen() {
         <View style={{ gap: 4 }}>
           <ThemedText type="title">Fitness settings</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
-            Manage targets, Health Connect status, and historical repairs.
+            Manage targets, health-provider status, and historical repairs.
           </ThemedText>
         </View>
 
@@ -113,7 +129,7 @@ export default function FitnessSettingsScreen() {
             <View style={{ gap: 4 }}>
               <ThemedText type="defaultSemiBold">Missing data</ThemedText>
               <ThemedText style={{ opacity: 0.72 }}>
-                Repair historical gaps from Health Connect by category.
+                Repair historical gaps from your health provider by category.
               </ThemedText>
             </View>
             <TouchableOpacity
@@ -126,7 +142,7 @@ export default function FitnessSettingsScreen() {
 
         <Card>
           <View style={{ gap: 8 }}>
-            <ThemedText type="defaultSemiBold">Health Connect status</ThemedText>
+            <ThemedText type="defaultSemiBold">{providerDisplayName()} status</ThemedText>
             <ThemedText style={{ opacity: 0.72 }}>{permissionSummary}</ThemedText>
             <ThemedText style={{ opacity: 0.72 }}>{backgroundSummary}</ThemedText>
             {loadingWorkerStatus ? (
@@ -135,39 +151,71 @@ export default function FitnessSettingsScreen() {
               </View>
             ) : (
               <View style={{ gap: 4 }}>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Native background worker:{" "}
-                  {workerStatus?.nativeWorkerEnabled ? "scheduled" : "not scheduled"}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Periodic work: {workerStatus?.periodicWorkState ?? "unknown"}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Immediate work: {workerStatus?.immediateWorkState ?? "unknown"}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Last task status: {workerStatus?.lastTaskStatus ?? "unknown"}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Last scheduled: {formatTimestamp(workerStatus?.lastScheduledAt)}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Last trigger: {formatTimestamp(workerStatus?.lastTriggeredAt)}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Last worker start: {formatTimestamp(workerStatus?.lastWorkerStartedAt)}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Last task start: {formatTimestamp(workerStatus?.lastTaskStartedAt)}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Last task finish: {formatTimestamp(workerStatus?.lastTaskFinishedAt)}
-                </ThemedText>
-                {workerStatus?.lastFailureReason ? (
+                {isAndroidWorkerStatus ? (
+                  <>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Native background worker:{" "}
+                      {workerStatus.nativeWorkerEnabled ? "scheduled" : "not scheduled"}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Periodic work: {workerStatus.periodicWorkState ?? "unknown"}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Immediate work: {workerStatus.immediateWorkState ?? "unknown"}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last task status: {workerStatus.lastTaskStatus ?? "unknown"}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last scheduled: {formatTimestamp(workerStatus.lastScheduledAt)}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last trigger: {formatTimestamp(workerStatus.lastTriggeredAt)}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last worker start: {formatTimestamp(workerStatus.lastWorkerStartedAt)}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last task start: {formatTimestamp(workerStatus.lastTaskStartedAt)}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last task finish: {formatTimestamp(workerStatus.lastTaskFinishedAt)}
+                    </ThemedText>
+                    {workerStatus.lastFailureReason ? (
+                      <ThemedText style={{ opacity: 0.72 }}>
+                        Last failure: {workerStatus.lastFailureReason}
+                      </ThemedText>
+                    ) : null}
+                  </>
+                ) : isIosHealthKitStatus ? (
+                  <>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Strategy: native HealthKit observer delivery
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Background delivery:{" "}
+                      {workerStatus.backgroundDeliveryEnabled ? "enabled" : "not enabled"}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Pending observer types:{" "}
+                      {workerStatus.pendingObserverTypes.length
+                        ? workerStatus.pendingObserverTypes.join(", ")
+                        : "none"}
+                    </ThemedText>
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last observer events:{" "}
+                      {Object.keys(workerStatus.lastObserverEventAtByType).length
+                        ? Object.entries(workerStatus.lastObserverEventAtByType)
+                            .map(([key, value]) => `${key} (${new Date(value).toLocaleString()})`)
+                            .join(", ")
+                        : "none"}
+                    </ThemedText>
+                  </>
+                ) : (
                   <ThemedText style={{ opacity: 0.72 }}>
-                    Last failure: {workerStatus.lastFailureReason}
+                    Background status is unavailable on this build or device.
                   </ThemedText>
-                ) : null}
+                )}
               </View>
             )}
           </View>

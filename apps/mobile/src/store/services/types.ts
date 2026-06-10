@@ -42,11 +42,12 @@ export type MeasurementProvider = {
   packageName: string;
 };
 export type MeasurementSyncStatus = "provisional" | "finalized";
+export type MeasurementSyncProvider = "health_connect" | "healthkit";
 export type MeasurementSyncMeta = {
   dayKey?: string;
   finalizedAt?: string;
   lastReconciledAt?: string;
-  provider: "health_connect";
+  provider: MeasurementSyncProvider;
   status: MeasurementSyncStatus;
 };
 export type MeasurementDevice = {

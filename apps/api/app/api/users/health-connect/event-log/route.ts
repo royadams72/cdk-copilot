@@ -5,6 +5,10 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import {
+  parseHealthSyncProvider,
+  type HealthSyncProvider,
+} from "@/apps/api/lib/healthSync/provider";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -15,6 +19,7 @@ type EventInput = {
   event: string;
   payload?: Record<string, unknown>;
   platform: "android" | "ios";
+  provider?: HealthSyncProvider;
   source: string;
   status?: "error" | "info" | "warn";
   trigger?: string;
@@ -56,8 +61,10 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json().catch(() => ({}))) as {
       events?: EventInput[];
+      provider?: HealthSyncProvider;
     };
     const events = Array.isArray(body.events) ? body.events : [];
+    const requestProvider = parseHealthSyncProvider(body.provider);
     console.log("[health-connect-event-log] POST received", {
       eventCount: events.length,
       orgId: caller.orgId ?? "org_demo",
@@ -90,6 +97,7 @@ export async function POST(req: NextRequest) {
           orgId: caller.orgId ?? "org_demo",
           patientId,
           platform,
+          provider: parseHealthSyncProvider(event.provider, requestProvider),
           source,
           status:
             event.status === "error" ||
@@ -188,6 +196,7 @@ export async function GET(req: NextRequest) {
             event: 1,
             payload: 1,
             platform: 1,
+            provider: 1,
             source: 1,
             status: 1,
             trigger: 1,

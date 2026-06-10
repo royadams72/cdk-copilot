@@ -115,6 +115,7 @@ export default function LogMeal() {
   const [activeTab, setActiveTab] = useState<LogMealTab>("foods");
   const [searchTerm, setSearchTerm] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [dateTime, setDateTime] = useState(() =>
     buildInitialDateTime(requestedDay, eatenAtIso),
@@ -260,6 +261,7 @@ export default function LogMeal() {
     const nextQuery = searchTerm.trim();
     if (!nextQuery || isSearching) return;
     setIsSearching(true);
+    setSearchError("");
     try {
       const results = await fetchMealData({ searchTerm: nextQuery }).unwrap();
       dispatch(applyFetchMealData({ results }));
@@ -267,6 +269,12 @@ export default function LogMeal() {
       setActiveTab("current");
     } catch (error) {
       console.log("fetchMealData failed", error);
+      setSearchError(
+        toQueryErrorMessage(
+          error,
+          "We couldn't search for that food right now. Please try again.",
+        ),
+      );
     } finally {
       setIsSearching(false);
     }
@@ -497,6 +505,9 @@ export default function LogMeal() {
             value={searchTerm}
             onChangeText={(value) => {
               setSearchTerm(value);
+              if (searchError) {
+                setSearchError("");
+              }
               if (!value.trim()) {
                 setHasSearched(false);
               }
@@ -518,6 +529,13 @@ export default function LogMeal() {
             </ThemedText>
           </TouchableOpacity>
         </View>
+        {searchError ? (
+          <View style={logMealStyles.searchErrorBanner}>
+            <ThemedText style={logMealStyles.searchErrorText}>
+              {searchError}
+            </ThemedText>
+          </View>
+        ) : null}
         <View style={logMealStyles.tabRow}>
           {[
             { label: "Current Meal", value: "current" as const },

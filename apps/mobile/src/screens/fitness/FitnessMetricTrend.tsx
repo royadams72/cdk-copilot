@@ -10,20 +10,12 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
-import {
-  readHealthConnectHourlyStepsForDate,
-  readHealthConnectStepSummaryForDate,
-  type StepActivitySummary,
-} from "@/lib/healthConnectStepSummary";
-import {
-  backfillHealthConnectMeasurementDates,
-  readHealthConnectHeartRateEntriesForDate,
-} from "@/lib/healthConnectSync";
-import { backfillHealthConnectStepDates } from "@/lib/healthConnectStepSync";
+import { type StepActivitySummary } from "@/lib/healthConnectStepSummary";
 import {
   getServerHealthConnectSyncState,
   updateServerStepsBackfilledFrom,
 } from "@/lib/healthConnectSyncCommon";
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { localDateKey } from "@/lib/healthConnectSyncPipeline";
 import { completedBackfillWindowKeys } from "@/lib/healthConnectSyncState";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
@@ -484,9 +476,10 @@ export default function FitnessMetricTrend() {
     let cancelled = false;
 
     const loadHealthConnectStepSummary = async () => {
+      const provider = getCurrentHealthSyncProvider();
       if (
         kind !== "steps" ||
-        Platform.OS !== "android" ||
+        !provider ||
         !selectedDateKey ||
         !selectedStepSummary ||
         !isSelectedToday
@@ -511,9 +504,9 @@ export default function FitnessMetricTrend() {
       }
 
       try {
-        const result = await readHealthConnectStepSummaryForDate(date);
+        const result = await provider.readStepSummaryForDate(date);
         if (!cancelled) {
-          setHealthConnectStepSummary(result);
+          setHealthConnectStepSummary(result ?? null);
         }
       } catch (error) {
         console.log("Health Connect historical step summary failed", {
@@ -570,9 +563,10 @@ export default function FitnessMetricTrend() {
     let cancelled = false;
 
     const loadHeartRateEntries = async () => {
+      const provider = getCurrentHealthSyncProvider();
       if (
         kind !== "heart_rate" ||
-        Platform.OS !== "android" ||
+        !provider ||
         !selectedDateKey
       ) {
         setHealthConnectHeartRateEntries((current) =>
@@ -600,11 +594,11 @@ export default function FitnessMetricTrend() {
       }
 
       try {
-        const entries = await readHealthConnectHeartRateEntriesForDate(date);
+        const entries = await provider.readHeartRateEntriesForDate(date);
         if (!cancelled) {
           setHealthConnectHeartRateDateKey(selectedDateKey);
           setHealthConnectHeartRateEntries((current) =>
-            sameDayEntries(current, entries) ? current : entries,
+            sameDayEntries(current, entries ?? []) ? current : (entries ?? []),
           );
           setHeartRateDayLoading(false);
         }
@@ -637,9 +631,10 @@ export default function FitnessMetricTrend() {
     let cancelled = false;
 
     const loadHourlySteps = async () => {
+      const provider = getCurrentHealthSyncProvider();
       if (
         kind !== "steps" ||
-        Platform.OS !== "android" ||
+        !provider ||
         !selectedDateKey ||
         !isSelectedToday
       ) {
@@ -654,7 +649,7 @@ export default function FitnessMetricTrend() {
       }
 
       try {
-        const values = await readHealthConnectHourlyStepsForDate(date);
+        const values = await provider.readHourlyStepsForDate(date);
         if (!cancelled) {
           setHourlyStepValues(
             values?.map((value) => (value > 0 ? value : null)) ?? [],
@@ -768,7 +763,7 @@ export default function FitnessMetricTrend() {
 
         if (!datesToBackfill.length) return;
 
-        await backfillHealthConnectStepDates(datesToBackfill, {
+        await getCurrentHealthSyncProvider()?.backfillStepDates(datesToBackfill, {
           reason: "steps-screen",
           windowKey,
         });
@@ -814,7 +809,7 @@ export default function FitnessMetricTrend() {
 
         if (!missingDateKeys.length) return;
 
-        await backfillHealthConnectMeasurementDates(
+        await getCurrentHealthSyncProvider()?.backfillMeasurementDates(
           kind as "sleep" | "exercise" | "heart_rate",
           missingDateKeys,
           { windowKey: `${kind}-screen-30d` },

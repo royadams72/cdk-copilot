@@ -180,7 +180,9 @@ export async function backfillHealthConnectStepDates(
 
   try {
     const orderedDateKeys = [...new Set(missingDateKeys)].sort();
-    const payloads: Parameters<typeof createMeasurementDirect>[0][] = [];
+    const payloads: Array<
+      Extract<Parameters<typeof createMeasurementDirect>[0], { kind: "steps" }>
+    > = [];
 
     for (const dateKey of orderedDateKeys) {
       const date = new Date(`${dateKey}T12:00:00`);
@@ -231,7 +233,7 @@ export async function backfillHealthConnectStepDates(
 }
 
 async function stepsBatchUpsert(
-  payloads: Parameters<typeof createMeasurementDirect>[0][],
+  payloads: Array<Extract<Parameters<typeof createMeasurementDirect>[0], { kind: "steps" }>>,
 ) {
   const items = payloads.map((p) => ({
     averageSpeedKph: p.averageSpeedKph,

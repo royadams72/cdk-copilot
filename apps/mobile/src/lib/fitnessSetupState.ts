@@ -1,5 +1,6 @@
 import type { KnownFitnessApp } from "@/lib/fitnessApps";
 import { formatFitnessAppName } from "@/lib/fitnessApps";
+import { Platform } from "react-native";
 import type { MeasurementKind, MeasurementLatest } from "@/store/services/types";
 
 type GuidedMetric = "sleep" | "heart_rate" | "exercise";
@@ -37,10 +38,17 @@ function measurementOriginPackageNames(items: MeasurementLatest[]) {
 }
 
 function originLabel(packageName: string) {
+  if (packageName === "apple.healthkit") {
+    return "Apple Health";
+  }
   if (packageName === "android.healthconnect") {
     return "Health Connect";
   }
   return formatFitnessAppName(packageName);
+}
+
+function providerDisplayName() {
+  return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
 }
 
 function connectedAppName(
@@ -98,7 +106,10 @@ export function buildFitnessSetupGuidance(args: {
 
   if (connectedApp) {
     return {
-      body: `Steps are already syncing from ${connectedApp}. If ${missingSummary} are still missing, open ${connectedApp}, allow watch and health permissions there, and make sure it is sharing those records to Health Connect.`,
+      body:
+        Platform.OS === "ios"
+          ? `Steps are already syncing from ${connectedApp}. If ${missingSummary} are still missing, open ${connectedApp}, allow watch and health permissions there, then review the Health app sharing settings for CKD Copilot.`
+          : `Steps are already syncing from ${connectedApp}. If ${missingSummary} are still missing, open ${connectedApp}, allow watch and health permissions there, and make sure it is sharing those records to Health Connect.`,
       missingKinds: missing,
       title: `${connectedApp} is connected`,
     } satisfies FitnessSetupGuidance;
@@ -107,7 +118,10 @@ export function buildFitnessSetupGuidance(args: {
   if (args.installedApps.length) {
     const app = args.installedApps[0];
     return {
-      body: `We found ${app.displayName} on this phone, but no ${missingSummary} readings have reached Health Connect yet. Open ${app.displayName}, allow device and health permissions, then enable Health Connect sharing.`,
+      body:
+        Platform.OS === "ios"
+          ? `We found ${app.displayName} on this phone, but no ${missingSummary} readings have reached CKD Copilot yet. Open ${app.displayName}, allow device and health permissions, then review the Health app sharing settings for CKD Copilot.`
+          : `We found ${app.displayName} on this phone, but no ${missingSummary} readings have reached Health Connect yet. Open ${app.displayName}, allow device and health permissions, then enable Health Connect sharing.`,
       missingKinds: missing,
       title: `Finish setup in ${app.displayName}`,
     } satisfies FitnessSetupGuidance;
@@ -115,14 +129,23 @@ export function buildFitnessSetupGuidance(args: {
 
   if (args.hasMissingHealthPermissions) {
     return {
-      body: `Allow the remaining Health Connect permissions for ${missingSummary}. If you use a watch, also make sure its companion health app is installed and allowed to sync into Health Connect.`,
+      body:
+        Platform.OS === "ios"
+          ? `Allow the remaining ${providerDisplayName()} permissions for ${missingSummary}. If you use an Apple Watch, also make sure the Health app sharing settings for CKD Copilot include those categories.`
+          : `Allow the remaining Health Connect permissions for ${missingSummary}. If you use a watch, also make sure its companion health app is installed and allowed to sync into Health Connect.`,
       missingKinds: missing,
-      title: "Allow more Health Connect access",
+      title:
+        Platform.OS === "ios"
+          ? "Allow more Apple Health access"
+          : "Allow more Health Connect access",
     } satisfies FitnessSetupGuidance;
   }
 
   return {
-    body: `No ${missingSummary} readings have been shared yet. If you use a watch, install its companion health app, allow watch permissions there, and turn on sync to Health Connect.`,
+    body:
+      Platform.OS === "ios"
+        ? `No ${missingSummary} readings have been shared yet. If you use an Apple Watch, make sure it is saving those readings to the Health app, then review Health app sharing for CKD Copilot.`
+        : `No ${missingSummary} readings have been shared yet. If you use a watch, install its companion health app, allow watch permissions there, and turn on sync to Health Connect.`,
     missingKinds: missing,
     title: "Finish watch or fitness app setup",
   } satisfies FitnessSetupGuidance;

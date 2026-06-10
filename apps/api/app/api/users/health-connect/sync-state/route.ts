@@ -5,6 +5,10 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import {
+  parseHealthSyncProvider,
+  type HealthSyncProvider,
+} from "@/apps/api/lib/healthSync/provider";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -30,7 +34,7 @@ type SyncStateDoc = {
   createdAt: Date;
   orgId?: string;
   patientId: ObjectId;
-  provider: "health_connect";
+  provider: HealthSyncProvider;
   recordTypes?: {
     steps?: StepsSyncEntry;
     heart_rate?: GenericSyncEntry;
@@ -87,7 +91,16 @@ function parseSyncRecordTypes(value: unknown): Partial<Record<SyncRecordType, Pa
   return Object.keys(parsed).length ? parsed : null;
 }
 
-function toResponse(doc: SyncStateDoc | null) {
+function requestProvider(
+  req: NextRequest,
+  body?: Record<string, unknown>,
+): HealthSyncProvider {
+  return parseHealthSyncProvider(
+    body?.provider ?? req.nextUrl.searchParams.get("provider"),
+  );
+}
+
+function toResponse(doc: SyncStateDoc | null, provider: HealthSyncProvider) {
   const recordTypes: Record<string, Record<string, string>> = {};
 
   for (const [recordType, entry] of Object.entries(doc?.recordTypes ?? {})) {
@@ -105,7 +118,7 @@ function toResponse(doc: SyncStateDoc | null) {
   }
 
   return {
-    provider: "health_connect" as const,
+    provider,
     recordTypes,
     updatedAt: doc?.updatedAt ? doc.updatedAt.toISOString() : null,
   };
@@ -124,11 +137,12 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
+    const provider = requestProvider(req);
 
     const [syncState, account] = await Promise.all([
       db
         .collection<SyncStateDoc>(COLLECTIONS.HealthConnectSyncState)
-        .findOne({ patientId, provider: "health_connect" }),
+        .findOne({ patientId, provider }),
       db
         .collection<{ createdAt?: Date }>(COLLECTIONS.UsersAccounts)
         .findOne(
@@ -138,7 +152,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return ok({
-      ...toResponse(syncState),
+      ...toResponse(syncState, provider),
       accountCreatedAt: account?.createdAt ? account.createdAt.toISOString() : null,
     });
   } catch (err: any) {
@@ -159,6 +173,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    const provider = requestProvider(req, body);
     const recordTypes = parseSyncRecordTypes(body.recordTypes);
     if (!recordTypes || Object.keys(recordTypes).length === 0) {
       return bad("recordTypes must include at least one valid entry", undefined, 400);
@@ -184,14 +199,14 @@ export async function PATCH(req: NextRequest) {
 
     const db = await getDb();
     await db.collection<SyncStateDoc>(COLLECTIONS.HealthConnectSyncState).updateOne(
-      { patientId, provider: "health_connect" },
+      { patientId, provider },
       {
         $set: setFields,
         $setOnInsert: {
           createdAt: now,
           orgId: caller.orgId ?? "org_demo",
           patientId,
-          provider: "health_connect",
+          provider,
         },
       },
       { upsert: true },
@@ -199,9 +214,9 @@ export async function PATCH(req: NextRequest) {
 
     const syncState = await db
       .collection<SyncStateDoc>(COLLECTIONS.HealthConnectSyncState)
-      .findOne({ patientId, provider: "health_connect" });
+      .findOne({ patientId, provider });
 
-    return ok(toResponse(syncState));
+    return ok(toResponse(syncState, provider));
   } catch (err: any) {
     const status = err?.status || 500;
     return bad(err?.message || "Server error", undefined, status);

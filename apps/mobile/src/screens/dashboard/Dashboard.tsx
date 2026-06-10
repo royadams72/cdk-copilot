@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -27,7 +28,11 @@ import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
-import { triggerNativeHealthConnectBackgroundSyncNow } from "@/lib/healthConnectNativeSync";
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
+
+function healthProviderName() {
+  return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -41,6 +46,7 @@ export default function Dashboard() {
     backgroundReadGranted,
     hasAnyMeasurementAccess,
     missingHealthPermissions,
+    openHealthAccessSettings,
     percentOfGoal,
     requestAccess,
     requestBackgroundReadAccess,
@@ -72,11 +78,11 @@ export default function Dashboard() {
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {
       try {
-        const triggered = await triggerNativeHealthConnectBackgroundSyncNow();
+        const triggered = await getCurrentHealthSyncProvider()?.triggerBackgroundSyncNow();
         Alert.alert(
           triggered ? "Background task triggered" : "Background task unavailable",
           triggered
-            ? "The Health Connect background worker was triggered for testing."
+            ? `The ${healthProviderName()} background sync path was triggered for testing.`
             : "Background task testing is unavailable on this build or device.",
         );
       } catch (error) {
@@ -231,7 +237,7 @@ export default function Dashboard() {
             (stepStatus !== "ready" || hasMissingHealthPermissions) ? (
               <Card>
                 <ThemedText type="defaultSemiBold">
-                  Health Connect setup
+                  {healthProviderName()} setup
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
                   {getHealthStatusMessage(
@@ -245,13 +251,21 @@ export default function Dashboard() {
                   <Pressable
                     style={styles.primaryActionButton}
                     onPress={() => {
+                      if (Platform.OS === "ios" && stepStatus === "permission-denied") {
+                        void openHealthAccessSettings();
+                        return;
+                      }
                       void requestAccess();
                     }}
                   >
                     <ThemedText style={styles.primaryActionText}>
-                      {hasMissingHealthPermissions
-                        ? "Allow more Health Connect access"
-                        : "Allow step access"}
+                      {Platform.OS === "ios" && stepStatus === "permission-denied"
+                        ? "Open app settings"
+                        : hasMissingHealthPermissions
+                          ? `Allow more ${healthProviderName()} access`
+                          : Platform.OS === "ios"
+                            ? "Allow Apple Health access"
+                            : "Allow step access"}
                     </ThemedText>
                   </Pressable>
                 )}
@@ -261,12 +275,12 @@ export default function Dashboard() {
             {stepStatus === "ready" && !backgroundReadGranted ? (
               <Card>
                 <ThemedText type="defaultSemiBold">
-                  Background Health Connect sync
+                  Background {healthProviderName()} sync
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
-                  Allow background Health Connect access if you want steps,
-                  exercise, sleep, heart rate, and blood pressure to sync when
-                  the app is not open.
+                  {Platform.OS === "ios"
+                    ? "Enable Apple Health background delivery if you want steps, exercise, sleep, heart rate, and blood pressure to sync when the app is not open. If health access was previously denied, also review CKD Copilot in the Health app and iPhone Settings."
+                    : "Allow background Health access if you want steps, exercise, sleep, heart rate, and blood pressure to sync when the app is not open."}
                 </ThemedText>
                 <Pressable
                   style={styles.primaryActionButton}
@@ -275,7 +289,9 @@ export default function Dashboard() {
                   }}
                 >
                   <ThemedText style={styles.primaryActionText}>
-                    Allow background health access
+                    {Platform.OS === "ios"
+                      ? "Enable background health sync"
+                      : "Allow background health access"}
                   </ThemedText>
                 </Pressable>
                 {__DEV__ ? (
@@ -292,7 +308,7 @@ export default function Dashboard() {
                   Dev: Background sync
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
-                  Trigger the Health Connect background worker immediately for testing.
+                  Trigger the native background sync path immediately for testing.
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
                   Background read permission:{" "}
@@ -359,13 +375,13 @@ function getHealthSubtitle(stepStatus: ReturnType<typeof useStepCount>["status"]
     case "ready":
       return "Today's step total";
     case "permission-required":
-      return "Connect Health Connect";
+      return Platform.OS === "ios" ? "Connect Apple Health" : "Connect Health Connect";
     case "permission-denied":
       return "Step access denied";
     case "health-connect-unavailable":
-      return "Health Connect unavailable";
+      return Platform.OS === "ios" ? "Apple Health unavailable" : "Health Connect unavailable";
     case "health-connect-update-required":
-      return "Update Health Connect";
+      return Platform.OS === "ios" ? "Update Apple Health access" : "Update Health Connect";
     case "error":
       return "Couldn't load step data";
     default:
@@ -378,14 +394,20 @@ function getHealthStatusMessage(
   hasMissingHealthPermissions = false,
 ) {
   if (hasMissingHealthPermissions && stepStatus === "ready") {
-    return "Steps are connected, but Health Connect access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too.";
+    return Platform.OS === "ios"
+      ? "Steps are connected, but Apple Health access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too."
+      : "Steps are connected, but Health Connect access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too.";
   }
 
   switch (stepStatus) {
     case "permission-required":
-      return "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
+      return Platform.OS === "ios"
+        ? "Grant Apple Health access so the app can read steps, heart rate, exercise, sleep, and blood pressure from your iPhone or Apple Watch. If the prompt does not appear, open the Health app, go to Sharing or Data Access for CKD Copilot, and enable the categories you want to share."
+        : "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
     case "permission-denied":
-      return "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
+      return Platform.OS === "ios"
+        ? "Apple Health access was denied. Open Settings for CKD Copilot, then open the Health app and go to Sharing or Data Access for CKD Copilot. Turn on steps, heart rate, exercise, sleep, and blood pressure if you want those readings to appear here."
+        : "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
     case "health-connect-unavailable":
       return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";
     case "health-connect-update-required":

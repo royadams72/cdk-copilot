@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { isHealthSyncProvider, type HealthSyncProvider } from "@/apps/api/lib/healthSync/provider";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -33,7 +34,7 @@ type MeasurementDoc = {
     dayKey?: string;
     finalizedAt?: Date;
     lastReconciledAt?: Date;
-    provider?: "health_connect";
+    provider?: HealthSyncProvider;
     status?: "provisional" | "finalized";
   };
   exercise?: {
@@ -170,7 +171,7 @@ export async function GET(req: NextRequest) {
           dayKey?: string;
           finalizedAt?: string;
           lastReconciledAt?: string;
-          provider: "health_connect";
+          provider: HealthSyncProvider;
           status: "provisional" | "finalized";
         };
         exerciseId?: string;
@@ -236,14 +237,14 @@ export async function GET(req: NextRequest) {
             : undefined,
         sync:
           kind === "steps" &&
-          doc.sync?.provider === "health_connect" &&
+          isHealthSyncProvider(doc.sync?.provider) &&
           (doc.sync.status === "provisional" || doc.sync.status === "finalized")
             ? {
                 dayKey:
                   typeof doc.sync.dayKey === "string" ? doc.sync.dayKey : undefined,
                 finalizedAt: doc.sync.finalizedAt?.toISOString(),
                 lastReconciledAt: doc.sync.lastReconciledAt?.toISOString(),
-                provider: "health_connect",
+                provider: doc.sync.provider,
                 status: doc.sync.status,
               }
             : undefined,
@@ -281,7 +282,7 @@ export async function GET(req: NextRequest) {
             dayKey?: string;
             finalizedAt?: string;
             lastReconciledAt?: string;
-            provider: "health_connect";
+            provider: HealthSyncProvider;
             status: "provisional" | "finalized";
           };
           exerciseId?: string;
