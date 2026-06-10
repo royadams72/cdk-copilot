@@ -22,6 +22,7 @@ const foodAppID = process.env.EDAMAM_API_ID || "";
 const EDAMAM_GRAM_MEASURE_URI =
   "http://www.edamam.com/ontologies/edamam.owl#Measure_gram";
 const SEARCH_CATEGORIES = ["packaged-foods", "generic-foods"] as const;
+const DEFAULT_UNITLESS_LOOKUP_GRAMS = 100;
 
 type NutritionLookupItem = TEdamamNutritionLookupItem & {
   brand?: string;
@@ -177,12 +178,13 @@ async function requestNutrition(
   resolvedMeasure: ReturnType<typeof resolveMeasureInfo>,
   params: URLSearchParams,
 ) {
+  const requestedQuantity = resolveLookupQuantity(lookupItem, resolvedMeasure);
   const ingredients = [
     {
       foodId: lookupItem.foodId,
       measureURI: resolvedMeasure.measureURI,
       qualifiers: resolvedMeasure.qualifiers,
-      quantity: lookupItem.quantity,
+      quantity: requestedQuantity,
     },
   ];
   // console.log("ingredients:", ingredients);
@@ -424,6 +426,37 @@ function shouldPreferServing(ingredient: TEdamamNutritionLookupItem) {
   if (hasExplicitMeasure) return false;
 
   return Number.isInteger(ingredient.quantity) && ingredient.quantity > 0;
+}
+
+function resolveLookupQuantity(
+  lookupItem: NutritionLookupItem,
+  resolvedMeasure: ReturnType<typeof resolveMeasureInfo>,
+) {
+  const normalizedUnit = (lookupItem.unit ?? "").trim().toLowerCase();
+  const normalizedOriginal = (
+    lookupItem.originalText ??
+    lookupItem.foodName ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+  const normalizedMeasure = (resolvedMeasure.label ?? "").trim().toLowerCase();
+  const hasExplicitMeasure =
+    /\b(g|gram|grams|kg|kilogram|kilograms|oz|ounce|ounces|lb|lbs|pound|pounds|ml|milliliter|milliliters|l|liter|liters|cup|cups|tbsp|tablespoon|tablespoons|tsp|teaspoon|teaspoons|slice|slices|piece|pieces|serving|servings)\b/.test(
+      normalizedOriginal,
+    );
+
+  if (
+    !normalizedUnit &&
+    !hasExplicitMeasure &&
+    ["g", "gram", "grams"].includes(normalizedMeasure) &&
+    Number.isFinite(lookupItem.quantity) &&
+    lookupItem.quantity > 0
+  ) {
+    return lookupItem.quantity * DEFAULT_UNITLESS_LOOKUP_GRAMS;
+  }
+
+  return lookupItem.quantity;
 }
 
 function findMeasureLabel(measures: TEdamamMeasure[], measureURI: string) {

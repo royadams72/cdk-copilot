@@ -113,6 +113,10 @@ function getMeasureInfo(
     if (servingMeasure) return resolveMeasure(servingMeasure);
   }
 
+  if (shouldPreserveUnitlessMeasure(quantity, effectiveUnit, normalizedOriginal)) {
+    return { label: "", measureURI: "" };
+  }
+
   if (normalizedFood) {
     const match = measures.find((measure) =>
       normalizedFood.includes((measure.label ?? "").trim().toLowerCase()),
@@ -166,6 +170,20 @@ function shouldIgnoreInferredPieceUnit(
   return ["leg", "drumstick", "thigh", "wing", "breast", "whole"].includes(
     normalizedUnit,
   );
+}
+
+function shouldPreserveUnitlessMeasure(
+  quantity: number,
+  normalizedUnit: string,
+  normalizedOriginal: string,
+) {
+  if (normalizedUnit) return false;
+  if (!Number.isInteger(quantity) || quantity <= 0) return false;
+
+  const explicitMeasurePattern =
+    /\b(g|gram|grams|kg|kilogram|kilograms|oz|ounce|ounces|lb|lbs|pound|pounds|ml|milliliter|milliliters|l|liter|liters|cup|cups|tbsp|tablespoon|tablespoons|tsp|teaspoon|teaspoons|slice|slices|piece|pieces|serving|servings)\b/;
+
+  return !normalizedOriginal || !explicitMeasurePattern.test(normalizedOriginal);
 }
 
 function sanitizeUnitForLookup(unit?: string) {

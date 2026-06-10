@@ -382,7 +382,7 @@ export default function FoodDetails() {
                 <FoodCard
                   key={food.uid}
                   title={buildDisplayFoodName(food.name, food.brand)}
-                  subtitle={`${formatNumber(food.quantity)} ${formatMeasureUnit(food.unit)}`}
+                  subtitle={formatQuantitySummary(food.quantity, food.unit)}
                   description={buildKnownNutrientSummary(food)}
                   onPress={() =>
                     dispatch(
@@ -515,8 +515,11 @@ function resolvePortionConfig(
     (shouldDefaultToServing || !isDirectMeasureUnit(currentUnitNorm))
       ? "serving"
       : "direct";
-
-  const normalizedQuantity = sanitizeQuantity(quantity, mode);
+  const shouldUseDirectFallbackDefault =
+    mode === "direct" && !currentUnitNorm && !preferredPortionMeasure;
+  const normalizedQuantity = shouldUseDirectFallbackDefault
+    ? sanitizeQuantity(Number.NaN, mode)
+    : sanitizeQuantity(quantity, mode);
 
   return {
     availableModes,
@@ -651,6 +654,13 @@ function formatMeasureUnit(unit: string) {
   if (canonicalUnit === "milliliter") return "ml";
   if (canonicalUnit === "liter") return "L";
   return unit;
+}
+
+function formatQuantitySummary(quantity: number, unit: string) {
+  const formattedUnit = formatMeasureUnit(unit).trim();
+  return formattedUnit
+    ? `${formatNumber(quantity)} ${formattedUnit}`
+    : formatNumber(quantity);
 }
 
 function formatDirectUnitLabel(unit: string) {
