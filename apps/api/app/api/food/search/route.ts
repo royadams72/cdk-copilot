@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
       ];
     } else {
       const normalized = (await normaliseInput(rawQuery)) as TLogMealNormalised;
-      // console.log("normalized:", normalized);
 
       if (!Array.isArray(normalized?.items) || normalized.items.length === 0) {
         throw new Error("Normalisation failed");

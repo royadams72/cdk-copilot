@@ -29,7 +29,7 @@
 		3DEA42826C932AE5B7255CF9 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ckdapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		6051A4519384C1E419489D60 /* Pods-ckdapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ckdapp.debug.xcconfig"; path = "Target Support Files/Pods-ckdapp/Pods-ckdapp.debug.xcconfig"; sourceTree = "<group>"; };
 		64757E451EE99D689048B898 /* Pods-ckdapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ckdapp.release.xcconfig"; path = "Target Support Files/Pods-ckdapp/Pods-ckdapp.release.xcconfig"; sourceTree = "<group>"; };
-		94DA677C8D2FDCBE3298C808 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = ckdapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		94DA677C8D2FDCBE3298C808 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = ckdapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = ckdapp/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B3C55237EBFCDDBB452E3CA6 /* libPods-ckdapp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ckdapp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -65,7 +65,6 @@
 				6051A4519384C1E419489D60 /* Pods-ckdapp.debug.xcconfig */,
 				64757E451EE99D689048B898 /* Pods-ckdapp.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -365,6 +364,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ckdapp/ckdapp.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R4Q2VPNLG9;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -401,6 +401,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ckdapp/ckdapp.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R4Q2VPNLG9;
 				INFOPLIST_FILE = ckdapp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -62,24 +62,38 @@ function asDate(value: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function parseItem(raw: unknown): ProviderBatchItem | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+function invalidItem(reason: string) {
+  return { item: null, reason } as const;
+}
+
+function parseItem(raw: unknown): { item: ProviderBatchItem | null; reason?: string } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return invalidItem("Item must be an object");
+  }
   const input = raw as Record<string, unknown>;
 
   const kind = asTrimmedString(input.kind);
-  if (!kind || !ALLOWED_KINDS.includes(kind as AllowedKind)) return null;
+  if (!kind || !ALLOWED_KINDS.includes(kind as AllowedKind)) {
+    return invalidItem(`kind must be one of ${ALLOWED_KINDS.join(", ")}`);
+  }
 
   const externalRecordId = asTrimmedString(input.externalRecordId);
-  if (!externalRecordId) return null;
+  if (!externalRecordId) return invalidItem("externalRecordId is required");
 
   const measuredAt = asDate(input.measuredAt);
-  if (!measuredAt) return null;
+  if (!measuredAt) return invalidItem("measuredAt must be a valid ISO date");
 
   const providerRaw = input.provider;
-  if (!providerRaw || typeof providerRaw !== "object" || Array.isArray(providerRaw)) return null;
+  if (
+    !providerRaw ||
+    typeof providerRaw !== "object" ||
+    Array.isArray(providerRaw)
+  ) {
+    return invalidItem("provider must be an object");
+  }
   const providerInput = providerRaw as Record<string, unknown>;
   const packageName = asTrimmedString(providerInput.packageName);
-  if (!packageName) return null;
+  if (!packageName) return invalidItem("provider.packageName is required");
   const displayName = asTrimmedString(providerInput.displayName) ?? undefined;
 
   const item: ProviderBatchItem = {
@@ -104,16 +118,18 @@ function parseItem(raw: unknown): ProviderBatchItem | null {
   // Kind-specific validation
   if (kind === "heart_rate") {
     const bpm = asNumber(input.bpm);
-    if (bpm === null || bpm <= 0) return null;
+    if (bpm === null || bpm <= 0) return invalidItem("heart_rate bpm must be > 0");
     item.bpm = Math.round(bpm);
   }
 
   if (kind === "sleep") {
     const sleepFromAt = asDate(input.sleepFromAt);
     const sleepToAt = asDate(input.sleepToAt);
-    if (!sleepFromAt || !sleepToAt) return null;
+    if (!sleepFromAt || !sleepToAt) {
+      return invalidItem("sleep requires valid sleepFromAt and sleepToAt");
+    }
     const msDiff = sleepToAt.getTime() - sleepFromAt.getTime();
-    if (msDiff <= 0) return null;
+    if (msDiff <= 0) return invalidItem("sleepToAt must be after sleepFromAt");
     item.sleepFromAt = sleepFromAt;
     item.sleepToAt = sleepToAt;
     item.durationMin = Math.round(msDiff / 60000);
@@ -121,7 +137,9 @@ function parseItem(raw: unknown): ProviderBatchItem | null {
 
   if (kind === "exercise") {
     const durationMin = asNumber(input.durationMin);
-    if (durationMin === null || durationMin <= 0) return null;
+    if (durationMin === null || durationMin <= 0) {
+      return invalidItem("exercise durationMin must be > 0");
+    }
     item.durationMin = Math.round(durationMin);
     item.caloriesKcal = Math.max(0, Math.round(asNumber(input.caloriesKcal) ?? 0));
     item.exerciseId = asTrimmedString(input.exerciseId) ?? "health_connect_exercise";
@@ -140,14 +158,18 @@ function parseItem(raw: unknown): ProviderBatchItem | null {
       systolicMmHg === null ||
       diastolicMmHg === null ||
       systolicMmHg <= diastolicMmHg
-    ) return null;
+    ) {
+      return invalidItem(
+        "blood_pressure requires systolicMmHg > diastolicMmHg",
+      );
+    }
     item.systolicMmHg = Math.round(systolicMmHg);
     item.diastolicMmHg = Math.round(diastolicMmHg);
     const pulseBpm = asNumber(input.pulseBpm);
     if (pulseBpm !== null && pulseBpm > 0) item.pulseBpm = Math.round(pulseBpm);
   }
 
-  return item;
+  return { item };
 }
 
 export async function POST(req: NextRequest) {
@@ -171,10 +193,32 @@ export async function POST(req: NextRequest) {
     }
 
     const items: ProviderBatchItem[] = [];
-    for (const raw of rawItems) {
+    const invalidItems: Array<{ index: number; reason: string }> = [];
+    for (const [index, raw] of rawItems.entries()) {
       const parsed = parseItem(raw);
-      if (!parsed) return bad("One or more items are invalid", undefined, 400);
-      items.push(parsed);
+      if (!parsed.item) {
+        invalidItems.push({
+          index,
+          reason: parsed.reason ?? "Item is invalid",
+        });
+        continue;
+      }
+      items.push(parsed.item);
+    }
+
+    if (!items.length) {
+      return bad(
+        invalidItems[0]?.reason ?? "One or more items are invalid",
+        { invalidItems },
+        400,
+      );
+    }
+
+    if (invalidItems.length > 0) {
+      console.warn("provider-batch-upsert skipped invalid items", {
+        count: invalidItems.length,
+        first: invalidItems[0],
+      });
     }
 
     const db = await getDb();
@@ -289,10 +333,14 @@ export async function POST(req: NextRequest) {
     }
 
     return ok({
+      errors: invalidItems.length,
+      firstError: invalidItems[0]?.reason ?? null,
       inserted: result.upsertedCount,
       matched: result.matchedCount,
       modified: result.modifiedCount,
-      total: items.length,
+      total: rawItems.length,
+      accepted: items.length,
+      invalidItems,
     });
   } catch (err: any) {
     const status = err?.status || 500;

@@ -156,6 +156,19 @@ export const logMealStyles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
   },
+  searchErrorBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    backgroundColor: "#fef2f2",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  searchErrorText: {
+    color: "#b91c1c",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   searchInput: {
     flex: 1,
     minHeight: 48,

@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { API } from "@/constants/api";
 import { syncNativeAuthSessionMirror } from "@/lib/authSession";
-import { resolvePostAuthRoute } from "@/lib/onboarding";
+import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 
 export default function VerifyScreen() {
@@ -31,6 +31,7 @@ export default function VerifyScreen() {
           await SecureStore.setItemAsync("ckd_refresh", refreshToken);
         }
         await syncNativeAuthSessionMirror(jwt, refreshToken ?? null);
+        logPostAuthRouteDecision("verify", data);
         router.replace(resolvePostAuthRoute(data) as never);
       } else {
         router.replace("./check-email");

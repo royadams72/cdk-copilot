@@ -1,15 +1,16 @@
 import OpenAI from "openai";
 
-import { bad } from "@/apps/api/lib/http/responses";
-import { NextResponse } from "next/server";
 import { TLogMealItem, TLogMealNormalised } from "@ckd/core";
 
-export async function normaliseInput(
-  input: string,
-): Promise<TLogMealNormalised | NextResponse> {
+export async function normaliseInput(input: string): Promise<TLogMealNormalised> {
   const directBreadMatch = buildDirectBreadNormalisation(input);
   if (directBreadMatch) {
     return directBreadMatch;
+  }
+
+  const fallback = buildFallbackNormalisation(input);
+  if (!process.env.OPENAI_API_KEY) {
+    return fallback;
   }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -30,21 +31,23 @@ export async function normaliseInput(
       store: true,
     });
 
-    const plan = completion.choices[0].message.content;
+    const plan = completion.choices[0]?.message?.content;
     if (!plan) {
-      throw new Error("No Fitplan created");
+      return fallback;
     }
 
-    const json = JSON.parse(plan) as TLogMealNormalised;
-    // console.log("jason", json);
-
-    if (!json) {
-      bad("No data returned", "no data", 404);
+    const json = JSON.parse(stripMarkdownCodeFence(plan)) as TLogMealNormalised;
+    if (!Array.isArray(json?.items) || json.items.length === 0) {
+      return fallback;
     }
 
     return json;
   } catch (error) {
-    return bad(`Create plan failure, ${error}`, 400);
+    console.error("food/search normaliseInput failed", {
+      error: error instanceof Error ? error.message : String(error),
+      input,
+    });
+    return fallback;
   }
 }
 
@@ -102,6 +105,35 @@ function buildDirectBreadNormalisation(
     ],
     mealText: input,
   };
+}
+
+function buildFallbackNormalisation(input: string): TLogMealNormalised {
+  const trimmed = input.trim().replace(/\s+/g, " ");
+
+  return {
+    items: [
+      {
+        food: trimmed,
+        normalised: trimmed.toLowerCase(),
+        original: input,
+        quantity: 1,
+        unit: null,
+      },
+    ],
+    mealText: input,
+  };
+}
+
+function stripMarkdownCodeFence(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("```")) {
+    return trimmed;
+  }
+
+  return trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
 }
 
 export function rewriteForEdamam(items: TLogMealItem[]): TLogMealItem[] {

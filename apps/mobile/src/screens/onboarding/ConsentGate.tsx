@@ -3,7 +3,6 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { API } from "@/constants/api";
-import { clearSessionToken } from "@/lib/authSession";
 import { authFetch } from "@/lib/authFetch";
 import { resolvePostAuthRoute } from "@/lib/onboarding";
 
@@ -62,18 +61,14 @@ export default function ConsentGate() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [items, setItems] = useState<PendingConsentItem[]>([]);
-  const [hasActiveAssignments, setHasActiveAssignments] = useState<
-    boolean | null
-  >(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        const [{ data: consentData }, { data: sessionData }] =
+        const [{ data: consentData }] =
           await Promise.all([fetchPendingConsents(), fetchSessionState()]);
 
         setItems(consentData?.items ?? []);
-        setHasActiveAssignments(sessionData?.hasActiveAssignments ?? null);
       } catch (nextError: any) {
         setError(
           nextError?.message ?? "We couldn't load your consent request.",
@@ -100,15 +95,9 @@ export default function ConsentGate() {
     ]);
 
     const nextItems = consentData?.items ?? [];
-    const nextHasActiveAssignments = sessionData?.hasActiveAssignments ?? null;
     setItems(nextItems);
-    setHasActiveAssignments(nextHasActiveAssignments);
 
     if (nextItems.length > 0) {
-      return;
-    }
-
-    if (nextHasActiveAssignments === false) {
       return;
     }
 
@@ -146,11 +135,6 @@ export default function ConsentGate() {
     }
   }
 
-  async function closeSession() {
-    await clearSessionToken();
-    router.replace("/(init-app)/welcome");
-  }
-
   if (loading) {
     return (
       <OnboardingFormScreen title="Checking your consent status">
@@ -167,28 +151,14 @@ export default function ConsentGate() {
   if (!currentItem) {
     return (
       <OnboardingFormScreen
-        title={
-          hasActiveAssignments === false
-            ? "Access request declined"
-            : "No consent request found"
-        }
-        subtitle={
-          hasActiveAssignments === false
-            ? "You do not currently have an active care assignment in CKD Copilot. Your care team will need to review your access."
-            : "There are no pending consent requests for this account."
-        }
+        title="No consent request found"
+        subtitle="There are no pending consent requests for this account."
         contentContainerStyle={{ gap: 20 }}
       >
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <PrimaryButton
-          label={
-            hasActiveAssignments === false ? "Return to sign in" : "Continue"
-          }
+          label="Continue"
           onPress={() => {
-            if (hasActiveAssignments === false) {
-              void closeSession();
-              return;
-            }
             void refreshStateAndRoute();
           }}
         />
