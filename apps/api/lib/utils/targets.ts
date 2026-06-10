@@ -167,6 +167,15 @@ function cloneDefinition(definition: TargetDefinitionValue): TargetDefinitionVal
   return JSON.parse(JSON.stringify(definition)) as TargetDefinitionValue;
 }
 
+function isDuplicateKeyError(error: unknown) {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: unknown }).code === 11000
+  );
+}
+
 export function buildDefaultTargetStates(now = new Date()) {
   return Object.fromEntries(
     DEFAULT_TARGET_BLUEPRINTS.map((item) => {
@@ -247,26 +256,33 @@ export async function ensurePatientTargetsSeeded(
     );
   }
 
-  await ledgerCollection.insertMany(
-    Object.values(targets).map((target) => ({
-      after: target.effective,
-      before: null,
-      createdAt: now,
-      createdBy: actor,
-      derivedFrom: target.derivedFrom ?? null,
-      domain: target.domain,
-      eventType: "system_recommended_target",
-      idemKey: `seed:${input.patientId.toHexString()}:${target.metric}:v${target.derivedFrom?.version ?? 1}`,
-      metric: target.metric,
-      orgId,
-      patientId: input.patientId,
-      reason:
-        target.domain === "lifestyle"
-          ? "Seeded initial lifestyle targets"
-          : "Seeded initial renal targets",
-      superseded: false,
-    })),
-  );
+  try {
+    await ledgerCollection.insertMany(
+      Object.values(targets).map((target) => ({
+        after: target.effective,
+        before: null,
+        createdAt: now,
+        createdBy: actor,
+        derivedFrom: target.derivedFrom ?? null,
+        domain: target.domain,
+        eventType: "system_recommended_target",
+        idemKey: `seed:${input.patientId.toHexString()}:${target.metric}:v${target.derivedFrom?.version ?? 1}`,
+        metric: target.metric,
+        orgId,
+        patientId: input.patientId,
+        reason:
+          target.domain === "lifestyle"
+            ? "Seeded initial lifestyle targets"
+            : "Seeded initial renal targets",
+        superseded: false,
+      })),
+      { ordered: false },
+    );
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) {
+      throw error;
+    }
+  }
 
   return findTargetsCurrentDoc(db, input.patientId);
 }
