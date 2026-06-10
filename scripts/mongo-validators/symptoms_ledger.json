@@ -1,0 +1,184 @@
+{
+  "collMod": "symptoms_ledger",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "createdAt": -1 },
+      "options": { "name": "byPatientCreatedAt" }
+    },
+    {
+      "key": { "patientId": 1, "symptomId": 1, "createdAt": -1 },
+      "options": { "name": "byPatientSymptomIdCreatedAt" }
+    },
+    {
+      "key": { "patientId": 1, "after.normalizedName": 1, "createdAt": -1 },
+      "options": { "name": "byPatientNormalizedNameCreatedAt" }
+    },
+    {
+      "key": { "orgId": 1, "patientId": 1, "createdAt": -1 },
+      "options": {
+        "name": "byOrgPatientCreatedAt",
+        "partialFilterExpression": { "orgId": { "$type": "string" } }
+      }
+    }
+  ],
+  "validationAction": "error",
+  "validationLevel": "moderate",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "symptomId",
+        "eventType",
+        "createdAt",
+        "createdBy",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "patientId": { "bsonType": "objectId" },
+        "symptomId": { "bsonType": "string" },
+        "orgId": { "bsonType": ["string", "null"] },
+        "eventType": { "enum": ["created", "updated", "resolved", "reopened"] },
+        "createdAt": { "bsonType": "date" },
+        "createdBy": {
+          "bsonType": "object",
+          "required": ["actorType", "principalId"],
+          "properties": {
+            "actorType": {
+              "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+            },
+            "displayName": { "bsonType": ["string", "null"] },
+            "principalId": { "bsonType": "string" }
+          },
+          "additionalProperties": false
+        },
+        "before": {
+          "bsonType": ["object", "null"],
+          "properties": {
+            "_id": { "bsonType": "objectId" },
+            "patientId": { "bsonType": "objectId" },
+            "symptomId": { "bsonType": "string" },
+            "orgId": { "bsonType": ["string", "null"] },
+            "name": { "bsonType": "string" },
+            "normalizedName": {
+              "bsonType": "string",
+              "pattern": "^[a-z0-9][a-z0-9\\s/-]*$"
+            },
+            "severity": { "bsonType": ["int", "long"] },
+            "recordedAt": { "bsonType": "date" },
+            "startedAt": { "bsonType": ["date", "null"] },
+            "resolvedAt": { "bsonType": ["date", "null"] },
+            "status": { "enum": ["active", "improving", "resolved"] },
+            "note": { "bsonType": ["string", "null"] },
+            "triggers": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" }
+            },
+            "source": {
+              "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+            },
+            "createdAt": { "bsonType": "date" },
+            "updatedAt": { "bsonType": "date" },
+            "createdBy": {
+              "bsonType": "object",
+              "required": ["actorType", "principalId"],
+              "properties": {
+                "actorType": {
+                  "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+                },
+                "displayName": { "bsonType": ["string", "null"] },
+                "principalId": { "bsonType": "string" }
+              },
+              "additionalProperties": false
+            },
+            "updatedBy": {
+              "bsonType": "object",
+              "required": ["actorType", "principalId"],
+              "properties": {
+                "actorType": {
+                  "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+                },
+                "displayName": { "bsonType": ["string", "null"] },
+                "principalId": { "bsonType": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "after": {
+          "bsonType": "object",
+          "required": [
+            "patientId",
+            "symptomId",
+            "name",
+            "normalizedName",
+            "severity",
+            "recordedAt",
+            "status",
+            "triggers",
+            "source",
+            "createdAt",
+            "createdBy",
+            "updatedAt",
+            "updatedBy"
+          ],
+          "properties": {
+            "_id": { "bsonType": "objectId" },
+            "patientId": { "bsonType": "objectId" },
+            "symptomId": { "bsonType": "string" },
+            "orgId": { "bsonType": ["string", "null"] },
+            "name": { "bsonType": "string" },
+            "normalizedName": {
+              "bsonType": "string",
+              "pattern": "^[a-z0-9][a-z0-9\\s/-]*$"
+            },
+            "severity": { "bsonType": ["int", "long"] },
+            "recordedAt": { "bsonType": "date" },
+            "startedAt": { "bsonType": ["date", "null"] },
+            "resolvedAt": { "bsonType": ["date", "null"] },
+            "status": { "enum": ["active", "improving", "resolved"] },
+            "note": { "bsonType": ["string", "null"] },
+            "triggers": {
+              "bsonType": "array",
+              "items": { "bsonType": "string" }
+            },
+            "source": {
+              "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+            },
+            "createdAt": { "bsonType": "date" },
+            "updatedAt": { "bsonType": "date" },
+            "createdBy": {
+              "bsonType": "object",
+              "required": ["actorType", "principalId"],
+              "properties": {
+                "actorType": {
+                  "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+                },
+                "displayName": { "bsonType": ["string", "null"] },
+                "principalId": { "bsonType": "string" }
+              },
+              "additionalProperties": false
+            },
+            "updatedBy": {
+              "bsonType": "object",
+              "required": ["actorType", "principalId"],
+              "properties": {
+                "actorType": {
+                  "enum": ["patient", "clinician", "dietitian", "admin", "system"]
+                },
+                "displayName": { "bsonType": ["string", "null"] },
+                "principalId": { "bsonType": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -43,6 +43,8 @@ export const COLLECTIONS = {
   WeeklyNutritionInsights: "weekly_nutrition_insights",
   TargetsCurrent: "targets_current",
   TargetsLedger: "targets_ledger",
+  SymptomsCurrent: "symptoms_current",
+  SymptomsLedger: "symptoms_ledger",
 
   Orgs: "orgs",
   PatientGoalsCurrent: "patient_goals_current",

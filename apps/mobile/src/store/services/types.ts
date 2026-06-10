@@ -6,7 +6,14 @@ import {
   NutritionMetricKey,
   NutritionTrendChunk,
 } from "@/screens/dashboard/types";
-import { TWeeklyNutritionInsight } from "@ckd/core";
+import {
+  TSymptomCreateRequest,
+  TSymptomLedgerEvent,
+  TSymptomListResponse,
+  TSymptomsCurrent,
+  TSymptomUpdateRequest,
+  TWeeklyNutritionInsight,
+} from "@ckd/core";
 
 export type DashboardScope = "today" | "all";
 export type UserUnits = "metric" | "imperial";
@@ -232,6 +239,11 @@ export type WeeklySleepSummary = {
   weeklyAverageDurationMin: number;
 };
 export type WeeklySleepSummaryResponse = WeeklySleepSummary | null;
+export type SymptomCurrent = TSymptomsCurrent;
+export type SymptomHistoryEvent = TSymptomLedgerEvent;
+export type SymptomListResponse = TSymptomListResponse;
+export type CreateSymptomArgs = TSymptomCreateRequest;
+export type UpdateSymptomArgs = TSymptomUpdateRequest;
 export type CurrentUserSettingsResponse = {
   units: UserUnits;
 };
