@@ -17,6 +17,7 @@ import {
   toQueryErrorMessage,
   useGetDashboardQuery,
 } from "@/store/services/dashboardApi";
+import { useGetSymptomsQuery } from "@/store/services/symptomsApi";
 import { Card } from "./components/Card";
 import { NutritionStyles } from "../nutrition/styles";
 
@@ -25,6 +26,7 @@ export default function MedsLabsDashboard() {
 
   const { data, error, isFetching, isLoading, refetch } =
     useGetDashboardQuery("all");
+  const { data: symptomData } = useGetSymptomsQuery();
   const errorMessage = toQueryErrorMessage(
     error,
     "We couldn't refresh your nutrition data",
@@ -102,6 +104,29 @@ export default function MedsLabsDashboard() {
           onHistory={() => router.push("/(labs)/labs-history")}
         />
       )}
+
+      <Card>
+        <ThemedText type="defaultSemiBold">Symptoms</ThemedText>
+        <ThemedText style={styles.helperText}>
+          {symptomData?.activeSymptoms.length
+            ? `${symptomData.activeSymptoms.length} active symptom${symptomData.activeSymptoms.length === 1 ? "" : "s"} logged`
+            : "No active symptoms logged yet."}
+        </ThemedText>
+        {symptomData?.history?.[0]?.after ? (
+          <ThemedText style={styles.helperText}>
+            Latest: {symptomData.history[0].after.name} on{" "}
+            {new Date(
+              symptomData.history[0].after.recordedAt,
+            ).toLocaleDateString("en-GB")}
+          </ThemedText>
+        ) : null}
+        <TouchableOpacity
+          style={styles.primaryActionButton}
+          onPress={() => router.push("/(symptoms)/symptoms" as never)}
+        >
+          <ThemedText style={styles.primaryActionText}>Track symptoms</ThemedText>
+        </TouchableOpacity>
+      </Card>
     </ScrollView>
   );
 }

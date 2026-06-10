@@ -14,6 +14,7 @@ export * from "./schemas/nutrition_favourites";
 export * from "./schemas/patient_goals";
 export * from "./schemas/patient_consents";
 export * from "./schemas/patients";
+export * from "./schemas/symptoms";
 export * from "./schemas/weekly_nutrition_insights";
 export * from "./schemas/clinical_reference_rules";
 export * from "./schemas/targets";

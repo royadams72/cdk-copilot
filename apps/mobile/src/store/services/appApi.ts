@@ -80,6 +80,7 @@ export const appApi = createApi({
     "Food",
     "Targets",
     "Engagement",
+    "Symptoms",
   ],
 });
 

@@ -6,6 +6,8 @@ module.exports = {
   testMatch: ["**/__tests__/**/*.test.ts", "**/?(*.)+(spec|test).ts"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
   moduleNameMapper: {
+    "^@ckd/core$": "<rootDir>/../../packages/core/src/isomorphic/index.ts",
+    "^@ckd/core/server$": "<rootDir>/../../packages/core/src/server/index.ts",
     "^core$": "<rootDir>/../../packages/core/src/index.ts",
     "^core/(.*)$": "<rootDir>/../../packages/core/src/$1",
     "^networking$": "<rootDir>/../../packages/networking/src/index.ts",
