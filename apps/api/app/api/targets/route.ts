@@ -7,48 +7,13 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
+  ensurePatientTargetsSeeded,
+  isStructuredTargetState,
   resolvePatientWeightKg,
   resolveTargetStateForWeight,
+  type StructuredTargetStateLike,
 } from "@/apps/api/lib/utils/targets";
 import { ROLES } from "@ckd/core";
-import { COLLECTIONS } from "@ckd/core/server";
-
-type TargetDefinitionValue = {
-  type: "range" | "max" | "min" | "exact";
-  basis?: "perDay" | "perKgPerDay" | null;
-  high?: number | null;
-  low?: number | null;
-  value?: number | null;
-};
-
-type TargetMetricState = {
-  derivedFrom?: {
-    matchedAt?: Date;
-    ruleId: string;
-    version: number;
-  } | null;
-  domain: "renal" | "lifestyle";
-  effective: TargetDefinitionValue;
-  metric: string;
-  override?: TargetDefinitionValue | null;
-  overrideMeta?: {
-    reason?: string | null;
-    setAt: Date;
-    setBy: {
-      actorType: "user" | "clinician" | "system";
-      displayName?: string | null;
-      principalId: string;
-    };
-  } | null;
-  recommended: TargetDefinitionValue;
-  unit: string;
-};
-
-type TargetsCurrentDoc = {
-  _id: ObjectId;
-  targets?: Record<string, TargetMetricState>;
-  updatedAt?: Date | null;
-};
 
 export async function GET(req: NextRequest) {
   try {
@@ -70,18 +35,11 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const patientId = new ObjectId(caller.patientId);
-    const currentDoc = await db
-      .collection<TargetsCurrentDoc>(COLLECTIONS.TargetsCurrent)
-      .findOne(
-        {
-          patientId,
-          targets: { $exists: true, $type: "object" },
-        },
-        {
-          projection: { targets: 1, updatedAt: 1 },
-          sort: { updatedAt: -1, _id: -1 },
-        },
-      );
+    const currentDoc = await ensurePatientTargetsSeeded(db, {
+      orgId: caller.orgId,
+      patientId,
+      seedPrincipalId: caller.principalId,
+    });
 
     if (!currentDoc?.targets) {
       return ok({
@@ -93,7 +51,11 @@ export async function GET(req: NextRequest) {
     const weightKg = await resolvePatientWeightKg(db, patientId);
 
     const items = Object.entries(currentDoc.targets)
-      .filter(([, target]) => (domain ? target.domain === domain : true))
+      .filter(
+        (entry): entry is [string, StructuredTargetStateLike] =>
+          isStructuredTargetState(entry[1]) &&
+          (domain ? entry[1].domain === domain : true),
+      )
       .map(([key, target]) => ({
         key,
         ...resolveTargetStateForWeight(target, weightKg),
