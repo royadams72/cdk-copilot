@@ -89,9 +89,14 @@ export function toQueryErrorMessage(error: unknown, fallback: string) {
 
   const fetchError = error as FetchBaseQueryError;
   if ("status" in fetchError) {
-    const payload = fetchError.data as { message?: string } | undefined;
-    if (payload?.message) {
-      return payload.message;
+    const payload = fetchError.data as
+      | { errors?: unknown; message?: string }
+      | undefined;
+    if (payload?.message || payload?.errors) {
+      return formatApiError(
+        typeof fetchError.status === "number" ? fetchError.status : 400,
+        payload,
+      );
     }
     if (typeof fetchError.status === "number") {
       return formatApiError(fetchError.status);

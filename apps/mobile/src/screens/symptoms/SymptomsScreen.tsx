@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
 import {
   ActivityIndicator,
-  Platform,
   RefreshControl,
   ScrollView,
   TextInput,
@@ -13,6 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
+import { DateTimeModal } from "@/components/date-time-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
 import { toQueryErrorMessage } from "@/store/services/appApi";
@@ -29,7 +26,7 @@ import type {
 import { Card } from "../dashboard/components/Card";
 import { styles } from "../dashboard/styles";
 
-type PickerField = "recordedAt" | "startedAt" | null;
+type PickerField = "startedAt" | null;
 
 const severityOptions = [1, 2, 3, 4, 5] as const;
 const statusOptions = ["active", "improving", "resolved"] as const;
@@ -63,7 +60,6 @@ export default function SymptomsScreen() {
   const [status, setStatus] = useState<(typeof statusOptions)[number]>("active");
   const [note, setNote] = useState("");
   const [triggersText, setTriggersText] = useState("");
-  const [recordedAt, setRecordedAt] = useState(new Date());
   const [startedAt, setStartedAt] = useState<Date | null>(null);
   const [pickerField, setPickerField] = useState<PickerField>(null);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
@@ -90,7 +86,6 @@ export default function SymptomsScreen() {
     setStatus(editing.status);
     setNote(editing.note ?? "");
     setTriggersText(editing.triggers.join(", "));
-    setRecordedAt(new Date(editing.recordedAt));
     setStartedAt(editing.startedAt ? new Date(editing.startedAt) : null);
   }, [editing]);
 
@@ -101,7 +96,6 @@ export default function SymptomsScreen() {
     setStatus("active");
     setNote("");
     setTriggersText("");
-    setRecordedAt(new Date());
     setStartedAt(null);
     setPickerField(null);
   }
@@ -122,7 +116,6 @@ export default function SymptomsScreen() {
         await updateSymptom({
           body: {
             note: note.trim() || null,
-            recordedAt,
             severity,
             startedAt,
             status,
@@ -134,7 +127,6 @@ export default function SymptomsScreen() {
         await createSymptom({
           name: name.trim(),
           note: note.trim() || null,
-          recordedAt,
           severity,
           startedAt,
           status,
@@ -156,7 +148,6 @@ export default function SymptomsScreen() {
     try {
       await updateSymptom({
         body: {
-          recordedAt: new Date(),
           status: nextStatus,
         },
         symptomId: item.symptomId,
@@ -171,16 +162,10 @@ export default function SymptomsScreen() {
     }
   }
 
-  function onDateChange(_event: DateTimePickerEvent, selected?: Date) {
-    if (Platform.OS !== "ios") {
-      setPickerField(null);
-    }
-    if (!selected || !pickerField) return;
-    if (pickerField === "recordedAt") {
-      setRecordedAt(selected);
-      return;
-    }
+  function onDateConfirm(selected: Date) {
+    if (!pickerField) return;
     setStartedAt(selected);
+    setPickerField(null);
   }
 
   return (
@@ -326,22 +311,6 @@ export default function SymptomsScreen() {
               }}
             >
               <ThemedText>{formatDateTime(startedAt)}</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ gap: 8 }}>
-            <ThemedText style={{ fontWeight: "600" }}>Recorded at</ThemedText>
-            <TouchableOpacity
-              onPress={() => setPickerField("recordedAt")}
-              style={{
-                borderColor: "#CBD5E1",
-                borderRadius: 10,
-                borderWidth: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <ThemedText>{formatDateTime(recordedAt)}</ThemedText>
             </TouchableOpacity>
           </View>
 
@@ -515,14 +484,13 @@ export default function SymptomsScreen() {
         </Card>
       </ScrollView>
 
-      {pickerField ? (
-        <DateTimePicker
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          mode="datetime"
-          onChange={onDateChange}
-          value={pickerField === "recordedAt" ? recordedAt : startedAt ?? new Date()}
-        />
-      ) : null}
+      <DateTimeModal
+        visible={pickerField !== null}
+        value={startedAt ?? new Date()}
+        title="Select symptom start time"
+        onCancel={() => setPickerField(null)}
+        onConfirm={onDateConfirm}
+      />
 
       <FeedbackModal
         mode="error"
