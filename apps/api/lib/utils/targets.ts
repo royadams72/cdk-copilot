@@ -237,7 +237,6 @@ export async function ensurePatientTargetsSeeded(
     },
     flags: ["seeded"],
     orgId,
-    patientId: input.patientId,
     targets,
     updatedAt: now,
     updatedBy: actor,
