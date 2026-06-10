@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { DateTimeModal } from "@/components/date-time-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
+import { scrollToTop } from "@/lib/scrollTo";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateSymptomMutation,
@@ -50,11 +51,13 @@ function symptomMetaLine(item: SymptomCurrent) {
 
 export default function SymptomsScreen() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const { data, error, isFetching, isLoading, refetch } = useGetSymptomsQuery();
   const [createSymptom, { isLoading: isCreating }] = useCreateSymptomMutation();
   const [updateSymptom, { isLoading: isUpdating }] = useUpdateSymptomMutation();
 
   const [editing, setEditing] = useState<SymptomCurrent | null>(null);
+  const [prefillSource, setPrefillSource] = useState<SymptomCurrent | null>(null);
   const [name, setName] = useState("");
   const [severity, setSeverity] = useState<(typeof severityOptions)[number]>(3);
   const [status, setStatus] = useState<(typeof statusOptions)[number]>("active");
@@ -81,6 +84,7 @@ export default function SymptomsScreen() {
 
   useEffect(() => {
     if (!editing) return;
+    setPrefillSource(null);
     setName(editing.name);
     setSeverity(editing.severity as (typeof severityOptions)[number]);
     setStatus(editing.status);
@@ -91,6 +95,7 @@ export default function SymptomsScreen() {
 
   function resetForm() {
     setEditing(null);
+    setPrefillSource(null);
     setName("");
     setSeverity(3);
     setStatus("active");
@@ -98,6 +103,25 @@ export default function SymptomsScreen() {
     setTriggersText("");
     setStartedAt(null);
     setPickerField(null);
+  }
+
+  function beginEditing(source: SymptomCurrent) {
+    setPrefillSource(null);
+    setEditing(source);
+    scrollToTop(scrollViewRef);
+  }
+
+  function startPrefilledReport(source: SymptomCurrent) {
+    setEditing(null);
+    setPrefillSource(source);
+    setName(source.name);
+    setSeverity(source.severity as (typeof severityOptions)[number]);
+    setStatus(source.status === "resolved" ? "active" : source.status);
+    setNote(source.note ?? "");
+    setTriggersText(source.triggers.join(", "));
+    setStartedAt(source.startedAt ? new Date(source.startedAt) : null);
+    setPickerField(null);
+    scrollToTop(scrollViewRef);
   }
 
   async function onSubmit() {
@@ -171,6 +195,7 @@ export default function SymptomsScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.container}
         contentContainerStyle={styles.content}
         refreshControl={
@@ -214,10 +239,18 @@ export default function SymptomsScreen() {
 
         <Card>
           <ThemedText type="defaultSemiBold">
-            {editing ? `Update ${editing.name}` : "Log a symptom"}
+            {editing
+              ? `Update ${editing.name}`
+              : prefillSource
+                ? `Report ${prefillSource.name} again`
+                : "Log a symptom"}
           </ThemedText>
           <ThemedText style={styles.helperText}>
-            Severity uses a simple 1 to 5 scale.
+            {editing
+              ? "Update the current symptom entry."
+              : prefillSource
+                ? "This form is prefilled from a previous symptom report."
+                : "Severity uses a simple 1 to 5 scale."}
           </ThemedText>
 
           <View style={{ gap: 8 }}>
@@ -359,17 +392,23 @@ export default function SymptomsScreen() {
               ]}
             >
               <ThemedText style={styles.primaryActionText}>
-                {saving ? "Saving..." : editing ? "Update symptom" : "Save symptom"}
+                {saving
+                  ? "Saving..."
+                  : editing
+                    ? "Update symptom"
+                    : prefillSource
+                      ? "Save new report"
+                      : "Save symptom"}
               </ThemedText>
             </TouchableOpacity>
-            {editing ? (
+            {editing || prefillSource ? (
               <TouchableOpacity
                 disabled={saving}
                 onPress={resetForm}
                 style={styles.secondaryActionButton}
               >
                 <ThemedText style={styles.secondaryActionText}>
-                  Cancel edit
+                  Cancel
                 </ThemedText>
               </TouchableOpacity>
             ) : null}
@@ -399,10 +438,18 @@ export default function SymptomsScreen() {
                 {item.note ? <ThemedText>{item.note}</ThemedText> : null}
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity
-                    onPress={() => setEditing(item)}
+                    onPress={() => beginEditing(item)}
                     style={styles.secondaryActionButton}
                   >
                     <ThemedText style={styles.secondaryActionText}>Edit</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => startPrefilledReport(item)}
+                    style={styles.secondaryActionButton}
+                  >
+                    <ThemedText style={styles.secondaryActionText}>
+                      Report again
+                    </ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onQuickStatusChange(item, "resolved")}
@@ -440,12 +487,22 @@ export default function SymptomsScreen() {
                   Resolved {formatDateTime(item.resolvedAt ?? item.recordedAt)}
                 </ThemedText>
                 {item.note ? <ThemedText>{item.note}</ThemedText> : null}
-                <TouchableOpacity
-                  onPress={() => onQuickStatusChange(item, "active")}
-                  style={styles.secondaryActionButton}
-                >
-                  <ThemedText style={styles.secondaryActionText}>Reopen</ThemedText>
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => startPrefilledReport(item)}
+                    style={styles.secondaryActionButton}
+                  >
+                    <ThemedText style={styles.secondaryActionText}>
+                      Report again
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => onQuickStatusChange(item, "active")}
+                    style={styles.secondaryActionButton}
+                  >
+                    <ThemedText style={styles.secondaryActionText}>Reopen</ThemedText>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           ) : (
@@ -474,6 +531,14 @@ export default function SymptomsScreen() {
                   {entry.status}
                 </ThemedText>
                 {entry.note ? <ThemedText>{entry.note}</ThemedText> : null}
+                <TouchableOpacity
+                  onPress={() => startPrefilledReport(entry)}
+                  style={styles.secondaryActionButton}
+                >
+                  <ThemedText style={styles.secondaryActionText}>
+                    Report again
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
             ))
           ) : (
