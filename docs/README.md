@@ -39,6 +39,7 @@ This folder contains developer documentation for **CKD Copilot**. It covers the 
 
 - [Email and Resend](./email-resend.md)
 - [Mobile dev notes](./mobile-dev-notes.md)
+- [Clinician and admin portal](./portal/README.md)
 
 ## Architecture decisions
 

@@ -1,0 +1,405 @@
+.portalShell {
+  min-height: 100vh;
+  background: var(--portal-gutter);
+}
+
+.topBar {
+  background: var(--portal-accent);
+  color: #fff;
+}
+
+.topBarInner {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-4);
+  padding: 0 var(--portal-space-5);
+}
+
+.brand {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.orgLine {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pageFrame {
+  display: grid;
+  grid-template-columns: minmax(24px, 1fr) minmax(980px, 1000px) minmax(24px, 1fr);
+}
+
+.sideGutter {
+  background: var(--portal-gutter);
+  border-right: 1px solid var(--portal-accent-dark);
+}
+
+.sideGutter:last-child {
+  border-right: 0;
+  border-left: 1px solid var(--portal-accent-dark);
+}
+
+.centerColumn {
+  min-height: calc(100vh - 48px);
+  padding: 10px 4px 0;
+  background: var(--portal-bg);
+}
+
+.actionBar,
+.metaStrip,
+.panelSurface,
+.modalCard,
+.statCard {
+  background: var(--portal-surface);
+}
+
+.actionBar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-4);
+  padding: 0 var(--portal-space-2);
+  background: var(--portal-accent-dark);
+}
+
+.searchCluster,
+.actionCluster {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-4);
+}
+
+.inlineSearch {
+  min-width: 214px;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  background: #fff;
+}
+
+.inputField {
+  width: 160px;
+  min-height: 28px;
+  border: 0;
+  padding: 0 10px;
+  color: var(--portal-text-soft);
+  background: #fff;
+}
+
+.inputField:focus {
+  outline: none;
+}
+
+.buttonBase {
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.buttonPrimary,
+.buttonSecondary,
+.buttonGhost,
+.buttonPrimarySmall,
+.buttonSecondarySmall,
+.buttonPrimaryCompact {
+  composes: buttonBase;
+}
+
+.buttonPrimary {
+  min-width: 64px;
+  padding: 0 18px;
+  color: #fff;
+  background: var(--portal-accent-dark);
+}
+
+.buttonPrimary:hover,
+.buttonPrimarySmall:hover,
+.buttonPrimaryCompact:hover {
+  background: var(--portal-accent-bright);
+}
+
+.buttonSecondary {
+  min-width: 188px;
+  padding: 0 24px;
+  color: var(--portal-accent-dark);
+  background: #fff;
+  border-color: var(--portal-line);
+}
+
+.buttonGhost {
+  min-width: 92px;
+  padding: 0 16px;
+  color: var(--portal-accent-dark);
+  background: transparent;
+  border-color: var(--portal-line);
+}
+
+.buttonPrimarySmall,
+.buttonSecondarySmall {
+  min-width: 98px;
+  padding: 0 16px;
+}
+
+.buttonPrimarySmall {
+  color: #fff;
+  background: var(--portal-accent-dark);
+}
+
+.buttonSecondarySmall {
+  color: var(--portal-accent-dark);
+  background: #fff;
+  border-color: var(--portal-line);
+}
+
+.buttonPrimaryCompact {
+  min-width: 81px;
+  min-height: 32px;
+  padding: 0 14px;
+  color: #fff;
+  background: var(--portal-accent);
+}
+
+.metaStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-2) var(--portal-space-1) var(--portal-space-3);
+  color: var(--portal-text-soft);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--portal-space-1);
+}
+
+.statCard {
+  position: relative;
+  min-height: 148px;
+  padding: var(--portal-space-3) 56px var(--portal-space-3) var(--portal-space-3);
+  border: 1px solid var(--portal-accent-bright);
+  border-radius: var(--portal-radius-md);
+}
+
+.statCardBody {
+  display: grid;
+  gap: var(--portal-space-1);
+  max-width: 220px;
+}
+
+.statTitle {
+  margin: 0;
+  color: var(--portal-accent-dark);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.statValue {
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.statDetail {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.iconBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+
+.panelSurface {
+  margin-top: var(--portal-space-3);
+  padding-bottom: var(--portal-space-7);
+  border-top: 1px solid var(--portal-line);
+}
+
+.listHeaderRow,
+.patientListRow {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  padding: 0 var(--portal-space-2);
+  background: var(--portal-surface-muted);
+}
+
+.listHeaderRow {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.listHeaderTitle {
+  color: var(--portal-text);
+}
+
+.patientList {
+  display: grid;
+  gap: var(--portal-space-1);
+}
+
+.patientLabel {
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.patientMeta {
+  font-weight: 700;
+}
+
+.emptyState {
+  display: grid;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-6);
+  color: var(--portal-text);
+}
+
+.inlineLink {
+  color: var(--portal-accent-dark);
+  font-weight: 700;
+}
+
+.warningModalBackdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--portal-space-4);
+  background: rgba(66, 85, 99, 0.2);
+}
+
+.modalCard {
+  width: min(460px, 100%);
+  padding: var(--portal-space-4);
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  box-shadow: var(--portal-shadow);
+}
+
+.modalWarning {
+  border-color: var(--portal-warn);
+}
+
+.modalTitle {
+  margin: 0 0 var(--portal-space-2);
+  color: var(--portal-text);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.modalCopy {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.warningActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+  margin-top: var(--portal-space-4);
+}
+
+@media (max-width: 1240px) {
+  .pageFrame {
+    grid-template-columns: 24px minmax(0, 1fr) 24px;
+  }
+
+  .orgLine {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .topBarInner,
+  .actionBar {
+    padding: 8px var(--portal-space-3);
+  }
+
+  .topBarInner,
+  .actionBar,
+  .searchCluster,
+  .actionCluster,
+  .listHeaderRow,
+  .patientListRow,
+  .warningActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pageFrame {
+    grid-template-columns: 0 1fr 0;
+  }
+
+  .sideGutter {
+    display: none;
+  }
+
+  .brand {
+    font-size: 24px;
+    line-height: 32px;
+  }
+
+  .orgLine {
+    text-align: left;
+  }
+
+  .centerColumn {
+    padding: 8px;
+  }
+
+  .inlineSearch,
+  .inputField,
+  .buttonSecondary,
+  .buttonGhost {
+    width: 100%;
+  }
+
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+}
