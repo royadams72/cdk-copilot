@@ -1,20 +1,17 @@
-import { SignJWT } from "jose";
 import { NextRequest } from "next/server";
 
 import { COLLECTIONS } from "@ckd/core/server";
-import { Role, TUsersAccount } from "@ckd/core";
+import { TUsersAccount } from "@ckd/core";
 
 import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
 import { ROLE_SCOPES } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ok, bad } from "@/apps/api/lib/http/responses";
-import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
+import { issueSessionTokens } from "@/apps/api/lib/auth/sessionTokens";
 import {
   AuthTokenDoc,
-  b64url,
   parseToken,
-  setToken,
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 import { Collection, ObjectId } from "mongodb";
@@ -141,53 +138,24 @@ export async function POST(req: NextRequest) {
       return bad("Account is inactive", { requestId, code: "account_inactive" }, 401);
     }
 
-    const roleScopes = ROLE_SCOPES[account.role] ?? [];
-    const grants = [...(account.scopes ?? []), ...(account.grants ?? [])];
-    const scopes = Array.from(new Set([...roleScopes, ...grants]));
-
-    const secret = getJwtSecretBytes();
-    const nextJwt = await new SignJWT({
-      sub: credentialId,
-      principalId,
-      orgId: account.orgId ?? null,
-      scopes,
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(secret);
-
-    const refreshTtlMs = 1000 * 60 * 60 * 24 * 30;
-    const refreshExpiresAt = new Date(Date.now() + refreshTtlMs);
-    const refreshTokenData = setToken();
-    const newRefreshDoc: AuthTokenDoc = {
-      _id: new ObjectId(),
-      type: COLLECTION_TYPE.Refresh,
-      id: b64url(refreshTokenData.id),
-      secretHash: refreshTokenData.secretHash.toString("base64"),
-      patientId: tokenDoc.patientId,
-      principalId,
+    const session = await issueSessionTokens({
+      authTokens,
       credentialId,
-      sessionId: tokenDoc.sessionId,
-      orgId: tokenDoc.orgId ?? null,
-      email: tokenDoc.email,
-      scopes,
-      role: account.role as Role,
-      createdAt: new Date(),
-      expiresAt: refreshExpiresAt,
-      usedAt: null,
-      revokedAt: null,
-      rotatedAt: null,
-      replacedById: null,
-    };
-    await authTokens.insertOne(newRefreshDoc);
+      email: tokenDoc.email ?? null,
+      principalId,
+      subjectId:
+        tokenDoc.patientId instanceof ObjectId
+          ? tokenDoc.patientId
+          : new ObjectId(String(tokenDoc.patientId)),
+      userAccount: account,
+    });
     await authTokens.updateOne(
       { _id: tokenDoc._id },
-      { $set: { rotatedAt: new Date(), replacedById: newRefreshDoc._id } },
+      { $set: { rotatedAt: new Date(), replacedById: session.refreshTokenId } },
     );
 
     return ok(
-      { requestId, jwt: nextJwt, refreshToken: refreshTokenData.token },
+      { requestId, jwt: session.jwt, refreshToken: session.refreshToken },
       200,
     );
   } catch (err: any) {

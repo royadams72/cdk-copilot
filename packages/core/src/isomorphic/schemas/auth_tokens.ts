@@ -5,6 +5,7 @@ export const AuthTokenType = z.enum([
   "oauth_code",
   "email_verify",
   "password_reset",
+  "portal_login_code",
   "exchange", // optional, if you use this state
   "refresh", // long-lived rotating refresh token
 ]);

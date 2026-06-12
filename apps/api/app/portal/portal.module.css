@@ -32,7 +32,10 @@
 
 .pageFrame {
   display: grid;
-  grid-template-columns: minmax(24px, 1fr) minmax(980px, 1000px) minmax(24px, 1fr);
+  grid-template-columns: minmax(24px, 1fr) minmax(980px, 1000px) minmax(
+      24px,
+      1fr
+    );
 }
 
 .sideGutter {
@@ -47,8 +50,43 @@
 
 .centerColumn {
   min-height: calc(100vh - 48px);
-  padding: 10px 4px 0;
+  padding: 0;
   background: var(--portal-bg);
+}
+
+.portalSupportedContent {
+  display: block;
+}
+
+.unsupportedViewportNotice {
+  display: none;
+}
+
+.unsupportedViewportCard {
+  width: min(560px, 100%);
+  display: grid;
+  gap: var(--portal-space-3);
+  margin: var(--portal-space-6) auto;
+  padding: var(--portal-space-5);
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-lg);
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow);
+}
+
+.unsupportedViewportTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+.unsupportedViewportCopy {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .actionBar,
@@ -61,12 +99,13 @@
 
 .actionBar {
   min-height: 48px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--portal-space-4);
   padding: 0 var(--portal-space-2);
   background: var(--portal-accent-dark);
+  width: 100%;
 }
 
 .searchCluster,
@@ -74,25 +113,46 @@
   display: flex;
   align-items: center;
   gap: var(--portal-space-4);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.searchCluster {
+  justify-content: flex-start;
+}
+
+.actionCluster {
+  justify-content: flex-end;
+}
+
+.headerMeta {
+  color: #fff;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .inlineSearch {
   min-width: 214px;
+  flex: 1 1 280px;
+  max-width: 360px;
+  position: relative;
   display: inline-flex;
   align-items: center;
-  overflow: hidden;
   border: 1px solid var(--portal-line);
   border-radius: var(--portal-radius-md);
   background: #fff;
 }
 
 .inputField {
-  width: 160px;
-  min-height: 28px;
+  width: 100%;
+  min-height: 32px;
   border: 0;
-  padding: 0 10px;
+  padding: 0 92px 0 10px;
   color: var(--portal-text-soft);
   background: #fff;
+  border-radius: inherit;
 }
 
 .inputField:focus {
@@ -129,6 +189,17 @@
   background: var(--portal-accent-dark);
 }
 
+.inlineSearch .buttonPrimary {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  min-height: 24px;
+  min-width: 80px;
+  padding: 0 14px;
+  transform: translateY(-50%);
+  border-radius: 8px;
+}
+
 .buttonPrimary:hover,
 .buttonPrimarySmall:hover,
 .buttonPrimaryCompact:hover {
@@ -149,6 +220,12 @@
   color: var(--portal-accent-dark);
   background: transparent;
   border-color: var(--portal-line);
+}
+
+.headerLogoutButton {
+  composes: buttonGhost;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.55);
 }
 
 .buttonPrimarySmall,
@@ -182,7 +259,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--portal-space-3);
-  padding: var(--portal-space-2) var(--portal-space-1) var(--portal-space-3);
+  padding: var(--portal-space-2) var(--portal-space-1) var(--portal-space-2);
   color: var(--portal-text-soft);
   font-size: 12px;
   line-height: 16px;
@@ -192,14 +269,21 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--portal-space-1);
+  margin-top: 10px;
 }
 
 .statCard {
   position: relative;
   min-height: 148px;
-  padding: var(--portal-space-3) 56px var(--portal-space-3) var(--portal-space-3);
+  padding: var(--portal-space-3) 56px var(--portal-space-3)
+    var(--portal-space-3);
   border: 1px solid var(--portal-accent-bright);
   border-radius: var(--portal-radius-md);
+}
+
+.statCard[data-active="true"] {
+  border-color: var(--portal-accent-dark);
+  box-shadow: inset 0 0 0 1px var(--portal-accent-dark);
 }
 
 .statCardBody {
@@ -241,8 +325,20 @@
   place-items: center;
 }
 
-.panelSurface {
+.cardAction {
   margin-top: var(--portal-space-3);
+  padding: 0;
+  border: 0;
+  color: var(--portal-accent-dark);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  background: transparent;
+  cursor: pointer;
+}
+
+.panelSurface {
+  /* margin-top: var(--portal-space-3); */
   padding-bottom: var(--portal-space-7);
   border-top: 1px solid var(--portal-line);
 }
@@ -254,7 +350,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--portal-space-3);
-  padding: 0 var(--portal-space-2);
+  padding: 0 var(--portal-space-3);
   background: var(--portal-surface-muted);
 }
 
@@ -262,15 +358,36 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 700;
+  background: var(--portal-accent-dark);
 }
 
 .listHeaderTitle {
-  color: var(--portal-text);
+  color: var(--portal-accent-soft);
+}
+
+.listHeaderMeta {
+  color: var(--portal-accent-soft);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
 }
 
 .patientList {
   display: grid;
   gap: var(--portal-space-1);
+}
+
+.patientListRow:nth-child(odd) {
+  background: #edf3f8;
+}
+
+.patientListRow:nth-child(even) {
+  background: #ffffff;
+}
+
+.patientLabelBlock {
+  display: grid;
+  gap: 4px;
 }
 
 .patientLabel {
@@ -280,8 +397,270 @@
   font-weight: 500;
 }
 
+.patientLink {
+  color: var(--portal-accent-dark);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.patientSubline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--portal-space-2);
+  color: var(--portal-text-soft);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.patientActions {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+}
+
 .patientMeta {
   font-weight: 700;
+}
+
+.detailLayout {
+  display: grid;
+  gap: var(--portal-space-4);
+  padding: var(--portal-space-1) var(--portal-space-2) var(--portal-space-6);
+}
+
+.patientBackLink {
+  color: var(--portal-accent-dark);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  text-decoration: none;
+  justify-self: start;
+}
+
+.patientHeadlineContainer {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: var(--portal-space-3);
+}
+
+.patientHeadline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--portal-space-3);
+  min-width: 0;
+}
+
+.patientBackLinkSpacer {
+  visibility: hidden;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.patientHeadlineIcon {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  flex: 0 0 44px;
+  border-radius: 999px;
+  background: var(--portal-accent-dark);
+}
+
+.patientHeadlineAvatarHead {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #fff;
+  transform: translateX(-50%);
+}
+
+.patientHeadlineAvatarBody {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 22px;
+  height: 12px;
+  border-radius: 12px 12px 8px 8px;
+  background: #fff;
+  transform: translateX(-50%);
+}
+
+.patientHeadlineContent {
+  display: grid;
+  gap: 4px;
+}
+
+.patientHeadlineRow {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-3);
+}
+
+.patientHeadlineText {
+  color: var(--portal-text);
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 700;
+}
+
+.patientSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+}
+
+.patientSummaryPanel {
+  overflow: hidden;
+  border: 1px solid #7e9cb5;
+  border-radius: var(--portal-radius-md);
+  background: #fff;
+}
+
+.patientSummaryRow {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  padding: 0 8px;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.patientSummaryRow:nth-child(odd) {
+  background: #dde5ec;
+}
+
+.patientSummaryRow strong {
+  font-weight: 700;
+}
+
+.patientActionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 266px);
+  gap: var(--portal-space-3);
+  justify-content: center;
+  margin: 0 auto var(--portal-space-2);
+}
+
+.patientActionButton {
+  width: 266px;
+  height: 77px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 19px;
+  line-height: 28px;
+  font-weight: 500;
+  background: var(--portal-accent-dark);
+  cursor: pointer;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+}
+
+.detailTitle {
+  margin: var(--portal-space-1) 0 0;
+  color: var(--portal-text);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.detailSummary {
+  margin: var(--portal-space-1) 0 0;
+  color: var(--portal-text-soft);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+}
+
+.detailCard {
+  padding: var(--portal-space-4);
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface);
+}
+
+.detailCardTitle {
+  margin: 0 0 var(--portal-space-3);
+  color: var(--portal-text);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.detailFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+  margin: 0;
+}
+
+.detailFacts dt {
+  color: var(--portal-text-soft);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.detailFacts dd {
+  margin: 4px 0 0;
+  color: var(--portal-text);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.flagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--portal-space-2);
+}
+
+.flagPill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--portal-accent-dark);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  background: #dce7f3;
+}
+
+.assignmentList {
+  display: grid;
+  gap: var(--portal-space-1);
+}
+
+.assignmentRow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--portal-space-2);
+  padding: 10px 12px;
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface-muted);
+  color: var(--portal-text);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .emptyState {
@@ -349,8 +728,47 @@
     line-height: 24px;
   }
 
+  .actionBar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: var(--portal-space-2);
+    padding: 8px var(--portal-space-3);
+  }
+
+  .searchCluster,
+  .actionCluster {
+    width: 100%;
+  }
+
+  .actionCluster {
+    justify-content: flex-end;
+  }
+
   .statGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .topBarInner {
+    padding: 8px var(--portal-space-3);
+  }
+
+  .searchCluster,
+  .actionCluster {
+    gap: var(--portal-space-2);
+  }
+
+  .inlineSearch {
+    max-width: 100%;
+  }
+
+  .buttonSecondary {
+    min-width: 160px;
+  }
+
+  .headerMeta {
+    white-space: normal;
   }
 }
 
@@ -366,7 +784,9 @@
   .actionCluster,
   .listHeaderRow,
   .patientListRow,
-  .warningActions {
+  .warningActions,
+  .detailHeader,
+  .patientActions {
     flex-direction: column;
     align-items: stretch;
   }
@@ -401,5 +821,49 @@
 
   .statGrid {
     grid-template-columns: 1fr;
+  }
+
+  .detailGrid,
+  .detailFacts,
+  .assignmentRow,
+  .patientSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .patientHeadline {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .patientHeadlineContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .patientBackLinkSpacer {
+    display: none;
+  }
+
+  .patientHeadlineRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--portal-space-1);
+  }
+
+  .patientActionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .patientActionButton {
+    width: 100%;
+  }
+
+  .actionBar,
+  .portalSupportedContent {
+    display: none;
+  }
+
+  .unsupportedViewportNotice {
+    display: block;
+    padding: var(--portal-space-3);
   }
 }

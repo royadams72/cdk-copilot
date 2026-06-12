@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { PortalLoginForm } from "@/apps/api/app/login/portal-login-form";
 import styles from "@/apps/api/app/login/portal-login.module.css";
 
@@ -22,22 +20,22 @@ export default function LoginPage() {
             <div className={styles.panel}>
               <div className={styles.copy}>
                 <p className={styles.kicker}>Clinical portal access</p>
-                <h1 className={styles.title}>Portal session bootstrap</h1>
+                <h1 className={styles.title}>Sign in with a one-time code</h1>
                 <p className={styles.description}>
-                  This is a temporary developer login while the clinician OTP flow is
-                  still being implemented. Use an issued JWT and refresh token to enter
-                  the portal shell and exercise session handling.
+                  Enter your NHS or service email address and we will send a six-digit
+                  login code. For local development without email delivery, the code will
+                  also be shown on screen.
                 </p>
+                <p className={styles.screenNotice}>
+                  This portal is intended for desktop and tablet screen sizes.
+                </p>
+                <div className={styles.mobileViewportNotice}>
+                  This screen is too small for the clinical portal. Please use a
+                  tablet, desktop, or a wider browser window.
+                </div>
               </div>
 
               <PortalLoginForm />
-
-              <div className={styles.footer}>
-                <span>Next planned step: replace this form with the clinician OTP flow.</span>
-                <Link className={styles.footerLink} href="/portal">
-                  Go to portal
-                </Link>
-              </div>
             </div>
           </div>
         </section>

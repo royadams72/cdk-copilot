@@ -1,0 +1,182 @@
+export const runtime = "nodejs";
+
+import { NextRequest } from "next/server";
+import { Resend } from "resend";
+import { ObjectId } from "mongodb";
+import { z } from "zod";
+
+import { Role, TUsersAccount } from "@ckd/core";
+import { COLLECTIONS } from "@ckd/core/server";
+
+import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
+import { AuthTokenDoc } from "@/apps/api/lib/auth/auth_token";
+import { getClientIp, enforceRateLimit } from "@/apps/api/lib/auth/rateLimit";
+import { getDb } from "@/apps/api/lib/db/mongodb";
+import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  createPortalLoginCode,
+  invalidatePortalLoginCodes,
+} from "@/apps/api/lib/portal/loginCodes";
+
+const Body = z.object({
+  email: z.email(),
+});
+
+const RESEND_KEY = process.env.RESEND_API_KEY || "";
+const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
+const EMAIL_FROM = process.env.EMAIL_FROM || null;
+const IS_LOCAL_DEV = process.env.APP_ORIGIN?.includes("localhost") || process.env.NODE_ENV !== "production";
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null);
+  const parsed = Body.safeParse(body);
+
+  if (!parsed.success) {
+    return bad("Invalid email address", { code: "invalid_email" }, 400);
+  }
+
+  const email = parsed.data.email.trim().toLowerCase();
+
+  try {
+    await enforceRateLimit([
+      {
+        bucket: "portal_login_ip",
+        key: getClientIp(req),
+        limit: 20,
+        windowMs: 15 * 60 * 1000,
+      },
+      {
+        bucket: "portal_login_email",
+        key: email,
+        limit: 8,
+        windowMs: 15 * 60 * 1000,
+      },
+    ]);
+
+    const db = await getDb();
+    const accounts = db.collection<TUsersAccount>(COLLECTIONS.UsersAccounts);
+    const authLinks = db.collection(COLLECTIONS.AuthLinks);
+    const authTokens = db.collection<AuthTokenDoc>(COLLECTIONS.AuthTokens);
+
+    const account = await accounts.findOne(
+      {
+        email,
+        isActive: true,
+        role: { $in: ["clinician", "dietitian", "admin"] },
+      },
+      {
+        collation: { locale: "en", strength: 2 },
+        projection: {
+          _id: 1,
+          email: 1,
+          orgId: 1,
+          principalId: 1,
+          role: 1,
+          scopes: 1,
+        },
+      },
+    );
+
+    if (!account?.principalId) {
+      return ok({
+        message: "If the account exists, a login code has been sent.",
+      });
+    }
+
+    const existingMagicLink = await authLinks.findOne(
+      {
+        active: true,
+        principalId: account.principalId,
+        provider: "magic",
+      },
+      { projection: { credentialId: 1 } },
+    );
+
+    const credentialId =
+      (existingMagicLink?.credentialId as string | undefined) ??
+      `cred_${new ObjectId().toHexString()}`;
+
+    if (!existingMagicLink) {
+      await authLinks.insertOne({
+        active: true,
+        createdAt: new Date(),
+        credentialId,
+        email,
+        principalId: account.principalId,
+        provider: "magic",
+      });
+    }
+
+    const now = new Date();
+    await invalidatePortalLoginCodes(authTokens, email, account.principalId, now);
+
+    const loginCode = createPortalLoginCode();
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 10);
+
+    await authTokens.insertOne({
+      _id: new ObjectId(),
+      createdAt: now,
+      credentialId,
+      email,
+      expiresAt,
+      id: loginCode.id,
+      orgId: account.orgId ?? null,
+      patientId:
+        account._id instanceof ObjectId ? account._id : new ObjectId(),
+      principalId: account.principalId,
+      role: account.role as Role,
+      scopes: account.scopes ?? [],
+      secretHash: loginCode.secretHash,
+      type: COLLECTION_TYPE.PortalLoginCode,
+      usedAt: null,
+    });
+
+    let devCode: string | undefined;
+
+    if (resend && EMAIL_FROM) {
+      try {
+        const resendResult = await resend.emails.send({
+          from: EMAIL_FROM,
+          html: `
+            <p>Your CKD Copilot portal login code is:</p>
+            <p style="font-size:28px;font-weight:700;letter-spacing:0.12em;">${loginCode.code}</p>
+            <p>This code expires at ${expiresAt.toISOString()}.</p>
+          `,
+          subject: "Your CKD Copilot portal login code",
+          to: email,
+        });
+
+        if (IS_LOCAL_DEV) {
+          devCode = loginCode.code;
+          console.log("[DEV] Portal login email accepted by Resend", {
+            email,
+            resendId: resendResult.data?.id ?? null,
+          });
+        }
+      } catch (error) {
+        if (!IS_LOCAL_DEV) {
+          throw error;
+        }
+        console.warn("portal request-code: resend failed, falling back to dev code", error);
+        devCode = loginCode.code;
+      }
+    } else {
+      devCode = loginCode.code;
+    }
+
+    if (devCode) {
+      console.log("[DEV] Portal login code for", email, "=", devCode);
+    }
+
+    return ok({
+      devCode,
+      message: "If the account exists, a login code has been sent.",
+    });
+  } catch (error: any) {
+    if (error?.status === 429) {
+      return bad("Too many requests", { code: "rate_limited" }, 429);
+    }
+    console.error("portal request-code failed", error);
+    return bad("Unable to request login code", { code: "request_failed" }, 500);
+  }
+}

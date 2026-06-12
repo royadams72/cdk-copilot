@@ -71,6 +71,7 @@ export type ColType =
   | "oauth_code"
   | "email_verify"
   | "password_reset"
+  | "portal_login_code"
   | "refresh";
 
 export type AuthTokenDoc = {
