@@ -7,11 +7,25 @@ const URIs: Record<Purpose, string> = {
   migrations: process.env.MONGODB_URI_MIGRATIONS!, // never used in prod runtime
 };
 
-const clients: Partial<Record<Purpose, Promise<MongoClient>>> = {};
 const MIN_NODE_MAJOR = 18;
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 const DEV_MAX_POOL_SIZE = 3;
 const DEFAULT_MAX_POOL_SIZE = 10;
+
+declare global {
+  // Keep Mongo client promises stable across dev HMR/module reloads.
+  // eslint-disable-next-line no-var
+  var __ckdMongoClients:
+    | Partial<Record<Purpose, Promise<MongoClient>>>
+    | undefined;
+}
+
+function getClientCache() {
+  if (!globalThis.__ckdMongoClients) {
+    globalThis.__ckdMongoClients = {};
+  }
+  return globalThis.__ckdMongoClients;
+}
 
 function assertSupportedRuntime() {
   const [major] = process.versions.node.split(".").map(Number);
@@ -27,6 +41,7 @@ function assertSupportedRuntime() {
 
 export function getClient(purpose: Purpose = "app") {
   assertSupportedRuntime();
+  const clients = getClientCache();
 
   if (!clients[purpose]) {
     const client = new MongoClient(URIs[purpose], {
