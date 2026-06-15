@@ -6,6 +6,7 @@ import {
   decrementFavouriteMaps,
   deriveFavouriteMaps,
 } from "@/apps/api/lib/utils/nutritionFavourites";
+import { recomputeNutritionMonthlySummary } from "@/apps/api/lib/utils/nutritionMonthlySummary";
 import { ROLES, TNutritionEntry } from "@ckd/core";
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
@@ -61,6 +62,13 @@ export async function POST(req: NextRequest) {
       }),
       patientObjectId,
     );
+
+    await recomputeNutritionMonthlySummary(db, {
+      month: existing.eatenAt ?? existing.createdAt ?? new Date(),
+      orgId: caller.orgId,
+      patientId: patientObjectId,
+      seedPrincipalId: caller.principalId,
+    });
 
     return ok("meal deleted");
   } catch (err: any) {
