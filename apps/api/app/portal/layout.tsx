@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import { PortalSessionProvider } from "@/apps/api/app/portal/portal-session-provider";
 import PortalHeaderBar from "@/apps/api/app/portal/components/PortalHeaderBar";
@@ -15,7 +15,9 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
               Barts Health NHS Trust • Newham Hospital • Renal Service
             </span>
           </div>
-          <PortalHeaderBar />
+          <Suspense fallback={null}>
+            <PortalHeaderBar />
+          </Suspense>
         </header>
 
         <section className={styles.unsupportedViewportNotice}>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
@@ -27,6 +27,18 @@ type PortalPatientsResponse = {
 };
 
 export function PortalDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <section className={styles.emptyState}>Loading portal...</section>
+      }
+    >
+      <PortalDashboardContent />
+    </Suspense>
+  );
+}
+
+function PortalDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clearWarning, isLeaderTab, logout, session, status, warningOpen } =
