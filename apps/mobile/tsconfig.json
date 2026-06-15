@@ -3,6 +3,7 @@
   "compilerOptions": {
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
+    "types": ["react", "react-native", "jest", "node"],
     "paths": {
       "@/*": ["src/*"],
       "networking": ["../../packages/networking/src/index.ts"],
