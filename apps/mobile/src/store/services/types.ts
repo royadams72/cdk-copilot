@@ -224,6 +224,41 @@ export type TargetsResponse = {
 };
 
 export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
+export type MonthlyNutritionFilter =
+  | "caloriesKcal"
+  | "phosphorusMg"
+  | "potassiumMg"
+  | "proteinG"
+  | "sodiumMg";
+export type MonthlyNutritionFoodRow = {
+  averageAmount: number;
+  currentMonthAmount: number;
+  food: string;
+  levelLabel: string;
+  timesLogged: number;
+  trend: "increased" | "same" | "reduced";
+};
+export type MonthlyNutritionStat = {
+  isSelected: boolean;
+  label: string;
+  month: string;
+  target: number | null;
+  value: number;
+};
+export type MonthlyNutritionSummaryResponse = {
+  foodRows: MonthlyNutritionFoodRow[];
+  monthlyStats: MonthlyNutritionStat[];
+  selectedFilter: MonthlyNutritionFilter;
+  selectedMonth: string;
+  selectedMonthLabel: string;
+  summaryTitle: string;
+  tableTitle: string;
+  window: {
+    from: string;
+    months: number;
+    to: string;
+  };
+};
 export type WeeklySleepSummary = {
   advice: string[];
   averageLoggedDurationMin: number | null;

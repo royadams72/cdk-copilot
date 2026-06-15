@@ -9,6 +9,9 @@ const URIs: Record<Purpose, string> = {
 
 const clients: Partial<Record<Purpose, Promise<MongoClient>>> = {};
 const MIN_NODE_MAJOR = 18;
+const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
+const DEV_MAX_POOL_SIZE = 3;
+const DEFAULT_MAX_POOL_SIZE = 10;
 
 function assertSupportedRuntime() {
   const [major] = process.versions.node.split(".").map(Number);
@@ -27,7 +30,7 @@ export function getClient(purpose: Purpose = "app") {
 
   if (!clients[purpose]) {
     const client = new MongoClient(URIs[purpose], {
-      maxPoolSize: 10,
+      maxPoolSize: IS_DEVELOPMENT ? DEV_MAX_POOL_SIZE : DEFAULT_MAX_POOL_SIZE,
       retryWrites: true,
       serverSelectionTimeoutMS: 5000,
     });

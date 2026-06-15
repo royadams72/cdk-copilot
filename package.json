@@ -32,8 +32,10 @@
   "packageManager": "pnpm@10.16.1",
   "scripts": {
     "dev": "pnpm -r run dev",
+    "portal:dev": "pnpm --filter ./apps/api dev",
     "build": "pnpm --filter @ckd/core build && pnpm --filter ./apps/api build",
     "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
+    "db:seed:portal-demo": "tsx scripts/seed-portal-demo-patients.ts",
     "db:audit:measurements": "tsx scripts/audit-measurements-ledger.ts",
     "db:audit:heart-rate": "tsx scripts/audit-heart-rate-ledger.ts",
     "db:cleanup:auth-tokens": "tsx scripts/cleanup-auth-tokens.ts",

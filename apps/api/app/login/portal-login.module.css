@@ -1,0 +1,229 @@
+.page {
+  min-height: 100vh;
+  background: var(--portal-gutter);
+}
+
+.centerColumn {
+  padding: var(--portal-space-3);
+}
+
+.loginCanvas {
+  min-height: calc(100vh - 48px);
+  display: grid;
+  place-items: start center;
+  padding-top: var(--portal-space-6);
+}
+
+.panel {
+  width: min(720px, 100%);
+  padding: var(--portal-space-5);
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-lg);
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow);
+}
+
+.copy {
+  margin-bottom: var(--portal-space-4);
+}
+
+.kicker {
+  margin: 0 0 var(--portal-space-2);
+  color: var(--portal-accent-dark);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin: 0;
+  color: var(--portal-text-strong);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.description {
+  margin: var(--portal-space-3) 0 0;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.screenNotice {
+  margin: var(--portal-space-3) 0 0;
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.mobileViewportNotice {
+  display: none;
+  margin-top: var(--portal-space-3);
+  padding: var(--portal-space-3);
+  border: 1px solid var(--portal-warn);
+  border-radius: var(--portal-radius-md);
+  color: var(--portal-text);
+  font-size: 14px;
+  line-height: 20px;
+  background: #fffdf5;
+}
+
+.form {
+  display: grid;
+  gap: var(--portal-space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--portal-space-2);
+}
+
+.label {
+  color: var(--portal-text-strong);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.control {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  background: #fff;
+  color: var(--portal-text);
+}
+
+.control:focus {
+  outline: 2px solid rgba(0, 114, 206, 0.2);
+  border-color: var(--portal-accent);
+}
+
+.textarea {
+  resize: vertical;
+  font-family: var(--portal-font-mono);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  margin-top: var(--portal-space-2);
+}
+
+.buttonBase {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.primaryButton,
+.secondaryButton {
+  composes: buttonBase;
+}
+
+.primaryButton {
+  min-width: 136px;
+  color: #fff;
+  background: var(--portal-accent-dark);
+}
+
+.primaryButton:hover {
+  background: var(--portal-accent-bright);
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  background: var(--portal-text-soft);
+}
+
+.primaryButton[data-pending="true"]:disabled {
+  cursor: wait;
+}
+
+.secondaryButton {
+  min-width: 136px;
+  color: var(--portal-accent-dark);
+  background: #fff;
+  border-color: var(--portal-line);
+}
+
+.error {
+  margin: 0;
+  color: var(--portal-danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.notice {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.devPanel {
+  display: grid;
+  gap: var(--portal-space-1);
+  padding: var(--portal-space-3);
+  border: 1px solid var(--portal-warn);
+  border-radius: var(--portal-radius-md);
+  background: #fffdf5;
+}
+
+.devLabel {
+  color: var(--portal-text-soft);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.devCode {
+  color: var(--portal-text-strong);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+@media (max-width: 768px) {
+  .centerColumn {
+    padding: var(--portal-space-2);
+  }
+
+  .loginCanvas {
+    padding-top: var(--portal-space-4);
+  }
+
+  .panel {
+    padding: var(--portal-space-4);
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mobileViewportNotice {
+    display: block;
+  }
+}

@@ -6,6 +6,7 @@ import {
   awardMealLoggingEngagement,
   awardMealTargetsEngagement,
 } from "@/apps/api/lib/utils/patientEngagement";
+import { recomputeNutritionMonthlySummary } from "@/apps/api/lib/utils/nutritionMonthlySummary";
 import { reconcileFavouriteMaps } from "@/apps/api/lib/utils/nutritionFavourites";
 import { attachFoodTaxonomies } from "@/apps/api/lib/utils/foodTaxonomy";
 import {
@@ -141,6 +142,8 @@ export async function POST(req: NextRequest) {
     }
 
     const totals = { ...getTotals(mealArray) };
+    const previousSummaryDate =
+      existing.eatenAt ?? existing.createdAt ?? now;
     const updated: TNutritionEntry = {
       createdAt: existing.createdAt instanceof Date ? existing.createdAt : now,
       eatenAt: resolvedEatenAt,
@@ -196,6 +199,24 @@ export async function POST(req: NextRequest) {
       orgId: caller.orgId ?? "org_demo",
       patientId: patientObjectId,
     });
+
+    await recomputeNutritionMonthlySummary(db, {
+      month: resolvedEatenAt,
+      orgId: caller.orgId,
+      patientId: patientObjectId,
+      seedPrincipalId: caller.principalId,
+    });
+
+    const previousMonth = previousSummaryDate.toISOString().slice(0, 7);
+    const nextMonth = resolvedEatenAt.toISOString().slice(0, 7);
+    if (previousMonth !== nextMonth) {
+      await recomputeNutritionMonthlySummary(db, {
+        month: previousMonth,
+        orgId: caller.orgId,
+        patientId: patientObjectId,
+        seedPrincipalId: caller.principalId,
+      });
+    }
 
     return ok("meal updated");
   } catch (err: any) {

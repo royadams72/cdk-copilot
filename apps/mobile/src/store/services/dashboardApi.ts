@@ -7,6 +7,8 @@ import type {
 import {
   DashboardQueryData,
   DashboardScope,
+  MonthlyNutritionFilter,
+  MonthlyNutritionSummaryResponse,
   NutritionTrendChunkArgs,
   NutritionTrendData,
   RunWeeklyNutritionInsightArgs,
@@ -48,6 +50,21 @@ export const dashboardApi = appApi.injectEndpoints({
       transformResponse: (response: {
         insight: TWeeklyNutritionInsight | null;
       }) => response?.insight ?? null,
+    }),
+    getMonthlyNutritionSummary: builder.query<
+      MonthlyNutritionSummaryResponse,
+      { filter?: MonthlyNutritionFilter; month?: string } | void
+    >({
+      providesTags: [{ id: "monthly-summary", type: "Dashboard" as const }],
+      query: (args) => {
+        const params = new URLSearchParams();
+        if (args?.filter) params.set("filter", args.filter);
+        if (args?.month) params.set("month", args.month);
+        const query = params.toString();
+        return query
+          ? `/api/nutrition/monthly-summary?${query}`
+          : "/api/nutrition/monthly-summary";
+      },
     }),
     getNutritionTrendChunk: builder.query<
       NutritionTrendData,
@@ -139,6 +156,7 @@ export const dashboardApi = appApi.injectEndpoints({
 export const {
   useGetDashboardQuery,
   useGetLatestWeeklyNutritionInsightQuery,
+  useGetMonthlyNutritionSummaryQuery,
   useGetNutritionTrendChunkQuery,
   useGetTargetsQuery,
   useLazyGetNutritionTrendChunkQuery,

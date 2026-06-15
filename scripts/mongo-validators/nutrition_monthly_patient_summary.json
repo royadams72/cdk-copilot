@@ -1,0 +1,200 @@
+{
+  "collMod": "nutrition_monthly_patient_summary",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "patientId",
+        "month"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+
+        "patientId": {
+          "bsonType": [
+            "objectId",
+            "string"
+          ]
+        },
+
+        "month": {
+          "bsonType": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+        },
+
+        "daysLogged": {
+          "bsonType": [
+            "int",
+            "long",
+            "double"
+          ],
+          "minimum": 0
+        },
+
+        "sourceVersion": {
+          "bsonType": [
+            "int",
+            "long",
+            "double"
+          ],
+          "minimum": 1
+        },
+
+        "generatedAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdAt": { "bsonType": "date" },
+
+        "totals": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "properties": {
+            "caloriesKcal": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "phosphorusMg": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "potassiumMg": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "proteinG": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "sodiumMg": { "bsonType": ["int", "long", "double"], "minimum": 0 }
+          }
+        },
+
+        "dailyAverages": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "properties": {
+            "caloriesKcal": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "phosphorusMg": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "potassiumMg": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "proteinG": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "sodiumMg": { "bsonType": ["int", "long", "double"], "minimum": 0 }
+          }
+        },
+
+        "targetSnapshot": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "properties": {
+            "caloriesKcal": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "phosphorusMg": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "potassiumMg": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "proteinG": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+            "sodiumMg": { "bsonType": ["int", "long", "double"], "minimum": 0 }
+          }
+        },
+
+        "topFoods": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "properties": {
+            "caloriesKcal": {
+              "bsonType": "array",
+              "items": {
+                "bsonType": "object",
+                "required": ["food", "timesLogged"],
+                "additionalProperties": false,
+                "properties": {
+                  "food": { "bsonType": "string", "minLength": 1 },
+                  "timesLogged": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+                  "totalAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "averageAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "previousMonthAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "levelLabel": { "bsonType": ["string", "null"] },
+                  "trend": { "enum": ["increased", "same", "reduced", null] }
+                }
+              }
+            },
+            "phosphorusMg": {
+              "bsonType": "array",
+              "items": {
+                "bsonType": "object",
+                "required": ["food", "timesLogged"],
+                "additionalProperties": false,
+                "properties": {
+                  "food": { "bsonType": "string", "minLength": 1 },
+                  "timesLogged": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+                  "totalAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "averageAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "previousMonthAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "levelLabel": { "bsonType": ["string", "null"] },
+                  "trend": { "enum": ["increased", "same", "reduced", null] }
+                }
+              }
+            },
+            "potassiumMg": {
+              "bsonType": "array",
+              "items": {
+                "bsonType": "object",
+                "required": ["food", "timesLogged"],
+                "additionalProperties": false,
+                "properties": {
+                  "food": { "bsonType": "string", "minLength": 1 },
+                  "timesLogged": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+                  "totalAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "averageAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "previousMonthAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "levelLabel": { "bsonType": ["string", "null"] },
+                  "trend": { "enum": ["increased", "same", "reduced", null] }
+                }
+              }
+            },
+            "proteinG": {
+              "bsonType": "array",
+              "items": {
+                "bsonType": "object",
+                "required": ["food", "timesLogged"],
+                "additionalProperties": false,
+                "properties": {
+                  "food": { "bsonType": "string", "minLength": 1 },
+                  "timesLogged": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+                  "totalAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "averageAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "previousMonthAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "levelLabel": { "bsonType": ["string", "null"] },
+                  "trend": { "enum": ["increased", "same", "reduced", null] }
+                }
+              }
+            },
+            "sodiumMg": {
+              "bsonType": "array",
+              "items": {
+                "bsonType": "object",
+                "required": ["food", "timesLogged"],
+                "additionalProperties": false,
+                "properties": {
+                  "food": { "bsonType": "string", "minLength": 1 },
+                  "timesLogged": { "bsonType": ["int", "long", "double"], "minimum": 0 },
+                  "totalAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "averageAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "previousMonthAmount": { "bsonType": ["int", "long", "double", "null"], "minimum": 0 },
+                  "levelLabel": { "bsonType": ["string", "null"] },
+                  "trend": { "enum": ["increased", "same", "reduced", null] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": {
+        "patientId": 1,
+        "month": 1
+      },
+      "options": {
+        "name": "uniq_patient_month",
+        "unique": true
+      }
+    },
+    {
+      "key": {
+        "month": 1
+      },
+      "options": {
+        "name": "byMonth"
+      }
+    }
+  ]
+}

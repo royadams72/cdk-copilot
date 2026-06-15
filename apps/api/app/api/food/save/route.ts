@@ -7,6 +7,7 @@ import {
   awardMealLoggingEngagement,
   awardMealTargetsEngagement,
 } from "@/apps/api/lib/utils/patientEngagement";
+import { recomputeNutritionMonthlySummary } from "@/apps/api/lib/utils/nutritionMonthlySummary";
 import { attachFoodTaxonomies } from "@/apps/api/lib/utils/foodTaxonomy";
 import {
   NutritionEntry,
@@ -187,6 +188,12 @@ export async function POST(req: NextRequest) {
         eatenAt: resolvedEatenAt,
         orgId: caller.orgId ?? "org_demo",
         patientId: patientObjectId,
+      });
+      await recomputeNutritionMonthlySummary(db, {
+        month: resolvedEatenAt,
+        orgId: caller.orgId,
+        patientId: patientObjectId,
+        seedPrincipalId: caller.principalId,
       });
     }
 

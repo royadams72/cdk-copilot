@@ -147,6 +147,31 @@ export const NutritionStyles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
   },
+  monthlyChartFrame: {
+    position: "relative",
+  },
+  monthlyChartTouchLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  monthlyChartTouchTarget: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    backgroundColor: "transparent",
+  },
+  monthlyChartWrap: {
+    marginTop: 8,
+    alignItems: "center",
+  },
+  monthlyFoodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(148,163,184,0.25)",
+  },
   modalActions: {
     gap: 10,
     marginTop: 8,
