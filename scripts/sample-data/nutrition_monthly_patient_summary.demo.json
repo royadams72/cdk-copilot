@@ -1,0 +1,326 @@
+[
+  {
+    "createdAt": { "$date": "2026-04-28T12:00:00.000Z" },
+    "dailyAverages": { "caloriesKcal": 1688.2, "phosphorusMg": 563, "potassiumMg": 1849.2, "proteinG": 69.9, "sodiumMg": 1738.8 },
+    "daysLogged": 17,
+    "generatedAt": { "$date": "2026-04-28T12:00:00.000Z" },
+    "month": "2026-04",
+    "patientId": { "$oid": "000000000000000000000001" },
+    "sourceVersion": 1,
+    "targetSnapshot": { "caloriesKcal": 1800, "phosphorusMg": 550, "potassiumMg": 2200, "proteinG": 70, "sodiumMg": 2000 },
+    "topFoods": {
+      "caloriesKcal": [
+        { "averageAmount": 506.5, "food": "Porridge oats", "levelLabel": "Medium-high", "previousMonthAmount": 5065, "timesLogged": 10, "totalAmount": 5065, "trend": "same" },
+        { "averageAmount": 405.2, "food": "Peanut butter toast", "levelLabel": "Medium", "previousMonthAmount": 3241.6, "timesLogged": 8, "totalAmount": 3241.6, "trend": "same" },
+        { "averageAmount": 320.8, "food": "Chicken wrap", "levelLabel": "Medium", "previousMonthAmount": 2245.6, "timesLogged": 7, "totalAmount": 2245.6, "trend": "same" },
+        { "averageAmount": 253.2, "food": "Rice bowl", "levelLabel": "Medium", "previousMonthAmount": 1519.2, "timesLogged": 6, "totalAmount": 1519.2, "trend": "same" },
+        { "averageAmount": 185.7, "food": "Pasta bake", "levelLabel": "Medium", "previousMonthAmount": 928.5, "timesLogged": 5, "totalAmount": 928.5, "trend": "same" },
+        { "averageAmount": 135.1, "food": "Yogurt parfait", "levelLabel": "Medium", "previousMonthAmount": 540.4, "timesLogged": 4, "totalAmount": 540.4, "trend": "same" }
+      ],
+      "phosphorusMg": [
+        { "averageAmount": 168.9, "food": "Chicken curry", "levelLabel": "Medium-high", "previousMonthAmount": 1689, "timesLogged": 10, "totalAmount": 1689, "trend": "same" },
+        { "averageAmount": 135.1, "food": "Wholemeal bread", "levelLabel": "Medium", "previousMonthAmount": 1080.8, "timesLogged": 8, "totalAmount": 1080.8, "trend": "same" },
+        { "averageAmount": 107, "food": "Cheddar cheese", "levelLabel": "Medium", "previousMonthAmount": 749, "timesLogged": 7, "totalAmount": 749, "trend": "same" },
+        { "averageAmount": 84.5, "food": "Porridge oats", "levelLabel": "Medium", "previousMonthAmount": 507, "timesLogged": 6, "totalAmount": 507, "trend": "same" },
+        { "averageAmount": 61.9, "food": "Baked beans", "levelLabel": "Medium", "previousMonthAmount": 309.5, "timesLogged": 5, "totalAmount": 309.5, "trend": "same" },
+        { "averageAmount": 45, "food": "Greek yogurt", "levelLabel": "Medium", "previousMonthAmount": 180, "timesLogged": 4, "totalAmount": 180, "trend": "same" }
+      ],
+      "potassiumMg": [
+        { "averageAmount": 554.8, "food": "Banana", "levelLabel": "Medium-high", "previousMonthAmount": 5548, "timesLogged": 10, "totalAmount": 5548, "trend": "same" },
+        { "averageAmount": 443.8, "food": "Tomato pasta", "levelLabel": "Medium", "previousMonthAmount": 3550.4, "timesLogged": 8, "totalAmount": 3550.4, "trend": "same" },
+        { "averageAmount": 351.3, "food": "Avocado toast", "levelLabel": "Medium", "previousMonthAmount": 2459.1, "timesLogged": 7, "totalAmount": 2459.1, "trend": "same" },
+        { "averageAmount": 277.4, "food": "Potato curry", "levelLabel": "Medium", "previousMonthAmount": 1664.4, "timesLogged": 6, "totalAmount": 1664.4, "trend": "same" },
+        { "averageAmount": 203.4, "food": "Spinach dhal", "levelLabel": "Medium", "previousMonthAmount": 1017, "timesLogged": 5, "totalAmount": 1017, "trend": "same" },
+        { "averageAmount": 147.9, "food": "Orange juice", "levelLabel": "Medium", "previousMonthAmount": 591.6, "timesLogged": 4, "totalAmount": 591.6, "trend": "same" }
+      ],
+      "proteinG": [
+        { "averageAmount": 21, "food": "Greek yogurt", "levelLabel": "Medium-high", "previousMonthAmount": 210, "timesLogged": 10, "totalAmount": 210, "trend": "same" },
+        { "averageAmount": 16.8, "food": "Chicken wrap", "levelLabel": "Medium", "previousMonthAmount": 134.4, "timesLogged": 8, "totalAmount": 134.4, "trend": "same" },
+        { "averageAmount": 13.3, "food": "Egg omelette", "levelLabel": "Medium", "previousMonthAmount": 93.1, "timesLogged": 7, "totalAmount": 93.1, "trend": "same" },
+        { "averageAmount": 10.5, "food": "Tuna sandwich", "levelLabel": "Medium", "previousMonthAmount": 63, "timesLogged": 6, "totalAmount": 63, "trend": "same" },
+        { "averageAmount": 7.7, "food": "Lentil soup", "levelLabel": "Medium", "previousMonthAmount": 38.5, "timesLogged": 5, "totalAmount": 38.5, "trend": "same" },
+        { "averageAmount": 5.6, "food": "Cottage cheese", "levelLabel": "Medium", "previousMonthAmount": 22.4, "timesLogged": 4, "totalAmount": 22.4, "trend": "same" }
+      ],
+      "sodiumMg": [
+        { "averageAmount": 521.6, "food": "Tomato soup", "levelLabel": "Medium-high", "previousMonthAmount": 5216, "timesLogged": 10, "totalAmount": 5216, "trend": "same" },
+        { "averageAmount": 417.3, "food": "Cheese sandwich", "levelLabel": "Medium", "previousMonthAmount": 3338.4, "timesLogged": 8, "totalAmount": 3338.4, "trend": "same" },
+        { "averageAmount": 330.4, "food": "Ready meal pasta", "levelLabel": "Medium", "previousMonthAmount": 2312.8, "timesLogged": 7, "totalAmount": 2312.8, "trend": "same" },
+        { "averageAmount": 260.8, "food": "Crackers", "levelLabel": "Medium", "previousMonthAmount": 1564.8, "timesLogged": 6, "totalAmount": 1564.8, "trend": "same" },
+        { "averageAmount": 191.3, "food": "Soy sauce noodles", "levelLabel": "Medium", "previousMonthAmount": 956.5, "timesLogged": 5, "totalAmount": 956.5, "trend": "same" },
+        { "averageAmount": 139.1, "food": "Salted popcorn", "levelLabel": "Medium", "previousMonthAmount": 556.4, "timesLogged": 4, "totalAmount": 556.4, "trend": "same" }
+      ]
+    },
+    "totals": { "caloriesKcal": 28699.4, "phosphorusMg": 9571, "potassiumMg": 31436.4, "proteinG": 1188.3, "sodiumMg": 29559.6 },
+    "updatedAt": { "$date": "2026-04-28T12:00:00.000Z" }
+  },
+  {
+    "createdAt": { "$date": "2026-05-28T12:00:00.000Z" },
+    "dailyAverages": { "caloriesKcal": 1835, "phosphorusMg": 612, "potassiumMg": 2010, "proteinG": 76, "sodiumMg": 1890 },
+    "daysLogged": 21,
+    "generatedAt": { "$date": "2026-05-28T12:00:00.000Z" },
+    "month": "2026-05",
+    "patientId": { "$oid": "000000000000000000000001" },
+    "sourceVersion": 1,
+    "targetSnapshot": { "caloriesKcal": 1800, "phosphorusMg": 550, "potassiumMg": 2200, "proteinG": 70, "sodiumMg": 2000 },
+    "topFoods": {
+      "caloriesKcal": [
+        { "averageAmount": 550.5, "food": "Porridge oats", "levelLabel": "Medium-high", "previousMonthAmount": 6077.5, "timesLogged": 12, "totalAmount": 6606, "trend": "same" },
+        { "averageAmount": 440.4, "food": "Peanut butter toast", "levelLabel": "Medium", "previousMonthAmount": 4051.7, "timesLogged": 10, "totalAmount": 4404, "trend": "same" },
+        { "averageAmount": 348.7, "food": "Chicken wrap", "levelLabel": "Medium", "previousMonthAmount": 2566.4, "timesLogged": 8, "totalAmount": 2789.6, "trend": "same" },
+        { "averageAmount": 275.3, "food": "Rice bowl", "levelLabel": "Medium", "previousMonthAmount": 1772.9, "timesLogged": 7, "totalAmount": 1927.1, "trend": "same" },
+        { "averageAmount": 201.9, "food": "Pasta bake", "levelLabel": "Medium", "previousMonthAmount": 1114.5, "timesLogged": 6, "totalAmount": 1211.4, "trend": "same" },
+        { "averageAmount": 146.8, "food": "Yogurt parfait", "levelLabel": "Medium", "previousMonthAmount": 675.3, "timesLogged": 5, "totalAmount": 734, "trend": "same" }
+      ],
+      "phosphorusMg": [
+        { "averageAmount": 183.6, "food": "Chicken curry", "levelLabel": "Medium-high", "previousMonthAmount": 2026.9, "timesLogged": 12, "totalAmount": 2203.2, "trend": "same" },
+        { "averageAmount": 146.9, "food": "Wholemeal bread", "levelLabel": "Medium", "previousMonthAmount": 1351.5, "timesLogged": 10, "totalAmount": 1469, "trend": "same" },
+        { "averageAmount": 116.3, "food": "Cheddar cheese", "levelLabel": "Medium", "previousMonthAmount": 856, "timesLogged": 8, "totalAmount": 930.4, "trend": "same" },
+        { "averageAmount": 91.8, "food": "Porridge oats", "levelLabel": "Medium", "previousMonthAmount": 591.2, "timesLogged": 7, "totalAmount": 642.6, "trend": "same" },
+        { "averageAmount": 67.3, "food": "Baked beans", "levelLabel": "Medium", "previousMonthAmount": 371.5, "timesLogged": 6, "totalAmount": 403.8, "trend": "same" },
+        { "averageAmount": 49, "food": "Greek yogurt", "levelLabel": "Medium", "previousMonthAmount": 225.4, "timesLogged": 5, "totalAmount": 245, "trend": "same" }
+      ],
+      "potassiumMg": [
+        { "averageAmount": 603, "food": "Banana", "levelLabel": "Medium-high", "previousMonthAmount": 6657.1, "timesLogged": 12, "totalAmount": 7236, "trend": "same" },
+        { "averageAmount": 482.4, "food": "Tomato pasta", "levelLabel": "Medium", "previousMonthAmount": 4438.1, "timesLogged": 10, "totalAmount": 4824, "trend": "same" },
+        { "averageAmount": 381.9, "food": "Avocado toast", "levelLabel": "Medium", "previousMonthAmount": 2810.8, "timesLogged": 8, "totalAmount": 3055.2, "trend": "same" },
+        { "averageAmount": 301.5, "food": "Potato curry", "levelLabel": "Medium", "previousMonthAmount": 1941.7, "timesLogged": 7, "totalAmount": 2110.5, "trend": "same" },
+        { "averageAmount": 221.1, "food": "Spinach dhal", "levelLabel": "Medium", "previousMonthAmount": 1220.5, "timesLogged": 6, "totalAmount": 1326.6, "trend": "same" },
+        { "averageAmount": 160.8, "food": "Orange juice", "levelLabel": "Medium", "previousMonthAmount": 739.7, "timesLogged": 5, "totalAmount": 804, "trend": "same" }
+      ],
+      "proteinG": [
+        { "averageAmount": 22.8, "food": "Greek yogurt", "levelLabel": "Medium-high", "previousMonthAmount": 251.7, "timesLogged": 12, "totalAmount": 273.6, "trend": "same" },
+        { "averageAmount": 18.2, "food": "Chicken wrap", "levelLabel": "Medium", "previousMonthAmount": 167.4, "timesLogged": 10, "totalAmount": 182, "trend": "same" },
+        { "averageAmount": 14.4, "food": "Egg omelette", "levelLabel": "Medium", "previousMonthAmount": 106, "timesLogged": 8, "totalAmount": 115.2, "trend": "same" },
+        { "averageAmount": 11.4, "food": "Tuna sandwich", "levelLabel": "Medium", "previousMonthAmount": 73.4, "timesLogged": 7, "totalAmount": 79.8, "trend": "same" },
+        { "averageAmount": 8.4, "food": "Lentil soup", "levelLabel": "Medium", "previousMonthAmount": 46.4, "timesLogged": 6, "totalAmount": 50.4, "trend": "same" },
+        { "averageAmount": 6.1, "food": "Cottage cheese", "levelLabel": "Medium", "previousMonthAmount": 28.1, "timesLogged": 5, "totalAmount": 30.5, "trend": "same" }
+      ],
+      "sodiumMg": [
+        { "averageAmount": 567, "food": "Tomato soup", "levelLabel": "Medium-high", "previousMonthAmount": 6259.7, "timesLogged": 12, "totalAmount": 6804, "trend": "same" },
+        { "averageAmount": 453.6, "food": "Cheese sandwich", "levelLabel": "Medium", "previousMonthAmount": 4173.1, "timesLogged": 10, "totalAmount": 4536, "trend": "same" },
+        { "averageAmount": 359.1, "food": "Ready meal pasta", "levelLabel": "Medium", "previousMonthAmount": 2643, "timesLogged": 8, "totalAmount": 2872.8, "trend": "same" },
+        { "averageAmount": 283.5, "food": "Crackers", "levelLabel": "Medium", "previousMonthAmount": 1825.7, "timesLogged": 7, "totalAmount": 1984.5, "trend": "same" },
+        { "averageAmount": 207.9, "food": "Soy sauce noodles", "levelLabel": "Medium", "previousMonthAmount": 1147.6, "timesLogged": 6, "totalAmount": 1247.4, "trend": "same" },
+        { "averageAmount": 151.2, "food": "Salted popcorn", "levelLabel": "Medium", "previousMonthAmount": 695.5, "timesLogged": 5, "totalAmount": 756, "trend": "same" }
+      ]
+    },
+    "totals": { "caloriesKcal": 38535, "phosphorusMg": 12852, "potassiumMg": 42210, "proteinG": 1596, "sodiumMg": 39690 },
+    "updatedAt": { "$date": "2026-05-28T12:00:00.000Z" }
+  },
+  {
+    "createdAt": { "$date": "2026-06-28T12:00:00.000Z" },
+    "dailyAverages": { "caloriesKcal": 1981.8, "phosphorusMg": 661, "potassiumMg": 2170.8, "proteinG": 82.1, "sodiumMg": 2041.2 },
+    "daysLogged": 13,
+    "generatedAt": { "$date": "2026-06-28T12:00:00.000Z" },
+    "month": "2026-06",
+    "patientId": { "$oid": "000000000000000000000001" },
+    "sourceVersion": 1,
+    "targetSnapshot": { "caloriesKcal": 1800, "phosphorusMg": 550, "potassiumMg": 2200, "proteinG": 70, "sodiumMg": 2000 },
+    "topFoods": {
+      "caloriesKcal": [
+        { "averageAmount": 594.5, "food": "Porridge oats", "levelLabel": "Medium-high", "previousMonthAmount": 3853.2, "timesLogged": 7, "totalAmount": 4161.5, "trend": "same" },
+        { "averageAmount": 475.6, "food": "Peanut butter toast", "levelLabel": "Medium", "previousMonthAmount": 2642.2, "timesLogged": 6, "totalAmount": 2853.6, "trend": "same" },
+        { "averageAmount": 376.5, "food": "Chicken wrap", "levelLabel": "Medium", "previousMonthAmount": 1743.1, "timesLogged": 5, "totalAmount": 1882.5, "trend": "same" },
+        { "averageAmount": 297.3, "food": "Rice bowl", "levelLabel": "Medium", "previousMonthAmount": 1101.1, "timesLogged": 4, "totalAmount": 1189.2, "trend": "same" },
+        { "averageAmount": 218, "food": "Pasta bake", "levelLabel": "Medium", "previousMonthAmount": 807.4, "timesLogged": 4, "totalAmount": 872, "trend": "same" },
+        { "averageAmount": 158.5, "food": "Yogurt parfait", "levelLabel": "Medium", "previousMonthAmount": 587, "timesLogged": 4, "totalAmount": 634, "trend": "same" }
+      ],
+      "phosphorusMg": [
+        { "averageAmount": 198.3, "food": "Chicken curry", "levelLabel": "Medium-high", "previousMonthAmount": 1285.3, "timesLogged": 7, "totalAmount": 1388.1, "trend": "same" },
+        { "averageAmount": 158.6, "food": "Wholemeal bread", "levelLabel": "Medium", "previousMonthAmount": 881.1, "timesLogged": 6, "totalAmount": 951.6, "trend": "same" },
+        { "averageAmount": 125.6, "food": "Cheddar cheese", "levelLabel": "Medium", "previousMonthAmount": 581.5, "timesLogged": 5, "totalAmount": 628, "trend": "same" },
+        { "averageAmount": 99.1, "food": "Porridge oats", "levelLabel": "Medium", "previousMonthAmount": 367.1, "timesLogged": 4, "totalAmount": 396.4, "trend": "same" },
+        { "averageAmount": 72.7, "food": "Baked beans", "levelLabel": "Medium", "previousMonthAmount": 269.1, "timesLogged": 4, "totalAmount": 290.8, "trend": "same" },
+        { "averageAmount": 52.9, "food": "Greek yogurt", "levelLabel": "Medium", "previousMonthAmount": 195.9, "timesLogged": 4, "totalAmount": 211.6, "trend": "same" }
+      ],
+      "potassiumMg": [
+        { "averageAmount": 651.2, "food": "Banana", "levelLabel": "Medium-high", "previousMonthAmount": 4222.2, "timesLogged": 7, "totalAmount": 4558.4, "trend": "same" },
+        { "averageAmount": 520.9, "food": "Tomato pasta", "levelLabel": "Medium", "previousMonthAmount": 2893.7, "timesLogged": 6, "totalAmount": 3125.4, "trend": "same" },
+        { "averageAmount": 412.5, "food": "Avocado toast", "levelLabel": "Medium", "previousMonthAmount": 1910, "timesLogged": 5, "totalAmount": 2062.5, "trend": "same" },
+        { "averageAmount": 325.6, "food": "Potato curry", "levelLabel": "Medium", "previousMonthAmount": 1206.4, "timesLogged": 4, "totalAmount": 1302.4, "trend": "same" },
+        { "averageAmount": 238.8, "food": "Spinach dhal", "levelLabel": "Medium", "previousMonthAmount": 884.4, "timesLogged": 4, "totalAmount": 955.2, "trend": "same" },
+        { "averageAmount": 173.7, "food": "Orange juice", "levelLabel": "Medium", "previousMonthAmount": 644.4, "timesLogged": 4, "totalAmount": 694.8, "trend": "same" }
+      ],
+      "proteinG": [
+        { "averageAmount": 24.6, "food": "Greek yogurt", "levelLabel": "Medium-high", "previousMonthAmount": 159.8, "timesLogged": 7, "totalAmount": 172.2, "trend": "same" },
+        { "averageAmount": 19.7, "food": "Chicken wrap", "levelLabel": "Medium", "previousMonthAmount": 109.4, "timesLogged": 6, "totalAmount": 118.2, "trend": "same" },
+        { "averageAmount": 15.6, "food": "Egg omelette", "levelLabel": "Medium", "previousMonthAmount": 72.2, "timesLogged": 5, "totalAmount": 78, "trend": "same" },
+        { "averageAmount": 12.3, "food": "Tuna sandwich", "levelLabel": "Medium", "previousMonthAmount": 45.6, "timesLogged": 4, "totalAmount": 49.2, "trend": "same" },
+        { "averageAmount": 9, "food": "Lentil soup", "levelLabel": "Medium", "previousMonthAmount": 33.3, "timesLogged": 4, "totalAmount": 36, "trend": "same" },
+        { "averageAmount": 6.6, "food": "Cottage cheese", "levelLabel": "Medium", "previousMonthAmount": 24.4, "timesLogged": 4, "totalAmount": 26.4, "trend": "same" }
+      ],
+      "sodiumMg": [
+        { "averageAmount": 612.4, "food": "Tomato soup", "levelLabel": "Medium-high", "previousMonthAmount": 3965.8, "timesLogged": 7, "totalAmount": 4286.8, "trend": "same" },
+        { "averageAmount": 489.9, "food": "Cheese sandwich", "levelLabel": "Medium", "previousMonthAmount": 2718.9, "timesLogged": 6, "totalAmount": 2939.4, "trend": "same" },
+        { "averageAmount": 387.8, "food": "Ready meal pasta", "levelLabel": "Medium", "previousMonthAmount": 1795.5, "timesLogged": 5, "totalAmount": 1939, "trend": "same" },
+        { "averageAmount": 306.2, "food": "Crackers", "levelLabel": "Medium", "previousMonthAmount": 1134.1, "timesLogged": 4, "totalAmount": 1224.8, "trend": "same" },
+        { "averageAmount": 224.5, "food": "Soy sauce noodles", "levelLabel": "Medium", "previousMonthAmount": 831.5, "timesLogged": 4, "totalAmount": 898, "trend": "same" },
+        { "averageAmount": 163.3, "food": "Salted popcorn", "levelLabel": "Medium", "previousMonthAmount": 612.1, "timesLogged": 4, "totalAmount": 653.2, "trend": "same" }
+      ]
+    },
+    "totals": { "caloriesKcal": 25763.4, "phosphorusMg": 8593, "potassiumMg": 28220.4, "proteinG": 1067.3, "sodiumMg": 26535.6 },
+    "updatedAt": { "$date": "2026-06-28T12:00:00.000Z" }
+  },
+  {
+    "createdAt": { "$date": "2026-04-28T12:00:00.000Z" },
+    "dailyAverages": { "caloriesKcal": 1582.4, "phosphorusMg": 519.8, "potassiumMg": 1725, "proteinG": 62.6, "sodiumMg": 1619.2 },
+    "daysLogged": 17,
+    "generatedAt": { "$date": "2026-04-28T12:00:00.000Z" },
+    "month": "2026-04",
+    "patientId": { "$oid": "000000000000000000000002" },
+    "sourceVersion": 1,
+    "targetSnapshot": { "caloriesKcal": 1800, "phosphorusMg": 550, "potassiumMg": 2200, "proteinG": 70, "sodiumMg": 2000 },
+    "topFoods": {
+      "caloriesKcal": [
+        { "averageAmount": 474.7, "food": "Toast with peanut butter", "levelLabel": "Medium-high", "previousMonthAmount": 4747, "timesLogged": 10, "totalAmount": 4747, "trend": "same" },
+        { "averageAmount": 379.8, "food": "Granola pot", "levelLabel": "Medium", "previousMonthAmount": 3038.4, "timesLogged": 8, "totalAmount": 3038.4, "trend": "same" },
+        { "averageAmount": 300.7, "food": "Cheese toastie", "levelLabel": "Medium", "previousMonthAmount": 2104.9, "timesLogged": 7, "totalAmount": 2104.9, "trend": "same" },
+        { "averageAmount": 237.4, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 1424.4, "timesLogged": 6, "totalAmount": 1424.4, "trend": "same" },
+        { "averageAmount": 174.1, "food": "Rice pudding", "levelLabel": "Medium", "previousMonthAmount": 870.5, "timesLogged": 5, "totalAmount": 870.5, "trend": "same" },
+        { "averageAmount": 126.6, "food": "Fruit smoothie", "levelLabel": "Medium", "previousMonthAmount": 506.4, "timesLogged": 4, "totalAmount": 506.4, "trend": "same" }
+      ],
+      "phosphorusMg": [
+        { "averageAmount": 155.9, "food": "Cheese sandwich", "levelLabel": "Medium-high", "previousMonthAmount": 1559, "timesLogged": 10, "totalAmount": 1559, "trend": "same" },
+        { "averageAmount": 124.8, "food": "Wholemeal toast", "levelLabel": "Medium", "previousMonthAmount": 998.4, "timesLogged": 8, "totalAmount": 998.4, "trend": "same" },
+        { "averageAmount": 98.8, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 691.6, "timesLogged": 7, "totalAmount": 691.6, "trend": "same" },
+        { "averageAmount": 78, "food": "Baked beans", "levelLabel": "Medium", "previousMonthAmount": 468, "timesLogged": 6, "totalAmount": 468, "trend": "same" },
+        { "averageAmount": 57.2, "food": "Granola pot", "levelLabel": "Medium", "previousMonthAmount": 286, "timesLogged": 5, "totalAmount": 286, "trend": "same" },
+        { "averageAmount": 41.6, "food": "Rice pudding", "levelLabel": "Medium", "previousMonthAmount": 166.4, "timesLogged": 4, "totalAmount": 166.4, "trend": "same" }
+      ],
+      "potassiumMg": [
+        { "averageAmount": 517.5, "food": "Orange juice", "levelLabel": "Medium-high", "previousMonthAmount": 5175, "timesLogged": 10, "totalAmount": 5175, "trend": "same" },
+        { "averageAmount": 414, "food": "Banana loaf", "levelLabel": "Medium", "previousMonthAmount": 3312, "timesLogged": 8, "totalAmount": 3312, "trend": "same" },
+        { "averageAmount": 327.8, "food": "Tomato soup", "levelLabel": "Medium", "previousMonthAmount": 2294.6, "timesLogged": 7, "totalAmount": 2294.6, "trend": "same" },
+        { "averageAmount": 258.8, "food": "Potato wedges", "levelLabel": "Medium", "previousMonthAmount": 1552.8, "timesLogged": 6, "totalAmount": 1552.8, "trend": "same" },
+        { "averageAmount": 189.8, "food": "Spinach pasta", "levelLabel": "Medium", "previousMonthAmount": 949, "timesLogged": 5, "totalAmount": 949, "trend": "same" },
+        { "averageAmount": 138, "food": "Vegetable curry", "levelLabel": "Medium", "previousMonthAmount": 552, "timesLogged": 4, "totalAmount": 552, "trend": "same" }
+      ],
+      "proteinG": [
+        { "averageAmount": 18.8, "food": "Egg omelette", "levelLabel": "Medium-high", "previousMonthAmount": 188, "timesLogged": 10, "totalAmount": 188, "trend": "same" },
+        { "averageAmount": 15, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 120, "timesLogged": 8, "totalAmount": 120, "trend": "same" },
+        { "averageAmount": 11.9, "food": "Ham sandwich", "levelLabel": "Medium", "previousMonthAmount": 83.3, "timesLogged": 7, "totalAmount": 83.3, "trend": "same" },
+        { "averageAmount": 9.4, "food": "Greek yogurt", "levelLabel": "Medium", "previousMonthAmount": 56.4, "timesLogged": 6, "totalAmount": 56.4, "trend": "same" },
+        { "averageAmount": 6.9, "food": "Beans on toast", "levelLabel": "Medium", "previousMonthAmount": 34.5, "timesLogged": 5, "totalAmount": 34.5, "trend": "same" },
+        { "averageAmount": 5, "food": "Milkshake", "levelLabel": "Medium", "previousMonthAmount": 20, "timesLogged": 4, "totalAmount": 20, "trend": "same" }
+      ],
+      "sodiumMg": [
+        { "averageAmount": 485.8, "food": "Tinned soup", "levelLabel": "Medium-high", "previousMonthAmount": 4858, "timesLogged": 10, "totalAmount": 4858, "trend": "same" },
+        { "averageAmount": 388.6, "food": "Ham sandwich", "levelLabel": "Medium", "previousMonthAmount": 3108.8, "timesLogged": 8, "totalAmount": 3108.8, "trend": "same" },
+        { "averageAmount": 307.6, "food": "Crisps", "levelLabel": "Medium", "previousMonthAmount": 2153.2, "timesLogged": 7, "totalAmount": 2153.2, "trend": "same" },
+        { "averageAmount": 242.9, "food": "Cheese toastie", "levelLabel": "Medium", "previousMonthAmount": 1457.4, "timesLogged": 6, "totalAmount": 1457.4, "trend": "same" },
+        { "averageAmount": 178.1, "food": "Instant noodles", "levelLabel": "Medium", "previousMonthAmount": 890.5, "timesLogged": 5, "totalAmount": 890.5, "trend": "same" },
+        { "averageAmount": 129.5, "food": "Ready meal curry", "levelLabel": "Medium", "previousMonthAmount": 518, "timesLogged": 4, "totalAmount": 518, "trend": "same" }
+      ]
+    },
+    "totals": { "caloriesKcal": 26900.8, "phosphorusMg": 8836.6, "potassiumMg": 29325, "proteinG": 1064.2, "sodiumMg": 27526.4 },
+    "updatedAt": { "$date": "2026-04-28T12:00:00.000Z" }
+  },
+  {
+    "createdAt": { "$date": "2026-05-28T12:00:00.000Z" },
+    "dailyAverages": { "caloriesKcal": 1720, "phosphorusMg": 565, "potassiumMg": 1875, "proteinG": 68, "sodiumMg": 1760 },
+    "daysLogged": 21,
+    "generatedAt": { "$date": "2026-05-28T12:00:00.000Z" },
+    "month": "2026-05",
+    "patientId": { "$oid": "000000000000000000000002" },
+    "sourceVersion": 1,
+    "targetSnapshot": { "caloriesKcal": 1800, "phosphorusMg": 550, "potassiumMg": 2200, "proteinG": 70, "sodiumMg": 2000 },
+    "topFoods": {
+      "caloriesKcal": [
+        { "averageAmount": 516, "food": "Toast with peanut butter", "levelLabel": "Medium-high", "previousMonthAmount": 5699.5, "timesLogged": 12, "totalAmount": 6192, "trend": "same" },
+        { "averageAmount": 412.8, "food": "Granola pot", "levelLabel": "Medium", "previousMonthAmount": 3799.7, "timesLogged": 10, "totalAmount": 4128, "trend": "same" },
+        { "averageAmount": 326.8, "food": "Cheese toastie", "levelLabel": "Medium", "previousMonthAmount": 2406.8, "timesLogged": 8, "totalAmount": 2614.4, "trend": "same" },
+        { "averageAmount": 258, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 1663.4, "timesLogged": 7, "totalAmount": 1806, "trend": "same" },
+        { "averageAmount": 189.2, "food": "Rice pudding", "levelLabel": "Medium", "previousMonthAmount": 1042.4, "timesLogged": 6, "totalAmount": 1135.2, "trend": "same" },
+        { "averageAmount": 137.6, "food": "Fruit smoothie", "levelLabel": "Medium", "previousMonthAmount": 632.2, "timesLogged": 5, "totalAmount": 688, "trend": "same" }
+      ],
+      "phosphorusMg": [
+        { "averageAmount": 169.5, "food": "Cheese sandwich", "levelLabel": "Medium-high", "previousMonthAmount": 1872.8, "timesLogged": 12, "totalAmount": 2034, "trend": "same" },
+        { "averageAmount": 135.6, "food": "Wholemeal toast", "levelLabel": "Medium", "previousMonthAmount": 1248.5, "timesLogged": 10, "totalAmount": 1356, "trend": "same" },
+        { "averageAmount": 107.4, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 793.6, "timesLogged": 8, "totalAmount": 859.2, "trend": "same" },
+        { "averageAmount": 84.8, "food": "Baked beans", "levelLabel": "Medium", "previousMonthAmount": 547.9, "timesLogged": 7, "totalAmount": 593.6, "trend": "same" },
+        { "averageAmount": 62.2, "food": "Granola pot", "levelLabel": "Medium", "previousMonthAmount": 344, "timesLogged": 6, "totalAmount": 373.2, "trend": "same" },
+        { "averageAmount": 45.2, "food": "Rice pudding", "levelLabel": "Medium", "previousMonthAmount": 208.1, "timesLogged": 5, "totalAmount": 226, "trend": "same" }
+      ],
+      "potassiumMg": [
+        { "averageAmount": 562.5, "food": "Orange juice", "levelLabel": "Medium-high", "previousMonthAmount": 6205.4, "timesLogged": 12, "totalAmount": 6750, "trend": "same" },
+        { "averageAmount": 450, "food": "Banana loaf", "levelLabel": "Medium", "previousMonthAmount": 4137, "timesLogged": 10, "totalAmount": 4500, "trend": "same" },
+        { "averageAmount": 356.3, "food": "Tomato soup", "levelLabel": "Medium", "previousMonthAmount": 2624.5, "timesLogged": 8, "totalAmount": 2850.4, "trend": "same" },
+        { "averageAmount": 281.3, "food": "Potato wedges", "levelLabel": "Medium", "previousMonthAmount": 1815.1, "timesLogged": 7, "totalAmount": 1969.1, "trend": "same" },
+        { "averageAmount": 206.3, "food": "Spinach pasta", "levelLabel": "Medium", "previousMonthAmount": 1138.4, "timesLogged": 6, "totalAmount": 1237.8, "trend": "same" },
+        { "averageAmount": 150, "food": "Vegetable curry", "levelLabel": "Medium", "previousMonthAmount": 689.5, "timesLogged": 5, "totalAmount": 750, "trend": "same" }
+      ],
+      "proteinG": [
+        { "averageAmount": 20.4, "food": "Egg omelette", "levelLabel": "Medium-high", "previousMonthAmount": 225.9, "timesLogged": 12, "totalAmount": 244.8, "trend": "same" },
+        { "averageAmount": 16.3, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 150.4, "timesLogged": 10, "totalAmount": 163, "trend": "same" },
+        { "averageAmount": 12.9, "food": "Ham sandwich", "levelLabel": "Medium", "previousMonthAmount": 95.4, "timesLogged": 8, "totalAmount": 103.2, "trend": "same" },
+        { "averageAmount": 10.2, "food": "Greek yogurt", "levelLabel": "Medium", "previousMonthAmount": 65.1, "timesLogged": 7, "totalAmount": 71.4, "trend": "same" },
+        { "averageAmount": 7.5, "food": "Beans on toast", "levelLabel": "Medium", "previousMonthAmount": 40.6, "timesLogged": 6, "totalAmount": 45, "trend": "same" },
+        { "averageAmount": 5.4, "food": "Milkshake", "levelLabel": "Medium", "previousMonthAmount": 24.3, "timesLogged": 5, "totalAmount": 27, "trend": "same" }
+      ],
+      "sodiumMg": [
+        { "averageAmount": 528, "food": "Tinned soup", "levelLabel": "Medium-high", "previousMonthAmount": 5838, "timesLogged": 12, "totalAmount": 6336, "trend": "same" },
+        { "averageAmount": 422.4, "food": "Ham sandwich", "levelLabel": "Medium", "previousMonthAmount": 3892.7, "timesLogged": 10, "totalAmount": 4224, "trend": "same" },
+        { "averageAmount": 334.4, "food": "Crisps", "levelLabel": "Medium", "previousMonthAmount": 2469.6, "timesLogged": 8, "totalAmount": 2675.2, "trend": "same" },
+        { "averageAmount": 264, "food": "Cheese toastie", "levelLabel": "Medium", "previousMonthAmount": 1708.8, "timesLogged": 7, "totalAmount": 1848, "trend": "same" },
+        { "averageAmount": 193.6, "food": "Instant noodles", "levelLabel": "Medium", "previousMonthAmount": 1070.9, "timesLogged": 6, "totalAmount": 1161.6, "trend": "same" },
+        { "averageAmount": 140.8, "food": "Ready meal curry", "levelLabel": "Medium", "previousMonthAmount": 648.3, "timesLogged": 5, "totalAmount": 704, "trend": "same" }
+      ]
+    },
+    "totals": { "caloriesKcal": 36120, "phosphorusMg": 11865, "potassiumMg": 39375, "proteinG": 1428, "sodiumMg": 36960 },
+    "updatedAt": { "$date": "2026-05-28T12:00:00.000Z" }
+  },
+  {
+    "createdAt": { "$date": "2026-06-28T12:00:00.000Z" },
+    "dailyAverages": { "caloriesKcal": 1857.6, "phosphorusMg": 610.2, "potassiumMg": 2025, "proteinG": 73.4, "sodiumMg": 1900.8 },
+    "daysLogged": 13,
+    "generatedAt": { "$date": "2026-06-28T12:00:00.000Z" },
+    "month": "2026-06",
+    "patientId": { "$oid": "000000000000000000000002" },
+    "sourceVersion": 1,
+    "targetSnapshot": { "caloriesKcal": 1800, "phosphorusMg": 550, "potassiumMg": 2200, "proteinG": 70, "sodiumMg": 2000 },
+    "topFoods": {
+      "caloriesKcal": [
+        { "averageAmount": 557.3, "food": "Toast with peanut butter", "levelLabel": "Medium-high", "previousMonthAmount": 3611.1, "timesLogged": 7, "totalAmount": 3901.1, "trend": "same" },
+        { "averageAmount": 445.8, "food": "Granola pot", "levelLabel": "Medium", "previousMonthAmount": 2476.4, "timesLogged": 6, "totalAmount": 2674.8, "trend": "same" },
+        { "averageAmount": 352.9, "food": "Cheese toastie", "levelLabel": "Medium", "previousMonthAmount": 1633.8, "timesLogged": 5, "totalAmount": 1764.5, "trend": "same" },
+        { "averageAmount": 278.6, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 1033.9, "timesLogged": 4, "totalAmount": 1114.4, "trend": "same" },
+        { "averageAmount": 204.3, "food": "Rice pudding", "levelLabel": "Medium", "previousMonthAmount": 758.1, "timesLogged": 4, "totalAmount": 817.2, "trend": "same" },
+        { "averageAmount": 148.6, "food": "Fruit smoothie", "levelLabel": "Medium", "previousMonthAmount": 559.1, "timesLogged": 4, "totalAmount": 594.4, "trend": "same" }
+      ],
+      "phosphorusMg": [
+        { "averageAmount": 183.1, "food": "Cheese sandwich", "levelLabel": "Medium-high", "previousMonthAmount": 1186.1, "timesLogged": 7, "totalAmount": 1281.7, "trend": "same" },
+        { "averageAmount": 146.4, "food": "Wholemeal toast", "levelLabel": "Medium", "previousMonthAmount": 813.6, "timesLogged": 6, "totalAmount": 878.4, "trend": "same" },
+        { "averageAmount": 115.9, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 537, "timesLogged": 5, "totalAmount": 579.5, "trend": "same" },
+        { "averageAmount": 91.5, "food": "Baked beans", "levelLabel": "Medium", "previousMonthAmount": 339.4, "timesLogged": 4, "totalAmount": 366, "trend": "same" },
+        { "averageAmount": 67.1, "food": "Granola pot", "levelLabel": "Medium", "previousMonthAmount": 248.8, "timesLogged": 4, "totalAmount": 268.4, "trend": "same" },
+        { "averageAmount": 48.8, "food": "Rice pudding", "levelLabel": "Medium", "previousMonthAmount": 183.1, "timesLogged": 4, "totalAmount": 195.2, "trend": "same" }
+      ],
+      "potassiumMg": [
+        { "averageAmount": 607.5, "food": "Orange juice", "levelLabel": "Medium-high", "previousMonthAmount": 3948.6, "timesLogged": 7, "totalAmount": 4252.5, "trend": "same" },
+        { "averageAmount": 486, "food": "Banana loaf", "levelLabel": "Medium", "previousMonthAmount": 2700, "timesLogged": 6, "totalAmount": 2916, "trend": "same" },
+        { "averageAmount": 384.8, "food": "Tomato soup", "levelLabel": "Medium", "previousMonthAmount": 1780.7, "timesLogged": 5, "totalAmount": 1924, "trend": "same" },
+        { "averageAmount": 303.8, "food": "Potato wedges", "levelLabel": "Medium", "previousMonthAmount": 1125.8, "timesLogged": 4, "totalAmount": 1215.2, "trend": "same" },
+        { "averageAmount": 222.8, "food": "Spinach pasta", "levelLabel": "Medium", "previousMonthAmount": 825.4, "timesLogged": 4, "totalAmount": 891.2, "trend": "same" },
+        { "averageAmount": 162, "food": "Vegetable curry", "levelLabel": "Medium", "previousMonthAmount": 607.5, "timesLogged": 4, "totalAmount": 648, "trend": "same" }
+      ],
+      "proteinG": [
+        { "averageAmount": 22, "food": "Egg omelette", "levelLabel": "Medium-high", "previousMonthAmount": 142.6, "timesLogged": 7, "totalAmount": 154, "trend": "same" },
+        { "averageAmount": 17.6, "food": "Chicken pie", "levelLabel": "Medium", "previousMonthAmount": 97.8, "timesLogged": 6, "totalAmount": 105.6, "trend": "same" },
+        { "averageAmount": 13.9, "food": "Ham sandwich", "levelLabel": "Medium", "previousMonthAmount": 64.6, "timesLogged": 5, "totalAmount": 69.5, "trend": "same" },
+        { "averageAmount": 11, "food": "Greek yogurt", "levelLabel": "Medium", "previousMonthAmount": 40.7, "timesLogged": 4, "totalAmount": 44, "trend": "same" },
+        { "averageAmount": 8.1, "food": "Beans on toast", "levelLabel": "Medium", "previousMonthAmount": 29.9, "timesLogged": 4, "totalAmount": 32.4, "trend": "same" },
+        { "averageAmount": 5.9, "food": "Milkshake", "levelLabel": "Medium", "previousMonthAmount": 22, "timesLogged": 4, "totalAmount": 23.6, "trend": "same" }
+      ],
+      "sodiumMg": [
+        { "averageAmount": 570.2, "food": "Tinned soup", "levelLabel": "Medium-high", "previousMonthAmount": 3698.2, "timesLogged": 7, "totalAmount": 3991.4, "trend": "same" },
+        { "averageAmount": 456.2, "food": "Ham sandwich", "levelLabel": "Medium", "previousMonthAmount": 2534.4, "timesLogged": 6, "totalAmount": 2737.2, "trend": "same" },
+        { "averageAmount": 361.2, "food": "Crisps", "levelLabel": "Medium", "previousMonthAmount": 1672, "timesLogged": 5, "totalAmount": 1806, "trend": "same" },
+        { "averageAmount": 285.1, "food": "Cheese toastie", "levelLabel": "Medium", "previousMonthAmount": 1056.4, "timesLogged": 4, "totalAmount": 1140.4, "trend": "same" },
+        { "averageAmount": 209.1, "food": "Instant noodles", "levelLabel": "Medium", "previousMonthAmount": 774.5, "timesLogged": 4, "totalAmount": 836.4, "trend": "same" },
+        { "averageAmount": 152.1, "food": "Ready meal curry", "levelLabel": "Medium", "previousMonthAmount": 569.6, "timesLogged": 4, "totalAmount": 608.4, "trend": "same" }
+      ]
+    },
+    "totals": { "caloriesKcal": 24148.8, "phosphorusMg": 7932.6, "potassiumMg": 26325, "proteinG": 954.2, "sodiumMg": 24710.4 },
+    "updatedAt": { "$date": "2026-06-28T12:00:00.000Z" }
+  }
+]

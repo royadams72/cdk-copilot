@@ -83,6 +83,8 @@ The health data screen and nutrition data screen should not share one generic ta
 - table is food-oriented
 - grouped around meals, foods, nutrients, or nutrition-target context
 - should support nutrition-specific summaries and top-offender views
+- long-term read model should prefer a derived monthly summary collection for
+  historical months; see `docs/portal/nutrition-monthly-summary.md`
 
 ### Health data
 

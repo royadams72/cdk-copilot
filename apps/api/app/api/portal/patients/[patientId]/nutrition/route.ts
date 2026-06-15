@@ -6,6 +6,12 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
+  mapSummaryTopFoodsToPortalRows,
+  NUTRITION_MONTHLY_PATIENT_SUMMARY_COLLECTION,
+  resolveNutritionMetricLabel,
+  type NutritionMonthlyPatientSummaryDoc,
+} from "@/apps/api/lib/portal/nutritionMonthlySummary";
+import {
   normalizePortalNutritionFilter,
   type PortalNutritionFilter,
   type PortalPatientNutritionData,
@@ -14,12 +20,10 @@ import {
   buildPortalPatientAccessMatch,
   mapPortalPatientDetail,
 } from "@/apps/api/lib/portal/patients";
-import type { NutritionEntryDoc } from "@/apps/api/lib/types/dashboard";
 import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_DAYS = 365;
 const MAX_DAYS = 400;
 
@@ -52,25 +56,6 @@ type ClinicalDoc = {
   egfrCurrent?: number | null;
 };
 
-type FoodAggregate = {
-  currentMonthAmount: number;
-  timesLogged: number;
-  previousMonthAmount: number;
-};
-
-type MonthAggregate = {
-  dayKeys: Set<string>;
-  total: number;
-};
-
-const NUTRITION_FILTER_LABELS: Record<PortalNutritionFilter, string> = {
-  caloriesKcal: "Calories",
-  phosphorusMg: "Phosphorus",
-  potassiumMg: "Potassium",
-  proteinG: "Protein",
-  sodiumMg: "Sodium",
-};
-
 function parsePositiveInt(value: string | null, fallback: number) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -78,32 +63,8 @@ function parsePositiveInt(value: string | null, fallback: number) {
   return parsed;
 }
 
-function getMetricValue(
-  entry: Pick<NutritionEntryDoc, "totals">,
-  filter: PortalNutritionFilter,
-) {
-  const value = entry.totals?.[filter];
-  return typeof value === "number" ? value : 0;
-}
-
-function getItemMetricValue(
-  item: NonNullable<NutritionEntryDoc["items"]>[number],
-  filter: PortalNutritionFilter,
-) {
-  const value = item.nutrients?.[filter];
-  return typeof value === "number" ? value : 0;
-}
-
-function getEntryDate(entry: Pick<NutritionEntryDoc, "createdAt" | "eatenAt">) {
-  return entry.eatenAt ?? entry.createdAt ?? null;
-}
-
 function monthKey(date: Date) {
   return date.toISOString().slice(0, 7);
-}
-
-function dayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
 }
 
 function startOfMonth(date: Date) {
@@ -137,35 +98,10 @@ function resolveTargetValue(
   return typeof value === "number" ? value : null;
 }
 
-function getLevelLabel(filter: PortalNutritionFilter, averageAmount: number) {
-  const bands: Record<PortalNutritionFilter, [number, number, number]> = {
-    caloriesKcal: [700, 500, 250],
-    phosphorusMg: [250, 160, 80],
-    potassiumMg: [700, 450, 200],
-    proteinG: [30, 18, 8],
-    sodiumMg: [450, 250, 100],
-  };
-  const [high, mediumHigh, medium] = bands[filter];
-  if (averageAmount >= high) return "High";
-  if (averageAmount >= mediumHigh) return "Medium-high";
-  if (averageAmount >= medium) return "Medium";
-  return "Low";
-}
-
-function getTrend(
-  currentMonthAmount: number,
-  previousMonthAmount: number,
-): "increased" | "same" | "reduced" {
-  if (previousMonthAmount === 0) {
-    return currentMonthAmount > 0 ? "increased" : "same";
-  }
-  if (currentMonthAmount >= previousMonthAmount * 1.1) {
-    return "increased";
-  }
-  if (currentMonthAmount <= previousMonthAmount * 0.9) {
-    return "reduced";
-  }
-  return "same";
+function buildChartMonths(currentMonthStart: Date) {
+  return Array.from({ length: 12 }, (_, offset) =>
+    monthKey(addMonths(currentMonthStart, offset - 11)),
+  );
 }
 
 export async function GET(
@@ -195,12 +131,8 @@ export async function GET(
       parsePositiveInt(req.nextUrl.searchParams.get("days"), DEFAULT_DAYS),
       MAX_DAYS,
     );
-    const windowEnd = new Date();
-    const currentMonthStart = startOfMonth(windowEnd);
-    const chartStart = addMonths(currentMonthStart, -11);
-    const windowStart = new Date(
-      Math.min(chartStart.getTime(), windowEnd.getTime() - (days - 1) * DAY_MS),
-    );
+    const currentMonthStart = startOfMonth(new Date());
+    const chartMonths = buildChartMonths(currentMonthStart);
 
     const db = await getDb();
     const patientObjectId = new ObjectId(patientId);
@@ -248,29 +180,27 @@ export async function GET(
       return bad("Patient not found", { code: "patient_not_found" }, 404);
     }
 
-    const [entries, targets, clinical] = await Promise.all([
+    const [summaryDocs, targets, clinical] = await Promise.all([
       db
-        .collection<NutritionEntryDoc>(COLLECTIONS.NutritionLedger)
+        .collection<NutritionMonthlyPatientSummaryDoc>(
+          NUTRITION_MONTHLY_PATIENT_SUMMARY_COLLECTION,
+        )
         .find(
           {
-            patientId: patientObjectId,
-            $or: [
-              { eatenAt: { $gte: windowStart } },
-              { eatenAt: null, createdAt: { $gte: windowStart } },
-              { eatenAt: { $exists: false }, createdAt: { $gte: windowStart } },
-            ],
+            month: { $in: chartMonths },
+            $or: [{ patientId: patientObjectId }, { patientId }],
           },
           {
             projection: {
-              _id: 1,
-              createdAt: 1,
-              eatenAt: 1,
-              items: 1,
-              totals: 1,
+              _id: 0,
+              dailyAverages: 1,
+              month: 1,
+              patientId: 1,
+              targetSnapshot: 1,
+              topFoods: 1,
             },
           },
         )
-        .sort({ eatenAt: -1, createdAt: -1 })
         .toArray(),
       getMappedNutritionTargets(db, patientObjectId, {
         orgId: caller.orgId,
@@ -281,108 +211,43 @@ export async function GET(
         { projection: { _id: 0, egfrCurrent: 1 } },
       ),
     ]);
+    const summaryByMonth = new Map(summaryDocs.map((doc) => [doc.month, doc]));
+    const monthlyStats: PortalPatientNutritionData["monthlyStats"] =
+      chartMonths.map((month) => {
+        const summary = summaryByMonth.get(month);
+        const value =
+          typeof summary?.dailyAverages?.[filter] === "number"
+            ? Math.round(summary.dailyAverages[filter]! * 10) / 10
+            : 0;
 
-    const byMonth = new Map<string, MonthAggregate>();
-    for (let offset = 0; offset < 12; offset += 1) {
-      const date = addMonths(chartStart, offset);
-      byMonth.set(monthKey(date), { dayKeys: new Set<string>(), total: 0 });
-    }
-
-    for (const entry of entries) {
-      const entryDate = getEntryDate(entry);
-      if (!entryDate || entryDate < chartStart) {
-        continue;
-      }
-      const key = monthKey(entryDate);
-      const aggregate = byMonth.get(key);
-      if (!aggregate) {
-        continue;
-      }
-      aggregate.total += getMetricValue(entry, filter);
-      aggregate.dayKeys.add(dayKey(entryDate));
-    }
-
-    const monthlyStats = Array.from(byMonth.entries()).map(([month, aggregate]) => {
-      const daysLogged = aggregate.dayKeys.size;
-      return {
-        isSelected: false,
-        label: formatMonthLabel(month),
-        month,
-        target: resolveTargetValue(targets, filter),
-        value:
-          daysLogged > 0
-            ? Math.round((aggregate.total / daysLogged) * 10) / 10
-            : 0,
-      };
-    });
+        return {
+          isSelected: false,
+          label: formatMonthLabel(month),
+          month,
+          target:
+            resolveTargetValue(summary?.targetSnapshot ?? {}, filter) ??
+            resolveTargetValue(targets, filter),
+          value,
+        };
+      });
 
     const latestWithData =
       [...monthlyStats].reverse().find((item) => item.value > 0)?.month ??
       monthlyStats[monthlyStats.length - 1]?.month ??
       monthKey(currentMonthStart);
 
-    const selectedMonth = requestedMonth && byMonth.has(requestedMonth)
-      ? requestedMonth
-      : latestWithData;
+    const selectedMonth =
+      requestedMonth && chartMonths.includes(requestedMonth)
+        ? requestedMonth
+        : latestWithData;
 
-    const previousMonth = monthKey(addMonths(new Date(`${selectedMonth}-01T00:00:00.000Z`), -1));
-    const foodMap = new Map<string, FoodAggregate>();
-
-    for (const entry of entries) {
-      const entryDate = getEntryDate(entry);
-      if (!entryDate) {
-        continue;
-      }
-      const entryMonth = monthKey(entryDate);
-      if (entryMonth !== selectedMonth && entryMonth !== previousMonth) {
-        continue;
-      }
-
-      for (const item of entry.items ?? []) {
-        const name = item.name?.trim();
-        if (!name) {
-          continue;
-        }
-        const metric = getItemMetricValue(item, filter);
-        const current = foodMap.get(name) ?? {
-          currentMonthAmount: 0,
-          previousMonthAmount: 0,
-          timesLogged: 0,
-        };
-
-        if (entryMonth === selectedMonth) {
-          current.currentMonthAmount += metric;
-          current.timesLogged += 1;
-        } else {
-          current.previousMonthAmount += metric;
-        }
-
-        foodMap.set(name, current);
-      }
-    }
-
-    const foodRows: PortalPatientNutritionData["foodRows"] = Array.from(
-      foodMap.entries(),
-    )
-      .filter(([, aggregate]) => aggregate.currentMonthAmount > 0)
-      .map(([food, aggregate]) => {
-        const averageAmount = aggregate.currentMonthAmount / aggregate.timesLogged;
-        return {
-          averageAmount,
-          currentMonthAmount: aggregate.currentMonthAmount,
-          food,
-          levelLabel: getLevelLabel(filter, averageAmount),
-          timesLogged: aggregate.timesLogged,
-          trend: getTrend(
-            aggregate.currentMonthAmount,
-            aggregate.previousMonthAmount,
-          ),
-        };
-      })
-      .sort((left, right) => right.currentMonthAmount - left.currentMonthAmount);
+    const foodRows = mapSummaryTopFoodsToPortalRows(
+      summaryByMonth.get(selectedMonth)?.topFoods?.[filter],
+      filter,
+    ).sort((left, right) => right.currentMonthAmount - left.currentMonthAmount);
 
     const selectedMonthLabel = formatMonthLongLabel(selectedMonth);
-    const metricLabel = NUTRITION_FILTER_LABELS[filter];
+    const metricLabel = resolveNutritionMetricLabel(filter);
     const mappedPatient = mapPortalPatientDetail(patient);
     const data: PortalPatientNutritionData = {
       foodRows,
@@ -401,8 +266,8 @@ export async function GET(
       tableTitle: `Foods with highest ${metricLabel.toLowerCase()} for ${selectedMonthLabel}`,
       window: {
         days,
-        from: windowStart.toISOString(),
-        to: windowEnd.toISOString(),
+        from: `${chartMonths[0]}-01T00:00:00.000Z`,
+        to: `${chartMonths[chartMonths.length - 1]}-31T23:59:59.999Z`,
       },
     };
 
