@@ -566,6 +566,236 @@
   cursor: pointer;
 }
 
+.patientActionLink {
+  width: 266px;
+  height: 77px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 19px;
+  line-height: 28px;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  background: var(--portal-accent-dark);
+}
+
+.subpageLayout {
+  display: grid;
+  gap: var(--portal-space-4);
+  padding: var(--portal-space-4) var(--portal-space-2) var(--portal-space-6);
+}
+
+.nutritionInsightLayout {
+  display: grid;
+  gap: var(--portal-space-4);
+}
+
+.nutritionInsightHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+}
+
+.nutritionInsightTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.nutritionInsightTitleBlock {
+  display: grid;
+  gap: 4px;
+}
+
+.nutritionFilterControl {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nutritionFilterSelect {
+  min-width: 154px;
+  min-height: 48px;
+  padding: 0 40px 0 12px;
+  border: 1px solid #8eabc5;
+  border-radius: 12px;
+  color: var(--portal-text-soft);
+  font-size: 16px;
+  line-height: 24px;
+  background: #fff;
+}
+
+.chartCard {
+  padding: var(--portal-space-2) var(--portal-space-3) var(--portal-space-3);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface);
+}
+
+.chartInteractiveFrame {
+  position: relative;
+}
+
+.chartMonthOverlay {
+  position: absolute;
+  inset: 24px 24px 28px 64px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0;
+}
+
+.chartMonthButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.chartMonthButton:focus-visible {
+  outline: 2px solid var(--portal-accent-dark);
+  outline-offset: -2px;
+}
+
+.subpageHeader {
+  display: grid;
+  gap: var(--portal-space-2);
+}
+
+.subpageHeaderCopy {
+  display: grid;
+  gap: 4px;
+}
+
+.subpageTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+}
+
+.subpageMeta {
+  margin: 0;
+  color: var(--portal-text-soft);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.dataScreenCard {
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface);
+  overflow: hidden;
+}
+
+.dataScreenToolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-3);
+  border-bottom: 1px solid var(--portal-line);
+  background: var(--portal-surface-muted);
+}
+
+.dataScreenTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.dataScreenCaption {
+  margin: 4px 0 0;
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dataTableWrap {
+  overflow: auto;
+}
+
+.dataTable {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.dataTable th,
+.dataTable td {
+  padding: 12px;
+  border-bottom: 1px solid #d6e0e8;
+  text-align: left;
+  vertical-align: top;
+}
+
+.dataTable th {
+  color: var(--portal-text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: #edf3f8;
+}
+
+.dataTable td {
+  color: var(--portal-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dataTable tbody tr:nth-child(even) {
+  background: #f8fbfd;
+}
+
+.foodNamesCell {
+  min-width: 260px;
+}
+
+.tablePagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-3);
+  border-top: 1px solid var(--portal-line);
+}
+
+.tablePaginationMeta {
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.tablePaginationActions {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+}
+
+.buttonGhost:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .detailHeader {
   display: flex;
   align-items: flex-start;
@@ -853,8 +1083,20 @@
     grid-template-columns: 1fr;
   }
 
-  .patientActionButton {
+  .patientActionButton,
+  .patientActionLink {
     width: 100%;
+  }
+
+  .dataScreenToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .nutritionInsightHeader,
+  .tablePagination {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .actionBar,

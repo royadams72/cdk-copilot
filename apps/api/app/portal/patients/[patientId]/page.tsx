@@ -152,14 +152,24 @@ export default function PortalPatientDetailPage() {
 
       <div className={styles.patientActionGrid}>
         {dashboard?.actionCards.map((label) => (
-          <button
-            className={styles.patientActionButton}
-            key={label}
-            onClick={() => window.alert(`${label} is the next portal slice.`)}
-            type="button"
-          >
-            {label}
-          </button>
+          label === "Nutrition Data" ? (
+            <Link
+              className={styles.patientActionLink}
+              href={`/portal/patients/${patient.id}/nutrition`}
+              key={label}
+            >
+              {label}
+            </Link>
+          ) : (
+            <button
+              className={styles.patientActionButton}
+              key={label}
+              onClick={() => window.alert(`${label} is the next portal slice.`)}
+              type="button"
+            >
+              {label}
+            </button>
+          )
         ))}
       </div>
     </section>
