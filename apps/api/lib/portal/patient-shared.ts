@@ -78,6 +78,54 @@ export type PortalPatientNutritionData = {
   };
 };
 
+export const PORTAL_HEALTH_METRICS = [
+  "blood_pressure",
+  "weight",
+  "symptoms",
+] as const;
+
+export type PortalHealthMetric = (typeof PORTAL_HEALTH_METRICS)[number];
+
+export type PortalPatientHealthMonth = {
+  isSelected: boolean;
+  label: string;
+  month: string;
+  primaryValue: number;
+  secondaryValue: number | null;
+};
+
+export type PortalPatientHealthRow = {
+  detail: string | null;
+  id: string;
+  label: string;
+  primaryValue: number;
+  secondaryValue: number | null;
+};
+
+export type PortalPatientHealthData = {
+  headline: string;
+  monthlyStats: PortalPatientHealthMonth[];
+  patient: PortalPatientDetail;
+  rows: PortalPatientHealthRow[];
+  selectedMetric: PortalHealthMetric;
+  selectedMonth: string;
+  selectedMonthLabel: string;
+  series: {
+    primaryLabel: string;
+    primaryUnit: string;
+    rowLabel: string;
+    secondaryLabel?: string;
+    secondaryUnit?: string;
+  };
+  summaryTitle: string;
+  tableTitle: string;
+  window: {
+    days: number;
+    from: string;
+    to: string;
+  };
+};
+
 export type PortalPatientStat = {
   count: number;
   detail: string;
@@ -100,4 +148,12 @@ export function normalizePortalNutritionFilter(
   return PORTAL_NUTRITION_FILTERS.includes(value as PortalNutritionFilter)
     ? (value as PortalNutritionFilter)
     : "phosphorusMg";
+}
+
+export function normalizePortalHealthMetric(
+  value: string | null | undefined,
+): PortalHealthMetric {
+  return PORTAL_HEALTH_METRICS.includes(value as PortalHealthMetric)
+    ? (value as PortalHealthMetric)
+    : "blood_pressure";
 }
