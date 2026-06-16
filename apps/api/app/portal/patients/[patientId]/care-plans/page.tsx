@@ -145,15 +145,12 @@ export default function PortalPatientCarePlansPage() {
       <div className={styles.carePlanHero}>
         <PortalPatientSubpageHeader
           action={
-            <button
+            <Link
               className={styles.buttonPrimarySmall}
-              onClick={() =>
-                window.alert("Add Care Plan is the next care-plan slice.")
-              }
-              type="button"
+              href={`/portal/patients/${data.patient.id}/care-plans/add`}
             >
               Add Care Plan
-            </button>
+            </Link>
           }
           backHref={patientHref}
           backLabel="Back to patient"

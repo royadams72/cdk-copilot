@@ -103,7 +103,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--portal-space-4);
-  padding: 0 var(--portal-space-2);
+  padding: var(--portal-space-4) var(--portal-space-4);
   background: var(--portal-accent-dark);
   width: 100%;
 }
@@ -643,10 +643,235 @@
   line-height: 20px;
 }
 
+.carePlanPageHeader {
+  display: flex;
+  align-items: center;
+}
+
+.carePlanTitleRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--portal-space-3);
+}
+
+.carePlanTitleBlock {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.carePlanPrimaryTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+.carePlanStatusInline {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.carePlanStatusInline[data-tone="success"] {
+  color: var(--portal-success);
+}
+
+.carePlanStatusInline[data-tone="danger"] {
+  color: var(--portal-danger);
+}
+
+.carePlanStatusInline[data-tone="accent"] {
+  color: var(--portal-accent-dark);
+}
+
+.carePlanStatusInline[data-tone="muted"] {
+  color: var(--portal-text-soft);
+}
+
+.carePlanActionCell {
+  display: flex;
+  justify-content: flex-end;
+  min-width: max-content;
+}
+
+.carePlanMetaHeaderRow,
+.carePlanMetaContentRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+}
+
+.carePlanMetaContentRow {
+  margin-top: var(--portal-space-2);
+}
+
+.carePlanFactsContentRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+  margin-top: var(--portal-space-2);
+}
+
+.carePlanMetaCell {
+  min-width: 0;
+}
+
+.carePlanMetaTitle {
+  margin: 0;
+  color: var(--portal-text-soft);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.carePlanPanelTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.carePlanMetaValue {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 15px;
+  line-height: 22px;
+}
+
 .carePlanActionGroup {
   display: flex;
   align-items: center;
   gap: var(--portal-space-2);
+}
+
+.carePlanFormIntro {
+  display: grid;
+  justify-items: center;
+  gap: var(--portal-space-2);
+  padding-top: var(--portal-space-2);
+  text-align: center;
+}
+
+.carePlanFormTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.carePlanFormLead {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.carePlanFormShell {
+  width: min(100%, 420px);
+  display: grid;
+  gap: var(--portal-space-4);
+  margin: 0 auto;
+}
+
+.carePlanFormGroup {
+  display: grid;
+  gap: var(--portal-space-2);
+}
+
+.carePlanFieldLabel {
+  color: var(--portal-text);
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 500;
+}
+
+.carePlanInlineRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--portal-space-2);
+}
+
+.carePlanInput {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--portal-line-strong);
+  border-radius: var(--portal-radius-md);
+  color: var(--portal-text-soft);
+  font-size: 16px;
+  line-height: 24px;
+  background: var(--portal-surface);
+}
+
+.carePlanChipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--portal-space-2);
+}
+
+.carePlanChip,
+.carePlanChipStatic {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--portal-line);
+  border-radius: 999px;
+  color: var(--portal-accent-dark);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  background: var(--portal-surface-accent);
+}
+
+.carePlanChip {
+  cursor: pointer;
+}
+
+.carePlanPlainList {
+  display: grid;
+  gap: var(--portal-space-2);
+}
+
+.carePlanPlainItem {
+  /* min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: var(--portal-radius-md); */
+  color: var(--portal-accent-dark);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  /* background: var(--portal-surface-accent); */
+}
+
+.carePlanOwnerList {
+  display: grid;
+  gap: var(--portal-space-2);
+  padding: var(--portal-space-2);
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface);
+}
+
+.carePlanOwnerOption {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  color: var(--portal-text-soft);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.carePlanSubmitRow {
+  display: flex;
+  justify-content: center;
 }
 
 .carePlanStatus {

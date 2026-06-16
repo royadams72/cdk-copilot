@@ -23,6 +23,12 @@ type CarePlanGoal = {
   target?: Record<string, unknown>;
 };
 
+type CarePlanDiagnosis = {
+  code?: string;
+  key: string;
+  label: string;
+};
+
 type CarePlanTask = {
   dueRule?: string;
   freq: TaskFreq;
@@ -38,10 +44,13 @@ type CarePlanDoc = {
   completedAt?: Date;
   createdAt: Date;
   createdBy: string;
+  diagnoses?: CarePlanDiagnosis[];
   goals: CarePlanGoal[];
   notes?: string;
   orgId: string;
+  ownerLabels?: string[];
   patientId: ObjectId;
+  reviewLabel?: string;
   sources: CarePlanSource[];
   status: CarePlanStatus;
   tasks: CarePlanTask[];
@@ -54,8 +63,11 @@ type DemoPlan = {
   activatedAt?: string;
   completedAt?: string;
   createdAt: string;
+  diagnoses?: CarePlanDiagnosis[];
   goals: CarePlanGoal[];
   notes?: string;
+  ownerLabels?: string[];
+  reviewLabel?: string;
   sources?: CarePlanSource[];
   status: CarePlanStatus;
   tasks: CarePlanTask[];
@@ -92,6 +104,10 @@ const DEMO_SEED: DemoPatientPlans[] = [
       {
         activatedAt: "2026-04-12T09:00:00.000Z",
         createdAt: "2026-04-10T09:00:00.000Z",
+        diagnoses: [
+          { code: "N18.4", key: "ckd_stage_4", label: "CKD stage 4" },
+          { code: "I10", key: "hypertension", label: "Hypertension" },
+        ],
         goals: [
           { key: "fluid_balance", label: "Improve fluid balance" },
           {
@@ -101,6 +117,8 @@ const DEMO_SEED: DemoPatientPlans[] = [
           },
         ],
         notes: "Focus on ankle swelling and morning blood pressure routine.",
+        ownerLabels: ["Aisha Rahman", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "1 month",
         status: "active",
         tasks: [
           {
@@ -123,8 +141,11 @@ const DEMO_SEED: DemoPatientPlans[] = [
       },
       {
         createdAt: "2026-06-08T10:00:00.000Z",
+        diagnoses: [{ code: "R53", key: "fatigue", label: "Fatigue" }],
         goals: [{ key: "activity", label: "Increase daily walking tolerance" }],
         notes: "Draft plan pending discussion at next review.",
+        ownerLabels: ["Aisha Rahman", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "2 weeks",
         status: "draft",
         tasks: [
           {
@@ -146,11 +167,17 @@ const DEMO_SEED: DemoPatientPlans[] = [
       {
         activatedAt: "2026-04-07T12:00:00.000Z",
         createdAt: "2026-04-05T12:00:00.000Z",
+        diagnoses: [
+          { code: "R42", key: "dizziness", label: "Dizziness" },
+          { code: "I95.1", key: "postural_drop", label: "Postural hypotension" },
+        ],
         goals: [
           { key: "dizziness", label: "Reduce dizziness episodes" },
           { key: "hydration", label: "Keep hydration consistent" },
         ],
         notes: "Monitor symptoms while antihypertensive regimen settles.",
+        ownerLabels: ["Michael Turner", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "1 month",
         status: "active",
         tasks: [
           {
@@ -180,11 +207,17 @@ const DEMO_SEED: DemoPatientPlans[] = [
         activatedAt: "2026-03-24T08:30:00.000Z",
         createdAt: "2026-03-22T08:30:00.000Z",
         completedAt: "2026-05-20T13:00:00.000Z",
+        diagnoses: [
+          { code: "K30", key: "indigestion", label: "Indigestion" },
+          { code: "R11", key: "nausea", label: "Nausea" },
+        ],
         goals: [
           { key: "meal_routine", label: "Build regular meal timing" },
           { key: "gi_symptoms", label: "Reduce stomach upset" },
         ],
         notes: "Completed after symptoms improved and eating pattern settled.",
+        ownerLabels: ["Leanne Watkins", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "3 months",
         status: "completed",
         tasks: [
           {
@@ -206,11 +239,17 @@ const DEMO_SEED: DemoPatientPlans[] = [
       {
         activatedAt: "2026-04-06T11:00:00.000Z",
         createdAt: "2026-04-04T11:00:00.000Z",
+        diagnoses: [
+          { code: "E83.39", key: "hyperphosphataemia", label: "Hyperphosphataemia" },
+          { code: "N18.5", key: "ckd_stage_5", label: "CKD stage 5" },
+        ],
         goals: [
           { key: "phosphate", label: "Lower phosphate burden" },
           { key: "meal_adherence", label: "Take binders consistently with meals" },
         ],
         notes: "Review due because phosphate remains above target.",
+        ownerLabels: ["Graham Ellis", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "1 month",
         status: "active",
         tasks: [
           {
@@ -235,7 +274,10 @@ const DEMO_SEED: DemoPatientPlans[] = [
         activatedAt: "2026-05-29T09:00:00.000Z",
         createdAt: "2026-05-28T09:00:00.000Z",
         completedAt: "2026-06-06T09:00:00.000Z",
+        diagnoses: [{ code: "E55.9", key: "vitamin_d", label: "Vitamin D deficiency" }],
         goals: [{ key: "alfacalcidol_review", label: "Complete vitamin D review" }],
+        ownerLabels: ["Graham Ellis", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "1 week",
         status: "completed",
         tasks: [
           {
@@ -257,11 +299,17 @@ const DEMO_SEED: DemoPatientPlans[] = [
       {
         activatedAt: "2026-04-12T09:15:00.000Z",
         createdAt: "2026-04-10T09:15:00.000Z",
+        diagnoses: [
+          { code: "Z94.0", key: "renal_transplant", label: "Kidney transplant recipient" },
+          { code: "D84.9", key: "immunosuppression", label: "Immunosuppression" },
+        ],
         goals: [
           { key: "transplant_meds", label: "Maintain transplant medication adherence" },
           { key: "monitoring", label: "Keep monitoring bloods and symptoms current" },
         ],
         notes: "Plan remains active while tacrolimus dose is being titrated.",
+        ownerLabels: ["Priya Shah", "renal service CKD Portal Pilot Team"],
+        reviewLabel: "2 weeks",
         status: "active",
         tasks: [
           {
@@ -311,10 +359,13 @@ async function run() {
         ...(plan.completedAt ? { completedAt: new Date(plan.completedAt) } : {}),
         createdAt: new Date(plan.createdAt),
         createdBy: DEMO_CLINICIAN_PRINCIPAL_ID,
+        ...(plan.diagnoses?.length ? { diagnoses: plan.diagnoses } : {}),
         goals: plan.goals,
         ...(plan.notes ? { notes: plan.notes } : {}),
         orgId: DEMO_ORG_ID,
+        ...(plan.ownerLabels?.length ? { ownerLabels: plan.ownerLabels } : {}),
         patientId: patient.patientId,
+        ...(plan.reviewLabel ? { reviewLabel: plan.reviewLabel } : {}),
         sources: plan.sources ?? ["manual"],
         status: plan.status,
         tasks: plan.tasks,

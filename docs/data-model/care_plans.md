@@ -12,7 +12,10 @@
 - `orgId` · string
 - `patientId` · ObjectId (ref: patients)
 - `title` · string
+- `diagnoses` · array of { `key` string, `label` string, `code?` string }
 - `goals` · array of { `key` string, `label` string, `target?` object }
+- `ownerLabels` · array of strings
+- `reviewLabel` · string?
 - `tasks` · array of { `key` string, `label` string, `freq` enum (`daily|weekly|once`), `dueRule?` string (RRULE), `instructions?` string, `status` enum (`open|paused|done`) }
 - `status` · enum (`draft|active|completed|archived`)
 - `sources` · array of (`manual|ai|template`)

@@ -44,6 +44,12 @@ type CarePlanGoalDoc = {
   target?: Record<string, unknown>;
 };
 
+type CarePlanDiagnosisDoc = {
+  code?: string;
+  key: string;
+  label: string;
+};
+
 type CarePlanTaskDoc = {
   dueRule?: string;
   freq: "daily" | "weekly" | "once";
@@ -59,10 +65,13 @@ type CarePlanDoc = {
   completedAt?: Date | null;
   createdAt: Date;
   createdBy: string;
+  diagnoses?: CarePlanDiagnosisDoc[];
   goals?: CarePlanGoalDoc[];
   notes?: string | null;
+  ownerLabels?: string[];
   orgId: string;
   patientId: ObjectId;
+  reviewLabel?: string | null;
   sources?: Array<"manual" | "ai" | "template">;
   status: "draft" | "active" | "completed" | "archived";
   tasks?: CarePlanTaskDoc[];
@@ -228,10 +237,13 @@ async function buildCarePlanDetailData(
         completedAt: 1,
         createdAt: 1,
         createdBy: 1,
+        diagnoses: 1,
         goals: 1,
         notes: 1,
+        ownerLabels: 1,
         orgId: 1,
         patientId: 1,
+        reviewLabel: 1,
         sources: 1,
         status: 1,
         tasks: 1,
@@ -260,6 +272,11 @@ async function buildCarePlanDetailData(
       completedAt: toIso(plan.completedAt),
       createdAt: plan.createdAt.toISOString(),
       createdBy: actorNames.get(plan.createdBy) ?? plan.createdBy,
+      diagnoses: (plan.diagnoses ?? []).map((diagnosis) => ({
+        code: diagnosis.code ?? null,
+        id: diagnosis.key,
+        label: diagnosis.label,
+      })),
       goals: (plan.goals ?? []).map((goal) => ({
         id: goal.key,
         label: goal.label,
@@ -267,6 +284,8 @@ async function buildCarePlanDetailData(
       })),
       id: plan._id.toHexString(),
       notes: plan.notes?.trim() || null,
+      ownerLabels: plan.ownerLabels ?? [],
+      reviewLabel: plan.reviewLabel?.trim() || null,
       sources: plan.sources ?? [],
       status: plan.status,
       tasks: (plan.tasks ?? []).map((task) => ({

@@ -196,6 +196,12 @@ export type PortalPatientCarePlanGoal = {
   targetSummary: string | null;
 };
 
+export type PortalPatientCarePlanDiagnosis = {
+  code: string | null;
+  id: string;
+  label: string;
+};
+
 export type PortalPatientCarePlanTask = {
   freq: "daily" | "weekly" | "once";
   id: string;
@@ -208,20 +214,37 @@ export type PortalPatientCarePlanDetailData = {
   headline: string;
   patient: PortalPatientDetail;
   plan: {
-    activatedAt: string | null;
-    completedAt: string | null;
-    createdAt: string;
-    createdBy: string;
-    goals: PortalPatientCarePlanGoal[];
-    id: string;
-    notes: string | null;
-    sources: Array<"manual" | "ai" | "template">;
-    status: "draft" | "active" | "completed" | "archived";
-    tasks: PortalPatientCarePlanTask[];
-    title: string;
-    updatedAt: string;
-    updatedBy: string;
-  };
+      activatedAt: string | null;
+      completedAt: string | null;
+      createdAt: string;
+      createdBy: string;
+      diagnoses: PortalPatientCarePlanDiagnosis[];
+      goals: PortalPatientCarePlanGoal[];
+      id: string;
+      notes: string | null;
+      ownerLabels: string[];
+      reviewLabel: string | null;
+      sources: Array<"manual" | "ai" | "template">;
+      status: "draft" | "active" | "completed" | "archived";
+      tasks: PortalPatientCarePlanTask[];
+      title: string;
+      updatedAt: string;
+      updatedBy: string;
+    };
+};
+
+export type PortalPatientCarePlanOption = {
+  id: string;
+  label: string;
+};
+
+export type PortalPatientCarePlanCreateData = {
+  diagnosisOptions: PortalPatientCarePlanDiagnosis[];
+  frequencyOptions: PortalPatientCarePlanOption[];
+  headline: string;
+  ownerOptions: PortalPatientCarePlanOption[];
+  patient: PortalPatientDetail;
+  reviewOptions: PortalPatientCarePlanOption[];
 };
 
 export type PortalPatientStat = {

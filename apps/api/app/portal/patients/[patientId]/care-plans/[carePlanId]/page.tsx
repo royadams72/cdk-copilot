@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
@@ -44,10 +43,14 @@ export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
   const { session, status } = usePortalSession();
-  const [data, setData] = useState<PortalPatientCarePlanDetailData | null>(null);
+  const [data, setData] = useState<PortalPatientCarePlanDetailData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [draftAction, setDraftAction] = useState<"activate" | "delete">("activate");
+  const [draftAction, setDraftAction] = useState<"activate" | "delete">(
+    "activate",
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,7 +111,9 @@ export default function PortalPatientCarePlanDetailPage() {
   }, [params.carePlanId, params.patientId, session, status]);
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading care plan...</section>;
+    return (
+      <section className={styles.emptyState}>Loading care plan...</section>
+    );
   }
 
   if (!data || error) {
@@ -130,7 +135,9 @@ export default function PortalPatientCarePlanDetailPage() {
       : "/portal";
   const carePlansHref = `${patientHref}/care-plans`;
 
-  async function runAction(action: "complete" | "activate" | "archive" | "delete") {
+  async function runAction(
+    action: "complete" | "activate" | "archive" | "delete",
+  ) {
     if (!session || !params.patientId || !params.carePlanId || submitting) {
       return;
     }
@@ -183,11 +190,55 @@ export default function PortalPatientCarePlanDetailPage() {
 
   return (
     <section className={styles.subpageLayout}>
-      <PortalPatientSubpageHeader
-        action={
-          data.plan.status === "draft" ? (
+      <div className={styles.patientHeadlineContainer}>
+        <Link className={styles.patientBackLink} href={carePlansHref}>
+          &larr; Back to care plans
+        </Link>
+        <div className={styles.patientHeadline}>
+          <span aria-hidden="true" className={styles.patientHeadlineIcon}>
+            <span className={styles.patientHeadlineAvatarHead} />
+            <span className={styles.patientHeadlineAvatarBody} />
+          </span>
+          <div className={styles.patientHeadlineContent}>
+            <div className={styles.patientHeadlineRow}>
+              <div className={styles.patientHeadlineText}>
+                {data.patient.name}
+              </div>
+            </div>
+          </div>
+        </div>
+        <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
+          Back to care plans
+        </span>
+      </div>
+
+      {error ? <p className={styles.dataScreenCaption}>{error}</p> : null}
+
+      <div className={styles.carePlanTitleRow}>
+        <div className={styles.carePlanTitleBlock}>
+          <h2 className={styles.carePlanPrimaryTitle}>{data.plan.title}</h2>
+        </div>
+        <div
+          className={styles.carePlanStatusInline}
+          data-tone={
+            data.plan.status === "active"
+              ? "success"
+              : data.plan.status === "completed"
+                ? "danger"
+                : data.plan.status === "draft"
+                  ? "accent"
+                  : "muted"
+          }
+        >
+          {formatStatusLabel(data.plan.status)}
+        </div>
+        <div className={styles.carePlanActionCell}>
+          {data.plan.status === "draft" ? (
             <div className={styles.carePlanActionGroup}>
-              <label className={styles.visuallyHidden} htmlFor="care-plan-draft-action">
+              <label
+                className={styles.visuallyHidden}
+                htmlFor="care-plan-draft-action"
+              >
                 Draft care plan action
               </label>
               <select
@@ -228,57 +279,85 @@ export default function PortalPatientCarePlanDetailPage() {
             >
               {submitting ? "Saving..." : "Set complete"}
             </button>
-          ) : undefined
-        }
-        backHref={carePlansHref}
-        backLabel="Back to care plans"
-        headline={data.headline}
-      />
-
-      {error ? <p className={styles.dataScreenCaption}>{error}</p> : null}
-
-      <article className={styles.detailCard}>
-        <div className={styles.cardHeader}>
-          <h2 className={styles.dataScreenTitle}>{data.plan.title}</h2>
-          <div
-            className={styles.carePlanStatus}
-            data-tone={
-              data.plan.status === "active"
-                ? "success"
-                : data.plan.status === "completed"
-                  ? "danger"
-                  : data.plan.status === "draft"
-                    ? "accent"
-                    : "muted"
-            }
-          >
-            {formatStatusLabel(data.plan.status)}
-          </div>
-        </div>
-        <div className={styles.cardBody}>
-          <dl className={styles.detailFacts}>
-            <div>
-              <dt>Activated</dt>
-              <dd>{formatDate(data.plan.activatedAt)}</dd>
-            </div>
-            <div>
-              <dt>Completed</dt>
-              <dd>{formatDate(data.plan.completedAt)}</dd>
-            </div>
-            <div>
-              <dt>Created by</dt>
-              <dd>{data.plan.createdBy}</dd>
-            </div>
-            <div>
-              <dt>Updated by</dt>
-              <dd>{data.plan.updatedBy}</dd>
-            </div>
-          </dl>
-          {data.plan.notes ? (
-            <p className={styles.carePlanDetailNotes}>{data.plan.notes}</p>
           ) : null}
         </div>
-      </article>
+      </div>
+
+      <section className={styles.detailGrid}>
+        <article className={styles.detailCard}>
+          <div className={styles.cardBody}>
+            <div className={styles.carePlanMetaHeaderRow}>
+              <h3 className={styles.carePlanMetaTitle}>Activated</h3>
+              <h3 className={styles.carePlanMetaTitle}>Completed</h3>
+              <h3 className={styles.carePlanMetaTitle}>Created by</h3>
+              <h3 className={styles.carePlanMetaTitle}>Updated by</h3>
+            </div>
+            <div className={styles.carePlanFactsContentRow}>
+              <div className={styles.carePlanMetaValue}>
+                {formatDate(data.plan.activatedAt)}
+              </div>
+              <div className={styles.carePlanMetaValue}>
+                {formatDate(data.plan.completedAt)}
+              </div>
+              <div className={styles.carePlanMetaValue}>{data.plan.createdBy}</div>
+              <div className={styles.carePlanMetaValue}>{data.plan.updatedBy}</div>
+            </div>
+            {data.plan.notes ? (
+              <p className={styles.carePlanDetailNotes}>{data.plan.notes}</p>
+            ) : null}
+          </div>
+        </article>
+
+        <article className={styles.detailCard}>
+          <div className={styles.cardBody}>
+            <div className={styles.carePlanMetaHeaderRow}>
+              <h3 className={styles.carePlanPanelTitle}>Associated diagnoses</h3>
+              <h3 className={styles.carePlanPanelTitle}>Owners</h3>
+              <h3 className={styles.carePlanPanelTitle}>Review in</h3>
+            </div>
+            <div className={styles.carePlanMetaContentRow}>
+              <div className={styles.carePlanMetaCell}>
+                {data.plan.diagnoses.length ? (
+                  <div className={styles.carePlanPlainList}>
+                    {data.plan.diagnoses.map((diagnosis) => (
+                      <div
+                        className={styles.carePlanPlainItem}
+                        key={diagnosis.id}
+                      >
+                        {diagnosis.label}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.dataScreenCaption}>
+                    No diagnoses linked.
+                  </p>
+                )}
+              </div>
+              <div className={styles.carePlanMetaCell}>
+                {data.plan.ownerLabels.length ? (
+                  <div className={styles.carePlanPlainList}>
+                    {data.plan.ownerLabels.map((label) => (
+                      <div className={styles.carePlanPlainItem} key={label}>
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.dataScreenCaption}>
+                    No owners selected.
+                  </p>
+                )}
+              </div>
+              <div className={styles.carePlanMetaCell}>
+                <p className={styles.carePlanMetaValue}>
+                  {data.plan.reviewLabel ?? "Not set"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
 
       <section className={styles.dataScreenCard}>
         <div className={styles.dataScreenToolbar}>
@@ -307,7 +386,9 @@ export default function PortalPatientCarePlanDetailPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={2}>No goals were recorded for this care plan.</td>
+                  <td colSpan={2}>
+                    No goals were recorded for this care plan.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -346,7 +427,9 @@ export default function PortalPatientCarePlanDetailPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4}>No tasks were recorded for this care plan.</td>
+                  <td colSpan={4}>
+                    No tasks were recorded for this care plan.
+                  </td>
                 </tr>
               )}
             </tbody>

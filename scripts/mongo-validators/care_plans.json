@@ -17,6 +17,19 @@
         "orgId": { "bsonType": "string" },
         "patientId": { "bsonType": "objectId" },
         "title": { "bsonType": "string" },
+        "diagnoses": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["key", "label"],
+            "properties": {
+              "key": { "bsonType": "string" },
+              "label": { "bsonType": "string" },
+              "code": { "bsonType": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
 
         "createdBy": {
           "bsonType": "string",
@@ -56,6 +69,11 @@
             "additionalProperties": true
           }
         },
+        "ownerLabels": {
+          "bsonType": "array",
+          "items": { "bsonType": "string" }
+        },
+        "reviewLabel": { "bsonType": "string" },
         "status": { "enum": ["draft", "active", "completed", "archived"] },
         "sources": {
           "bsonType": "array",

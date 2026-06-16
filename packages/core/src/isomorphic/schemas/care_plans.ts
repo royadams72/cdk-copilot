@@ -26,11 +26,20 @@ export const CarePlanGoal = z.object({
   target: z.record(z.string(), z.unknown()).optional(),
 });
 
+export const CarePlanDiagnosis = z.object({
+  code: z.string().min(1).optional(),
+  key: z.string().min(1),
+  label: z.string().min(1),
+});
+
 export const CarePlanDoc = z.object({
   orgId: z.string().min(1),
   patientId: objectIdHex, // convert to ObjectId before insert
   title: z.string().min(1),
+  diagnoses: z.array(CarePlanDiagnosis).default([]),
   goals: z.array(CarePlanGoal).default([]),
+  ownerLabels: z.array(z.string().min(1)).default([]),
+  reviewLabel: z.string().min(1).optional(),
   tasks: z.array(CarePlanTask).default([]),
   status: CarePlanStatus.default("draft"),
   sources: z.array(CarePlanSource).default(["manual"]),
