@@ -12,6 +12,7 @@ dotenv.config({ path: path.join(process.cwd(), ".env") });
 const DEMO_PATIENT_COUNT = 5;
 const DEMO_ORG_ID = "org_ckd_portal_demo";
 const SEED_PRINCIPAL_ID = "portal_demo_backfill";
+const SUMMARY_COLLECTION = "nutrition_monthly_patient_summary";
 
 function getMongoUri() {
   return process.env.MONGODB_URI_MIGRATIONS || process.env.MONGODB_URI_APP;
@@ -55,6 +56,16 @@ async function run() {
     const patientIds = Array.from({ length: DEMO_PATIENT_COUNT }, (_, index) =>
       toDemoPatientId(index),
     );
+    const clean = process.argv.includes("--clean");
+
+    if (clean) {
+      await db.collection(SUMMARY_COLLECTION).deleteMany({
+        patientId: { $in: patientIds },
+      });
+      console.log(
+        `[portal:nutrition-summary] deleted existing demo summaries for ${patientIds.length} patients`,
+      );
+    }
 
     const entries = await ledger
       .find(

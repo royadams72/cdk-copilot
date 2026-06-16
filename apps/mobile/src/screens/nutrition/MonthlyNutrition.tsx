@@ -60,17 +60,28 @@ export default function MonthlyNutrition() {
   const activeMetric =
     MONTHLY_METRICS.find((metric) => metric.key === selectedFilter) ??
     MONTHLY_METRICS[0];
+  const effectiveSelectedMonth = selectedMonthOverride ?? data?.selectedMonth;
   const loading = isLoading && !data;
   const errorMessage = toQueryErrorMessage(
     error,
     "We couldn't refresh your monthly nutrition data",
   );
 
+  const selectedMonthStat = useMemo(
+    () =>
+      data?.monthlyStats.find((item) => item.month === effectiveSelectedMonth) ??
+      data?.monthlyStats.find((item) => item.target !== null) ??
+      null,
+    [data?.monthlyStats, effectiveSelectedMonth],
+  );
+  const selectedTarget = selectedMonthStat?.target ?? null;
+
   const chartBars = useMemo(() => {
     const stats = data?.monthlyStats ?? [];
     const maxValue = Math.max(
       1,
-      ...stats.map((item) => Math.max(item.value, item.target ?? 0)),
+      ...stats.map((item) => item.value),
+      selectedTarget ?? 0,
     );
     const innerWidth = MONTHLY_CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
     const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
@@ -82,22 +93,30 @@ export default function MonthlyNutrition() {
       const ratio = item.value / maxValue;
       const barHeight = innerHeight * ratio;
       const y = CHART_PADDING.top + (innerHeight - barHeight);
-      const targetY =
-        item.target && item.target > 0
-          ? CHART_PADDING.top + innerHeight * (1 - Math.min(item.target / maxValue, 1))
-          : null;
 
       return {
         ...item,
         barHeight,
         barWidth,
         slotWidth,
-        targetY,
         x,
         y,
       };
     });
-  }, [data?.monthlyStats]);
+  }, [data?.monthlyStats, selectedTarget]);
+
+  const selectedTargetY = useMemo(() => {
+    if (!selectedTarget || !chartBars.length) {
+      return null;
+    }
+    const maxValue = Math.max(
+      1,
+      ...chartBars.map((item) => item.value),
+      selectedTarget,
+    );
+    const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+    return CHART_PADDING.top + innerHeight * (1 - Math.min(selectedTarget / maxValue, 1));
+  }, [chartBars, selectedTarget]);
 
   if (loading) {
     return (
@@ -210,19 +229,27 @@ export default function MonthlyNutrition() {
                     fill={bar.isSelected ? "#F59E0B" : activeMetric.color}
                   />
                 ))}
-                {chartBars.map((bar) =>
-                  bar.targetY !== null ? (
+                {selectedTargetY !== null ? (
+                  <>
                     <Line
-                      key={`target-${bar.month}`}
-                      x1={bar.x - 2}
-                      y1={bar.targetY}
-                      x2={bar.x + bar.barWidth + 2}
-                      y2={bar.targetY}
-                      stroke="rgba(99,102,241,0.85)"
+                      x1={CHART_PADDING.left}
+                      y1={selectedTargetY}
+                      x2={MONTHLY_CHART_WIDTH - CHART_PADDING.right}
+                      y2={selectedTargetY}
+                      stroke="rgba(99,102,241,0.95)"
                       strokeWidth={1.5}
                     />
-                  ) : null,
-                )}
+                    <SvgText
+                      x={MONTHLY_CHART_WIDTH - CHART_PADDING.right}
+                      y={selectedTargetY - 6}
+                      textAnchor="end"
+                      fontSize={11}
+                      fill="#4F46E5"
+                    >
+                      Target
+                    </SvgText>
+                  </>
+                ) : null}
                 {chartBars.map((bar) => (
                   <SvgText
                     key={`label-${bar.month}`}
@@ -257,9 +284,16 @@ export default function MonthlyNutrition() {
             <ThemedText style={NutritionStyles.legendMetric}>
               {activeMetric.label}
             </ThemedText>
-            <ThemedText style={NutritionStyles.legendValue}>
-              {data?.selectedMonthLabel ?? ""}
-            </ThemedText>
+            <View style={NutritionStyles.chartLegendRight}>
+              {selectedTarget !== null ? (
+                <ThemedText style={NutritionStyles.legendTarget}>
+                  Target {formatMetricValue(selectedTarget, activeMetric.unit)}
+                </ThemedText>
+              ) : null}
+              <ThemedText style={NutritionStyles.legendValue}>
+                {data?.selectedMonthLabel ?? ""}
+              </ThemedText>
+            </View>
           </View>
         </Card>
 

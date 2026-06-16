@@ -76,6 +76,16 @@ export default function PortalPatientNutritionPage() {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 6 });
   const effectiveSelectedMonth = selectedMonth ?? data?.selectedMonth ?? null;
+  const selectedMonthStat =
+    data?.monthlyStats.find((item) => item.month === effectiveSelectedMonth) ??
+    data?.monthlyStats.find((item) => item.target !== null) ??
+    null;
+  const selectedTarget = selectedMonthStat?.target ?? null;
+  const chartMax = Math.max(
+    1,
+    ...(data?.monthlyStats.map((item) => item.value) ?? [0]),
+    selectedTarget ?? 0,
+  );
 
   useEffect(() => {
     if (status !== "authenticated" || !session || !params.patientId) {
@@ -270,6 +280,7 @@ export default function PortalPatientNutritionPage() {
                   tick={{ fill: "#6a7b8e", fontSize: 12 }}
                 />
                 <YAxis
+                  domain={[0, chartMax]}
                   tick={{ fill: "#6a7b8e", fontSize: 12 }}
                   tickFormatter={(value) => `${value}`}
                   width={56}
@@ -278,20 +289,6 @@ export default function PortalPatientNutritionPage() {
                   formatter={(value) => formatAmount(Number(value), filter)}
                   labelFormatter={(value) => `Month: ${value}`}
                 />
-                <ReferenceLine
-                  label={{
-                    fill: "#6a7b8e",
-                    fontSize: 12,
-                    value: "Target",
-                  }}
-                  stroke="#444"
-                  strokeWidth={1.5}
-                  y={
-                    data.monthlyStats.find((item) => item.target !== null)
-                      ?.target ?? undefined
-                  }
-                />
-
                 <Bar dataKey="value" radius={[2, 2, 0, 0]}>
                   {data.monthlyStats.map((item) => (
                     <Cell
@@ -304,6 +301,20 @@ export default function PortalPatientNutritionPage() {
                     />
                   ))}
                 </Bar>
+                {selectedTarget !== null ? (
+                  <ReferenceLine
+                    ifOverflow="extendDomain"
+                    label={{
+                      fill: "#4F46E5",
+                      fontSize: 12,
+                      value: "Target",
+                    }}
+                    stroke="#4F46E5"
+                    strokeDasharray="6 4"
+                    strokeWidth={2}
+                    y={selectedTarget}
+                  />
+                ) : null}
               </BarChart>
             </ResponsiveContainer>
 
@@ -333,6 +344,11 @@ export default function PortalPatientNutritionPage() {
               {data.foodRows.length} food rows across the last{" "}
               {data.window.days} days
             </p>
+            {selectedTarget !== null ? (
+              <p className={styles.dataScreenCaption}>
+                Target: {formatAmount(selectedTarget, filter)}
+              </p>
+            ) : null}
           </div>
 
           {data.foodRows.length === 0 ? (
