@@ -176,6 +176,14 @@ export default function PortalPatientDetailPage() {
             >
               {label}
             </Link>
+          ) : label === "Care Plans" ? (
+            <Link
+              className={styles.patientActionLink}
+              href={`/portal/patients/${patient.id}/care-plans`}
+              key={label}
+            >
+              {label}
+            </Link>
           ) : (
             <button
               className={styles.patientActionButton}

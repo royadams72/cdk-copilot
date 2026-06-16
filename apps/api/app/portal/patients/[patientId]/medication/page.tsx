@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import type { PortalPatientMedicationData } from "@/apps/api/lib/portal/patient-shared";
@@ -124,25 +125,11 @@ export default function PortalPatientMedicationPage() {
 
   return (
     <section className={styles.subpageLayout}>
-      <div className={styles.patientHeadlineContainer}>
-        <Link className={styles.patientBackLink} href={patientHref}>
-          &larr; Back to patient
-        </Link>
-        <div className={styles.patientHeadline}>
-          <span aria-hidden="true" className={styles.patientHeadlineIcon}>
-            <span className={styles.patientHeadlineAvatarHead} />
-            <span className={styles.patientHeadlineAvatarBody} />
-          </span>
-          <div className={styles.patientHeadlineContent}>
-            <div className={styles.patientHeadlineRow}>
-              <div className={styles.patientHeadlineText}>{data.headline}</div>
-            </div>
-          </div>
-        </div>
-        <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
-          Back to patient
-        </span>
-      </div>
+      <PortalPatientSubpageHeader
+        backHref={patientHref}
+        backLabel="Back to patient"
+        headline={data.headline}
+      />
 
       {data && (
         <div>

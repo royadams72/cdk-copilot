@@ -22,6 +22,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import {
@@ -209,28 +210,11 @@ export default function PortalPatientNutritionPage() {
 
   return (
     <section className={styles.subpageLayout}>
-      <div className={styles.patientHeadlineContainer}>
-        <Link
-          className={styles.patientBackLink}
-          href={`/portal/patients/${data.patient.id}`}
-        >
-          &larr; Back to patient dashboard
-        </Link>
-        <div className={styles.patientHeadline}>
-          <span aria-hidden="true" className={styles.patientHeadlineIcon}>
-            <span className={styles.patientHeadlineAvatarHead} />
-            <span className={styles.patientHeadlineAvatarBody} />
-          </span>
-          <div className={styles.patientHeadlineContent}>
-            <div className={styles.patientHeadlineRow}>
-              <div className={styles.patientHeadlineText}>{data.headline}</div>
-            </div>
-          </div>
-        </div>
-        <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
-          Back to patient dashboard
-        </span>
-      </div>
+      <PortalPatientSubpageHeader
+        backHref={`/portal/patients/${data.patient.id}`}
+        backLabel="Back to patient dashboard"
+        headline={data.headline}
+      />
 
       <section className={styles.nutritionInsightLayout}>
         <div className={styles.nutritionInsightHeader}>

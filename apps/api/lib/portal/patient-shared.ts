@@ -163,6 +163,67 @@ export type PortalPatientMedicationData = {
   };
 };
 
+export type PortalPatientCarePlanRow = {
+  activatedAt: string | null;
+  completedAt: string | null;
+  goalsCount: number;
+  id: string;
+  notes: string | null;
+  openTasksCount: number;
+  sources: Array<"manual" | "ai" | "template">;
+  status: "draft" | "active" | "completed" | "archived";
+  tasksCount: number;
+  title: string;
+  updatedAt: string;
+};
+
+export type PortalPatientCarePlanData = {
+  headline: string;
+  patient: PortalPatientDetail;
+  rows: PortalPatientCarePlanRow[];
+  summary: {
+    activeCount: number;
+    completedCount: number;
+    draftCount: number;
+    reviewDueCount: number;
+    totalCount: number;
+  };
+};
+
+export type PortalPatientCarePlanGoal = {
+  id: string;
+  label: string;
+  targetSummary: string | null;
+};
+
+export type PortalPatientCarePlanTask = {
+  freq: "daily" | "weekly" | "once";
+  id: string;
+  instructions: string | null;
+  label: string;
+  status: "open" | "paused" | "done";
+};
+
+export type PortalPatientCarePlanDetailData = {
+  headline: string;
+  patient: PortalPatientDetail;
+  plan: {
+    activatedAt: string | null;
+    completedAt: string | null;
+    createdAt: string;
+    createdBy: string;
+    goals: PortalPatientCarePlanGoal[];
+    id: string;
+    notes: string | null;
+    sources: Array<"manual" | "ai" | "template">;
+    status: "draft" | "active" | "completed" | "archived";
+    tasks: PortalPatientCarePlanTask[];
+    title: string;
+    updatedAt: string;
+    updatedBy: string;
+  };
+};
+
 export type PortalPatientStat = {
   count: number;
   detail: string;
