@@ -59,8 +59,7 @@ nutrition_monthly_patient_summary
   },
   "sourceVersion": 1,
   "generatedAt": "2026-07-01T00:05:00.000Z",
-  "updatedAt": "2026-07-01T00:05:00.000Z",
-  "createdAt": "2026-07-01T00:05:00.000Z"
+  "updatedAt": "2026-07-01T00:05:00.000Z"
 }
 ```
 

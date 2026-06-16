@@ -21,7 +21,6 @@ export type NutritionMonthlyTopFood = {
 
 export type NutritionMonthlyPatientSummaryDoc = {
   _id?: ObjectId;
-  createdAt?: Date;
   daysLogged?: number;
   generatedAt?: Date;
   month: string;

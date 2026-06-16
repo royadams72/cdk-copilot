@@ -5,11 +5,11 @@ import {
   getNutritionTrend,
   NUTRITION_MONTHLY_PATIENT_SUMMARY_COLLECTION,
   type NutritionMonthlyPatientSummaryDoc,
-} from "@/apps/api/lib/portal/nutritionMonthlySummary";
-import type { PortalNutritionFilter } from "@/apps/api/lib/portal/patient-shared";
-import type { NutritionEntryDoc } from "@/apps/api/lib/types/dashboard";
-import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
-import { COLLECTIONS } from "@ckd/core/server";
+} from "../portal/nutritionMonthlySummary";
+import type { PortalNutritionFilter } from "../portal/patient-shared";
+import type { NutritionEntryDoc } from "../types/dashboard";
+import { getMappedNutritionTargets } from "./targets";
+import { COLLECTIONS } from "../../../../packages/core/src/server/constants/collections";
 
 const SUMMARY_METRICS: PortalNutritionFilter[] = [
   "caloriesKcal",
@@ -285,9 +285,6 @@ export async function recomputeNutritionMonthlySummary(
         topFoods,
         totals,
         updatedAt: now,
-      },
-      $setOnInsert: {
-        createdAt: now,
       },
     },
     { upsert: true },
