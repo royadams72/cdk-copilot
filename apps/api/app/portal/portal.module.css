@@ -750,6 +750,13 @@
   line-height: 20px;
 }
 
+.tableSubtleText {
+  margin-top: 4px;
+  color: var(--portal-text-soft);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .dataTable tbody tr:nth-child(even) {
   background: #f8fbfd;
 }
@@ -825,10 +832,10 @@
 }
 
 .detailCard {
-  padding: var(--portal-space-4);
   border: 1px solid var(--portal-line);
   border-radius: var(--portal-radius-md);
   background: var(--portal-surface);
+  overflow: hidden;
 }
 
 .detailCardTitle {
@@ -839,9 +846,23 @@
   font-weight: 700;
 }
 
+.cardHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  padding: var(--portal-space-3);
+  border-bottom: 1px solid var(--portal-line);
+  background: var(--portal-surface-muted);
+}
+
+.cardBody {
+  padding: var(--portal-space-3);
+}
+
 .detailFacts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--portal-space-3);
   margin: 0;
 }

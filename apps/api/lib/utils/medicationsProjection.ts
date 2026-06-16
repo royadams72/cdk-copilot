@@ -1,5 +1,5 @@
 import { Db, ObjectId } from "mongodb";
-import { COLLECTIONS } from "@ckd/core/server";
+import { COLLECTIONS } from "../../../../packages/core/src/server/constants/collections";
 
 export type MedicationStatus = "active" | "paused" | "stopped" | "completed";
 
@@ -189,7 +189,6 @@ export async function rebuildAndUpsertMedicationCurrent(
   const currentDoc = {
     _id: medicationId,
     medicationId: state.medicationId,
-    orgId: state.orgId ?? undefined,
     patientId: state.patientId,
     name: state.name,
     dose: state.dose,
@@ -210,10 +209,13 @@ export async function rebuildAndUpsertMedicationCurrent(
     lastEventId: lastEvent._id,
   };
 
+  if (state.orgId) {
+    Object.assign(currentDoc, { orgId: state.orgId });
+  }
+
   await db
     .collection(COLLECTIONS.MedicationsCurrent)
     .updateOne({ _id: medicationId }, { $set: currentDoc }, { upsert: true });
 
   return { events, state };
 }
-

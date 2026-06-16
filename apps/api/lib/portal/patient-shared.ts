@@ -126,6 +126,43 @@ export type PortalPatientHealthData = {
   };
 };
 
+export type PortalPatientMedicationRow = {
+  dose: string | null;
+  endAt: string | null;
+  form: string | null;
+  frequency: string | null;
+  id: string;
+  instructions: string | null;
+  latestReason: string | null;
+  name: string;
+  route: string | null;
+  source: "clinical_profile" | "current_projection";
+  startAt: string | null;
+  status: "active" | "paused" | "stopped" | "completed";
+  updatedAt: string | null;
+};
+
+export type PortalPatientMedicationEvent = {
+  at: string;
+  by: string;
+  id: string;
+  label: string;
+  reason: string | null;
+};
+
+export type PortalPatientMedicationData = {
+  headline: string;
+  patient: PortalPatientDetail;
+  recentEvents: PortalPatientMedicationEvent[];
+  rows: PortalPatientMedicationRow[];
+  summary: {
+    activeCount: number;
+    lastUpdatedAt: string | null;
+    projectedCount: number;
+    totalCount: number;
+  };
+};
+
 export type PortalPatientStat = {
   count: number;
   detail: string;

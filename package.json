@@ -37,6 +37,7 @@
     "db:apply-validators": "tsx scripts/apply-mongo-validators.ts",
     "db:seed:portal-demo": "tsx scripts/seed-portal-demo-patients.ts",
     "db:seed:portal-demo:symptoms": "tsx scripts/seed-portal-demo-symptoms.ts",
+    "db:seed:portal-demo:medications": "tsx scripts/seed-portal-demo-medications.ts",
     "db:backfill:portal-demo:nutrition-summary": "tsx scripts/backfill-portal-demo-nutrition-monthly-summary.ts",
     "db:rebuild:portal-demo:nutrition-summary": "tsx scripts/backfill-portal-demo-nutrition-monthly-summary.ts --clean",
     "db:audit:measurements": "tsx scripts/audit-measurements-ledger.ts",
