@@ -99,6 +99,7 @@ const CREATE_PAYLOAD = z.object({
     .default([]),
   frequency: z.enum(["daily", "weekly", "once"]),
   measureUsing: z.string().trim().min(1).max(60),
+  notes: z.string().trim().max(2000).optional(),
   ownerLabels: z.array(z.string().trim().min(1).max(80)).default([]),
   reviewLabel: z.string().trim().min(1).max(40),
   target: z.string().trim().min(1).max(120),
@@ -288,8 +289,16 @@ export async function POST(
     }
 
     const now = new Date();
-    const { diagnoses, frequency, measureUsing, ownerLabels, reviewLabel, target, title } =
-      parsed.data;
+    const {
+      diagnoses,
+      frequency,
+      measureUsing,
+      notes,
+      ownerLabels,
+      reviewLabel,
+      target,
+      title,
+    } = parsed.data;
     const doc: CarePlanDoc = {
       _id: new ObjectId(),
       activatedAt: now,
@@ -307,6 +316,7 @@ export async function POST(
           target: { summary: target },
         },
       ],
+      ...(notes?.trim() ? { notes: notes.trim() } : {}),
       orgId: caller.orgId || patient.assignments?.[0]?.orgId || "org_demo",
       ownerLabels,
       patientId: patientObjectId,

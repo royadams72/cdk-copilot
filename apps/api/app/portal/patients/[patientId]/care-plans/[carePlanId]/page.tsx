@@ -14,7 +14,7 @@ type PortalCarePlanDetailResponse = {
 };
 
 function formatDate(value: string | null) {
-  if (!value) return "Not set";
+  if (!value) return "No date set";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "2-digit",
@@ -283,82 +283,94 @@ export default function PortalPatientCarePlanDetailPage() {
         </div>
       </div>
 
-      <section className={styles.detailGrid}>
-        <article className={styles.detailCard}>
-          <div className={styles.cardBody}>
-            <div className={styles.carePlanMetaHeaderRow}>
-              <h3 className={styles.carePlanMetaTitle}>Activated</h3>
-              <h3 className={styles.carePlanMetaTitle}>Completed</h3>
-              <h3 className={styles.carePlanMetaTitle}>Created by</h3>
-              <h3 className={styles.carePlanMetaTitle}>Updated by</h3>
-            </div>
-            <div className={styles.carePlanFactsContentRow}>
-              <div className={styles.carePlanMetaValue}>
-                {formatDate(data.plan.activatedAt)}
-              </div>
-              <div className={styles.carePlanMetaValue}>
-                {formatDate(data.plan.completedAt)}
-              </div>
-              <div className={styles.carePlanMetaValue}>{data.plan.createdBy}</div>
-              <div className={styles.carePlanMetaValue}>{data.plan.updatedBy}</div>
-            </div>
-            {data.plan.notes ? (
-              <p className={styles.carePlanDetailNotes}>{data.plan.notes}</p>
-            ) : null}
+      <section className={styles.dataScreenCard}>
+        <div className={styles.dataScreenToolbar}>
+          <div>
+            <h2 className={styles.dataScreenTitle}>Plan summary</h2>
           </div>
-        </article>
+        </div>
+        <div className={styles.dataTableWrap}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Associated diagnoses</th>
+                <th>Completed</th>
+                <th>Review in</th>
+                <th>Activated</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  {data.plan.diagnoses.length ? (
+                    <div>
+                      {data.plan.diagnoses.map((diagnosis) => (
+                        <div key={diagnosis.id}>{diagnosis.label}</div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>No diagnoses linked.</div>
+                  )}
+                </td>
 
-        <article className={styles.detailCard}>
-          <div className={styles.cardBody}>
-            <div className={styles.carePlanMetaHeaderRow}>
-              <h3 className={styles.carePlanPanelTitle}>Associated diagnoses</h3>
-              <h3 className={styles.carePlanPanelTitle}>Owners</h3>
-              <h3 className={styles.carePlanPanelTitle}>Review in</h3>
-            </div>
-            <div className={styles.carePlanMetaContentRow}>
-              <div className={styles.carePlanMetaCell}>
-                {data.plan.diagnoses.length ? (
-                  <div className={styles.carePlanPlainList}>
-                    {data.plan.diagnoses.map((diagnosis) => (
-                      <div
-                        className={styles.carePlanPlainItem}
-                        key={diagnosis.id}
-                      >
-                        {diagnosis.label}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className={styles.dataScreenCaption}>
-                    No diagnoses linked.
-                  </p>
-                )}
-              </div>
-              <div className={styles.carePlanMetaCell}>
-                {data.plan.ownerLabels.length ? (
-                  <div className={styles.carePlanPlainList}>
-                    {data.plan.ownerLabels.map((label) => (
-                      <div className={styles.carePlanPlainItem} key={label}>
-                        {label}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className={styles.dataScreenCaption}>
-                    No owners selected.
-                  </p>
-                )}
-              </div>
-              <div className={styles.carePlanMetaCell}>
-                <p className={styles.carePlanMetaValue}>
-                  {data.plan.reviewLabel ?? "Not set"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </article>
+                <td> {formatDate(data.plan.completedAt)}</td>
+                <td>{data.plan.reviewLabel ?? "Not set"}</td>
+                <td>{formatDate(data.plan.activatedAt)}</td>
+              </tr>
+              {data.plan.notes ? (
+                <tr>
+                  <td colSpan={4}>
+                    <h3 className={styles.carePlanPanelTitle}>Notes</h3>
+                    <p className={styles.carePlanDetailNotes}>
+                      {data.plan.notes}
+                    </p>
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
+      <section className={styles.dataScreenCard}>
+        <div className={styles.dataScreenToolbar}>
+          <div>
+            <h2 className={styles.dataScreenTitle}>Plan participants</h2>
+            <p className={styles.dataScreenCaption}>
+              People interacting with this care plan.
+            </p>
+          </div>
+        </div>
+        <div className={styles.dataTableWrap}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Created by</th>
+                <th>Updated by</th>
+                <th>Owners</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{data.plan.createdBy}</td>
+
+                <td> {data.plan.updatedBy}</td>
+                <td>
+                  {data.plan.ownerLabels.length ? (
+                    <div>
+                      {data.plan.ownerLabels.map((label) => (
+                        <div key={label}>{label}</div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>No owners selected.</p>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
       <section className={styles.dataScreenCard}>
         <div className={styles.dataScreenToolbar}>
           <div>

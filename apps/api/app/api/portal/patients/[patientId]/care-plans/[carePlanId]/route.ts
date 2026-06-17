@@ -117,6 +117,33 @@ function formatActorName(parts: Array<string | null | undefined>) {
   return value || null;
 }
 
+function prettifyActorToken(value: string | null | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withoutPrefix = trimmed.replace(/^(pr|acc)_/i, "");
+  const emailLocalPart = withoutPrefix.includes("@")
+    ? withoutPrefix.split("@")[0]
+    : withoutPrefix;
+
+  const prettified = emailLocalPart
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!prettified) return null;
+
+  return prettified
+    .split(" ")
+    .map((part) =>
+      /^[a-z]+$/i.test(part)
+        ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        : part,
+    )
+    .join(" ");
+}
+
 async function loadScopedPatient(
   db: Awaited<ReturnType<typeof getDb>>,
   caller: PortalCaller,
@@ -207,8 +234,10 @@ async function loadActorNames(
     if (name) actorNames.set(doc.principalId, name);
   }
   for (const doc of actorAccountDocs) {
-    if (!actorNames.has(doc.principalId) && doc.email?.trim()) {
-      actorNames.set(doc.principalId, doc.email.trim());
+    if (!actorNames.has(doc.principalId)) {
+      const fallback =
+        prettifyActorToken(doc.principalId) ?? prettifyActorToken(doc.email);
+      if (fallback) actorNames.set(doc.principalId, fallback);
     }
   }
   return actorNames;

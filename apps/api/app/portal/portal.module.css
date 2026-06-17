@@ -584,7 +584,7 @@
 .subpageLayout {
   display: grid;
   gap: var(--portal-space-4);
-  padding: var(--portal-space-4) var(--portal-space-2) var(--portal-space-6);
+  padding: var(--portal-space-4) var(--portal-space-3) var(--portal-space-6);
 }
 
 .carePlanHero {
@@ -637,12 +637,28 @@
 }
 
 .carePlanDetailNotes {
-  margin: var(--portal-space-3) 0 0;
+  margin: var(--portal-space-1) 0 0;
   color: var(--portal-text);
   font-size: 14px;
   line-height: 20px;
 }
-
+/* .dataTable th {
+  color: var(--portal-text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--portal-surface-row);
+} */
+.carePlanPanelTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 700;
+  background-color: transparent !important;
+}
 .carePlanPageHeader {
   display: flex;
   align-items: center;
@@ -699,22 +715,40 @@
   min-width: max-content;
 }
 
+.carePlanSummarySection + .carePlanSummarySection {
+  margin-top: var(--portal-space-3);
+  padding-top: var(--portal-space-3);
+  border-top: 1px solid var(--portal-line-soft);
+}
+
 .carePlanMetaHeaderRow,
-.carePlanMetaContentRow {
+.carePlanMetaContentRow,
+.carePlanMetaHeaderRow2 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--portal-space-3);
-}
 
-.carePlanMetaContentRow {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+  flex-wrap: nowrap;
+}
+.carePlanMetaHeaderRow2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.carePlanMetaContentRow,
+.carePlanSummaryFactsRow,
+.carePlanSummaryContextRow {
   margin-top: var(--portal-space-2);
 }
 
-.carePlanFactsContentRow {
+.carePlanSummaryFactsRow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--portal-space-3);
-  margin-top: var(--portal-space-2);
+}
+
+.carePlanSummaryContextRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--portal-space-3);
 }
 
 .carePlanMetaCell {
@@ -810,6 +844,19 @@
   background: var(--portal-surface);
 }
 
+.carePlanTextarea {
+  width: 100%;
+  min-height: 108px;
+  padding: 10px 12px;
+  border: 1px solid var(--portal-line-strong);
+  border-radius: var(--portal-radius-md);
+  color: var(--portal-text-soft);
+  font-size: 16px;
+  line-height: 24px;
+  resize: vertical;
+  background: var(--portal-surface);
+}
+
 .carePlanChipList {
   display: flex;
   flex-wrap: wrap;
@@ -839,16 +886,13 @@
 }
 
 .carePlanPlainItem {
-  /* min-height: 44px;
+  min-height: 40px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  border-radius: var(--portal-radius-md); */
   color: var(--portal-accent-dark);
   font-size: 15px;
   line-height: 22px;
   font-weight: 600;
-  /* background: var(--portal-surface-accent); */
 }
 
 .carePlanOwnerList {
@@ -1046,7 +1090,8 @@
   vertical-align: top;
 }
 
-.dataTable th {
+.dataTable th,
+.carePlanPanelTitle {
   color: var(--portal-text);
   font-size: 13px;
   line-height: 18px;

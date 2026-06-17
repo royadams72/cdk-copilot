@@ -37,6 +37,7 @@ export default function PortalPatientAddCarePlanPage() {
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [measureUsing, setMeasureUsing] = useState("");
+  const [notes, setNotes] = useState("");
   const [frequency, setFrequency] = useState("daily");
   const [reviewLabel, setReviewLabel] = useState("1_month");
   const [ownerLabels, setOwnerLabels] = useState<string[]>([]);
@@ -148,6 +149,7 @@ export default function PortalPatientAddCarePlanPage() {
             })),
             frequency,
             measureUsing,
+            notes,
             ownerLabels,
             reviewLabel:
               data.reviewOptions.find((option) => option.id === reviewLabel)?.label ??
@@ -332,6 +334,24 @@ export default function PortalPatientAddCarePlanPage() {
             onChange={(event) => setMeasureUsing(event.target.value)}
             placeholder="BP machine"
             value={measureUsing}
+          />
+        </div>
+
+        <div className={styles.carePlanFormGroup}>
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-notes">
+            Notes
+          </label>
+          <p className={styles.dataScreenCaption}>
+            Optional clinician note shown on the care plan detail page.
+          </p>
+          <textarea
+            className={styles.carePlanTextarea}
+            id="care-plan-notes"
+            maxLength={2000}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Add any context or instructions for this plan"
+            rows={4}
+            value={notes}
           />
         </div>
 
