@@ -26,12 +26,20 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser(req);
     if (!user.patientId) {
+      console.log("[push:register] missing patient context", {
+        principalId: user.principalId,
+      });
       return bad("Patient context missing", undefined, 403);
     }
 
     const body = await req.json().catch(() => null);
     const parsed = RegisterPushDeviceBody.safeParse(body);
     if (!parsed.success) {
+      console.log("[push:register] validation failed", {
+        body,
+        patientId: user.patientId,
+        principalId: user.principalId,
+      });
       return bad("Validation failed", parsed.error.flatten(), 400);
     }
 
@@ -39,7 +47,14 @@ export async function POST(req: NextRequest) {
     const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
     const now = new Date();
 
-    await usersPii.updateOne(
+    console.log("[push:register] writing token", {
+      patientId: user.patientId,
+      platform: parsed.data.platform,
+      principalId: user.principalId,
+      pushToken: parsed.data.pushToken,
+    });
+
+    const pullResult = await usersPii.updateOne(
       { patientId: user.patientId },
       {
         $pull: {
@@ -48,7 +63,13 @@ export async function POST(req: NextRequest) {
       },
     );
 
-    await usersPii.updateOne(
+    console.log("[push:register] pull result", {
+      matchedCount: pullResult.matchedCount,
+      modifiedCount: pullResult.modifiedCount,
+      patientId: user.patientId,
+    });
+
+    const pushResult = await usersPii.updateOne(
       { patientId: user.patientId },
       {
         $push: {
@@ -65,8 +86,29 @@ export async function POST(req: NextRequest) {
       },
     );
 
+    console.log("[push:register] push result", {
+      matchedCount: pushResult.matchedCount,
+      modifiedCount: pushResult.modifiedCount,
+      patientId: user.patientId,
+      upsertedCount: pushResult.upsertedCount,
+      upsertedId: pushResult.upsertedId ?? null,
+    });
+
+    const persisted = await usersPii.findOne(
+      { patientId: user.patientId },
+      {
+        projection: {
+          devices: 1,
+          patientId: 1,
+        },
+      },
+    );
+
+    console.log("[push:register] persisted device state", persisted);
+
     return ok({ registered: true });
   } catch (err: any) {
+    console.log("[push:register] failed", err);
     return bad(err?.message || "Server error", undefined, err?.status || 500);
   }
 }

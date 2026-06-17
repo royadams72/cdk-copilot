@@ -48,34 +48,60 @@ function shouldAttemptPushRegistration() {
 
 async function ensureNotificationPermission() {
   if (Platform.OS !== "ios" && Platform.OS !== "android") {
+    console.log("[push] permission skipped: unsupported platform", Platform.OS);
     return false;
   }
 
   const existing = await Notifications.getPermissionsAsync();
   let status = existing.status;
+  console.log("[push] permission existing", {
+    granted: existing.granted,
+    platform: Platform.OS,
+    status: existing.status,
+  });
 
   if (status !== "granted") {
     const requested = await Notifications.requestPermissionsAsync();
     status = requested.status;
+    console.log("[push] permission requested", {
+      granted: requested.granted,
+      status: requested.status,
+    });
   }
 
+  console.log("[push] permission final", { status });
   return status === "granted";
 }
 
 export async function registerForPushNotificationsAsync() {
   if (!shouldAttemptPushRegistration()) {
+    console.log("[push] registration skipped by shouldAttemptPushRegistration", {
+      dev: __DEV__,
+      platform: Platform.OS,
+    });
     return null;
   }
 
   const existing = await Notifications.getPermissionsAsync();
   let status = existing.status;
+  console.log("[push] register existing permission", {
+    granted: existing.granted,
+    status: existing.status,
+  });
 
   if (status !== "granted") {
     const requested = await Notifications.requestPermissionsAsync();
     status = requested.status;
+    console.log("[push] register requested permission", {
+      granted: requested.granted,
+      status: requested.status,
+    });
   }
 
   if (status !== "granted") {
+    console.log("[push] registration aborted: permission not granted", {
+      status,
+    });
     return null;
   }
 
@@ -84,12 +110,17 @@ export async function registerForPushNotificationsAsync() {
       importance: Notifications.AndroidImportance.DEFAULT,
       name: "Weekly reports",
     });
+    console.log("[push] android notification channel ensured", {
+      channel: "weekly-reports",
+    });
   }
 
   const projectId = getProjectId();
+  console.log("[push] expo project id", { projectId });
   const token = await Notifications.getExpoPushTokenAsync(
     projectId ? { projectId } : undefined,
   );
+  console.log("[push] expo token response", token);
 
   return token.data;
 }
@@ -98,13 +129,26 @@ export async function syncPushToken() {
   try {
     const jwt = await SecureStore.getItemAsync("ckd_jwt");
     if (!jwt) {
+      console.log("[push] sync skipped: missing jwt");
       return false;
     }
 
+    console.log("[push] sync starting", {
+      hasJwt: true,
+      platform: getSupportedPlatform(),
+    });
+
     const pushToken = await registerForPushNotificationsAsync();
     if (!pushToken) {
+      console.log("[push] sync aborted: no push token returned");
       return false;
     }
+
+    console.log("[push] sync posting token", {
+      platform: getSupportedPlatform(),
+      pushToken,
+      url: `${API}/api/users/push/register`,
+    });
 
     const res = await authFetch(`${API}/api/users/push/register`, {
       body: JSON.stringify({
@@ -114,17 +158,23 @@ export async function syncPushToken() {
       method: "POST",
     });
 
+    const responseText = await res.text().catch(() => "");
+    console.log("[push] sync register response", {
+      ok: res.ok,
+      responseText,
+      status: res.status,
+    });
+
     return res.ok;
   } catch (error) {
-    console.log("syncPushToken failed", error);
+    console.log("[push] syncPushToken failed", error);
     return false;
   }
 }
 
 async function cancelCarePlanReminderNotifications() {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync().catch(
-    () => [],
-  );
+  const scheduled =
+    await Notifications.getAllScheduledNotificationsAsync().catch(() => []);
 
   await Promise.all(
     scheduled
@@ -170,19 +220,17 @@ export async function syncCarePlanReminderNotifications() {
       return false;
     }
 
-    const data = (await res.json().catch(() => null)) as
-      | {
-          items?: Array<{
-            activatedAt?: string | null;
-            freq: "daily" | "weekly" | "once";
-            instructions?: string | null;
-            planId: string;
-            planTitle: string;
-            taskId: string;
-            taskLabel: string;
-          }>;
-        }
-      | null;
+    const data = (await res.json().catch(() => null)) as {
+      items?: Array<{
+        activatedAt?: string | null;
+        freq: "daily" | "weekly" | "once";
+        instructions?: string | null;
+        planId: string;
+        planTitle: string;
+        taskId: string;
+        taskLabel: string;
+      }>;
+    } | null;
 
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("care-plan-reminders", {
@@ -315,12 +363,10 @@ export async function syncSleepReminderNotification() {
       return false;
     }
 
-    const data = (await res.json().catch(() => null)) as
-      | {
-          enabled?: boolean;
-          reminderHour?: number;
-        }
-      | null;
+    const data = (await res.json().catch(() => null)) as {
+      enabled?: boolean;
+      reminderHour?: number;
+    } | null;
     const shouldSchedule = data?.enabled === true;
 
     if (!shouldSchedule) {
@@ -352,8 +398,7 @@ export async function syncSleepReminderNotification() {
         title: "Log your sleep",
       },
       trigger: {
-        hour:
-          typeof data?.reminderHour === "number" ? data.reminderHour : 8,
+        hour: typeof data?.reminderHour === "number" ? data.reminderHour : 8,
         minute: 0,
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
       },
