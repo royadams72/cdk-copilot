@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { sendPatientPushNotification } from "@/apps/api/lib/utils/pushNotifications";
 import type {
   PortalPatientCarePlanCreateData,
   PortalPatientCarePlanDiagnosis,
@@ -51,6 +52,17 @@ type ClinicalDoc = {
     code?: string;
     label?: string;
   }>;
+};
+
+type StaffProfileDoc = {
+  displayName?: string;
+  firstName?: string;
+  isActive?: boolean;
+  jobTitle?: string;
+  lastName?: string;
+  orgId?: string;
+  principalId: string;
+  title?: string;
 };
 
 type CarePlanDoc = {
@@ -187,6 +199,23 @@ function buildFrequencyOptions() {
   ];
 }
 
+function formatActorName(parts: Array<string | null | undefined>) {
+  const value = parts
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" ")
+    .trim();
+  return value || null;
+}
+
+function formatStaffDisplayName(doc: StaffProfileDoc) {
+  return (
+    doc.displayName?.trim() ||
+    formatActorName([doc.title, doc.firstName, doc.lastName]) ||
+    formatActorName([doc.firstName, doc.lastName]) ||
+    null
+  );
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ patientId: string }> },
@@ -204,12 +233,34 @@ export async function GET(
 
     const db = await getDb();
     const patientObjectId = new ObjectId(patientId);
-    const [patient, clinical] = await Promise.all([
+    const [patient, clinical, staffProfiles] = await Promise.all([
       loadScopedPatient(db, caller, patientObjectId),
       db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { careTeam: 1, diagnoses: 1 } },
       ),
+      db
+        .collection<StaffProfileDoc>(COLLECTIONS.UsersStaff)
+        .find(
+          {
+            ...(caller.orgId ? { orgId: caller.orgId } : {}),
+            isActive: true,
+          },
+          {
+            projection: {
+              _id: 0,
+              displayName: 1,
+              firstName: 1,
+              jobTitle: 1,
+              lastName: 1,
+              orgId: 1,
+              principalId: 1,
+              title: 1,
+            },
+            sort: { lastName: 1, firstName: 1 },
+          },
+        )
+        .toArray(),
     ]);
 
     if (!patient) {
@@ -226,18 +277,31 @@ export async function GET(
           label: item.label!.trim(),
         })),
     );
+    const staffOwnerOptions = staffProfiles
+      .map((staff) => {
+        const label = formatStaffDisplayName(staff);
+        if (!label) return null;
+        return {
+          id: staff.principalId,
+          label,
+        };
+      })
+      .filter((item): item is { id: string; label: string } => Boolean(item));
+
+    const fallbackCareTeamOptions = (clinical?.careTeam ?? [])
+      .filter((entry) => entry?.name?.trim())
+      .map((entry, index) => ({
+        id: `${slugify(entry.name!.trim())}_${index}`,
+        label: entry.role?.trim()
+          ? `${entry.role.trim()} ${entry.name!.trim()}`
+          : entry.name!.trim(),
+      }));
+
     const ownerOptions = Array.from(
       new Map(
         [
           { id: "patient", label: mappedPatient.name },
-          ...(clinical?.careTeam ?? [])
-            .filter((entry) => entry?.name?.trim())
-            .map((entry, index) => ({
-              id: `${slugify(entry.name!.trim())}_${index}`,
-              label: entry.role?.trim()
-                ? `${entry.role.trim()} ${entry.name!.trim()}`
-                : entry.name!.trim(),
-            })),
+          ...(staffOwnerOptions.length ? staffOwnerOptions : fallbackCareTeamOptions),
         ].map((item) => [item.label.toLowerCase(), item]),
       ).values(),
     );
@@ -338,6 +402,18 @@ export async function POST(
     };
 
     await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).insertOne(doc);
+    await sendPatientPushNotification(db, {
+      body: `Your care team added "${doc.title}" to guide your next steps and daily tasks.`,
+      data: {
+        carePlanId: doc._id.toHexString(),
+        screen: `/(dashboard)/care-plan?id=${doc._id.toHexString()}`,
+        type: "care-plan-created",
+      },
+      patientId,
+      title: "New care plan added",
+    }).catch((pushError) => {
+      console.error("[care-plan:add] push failed", pushError);
+    });
 
     return ok({ carePlanId: doc._id.toHexString() }, 201);
   } catch (error: any) {

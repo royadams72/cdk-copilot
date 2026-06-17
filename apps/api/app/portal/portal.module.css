@@ -642,15 +642,7 @@
   font-size: 14px;
   line-height: 20px;
 }
-/* .dataTable th {
-  color: var(--portal-text);
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  background: var(--portal-surface-row);
-} */
+
 .carePlanPanelTitle {
   margin: 0;
   color: var(--portal-text);
@@ -1078,7 +1070,7 @@
 
 .dataTable {
   width: 100%;
-  min-width: 980px;
+  min-width: 960px;
   border-collapse: collapse;
 }
 

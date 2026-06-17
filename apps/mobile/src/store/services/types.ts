@@ -259,6 +259,53 @@ export type MonthlyNutritionSummaryResponse = {
     to: string;
   };
 };
+export type CarePlanStatus = "draft" | "active" | "completed" | "archived";
+export type CarePlanTaskFrequency = "daily" | "weekly" | "once";
+export type CarePlanListItem = {
+  activatedAt: string | null;
+  id: string;
+  reviewLabel: string | null;
+  status: CarePlanStatus;
+  taskCount: number;
+  title: string;
+  updatedAt: string;
+};
+export type CarePlanListResponse = {
+  items: CarePlanListItem[];
+  latestActivePlan: CarePlanListItem | null;
+  latestUpdatedAt: string | null;
+};
+export type CarePlanDetailGoal = {
+  id: string;
+  label: string;
+  targetSummary: string | null;
+};
+export type CarePlanDetailTask = {
+  freq: CarePlanTaskFrequency;
+  id: string;
+  instructions: string | null;
+  label: string;
+  status: "open" | "paused" | "done";
+};
+export type CarePlanDetailResponse = {
+  plan: {
+    activatedAt: string | null;
+    completedAt: string | null;
+    createdAt: string;
+    createdBy: string;
+    diagnoses: Array<{ code: string | null; id: string; label: string }>;
+    goals: CarePlanDetailGoal[];
+    id: string;
+    notes: string | null;
+    ownerLabels: string[];
+    reviewLabel: string | null;
+    status: CarePlanStatus;
+    tasks: CarePlanDetailTask[];
+    title: string;
+    updatedAt: string;
+    updatedBy: string;
+  };
+};
 export type WeeklySleepSummary = {
   advice: string[];
   averageLoggedDurationMin: number | null;

@@ -77,6 +77,7 @@ export const appApi = createApi({
     "Fitness",
     "Medication",
     "MedicationHistory",
+    "CarePlan",
     "Food",
     "Targets",
     "Engagement",

@@ -8,6 +8,7 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 
 import {
+  syncCarePlanReminderNotifications,
   syncPushToken,
   syncSleepReminderNotification,
 } from "@/lib/pushNotifications";
@@ -34,8 +35,16 @@ export default function RootLayout() {
     void SystemUI.setBackgroundColorAsync("#FFFFFF");
     void syncNativeAuthSessionMirrorFromSecureStore();
     void syncPushToken();
+    void syncCarePlanReminderNotifications();
     void syncSleepReminderNotification();
     void ensureNativeHealthConnectBackgroundSyncScheduled();
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      const screen = response?.notification.request.content.data?.screen;
+      if (typeof screen === "string" && screen.startsWith("/")) {
+        router.push(screen as never);
+      }
+    });
 
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {

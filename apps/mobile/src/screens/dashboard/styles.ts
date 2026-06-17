@@ -42,6 +42,71 @@ export const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     backgroundColor: "#fff",
   },
+  carePlanBodyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.85,
+  },
+  carePlanListRow: {
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(148,163,184,0.4)",
+    gap: 4,
+  },
+  carePlanListTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  carePlanMetaLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    opacity: 0.72,
+  },
+  carePlanMetaValue: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  carePlanNotificationCard: {
+    borderColor: "rgba(37,99,235,0.28)",
+    backgroundColor: "rgba(37,99,235,0.08)",
+  },
+  carePlanSection: {
+    gap: 6,
+  },
+  carePlanStatusText: {
+    color: "#65A30D",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  carePlanSummaryCell: {
+    flex: 1,
+    gap: 6,
+    minWidth: "45%",
+  },
+  carePlanSummaryCellWide: {
+    flexBasis: "100%",
+    gap: 6,
+  },
+  carePlanSummaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  carePlanTaskHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  carePlanTaskMeta: {
+    fontSize: 12,
+    fontWeight: "600",
+    opacity: 0.72,
+  },
+  carePlanViewButton: {
+    marginTop: 4,
+  },
   centerLabel: {
     position: "absolute",
     fontSize: 16,
