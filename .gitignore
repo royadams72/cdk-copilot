@@ -13,6 +13,7 @@
 web-build/
 dist/
 build/
+apps/mobile/google-services.json
 
 # testing
 **/coverage
