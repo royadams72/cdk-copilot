@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,10 +11,12 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { useRouter } from "expo-router";
+import { getLastViewedCarePlanAt } from "@/lib/carePlans";
 import {
   toQueryErrorMessage,
   useGetDashboardQuery,
 } from "@/store/services/dashboardApi";
+import { useGetCarePlansQuery } from "@/store/services/carePlanApi";
 import {
   useGetPendingPatientEngagementQuery,
   useOpenPatientEngagementMutation,
@@ -60,8 +62,10 @@ export default function Dashboard() {
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
+  const { data: carePlanData } = useGetCarePlansQuery();
   const [openPatientEngagement, { isLoading: isOpeningEngagement }] =
     useOpenPatientEngagementMutation();
+  const [showCarePlanBanner, setShowCarePlanBanner] = useState(false);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(
@@ -146,6 +150,37 @@ export default function Dashboard() {
     ],
     [percentOfGoal, stepsToday],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncBanner() {
+      const latest = carePlanData?.latestActivePlan;
+      if (!latest?.updatedAt) {
+        if (!cancelled) setShowCarePlanBanner(false);
+        return;
+      }
+
+      const stored = await getLastViewedCarePlanAt();
+      if (!stored) {
+        const recentlyUpdated =
+          Date.now() - new Date(latest.updatedAt).getTime() < 1000 * 60 * 60 * 72;
+        if (!cancelled) setShowCarePlanBanner(recentlyUpdated);
+        return;
+      }
+
+      if (!cancelled) {
+        setShowCarePlanBanner(
+          new Date(latest.updatedAt).getTime() > new Date(stored).getTime(),
+        );
+      }
+    }
+
+    void syncBanner();
+    return () => {
+      cancelled = true;
+    };
+  }, [carePlanData?.latestActivePlan?.id, carePlanData?.latestActivePlan?.updatedAt]);
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -183,7 +218,50 @@ export default function Dashboard() {
             ) : null}
           </View>
 
+          {showCarePlanBanner && carePlanData?.latestActivePlan ? (
+            <Card style={styles.carePlanNotificationCard}>
+              <ThemedText type="defaultSemiBold">New care plan update</ThemedText>
+              <ThemedText style={styles.helperText}>
+                {carePlanData.latestActivePlan.title}
+              </ThemedText>
+              <Pressable
+                style={[styles.primaryActionButton, styles.carePlanViewButton]}
+                onPress={() =>
+                  router.push(
+                    `/(dashboard)/care-plan?id=${carePlanData.latestActivePlan!.id}` as never,
+                  )
+                }
+              >
+                <ThemedText style={styles.primaryActionText}>View care plan</ThemedText>
+              </Pressable>
+            </Card>
+          ) : null}
+
           {error && data && <InlineError message={errorMessage} />}
+
+          {carePlanData?.latestActivePlan ? (
+            <Card>
+              <ThemedText type="defaultSemiBold">Care plan</ThemedText>
+              <ThemedText style={styles.helperText}>
+                {carePlanData.latestActivePlan.title}
+              </ThemedText>
+              <ThemedText style={styles.helperText}>
+                {carePlanData.latestActivePlan.taskCount} active task
+                {carePlanData.latestActivePlan.taskCount === 1 ? "" : "s"}
+                {carePlanData.latestActivePlan.reviewLabel
+                  ? ` · Review in ${carePlanData.latestActivePlan.reviewLabel}`
+                  : ""}
+              </ThemedText>
+              <Pressable
+                style={[styles.secondaryActionButton, styles.carePlanViewButton]}
+                onPress={() =>
+                  router.push("/(dashboard)/care-plans" as never)
+                }
+              >
+                <ThemedText style={styles.secondaryActionText}>All care plans</ThemedText>
+              </Pressable>
+            </Card>
+          ) : null}
 
           {pendingEngagement ? (
             <Card>

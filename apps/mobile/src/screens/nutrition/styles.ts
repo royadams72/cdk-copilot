@@ -34,6 +34,15 @@ export const NutritionStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  chartLegendRight: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  legendTarget: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4F46E5",
+  },
   chartWrap: {
     marginTop: 8,
     alignItems: "center",

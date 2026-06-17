@@ -7,6 +7,7 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 
 const SLEEP_REMINDER_NOTIFICATION_ID_KEY = "ckd_sleep_morning_reminder_id";
+const CARE_PLAN_REMINDER_TYPE = "care-plan-reminder";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -116,6 +117,129 @@ export async function syncPushToken() {
     return res.ok;
   } catch (error) {
     console.log("syncPushToken failed", error);
+    return false;
+  }
+}
+
+async function cancelCarePlanReminderNotifications() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync().catch(
+    () => [],
+  );
+
+  await Promise.all(
+    scheduled
+      .filter((item) => item.content.data?.type === CARE_PLAN_REMINDER_TYPE)
+      .map((item) =>
+        Notifications.cancelScheduledNotificationAsync(item.identifier).catch(
+          () => undefined,
+        ),
+      ),
+  );
+}
+
+function nextMorningDate(baseIso: string | null) {
+  const now = new Date();
+  const next = baseIso ? new Date(baseIso) : new Date();
+  next.setHours(8, 0, 0, 0);
+  if (next <= now) {
+    next.setDate(next.getDate() + 1);
+  }
+  return next;
+}
+
+export async function syncCarePlanReminderNotifications() {
+  try {
+    if (Platform.OS !== "ios" && Platform.OS !== "android") {
+      return false;
+    }
+
+    const jwt = await SecureStore.getItemAsync("ckd_jwt");
+    if (!jwt) {
+      await cancelCarePlanReminderNotifications();
+      return false;
+    }
+
+    const hasPermission = await ensureNotificationPermission();
+    if (!hasPermission) {
+      return false;
+    }
+
+    const res = await authFetch(`${API}/api/care-plans/reminders`);
+    if (!res.ok) {
+      await cancelCarePlanReminderNotifications();
+      return false;
+    }
+
+    const data = (await res.json().catch(() => null)) as
+      | {
+          items?: Array<{
+            activatedAt?: string | null;
+            freq: "daily" | "weekly" | "once";
+            instructions?: string | null;
+            planId: string;
+            planTitle: string;
+            taskId: string;
+            taskLabel: string;
+          }>;
+        }
+      | null;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("care-plan-reminders", {
+        importance: Notifications.AndroidImportance.DEFAULT,
+        name: "Care plan reminders",
+      });
+    }
+
+    await cancelCarePlanReminderNotifications();
+
+    for (const item of data?.items ?? []) {
+      const content = {
+        body: item.instructions?.trim() || `Task: ${item.taskLabel}`,
+        data: {
+          carePlanId: item.planId,
+          screen: `/(dashboard)/care-plan?id=${item.planId}`,
+          taskId: item.taskId,
+          type: CARE_PLAN_REMINDER_TYPE,
+        },
+        sound: true,
+        title: `${item.planTitle}: ${item.taskLabel}`,
+      } as const;
+
+      if (item.freq === "daily") {
+        await Notifications.scheduleNotificationAsync({
+          content,
+          trigger: {
+            hour: 8,
+            minute: 0,
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          },
+        });
+        continue;
+      }
+
+      if (item.freq === "weekly") {
+        await Notifications.scheduleNotificationAsync({
+          content,
+          trigger: {
+            hour: 8,
+            minute: 0,
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday: 2,
+          },
+        });
+        continue;
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content,
+        trigger: nextMorningDate(item.activatedAt ?? null) as never,
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.log("syncCarePlanReminderNotifications failed", error);
     return false;
   }
 }

@@ -56,6 +56,7 @@ export const COLLECTIONS = {
   UsersAccounts: "users_accounts",
   UsersClinical: "users_clinical",
   UsersPII: "users_pii",
+  UsersStaff: "users_staff",
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

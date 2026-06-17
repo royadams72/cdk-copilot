@@ -160,6 +160,30 @@ export default function PortalPatientDetailPage() {
             >
               {label}
             </Link>
+          ) : label === "Health Data" ? (
+            <Link
+              className={styles.patientActionLink}
+              href={`/portal/patients/${patient.id}/health`}
+              key={label}
+            >
+              {label}
+            </Link>
+          ) : label === "Medication Profile" ? (
+            <Link
+              className={styles.patientActionLink}
+              href={`/portal/patients/${patient.id}/medication`}
+              key={label}
+            >
+              {label}
+            </Link>
+          ) : label === "Care Plans" ? (
+            <Link
+              className={styles.patientActionLink}
+              href={`/portal/patients/${patient.id}/care-plans`}
+              key={label}
+            >
+              {label}
+            </Link>
           ) : (
             <button
               className={styles.patientActionButton}

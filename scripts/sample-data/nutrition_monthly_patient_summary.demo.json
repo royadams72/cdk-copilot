@@ -1,6 +1,5 @@
 [
   {
-    "createdAt": { "$date": "2026-04-28T12:00:00.000Z" },
     "dailyAverages": { "caloriesKcal": 1688.2, "phosphorusMg": 563, "potassiumMg": 1849.2, "proteinG": 69.9, "sodiumMg": 1738.8 },
     "daysLogged": 17,
     "generatedAt": { "$date": "2026-04-28T12:00:00.000Z" },
@@ -54,7 +53,6 @@
     "updatedAt": { "$date": "2026-04-28T12:00:00.000Z" }
   },
   {
-    "createdAt": { "$date": "2026-05-28T12:00:00.000Z" },
     "dailyAverages": { "caloriesKcal": 1835, "phosphorusMg": 612, "potassiumMg": 2010, "proteinG": 76, "sodiumMg": 1890 },
     "daysLogged": 21,
     "generatedAt": { "$date": "2026-05-28T12:00:00.000Z" },
@@ -108,7 +106,6 @@
     "updatedAt": { "$date": "2026-05-28T12:00:00.000Z" }
   },
   {
-    "createdAt": { "$date": "2026-06-28T12:00:00.000Z" },
     "dailyAverages": { "caloriesKcal": 1981.8, "phosphorusMg": 661, "potassiumMg": 2170.8, "proteinG": 82.1, "sodiumMg": 2041.2 },
     "daysLogged": 13,
     "generatedAt": { "$date": "2026-06-28T12:00:00.000Z" },
@@ -162,7 +159,6 @@
     "updatedAt": { "$date": "2026-06-28T12:00:00.000Z" }
   },
   {
-    "createdAt": { "$date": "2026-04-28T12:00:00.000Z" },
     "dailyAverages": { "caloriesKcal": 1582.4, "phosphorusMg": 519.8, "potassiumMg": 1725, "proteinG": 62.6, "sodiumMg": 1619.2 },
     "daysLogged": 17,
     "generatedAt": { "$date": "2026-04-28T12:00:00.000Z" },
@@ -216,7 +212,6 @@
     "updatedAt": { "$date": "2026-04-28T12:00:00.000Z" }
   },
   {
-    "createdAt": { "$date": "2026-05-28T12:00:00.000Z" },
     "dailyAverages": { "caloriesKcal": 1720, "phosphorusMg": 565, "potassiumMg": 1875, "proteinG": 68, "sodiumMg": 1760 },
     "daysLogged": 21,
     "generatedAt": { "$date": "2026-05-28T12:00:00.000Z" },
@@ -270,7 +265,6 @@
     "updatedAt": { "$date": "2026-05-28T12:00:00.000Z" }
   },
   {
-    "createdAt": { "$date": "2026-06-28T12:00:00.000Z" },
     "dailyAverages": { "caloriesKcal": 1857.6, "phosphorusMg": 610.2, "potassiumMg": 2025, "proteinG": 73.4, "sodiumMg": 1900.8 },
     "daysLogged": 13,
     "generatedAt": { "$date": "2026-06-28T12:00:00.000Z" },

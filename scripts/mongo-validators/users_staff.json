@@ -1,0 +1,39 @@
+{
+  "collMod": "users_staff",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "principalId",
+        "orgId",
+        "firstName",
+        "lastName",
+        "isActive",
+        "updatedAt",
+        "updatedBy"
+      ],
+      "properties": {
+        "principalId": { "bsonType": "string", "minLength": 3 },
+        "orgId": { "bsonType": "string" },
+        "title": { "bsonType": "string" },
+        "firstName": { "bsonType": "string" },
+        "lastName": { "bsonType": "string" },
+        "jobTitle": { "bsonType": "string" },
+        "displayName": { "bsonType": "string" },
+        "isActive": { "bsonType": "bool" },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" },
+        "createdBy": { "bsonType": "string" },
+        "updatedBy": { "bsonType": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    { "key": { "principalId": 1 }, "options": { "unique": true } },
+    { "key": { "orgId": 1, "isActive": 1 } },
+    { "key": { "orgId": 1, "lastName": 1, "firstName": 1 } }
+  ]
+}

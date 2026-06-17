@@ -78,6 +78,175 @@ export type PortalPatientNutritionData = {
   };
 };
 
+export const PORTAL_HEALTH_METRICS = [
+  "blood_pressure",
+  "weight",
+  "symptoms",
+] as const;
+
+export type PortalHealthMetric = (typeof PORTAL_HEALTH_METRICS)[number];
+
+export type PortalPatientHealthMonth = {
+  isSelected: boolean;
+  label: string;
+  month: string;
+  primaryValue: number;
+  secondaryValue: number | null;
+};
+
+export type PortalPatientHealthRow = {
+  detail: string | null;
+  id: string;
+  label: string;
+  primaryValue: number;
+  secondaryValue: number | null;
+};
+
+export type PortalPatientHealthData = {
+  headline: string;
+  monthlyStats: PortalPatientHealthMonth[];
+  patient: PortalPatientDetail;
+  rows: PortalPatientHealthRow[];
+  selectedMetric: PortalHealthMetric;
+  selectedMonth: string;
+  selectedMonthLabel: string;
+  series: {
+    primaryLabel: string;
+    primaryUnit: string;
+    rowLabel: string;
+    secondaryLabel?: string;
+    secondaryUnit?: string;
+  };
+  summaryTitle: string;
+  tableTitle: string;
+  window: {
+    days: number;
+    from: string;
+    to: string;
+  };
+};
+
+export type PortalPatientMedicationRow = {
+  dose: string | null;
+  endAt: string | null;
+  form: string | null;
+  frequency: string | null;
+  id: string;
+  instructions: string | null;
+  latestReason: string | null;
+  name: string;
+  route: string | null;
+  source: "clinical_profile" | "current_projection";
+  startAt: string | null;
+  status: "active" | "paused" | "stopped" | "completed";
+  updatedAt: string | null;
+};
+
+export type PortalPatientMedicationEvent = {
+  at: string;
+  by: string;
+  id: string;
+  label: string;
+  reason: string | null;
+};
+
+export type PortalPatientMedicationData = {
+  headline: string;
+  patient: PortalPatientDetail;
+  recentEvents: PortalPatientMedicationEvent[];
+  rows: PortalPatientMedicationRow[];
+  summary: {
+    activeCount: number;
+    lastUpdatedAt: string | null;
+    projectedCount: number;
+    totalCount: number;
+  };
+};
+
+export type PortalPatientCarePlanRow = {
+  activatedAt: string | null;
+  completedAt: string | null;
+  goalsCount: number;
+  id: string;
+  notes: string | null;
+  openTasksCount: number;
+  sources: Array<"manual" | "ai" | "template">;
+  status: "draft" | "active" | "completed" | "archived";
+  tasksCount: number;
+  title: string;
+  updatedAt: string;
+};
+
+export type PortalPatientCarePlanData = {
+  headline: string;
+  patient: PortalPatientDetail;
+  rows: PortalPatientCarePlanRow[];
+  summary: {
+    activeCount: number;
+    completedCount: number;
+    draftCount: number;
+    reviewDueCount: number;
+    totalCount: number;
+  };
+};
+
+export type PortalPatientCarePlanGoal = {
+  id: string;
+  label: string;
+  targetSummary: string | null;
+};
+
+export type PortalPatientCarePlanDiagnosis = {
+  code: string | null;
+  id: string;
+  label: string;
+};
+
+export type PortalPatientCarePlanTask = {
+  freq: "daily" | "weekly" | "once";
+  id: string;
+  instructions: string | null;
+  label: string;
+  status: "open" | "paused" | "done";
+};
+
+export type PortalPatientCarePlanDetailData = {
+  headline: string;
+  patient: PortalPatientDetail;
+  plan: {
+      activatedAt: string | null;
+      completedAt: string | null;
+      createdAt: string;
+      createdBy: string;
+      diagnoses: PortalPatientCarePlanDiagnosis[];
+      goals: PortalPatientCarePlanGoal[];
+      id: string;
+      notes: string | null;
+      ownerLabels: string[];
+      reviewLabel: string | null;
+      sources: Array<"manual" | "ai" | "template">;
+      status: "draft" | "active" | "completed" | "archived";
+      tasks: PortalPatientCarePlanTask[];
+      title: string;
+      updatedAt: string;
+      updatedBy: string;
+    };
+};
+
+export type PortalPatientCarePlanOption = {
+  id: string;
+  label: string;
+};
+
+export type PortalPatientCarePlanCreateData = {
+  diagnosisOptions: PortalPatientCarePlanDiagnosis[];
+  frequencyOptions: PortalPatientCarePlanOption[];
+  headline: string;
+  ownerOptions: PortalPatientCarePlanOption[];
+  patient: PortalPatientDetail;
+  reviewOptions: PortalPatientCarePlanOption[];
+};
+
 export type PortalPatientStat = {
   count: number;
   detail: string;
@@ -100,4 +269,12 @@ export function normalizePortalNutritionFilter(
   return PORTAL_NUTRITION_FILTERS.includes(value as PortalNutritionFilter)
     ? (value as PortalNutritionFilter)
     : "phosphorusMg";
+}
+
+export function normalizePortalHealthMetric(
+  value: string | null | undefined,
+): PortalHealthMetric {
+  return PORTAL_HEALTH_METRICS.includes(value as PortalHealthMetric)
+    ? (value as PortalHealthMetric)
+    : "blood_pressure";
 }

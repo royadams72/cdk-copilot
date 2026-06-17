@@ -1,6 +1,5 @@
 [
   {
-    "createdAt": { "$date": "2026-05-28T12:00:00.000Z" },
     "dailyAverages": {
       "caloriesKcal": 1688.2,
       "phosphorusMg": 563,

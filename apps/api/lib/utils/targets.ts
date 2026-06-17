@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Db, Filter, ObjectId } from "mongodb";
 
-import { COLLECTIONS } from "@ckd/core/server";
+import { COLLECTIONS } from "../../../../packages/core/src/server/constants/collections";
 import type { NutrientKey } from "../types/dashboard";
 
 type TargetBasis = "perDay" | "perKgPerDay" | null | undefined;
