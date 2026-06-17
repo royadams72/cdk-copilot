@@ -37,12 +37,6 @@ function shouldAttemptPushRegistration() {
     return false;
   }
 
-  // Android debug/dev-client builds in this repo do not ship Firebase config,
-  // so Expo push token registration fails noisily during local emulator startup.
-  if (Platform.OS === "android" && __DEV__) {
-    return false;
-  }
-
   return true;
 }
 
