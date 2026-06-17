@@ -86,6 +86,14 @@ type UserPiiActorDoc = {
   principalId: string;
 };
 
+type UserStaffActorDoc = {
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  principalId: string;
+  title?: string;
+};
+
 type UserAccountActorDoc = {
   email?: string;
   principalId: string;
@@ -115,6 +123,14 @@ function formatActorName(parts: Array<string | null | undefined>) {
     .join(" ")
     .trim();
   return value || null;
+}
+
+function formatStaffDisplayName(doc: UserStaffActorDoc) {
+  return (
+    doc.displayName?.trim() ||
+    formatActorName([doc.title, doc.firstName, doc.lastName]) ||
+    formatActorName([doc.firstName, doc.lastName])
+  );
 }
 
 function prettifyActorToken(value: string | null | undefined) {
@@ -194,7 +210,25 @@ async function loadActorNames(
   db: Awaited<ReturnType<typeof getDb>>,
   actorPrincipalIds: string[],
 ) {
-  const [actorPiiDocs, actorAccountDocs] = await Promise.all([
+  const [actorStaffDocs, actorPiiDocs, actorAccountDocs] = await Promise.all([
+    actorPrincipalIds.length === 0
+      ? Promise.resolve([])
+      : db
+          .collection<UserStaffActorDoc>(COLLECTIONS.UsersStaff)
+          .find(
+            { principalId: { $in: actorPrincipalIds } },
+            {
+              projection: {
+                _id: 0,
+                displayName: 1,
+                firstName: 1,
+                lastName: 1,
+                principalId: 1,
+                title: 1,
+              },
+            },
+          )
+          .toArray(),
     actorPrincipalIds.length === 0
       ? Promise.resolve([])
       : db
@@ -229,7 +263,12 @@ async function loadActorNames(
   ]);
 
   const actorNames = new Map<string, string>();
+  for (const doc of actorStaffDocs) {
+    const name = formatStaffDisplayName(doc);
+    if (name) actorNames.set(doc.principalId, name);
+  }
   for (const doc of actorPiiDocs) {
+    if (actorNames.has(doc.principalId)) continue;
     const name = formatActorName([doc.firstName, doc.lastName]);
     if (name) actorNames.set(doc.principalId, name);
   }
