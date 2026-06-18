@@ -1,6 +1,6 @@
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import type { TWeeklyNutritionInsight } from "@ckd/core";
-import type { Db } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 
 type UserPiiPushDoc = {
   devices?: Array<{
@@ -11,7 +11,8 @@ type UserPiiPushDoc = {
   notificationPrefs?: {
     push?: boolean;
   };
-  patientId: string;
+  patientId?: ObjectId | string;
+  principalId?: string;
 };
 
 type ExpoPushTicket = {
@@ -83,16 +84,28 @@ export async function sendPatientPushNotification(
   },
 ) {
   const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
+  const patientObjectId = ObjectId.isValid(input.patientId)
+    ? new ObjectId(input.patientId)
+    : null;
+  const patientFilter = {
+    ...(patientObjectId
+      ? {
+          $or: [
+            { patientId: patientObjectId },
+            { patientId: input.patientId },
+          ],
+        }
+      : { patientId: input.patientId }),
+    "notificationPrefs.push": true,
+    "devices.pushToken": { $exists: true },
+  } as const;
   const user = await usersPii.findOne(
-    {
-      patientId: input.patientId,
-      "notificationPrefs.push": true,
-      "devices.pushToken": { $exists: true },
-    },
+    patientFilter,
     {
       projection: {
         devices: 1,
         notificationPrefs: 1,
+        principalId: 1,
         patientId: 1,
       },
     },
@@ -106,7 +119,7 @@ export async function sendPatientPushNotification(
     ),
   );
 
-  return sendExpoPushMessages(
+  const result = await sendExpoPushMessages(
     tokens.map((to) => ({
       body: input.body,
       data: input.data,
@@ -115,6 +128,16 @@ export async function sendPatientPushNotification(
       to,
     })),
   );
+
+  console.log("[push:send] patient notification result", {
+    filter: patientFilter,
+    matchedPatientId: user?.patientId ?? null,
+    principalId: user?.principalId ?? null,
+    result,
+    tokenCount: tokens.length,
+  });
+
+  return result;
 }
 
 export async function sendWeeklyInsightPushNotifications(
