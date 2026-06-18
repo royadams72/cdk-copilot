@@ -63,7 +63,7 @@ export default function PortalPatientCarePlanDetailPage() {
   );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [draftAction, setDraftAction] = useState<"activate" | "delete">(
+  const [draftAction, setDraftAction] = useState<"activate" | "edit" | "delete">(
     "activate",
   );
   const [error, setError] = useState<string | null>(null);
@@ -260,20 +260,29 @@ export default function PortalPatientCarePlanDetailPage() {
                 className={styles.nutritionFilterSelect}
                 id="care-plan-draft-action"
                 onChange={(event) =>
-                  setDraftAction(event.target.value as "activate" | "delete")
+                  setDraftAction(event.target.value as "activate" | "edit" | "delete")
                 }
                 value={draftAction}
               >
                 <option value="activate">Active</option>
+                <option value="edit">Edit</option>
                 <option value="delete">Delete</option>
               </select>
               <button
                 className={styles.buttonPrimarySmall}
                 disabled={submitting}
-                onClick={() => void runAction(draftAction)}
+                onClick={() => {
+                  if (draftAction === "edit") {
+                    router.push(
+                      `/portal/patients/${params.patientId}/care-plans/${params.carePlanId}/edit`,
+                    );
+                    return;
+                  }
+                  void runAction(draftAction);
+                }}
                 type="button"
               >
-                {submitting ? "Saving..." : "Apply"}
+                {submitting ? "Saving..." : draftAction === "edit" ? "Continue" : "Apply"}
               </button>
             </div>
           ) : data.plan.status === "completed" ? (

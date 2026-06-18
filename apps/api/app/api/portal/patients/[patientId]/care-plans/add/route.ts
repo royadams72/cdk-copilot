@@ -308,8 +308,20 @@ async function appendDiagnosesToHealthProfiles(params: {
   const ledgerCollection = db.collection<HealthProfileLedgerEventDoc>(
     COLLECTIONS.HealthProfilesLedger,
   );
-  const previous = await currentCollection.findOne({ patientId });
-  const existingEntries = previous?.conditions ?? [];
+  const previousDocs = await currentCollection.find({ patientId }).toArray();
+  const existingEntries = previousDocs
+    .flatMap((doc) => doc.conditions ?? [])
+    .reduce<
+      Array<
+        THealthProfileCurrentEntry & {
+          value: { condition: TConditionFormItem; kind: "condition" };
+        }
+      >
+    >((acc, entry) => {
+      if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
+      acc.push(entry);
+      return acc;
+    }, []);
   const existingKeys = new Set(
     existingEntries.map((entry) =>
       `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeLabel(
@@ -353,15 +365,24 @@ async function appendDiagnosesToHealthProfiles(params: {
     { ordered: true },
   );
 
+  const currentUpdate = {
+    $set: {
+      conditions,
+      ...(caller.orgId ? { orgId: caller.orgId } : {}),
+      updatedAt: now,
+      updatedBy: actor,
+    },
+  };
+
+  if (previousDocs.length) {
+    await currentCollection.updateMany({ patientId }, currentUpdate);
+    return;
+  }
+
   await currentCollection.updateOne(
     { patientId },
     {
-      $set: {
-        conditions,
-        ...(caller.orgId ? { orgId: caller.orgId } : {}),
-        updatedAt: now,
-        updatedBy: actor,
-      },
+      ...currentUpdate,
       $setOnInsert: {
         allergies: [],
         createdAt: now,
@@ -391,12 +412,18 @@ export async function GET(
 
     const db = await getDb();
     const patientObjectId = new ObjectId(patientId);
-    const [patient, clinical, staffProfiles] = await Promise.all([
+    const [patient, clinical, healthProfilesCurrentDocs, staffProfiles] = await Promise.all([
       loadScopedPatient(db, caller, patientObjectId),
       db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { careTeam: 1, diagnoses: 1 } },
       ),
+      db.collection<HealthProfilesCurrentDoc>(COLLECTIONS.HealthProfilesCurrent)
+        .find(
+        { patientId: patientObjectId },
+        { projection: { conditions: 1 } },
+        )
+        .toArray(),
       db
         .collection<StaffProfileDoc>(COLLECTIONS.UsersStaff)
         .find(
@@ -426,15 +453,49 @@ export async function GET(
     }
 
     const mappedPatient = mapPortalPatientDetail(patient);
+    const healthProfileConditions = healthProfilesCurrentDocs
+      .flatMap((doc) => doc.conditions ?? [])
+      .reduce<
+        Array<{
+          code?: string;
+          codeSystem?: "SNOMED_CT" | "CUSTOM";
+          entryId: string;
+          label: string;
+        }>
+      >(
+        (acc, entry) => {
+          if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
+          acc.push({
+            code: entry.value.condition.code?.trim() || undefined,
+            codeSystem:
+              entry.value.condition.codeSystem === "SNOMED_CT" ||
+              entry.value.condition.codeSystem === "CUSTOM"
+                ? entry.value.condition.codeSystem
+                : undefined,
+            entryId: entry.entryId,
+            label: entry.value.condition.label.trim(),
+          });
+          return acc;
+        },
+        [],
+      );
     const diagnosisOptions = dedupeByLabel(
-      (clinical?.diagnoses ?? [])
-        .filter((item) => item?.label?.trim())
-        .map((item) => ({
-          code: item.code?.trim() || null,
-          codeSystem: item.code?.trim() ? "SNOMED_CT" : null,
-          id: item.code?.trim() || slugify(item.label!.trim()),
-          label: item.label!.trim(),
+      [
+        ...healthProfileConditions.map((entry) => ({
+          code: entry.code || null,
+          codeSystem: entry.codeSystem ?? null,
+          id: entry.entryId,
+          label: entry.label,
         })),
+        ...(clinical?.diagnoses ?? [])
+          .filter((item) => item?.label?.trim())
+          .map((item) => ({
+            code: item.code?.trim() || null,
+            codeSystem: item.code?.trim() ? "SNOMED_CT" as const : null,
+            id: item.code?.trim() || slugify(item.label!.trim()),
+            label: item.label!.trim(),
+          })),
+      ],
     );
     const staffOwnerOptions = staffProfiles
       .map((staff) => {
