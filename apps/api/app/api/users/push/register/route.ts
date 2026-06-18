@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
+import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
@@ -19,7 +20,8 @@ type UserPiiPushDoc = {
     platform?: "android" | "ios" | "web";
     pushToken?: string;
   }>;
-  patientId: string;
+  patientId?: ObjectId | string;
+  principalId?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -46,8 +48,21 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
     const now = new Date();
+    const patientObjectId = ObjectId.isValid(user.patientId)
+      ? new ObjectId(user.patientId)
+      : null;
+    const patientFilter = patientObjectId
+      ? {
+          $or: [
+            { patientId: patientObjectId },
+            { patientId: user.patientId },
+            { principalId: user.principalId },
+          ],
+        }
+      : { principalId: user.principalId };
 
     console.log("[push:register] writing token", {
+      filter: patientFilter,
       patientId: user.patientId,
       platform: parsed.data.platform,
       principalId: user.principalId,
@@ -55,7 +70,7 @@ export async function POST(req: NextRequest) {
     });
 
     const pullResult = await usersPii.updateOne(
-      { patientId: user.patientId },
+      patientFilter,
       {
         $pull: {
           devices: { pushToken: parsed.data.pushToken },
@@ -64,13 +79,14 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("[push:register] pull result", {
+      filter: patientFilter,
       matchedCount: pullResult.matchedCount,
       modifiedCount: pullResult.modifiedCount,
       patientId: user.patientId,
     });
 
     const pushResult = await usersPii.updateOne(
-      { patientId: user.patientId },
+      patientFilter,
       {
         $push: {
           devices: {
@@ -87,6 +103,7 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("[push:register] push result", {
+      filter: patientFilter,
       matchedCount: pushResult.matchedCount,
       modifiedCount: pushResult.modifiedCount,
       patientId: user.patientId,
@@ -95,10 +112,11 @@ export async function POST(req: NextRequest) {
     });
 
     const persisted = await usersPii.findOne(
-      { patientId: user.patientId },
+      patientFilter,
       {
         projection: {
           devices: 1,
+          principalId: 1,
           patientId: 1,
         },
       },
