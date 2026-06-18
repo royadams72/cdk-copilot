@@ -7,6 +7,7 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
+import { sendPatientPushNotification } from "@/apps/api/lib/utils/pushNotifications";
 import {
   buildPortalPatientAccessMatch,
   mapPortalPatientDetail,
@@ -468,6 +469,25 @@ export async function PATCH(
           },
         },
       );
+
+      const actorNames = await loadActorNames(db, [caller.principalId]);
+      const actorName =
+        actorNames.get(caller.principalId) ??
+        prettifyActorToken(caller.principalId) ??
+        "your care team";
+
+      await sendPatientPushNotification(db, {
+        body: `${actorName} marked "${existing.title}" as complete.`,
+        data: {
+          carePlanId: carePlanObjectId.toHexString(),
+          screen: `/(dashboard)/care-plan?id=${carePlanObjectId.toHexString()}`,
+          type: "care-plan-completed",
+        },
+        patientId,
+        title: "Care plan completed",
+      }).catch((pushError) => {
+        console.error("[care-plan:complete] push failed", pushError);
+      });
     }
 
     if (body?.action === "activate" && existing.status === "draft") {
