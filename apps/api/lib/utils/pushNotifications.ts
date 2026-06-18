@@ -40,7 +40,7 @@ function getInsightPreview(insight: TWeeklyNutritionInsight) {
 
 async function sendExpoPushMessages(pushMessages: ExpoPushMessage[]) {
   if (!pushMessages.length) {
-    return { attempted: 0, delivered: 0, failed: 0 };
+    return { attempted: 0, delivered: 0, failed: 0, tickets: [] as ExpoPushTicket[] };
   }
 
   const response = await fetch(EXPO_PUSH_API_URL, {
@@ -71,6 +71,7 @@ async function sendExpoPushMessages(pushMessages: ExpoPushMessage[]) {
     attempted: pushMessages.length,
     delivered,
     failed: pushMessages.length - delivered,
+    tickets,
   };
 }
 
@@ -134,6 +135,13 @@ export async function sendPatientPushNotification(
     matchedPatientId: user?.patientId ?? null,
     principalId: user?.principalId ?? null,
     result,
+    ticketErrors: result.tickets
+      .filter((ticket) => ticket.status !== "ok")
+      .map((ticket) => ({
+        details: ticket.details ?? null,
+        message: ticket.message ?? null,
+        status: ticket.status ?? null,
+      })),
     tokenCount: tokens.length,
   });
 
