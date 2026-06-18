@@ -1,12 +1,29 @@
 import type { ExpoConfig } from "expo/config";
+import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 
 const projectRoot = __dirname;
-const googleServicesPath = path.join(projectRoot, "google-services.json");
+const repoRoot = path.resolve(projectRoot, "../..");
+
+dotenv.config({ path: path.join(repoRoot, ".env.local") });
+dotenv.config({ path: path.join(repoRoot, ".env") });
+
+const googleServicesPath = path.join(
+  projectRoot,
+  "android",
+  "app",
+  "google-services.json",
+);
 const hasGoogleServices = fs.existsSync(googleServicesPath);
 
-const easProjectId = process.env.EXPO_EAS_PROJECT_ID ?? null;
+const rawEasProjectId = process.env.EXPO_EAS_PROJECT_ID ?? null;
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const easProjectId =
+  rawEasProjectId && uuidPattern.test(rawEasProjectId)
+    ? rawEasProjectId
+    : null;
 
 const config: ExpoConfig = {
   android: {
@@ -42,7 +59,7 @@ const config: ExpoConfig = {
       },
     ],
     googleServicesFile: hasGoogleServices
-      ? "./google-services.json"
+      ? "./android/app/google-services.json"
       : undefined,
   },
   experiments: {
