@@ -1,7 +1,5 @@
 export const runtime = "nodejs";
 
-import { ROLES } from "@ckd/core";
-import { ObjectId } from "mongodb";
 import { NextRequest } from "next/server";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
@@ -335,14 +333,7 @@ async function expandValueSetWithExplicitCompose(
 
 export async function GET(req: NextRequest) {
   try {
-    const caller = await requireUser(req);
-    if (
-      caller.role !== ROLES.Patient ||
-      !caller.patientId ||
-      !ObjectId.isValid(caller.patientId)
-    ) {
-      return bad("Patient context missing", undefined, 403);
-    }
+    await requireUser(req);
 
     const query = req.nextUrl.searchParams.get("query")?.trim() ?? "";
     if (!query) return ok({ items: [] });

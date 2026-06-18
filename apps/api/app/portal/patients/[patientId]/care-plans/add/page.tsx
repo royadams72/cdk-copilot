@@ -23,17 +23,32 @@ type CreateCarePlanResult = {
   };
 };
 
+type CarePlanCreateAction = "activate_and_notify" | "save_as_draft";
+type ConditionSearchItem = {
+  code: string;
+  codeSystem: "SNOMED_CT";
+  label: string;
+};
+
 export default function PortalPatientAddCarePlanPage() {
   const params = useParams<{ patientId: string }>();
   const router = useRouter();
   const { session, status } = usePortalSession();
-  const [data, setData] = useState<PortalPatientCarePlanCreateData | null>(null);
+  const [data, setData] = useState<PortalPatientCarePlanCreateData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDiagnosisId, setSelectedDiagnosisId] = useState("");
-  const [customDiagnosis, setCustomDiagnosis] = useState("");
-  const [diagnoses, setDiagnoses] = useState<PortalPatientCarePlanDiagnosis[]>([]);
+  const [conditionQuery, setConditionQuery] = useState("");
+  const [conditionResults, setConditionResults] = useState<
+    ConditionSearchItem[]
+  >([]);
+  const [conditionSearchLoading, setConditionSearchLoading] = useState(false);
+  const [diagnoses, setDiagnoses] = useState<PortalPatientCarePlanDiagnosis[]>(
+    [],
+  );
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [measureUsing, setMeasureUsing] = useState("");
@@ -41,6 +56,9 @@ export default function PortalPatientAddCarePlanPage() {
   const [frequency, setFrequency] = useState("daily");
   const [reviewLabel, setReviewLabel] = useState("1_month");
   const [ownerLabels, setOwnerLabels] = useState<string[]>([]);
+  const [action, setAction] = useState<CarePlanCreateAction>(
+    "activate_and_notify",
+  );
 
   useEffect(() => {
     if (status !== "authenticated" || !session || !params.patientId) {
@@ -76,8 +94,20 @@ export default function PortalPatientAddCarePlanPage() {
 
         setData(body.data);
         setFrequency(body.data.frequencyOptions[0]?.id ?? "daily");
-        setReviewLabel(body.data.reviewOptions[2]?.id ?? body.data.reviewOptions[0]?.id ?? "1_month");
-        setOwnerLabels(body.data.ownerOptions[0] ? [body.data.ownerOptions[0].label] : []);
+        setReviewLabel(
+          body.data.reviewOptions[2]?.id ??
+            body.data.reviewOptions[0]?.id ??
+            "1_month",
+        );
+        setOwnerLabels(
+          body.data.ownerOptions[0] ? [body.data.ownerOptions[0].label] : [],
+        );
+        setAction(
+          (body.data.actionOptions[0]?.id as
+            | CarePlanCreateAction
+            | undefined) ?? "activate_and_notify",
+        );
+        setDiagnoses(body.data.diagnosisOptions);
       } catch (nextError) {
         if (controller.signal.aborted) return;
         setError(
@@ -96,26 +126,104 @@ export default function PortalPatientAddCarePlanPage() {
     return () => controller.abort();
   }, [params.patientId, session, status]);
 
+  useEffect(() => {
+    if (status !== "authenticated" || !session) return;
+    const query = conditionQuery.trim();
+    if (query.length < 2) {
+      setConditionResults([]);
+      setConditionSearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setConditionSearchLoading(true);
+      try {
+        const response = await fetch(
+          `/api/terminology/conditions/search?query=${encodeURIComponent(
+            query,
+          )}&limit=8`,
+          {
+            headers: getPortalSessionAuthHeaders(session.jwt),
+            signal: controller.signal,
+          },
+        );
+        const body = (await response.json().catch(() => null)) as
+          | { data?: { items?: ConditionSearchItem[] } }
+          | { error?: { message?: string } }
+          | null;
+
+        if (!response.ok || !body || !("data" in body)) {
+          throw new Error(
+            body && "error" in body
+              ? body.error?.message
+              : "Unable to search conditions",
+          );
+        }
+
+        setConditionResults(body.data?.items ?? []);
+      } catch (nextError) {
+        if (!controller.signal.aborted) {
+          setConditionResults([]);
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Unable to search conditions",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setConditionSearchLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [conditionQuery, session, status]);
+
   function addSelectedDiagnosis() {
     if (!data || !selectedDiagnosisId) return;
-    const match = data.diagnosisOptions.find((item) => item.id === selectedDiagnosisId);
-    if (!match || diagnoses.some((item) => item.label === match.label)) return;
-    setDiagnoses((current) => [...current, match]);
+    const match = data.diagnosisOptions.find(
+      (item) => item.id === selectedDiagnosisId,
+    );
+    if (!match) return;
+    addDiagnosis(match);
     setSelectedDiagnosisId("");
   }
 
-  function addCustomDiagnosis() {
-    const label = customDiagnosis.trim();
-    if (!label) return;
-    if (diagnoses.some((item) => item.label.toLowerCase() === label.toLowerCase())) {
-      setCustomDiagnosis("");
+  function addDiagnosis(diagnosis: PortalPatientCarePlanDiagnosis) {
+    if (
+      diagnoses.some(
+        (item) =>
+          item.label.toLowerCase() === diagnosis.label.toLowerCase() ||
+          (!!item.code && !!diagnosis.code && item.code === diagnosis.code),
+      )
+    ) {
       return;
     }
-    setDiagnoses((current) => [
-      ...current,
-      { code: null, id: label.toLowerCase().replace(/[^a-z0-9]+/g, "_"), label },
-    ]);
-    setCustomDiagnosis("");
+    setDiagnoses((current) => [...current, diagnosis]);
+    setConditionQuery("");
+    setConditionResults([]);
+  }
+
+  function addCustomDiagnosis() {
+    const label = conditionQuery.trim();
+    if (!label) return;
+    if (
+      diagnoses.some((item) => item.label.toLowerCase() === label.toLowerCase())
+    ) {
+      setConditionQuery("");
+      return;
+    }
+    addDiagnosis({
+      id: label.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+      code: null,
+      codeSystem: "CUSTOM",
+      label,
+    });
   }
 
   function removeDiagnosis(id: string) {
@@ -143,8 +251,10 @@ export default function PortalPatientAddCarePlanPage() {
         `/api/portal/patients/${params.patientId}/care-plans/add`,
         {
           body: JSON.stringify({
+            action,
             diagnoses: diagnoses.map((item) => ({
               ...(item.code ? { code: item.code } : {}),
+              ...(item.codeSystem ? { codeSystem: item.codeSystem } : {}),
               label: item.label,
             })),
             frequency,
@@ -152,8 +262,8 @@ export default function PortalPatientAddCarePlanPage() {
             notes,
             ownerLabels,
             reviewLabel:
-              data.reviewOptions.find((option) => option.id === reviewLabel)?.label ??
-              reviewLabel,
+              data.reviewOptions.find((option) => option.id === reviewLabel)
+                ?.label ?? reviewLabel,
             target,
             title,
           }),
@@ -193,7 +303,9 @@ export default function PortalPatientAddCarePlanPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading care plan form...</section>;
+    return (
+      <section className={styles.emptyState}>Loading care plan form...</section>
+    );
   }
 
   if (!data) {
@@ -215,6 +327,11 @@ export default function PortalPatientAddCarePlanPage() {
       : "/portal";
   const carePlansHref = `${patientHref}/care-plans`;
 
+  const actionLead =
+    action === "save_as_draft"
+      ? "This will save the care plan as a draft so the team can review it before sending."
+      : "This will create the care plan and notify the patient to begin.";
+
   return (
     <section className={styles.subpageLayout}>
       <PortalPatientSubpageHeader
@@ -225,53 +342,82 @@ export default function PortalPatientAddCarePlanPage() {
 
       <div className={styles.carePlanFormIntro}>
         <h2 className={styles.carePlanFormTitle}>Add Care Plan</h2>
-        <p className={styles.carePlanFormLead}>
-          The patient will be sent a notification to begin.
-        </p>
+        <p className={styles.carePlanFormLead}>{actionLead}</p>
       </div>
 
       <section className={styles.carePlanFormShell}>
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>Associated diagnoses</label>
+          <label className={styles.carePlanFieldLabel}>
+            Associated diagnoses
+          </label>
+
           <p className={styles.dataScreenCaption}>
-            Choose one or more diagnoses to link to this care plan. Optional.
+            Select an existing diagnosis already recorded for this patient, or search SNOMED and add a new one. (optional)
           </p>
-          <div className={styles.carePlanInlineRow}>
-            <select
-              className={styles.carePlanInput}
-              onChange={(event) => setSelectedDiagnosisId(event.target.value)}
-              value={selectedDiagnosisId}
-            >
-              <option value="">Select diagnosis</option>
-              {data.diagnosisOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              className={styles.buttonPrimarySmall}
-              onClick={addSelectedDiagnosis}
-              type="button"
-            >
-              Add diagnosis
-            </button>
-          </div>
-          <div className={styles.carePlanInlineRow}>
+          {data.diagnosisOptions.length ? (
+            <div className={styles.carePlanInlineRow}>
+              <select
+                className={styles.carePlanInput}
+                onChange={(event) => setSelectedDiagnosisId(event.target.value)}
+                value={selectedDiagnosisId}
+              >
+                <option value="">Select existing diagnosis</option>
+                {data.diagnosisOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className={styles.buttonPrimarySmall}
+                disabled={!selectedDiagnosisId}
+                onClick={addSelectedDiagnosis}
+                type="button"
+              >
+                Add diagnosis
+              </button>
+            </div>
+          ) : null}
+          <div className={styles.carePlanFormGroup}>
             <input
               className={styles.carePlanInput}
-              onChange={(event) => setCustomDiagnosis(event.target.value)}
-              placeholder="Add diagnosis"
-              value={customDiagnosis}
+              onChange={(event) => setConditionQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                addCustomDiagnosis();
+              }}
+              placeholder="Search condition or enter custom diagnosis"
+              value={conditionQuery}
             />
-            <button
-              className={styles.buttonPrimarySmall}
-              onClick={addCustomDiagnosis}
-              type="button"
-            >
-              Add custom
-            </button>
           </div>
+          <p className={styles.dataScreenCaption}>
+            Select a search result to add it, or press Enter to save custom text.
+          </p>
+          {conditionSearchLoading ? (
+            <p className={styles.dataScreenCaption}>Searching conditions...</p>
+          ) : null}
+          {conditionResults.length ? (
+            <div className={styles.carePlanSearchResults}>
+              {conditionResults.map((result) => (
+                <button
+                  className={styles.carePlanSearchResult}
+                  key={result.code}
+                  onClick={() =>
+                    addDiagnosis({
+                      id: result.code,
+                      code: result.code,
+                      codeSystem: result.codeSystem,
+                      label: result.label,
+                    })
+                  }
+                  type="button"
+                >
+                  {result.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {diagnoses.length ? (
             <div className={styles.carePlanChipList}>
               {diagnoses.map((diagnosis) => (
@@ -289,7 +435,10 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-title">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-title"
+          >
             Goal of care plan
           </label>
           <p className={styles.dataScreenCaption}>
@@ -306,7 +455,10 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-target">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-target"
+          >
             Target
           </label>
           <p className={styles.dataScreenCaption}>Target to meet.</p>
@@ -321,7 +473,10 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-measure">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-measure"
+          >
             Measure using
           </label>
           <p className={styles.dataScreenCaption}>
@@ -338,7 +493,10 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-notes">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-notes"
+          >
             Notes
           </label>
           <p className={styles.dataScreenCaption}>
@@ -356,7 +514,10 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-frequency">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-frequency"
+          >
             Frequency to measure
           </label>
           <select
@@ -374,7 +535,10 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-review">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-review"
+          >
             Review in
           </label>
           <select
@@ -410,6 +574,33 @@ export default function PortalPatientAddCarePlanPage() {
           </div>
         </div>
 
+        <div className={styles.carePlanFormGroup}>
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-action"
+          >
+            Action
+          </label>
+          <p className={styles.dataScreenCaption}>
+            Choose whether to activate the plan now or keep it as a draft for
+            later review.
+          </p>
+          <select
+            className={styles.carePlanInput}
+            id="care-plan-action"
+            onChange={(event) =>
+              setAction(event.target.value as CarePlanCreateAction)
+            }
+            value={action}
+          >
+            {data.actionOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {error ? <p className={styles.dataScreenCaption}>{error}</p> : null}
 
         <div className={styles.carePlanSubmitRow}>
@@ -425,7 +616,11 @@ export default function PortalPatientAddCarePlanPage() {
             onClick={() => void submitForm()}
             type="button"
           >
-            {submitting ? "Adding..." : "Add Care Plan"}
+            {submitting
+              ? "Saving..."
+              : action === "save_as_draft"
+                ? "Continue to draft"
+                : "Continue and notify patient"}
           </button>
         </div>
       </section>

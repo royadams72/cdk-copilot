@@ -855,6 +855,31 @@
   gap: var(--portal-space-2);
 }
 
+.carePlanSearchResults {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  overflow: hidden;
+  background: var(--portal-line);
+}
+
+.carePlanSearchResult {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: var(--portal-surface);
+  color: var(--portal-text);
+  font-size: 15px;
+  line-height: 22px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.carePlanSearchResult:hover {
+  background: var(--portal-surface-muted);
+}
+
 .carePlanChip,
 .carePlanChipStatic {
   min-height: 32px;
@@ -967,7 +992,7 @@
 
 .nutritionFilterSelect {
   min-width: 120px;
-  min-height: 48px;
+  min-height: 38px;
   padding: 0 20px 0 12px;
   border: 1px solid var(--portal-line);
   border-radius: 12px;

@@ -39,6 +39,21 @@ function formatStatusLabel(
   }
 }
 
+function formatStatusSummary(plan: PortalPatientCarePlanDetailData["plan"]) {
+  switch (plan.status) {
+    case "draft":
+      return "Draft";
+    case "active":
+      return `Active (${formatDate(plan.activatedAt)})`;
+    case "completed":
+      return `Completed (${formatDate(plan.completedAt)})`;
+    case "archived":
+      return "Archived";
+    default:
+      return plan.status;
+  }
+}
+
 export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
@@ -294,7 +309,7 @@ export default function PortalPatientCarePlanDetailPage() {
             <thead>
               <tr>
                 <th>Associated diagnoses</th>
-                <th>Completed</th>
+                <th>Status</th>
                 <th>Review in</th>
                 <th>Activated</th>
               </tr>
@@ -313,7 +328,7 @@ export default function PortalPatientCarePlanDetailPage() {
                   )}
                 </td>
 
-                <td> {formatDate(data.plan.completedAt)}</td>
+                <td>{formatStatusSummary(data.plan)}</td>
                 <td>{data.plan.reviewLabel ?? "Not set"}</td>
                 <td>{formatDate(data.plan.activatedAt)}</td>
               </tr>

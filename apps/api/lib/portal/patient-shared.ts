@@ -198,6 +198,7 @@ export type PortalPatientCarePlanGoal = {
 
 export type PortalPatientCarePlanDiagnosis = {
   code: string | null;
+  codeSystem?: "SNOMED_CT" | "CUSTOM" | null;
   id: string;
   label: string;
 };
@@ -239,6 +240,7 @@ export type PortalPatientCarePlanOption = {
 };
 
 export type PortalPatientCarePlanCreateData = {
+  actionOptions: PortalPatientCarePlanOption[];
   diagnosisOptions: PortalPatientCarePlanDiagnosis[];
   frequencyOptions: PortalPatientCarePlanOption[];
   headline: string;

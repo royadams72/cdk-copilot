@@ -40,7 +40,7 @@ function formatStatusLabel(
   }
 }
 
-function getStatusTone(
+function statusColour(
   status: PortalPatientCarePlanData["rows"][number]["status"],
 ) {
   switch (status) {
@@ -185,7 +185,7 @@ export default function PortalPatientCarePlansPage() {
                 </div>
                 <div
                   className={styles.carePlanStatus}
-                  data-tone={getStatusTone(row.status)}
+                  data-tone={statusColour(row.status)}
                 >
                   {formatStatusLabel(row.status)}
                 </div>
