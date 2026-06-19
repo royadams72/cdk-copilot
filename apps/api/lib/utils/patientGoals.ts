@@ -11,6 +11,12 @@ import {
 } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId, type Db } from "mongodb";
+import type {
+  CarePlanActivityDoc,
+  CarePlanGoalDoc,
+  CarePlanMongoDoc,
+} from "@/apps/api/lib/care-plans/shared";
+import { makeCarePlanActivityKey } from "@/apps/api/lib/care-plans/shared";
 
 import type { SessionUser } from "../auth/auth_requireUser";
 
@@ -41,29 +47,6 @@ type GoalLedgerDoc = {
   orgId?: string | null;
   patientId: ObjectId;
   reason?: string | null;
-};
-
-type CarePlanGoalDoc = {
-  key: string;
-  label: string;
-  target?: Record<string, unknown>;
-};
-
-type CarePlanDoc = {
-  _id?: ObjectId;
-  orgId: string;
-  patientId: ObjectId;
-  title: string;
-  goals?: CarePlanGoalDoc[];
-  tasks?: unknown[];
-  status?: "draft" | "active" | "completed" | "archived";
-  sources?: Array<"manual" | "ai" | "template">;
-  notes?: string;
-  createdBy: string;
-  updatedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  activatedAt?: Date;
 };
 
 const GOAL_METADATA: Record<
@@ -253,7 +236,7 @@ async function syncGoalsToCarePlan(
     current: GoalsCurrentDoc;
   },
 ) {
-  const carePlans = db.collection<CarePlanDoc>(COLLECTIONS.CarePlans);
+  const carePlans = db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans);
   const now = new Date();
   const activeGoals = sortGoals(
     input.current.goals.filter((goal) => goal.status === "active"),
@@ -283,13 +266,44 @@ async function syncGoalsToCarePlan(
   );
 
   if (!existing) {
+    const createdActivityAt = new Date(now);
+    const activatedActivityAt = new Date(now.getTime() + 1);
+    const activity: CarePlanActivityDoc[] = [
+      {
+        at: createdActivityAt,
+        by: input.actor.principalId,
+        key: makeCarePlanActivityKey(
+          "created",
+          createdActivityAt,
+          input.actor.principalId,
+        ),
+        note: "Created care plan from patient goals.",
+        type: "created",
+      },
+      {
+        at: activatedActivityAt,
+        by: input.actor.principalId,
+        key: makeCarePlanActivityKey(
+          "activated",
+          activatedActivityAt,
+          input.actor.principalId,
+        ),
+        note: "Activated care plan mirrored from patient_goals_current.",
+        type: "activated",
+      },
+    ];
+
     await carePlans.insertOne({
+      _id: new ObjectId(),
       activatedAt: now,
+      activity,
       createdAt: now,
       createdBy: input.actor.principalId,
+      diagnoses: [],
       goals: mirroredGoals,
       notes: "Mirrored from patient_goals_current",
       orgId: input.current.orgId ?? "org_demo",
+      ownerLabels: [],
       patientId: input.current.patientId,
       sources: ["manual"],
       status: "active",

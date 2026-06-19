@@ -77,3 +77,8 @@ export const CarePlanDoc = z.object({
 });
 export type CarePlanDoc = z.infer<typeof CarePlanDoc>;
 export type TCarePlanActivity = z.infer<typeof CarePlanActivity>;
+export type TCarePlanActivityType = z.infer<typeof CarePlanActivityType>;
+export type TCarePlanSource = z.infer<typeof CarePlanSource>;
+export type TCarePlanStatus = z.infer<typeof CarePlanStatus>;
+export type TCarePlanTaskFreq = z.infer<typeof TaskFreq>;
+export type TCarePlanTaskStatus = z.infer<typeof TaskStatus>;

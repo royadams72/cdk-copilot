@@ -1,5 +1,6 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { ObjectId } from "mongodb";
+import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
   normalizePortalPatientFilter,
   type PortalPatientDetail,
@@ -87,33 +88,6 @@ export function buildPortalPatientAccessMatch(user: SessionUser) {
   return { $and: clauses };
 }
 
-function toDate(value: Date | string | null | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDate(value: Date | string | null | undefined) {
-  const date = toDate(value);
-  return date ? date.toISOString() : null;
-}
-
-function formatDob(value: Date | string | null | undefined) {
-  const date = toDate(value);
-  if (!date) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
 function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
   return (
     assignments.find((assignment) => assignment.status === "active") ??
@@ -139,14 +113,14 @@ export function mapPortalPatientListItem(raw: {
   const risk = raw.summary?.risk ?? "unknown";
 
   return {
-    accessEndsAt: formatDate(primaryAssignment?.endsAt),
+    accessEndsAt: toIsoDate(primaryAssignment?.endsAt),
     careTeamId: primaryAssignment?.careTeamId ?? null,
-    dateOfBirth: formatDob(raw.pii?.dateOfBirth),
+    dateOfBirth: formatDisplayDob(raw.pii?.dateOfBirth),
     email: raw.pii?.email ?? null,
     facilityId: primaryAssignment?.facilityId ?? null,
     flags: raw.flags ?? [],
     id: raw._id.toHexString(),
-    lastContactAt: formatDate(raw.summary?.lastContactAt),
+    lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     name: normalizeName(raw.pii ?? {}),
     risk,
     stage: raw.stage ?? null,
@@ -168,10 +142,10 @@ export function mapPortalPatientDetail(raw: {
     assignments: (raw.assignments ?? []).map((assignment) => ({
       careTeamId: assignment.careTeamId ?? null,
       consentStatus: assignment.consentStatus ?? null,
-      endsAt: formatDate(assignment.endsAt),
+      endsAt: toIsoDate(assignment.endsAt),
       facilityId: assignment.facilityId ?? null,
       orgId: assignment.orgId ?? null,
-      startsAt: formatDate(assignment.startsAt),
+      startsAt: toIsoDate(assignment.startsAt),
       status: assignment.status ?? null,
     })),
   };

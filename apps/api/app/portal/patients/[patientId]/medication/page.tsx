@@ -7,32 +7,13 @@ import { useEffect, useState } from "react";
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientMedicationData } from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type PortalMedicationResponse = {
   data: PortalPatientMedicationData;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
-}
 
 export default function PortalPatientMedicationPage() {
   const params = useParams<{ patientId: string }>();
@@ -153,7 +134,12 @@ export default function PortalPatientMedicationPage() {
                 </div>
                 <div>
                   <dt>Last updated</dt>
-                  <dd>{formatDateTime(data?.summary?.lastUpdatedAt)}</dd>
+                  <dd>
+                    {formatDisplayDate(data?.summary?.lastUpdatedAt, {
+                      fallback: "Not set",
+                      includeTime: true,
+                    })}
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -198,8 +184,8 @@ export default function PortalPatientMedicationPage() {
                     <td>{row.dose ?? "Not set"}</td>
                     <td>{row.frequency ?? "Not set"}</td>
                     <td>{row.status}</td>
-                    <td>{formatDate(row.startAt)}</td>
-                    <td>{formatDate(row.endAt)}</td>
+                    <td>{formatDisplayDate(row.startAt)}</td>
+                    <td>{formatDisplayDate(row.endAt)}</td>
                     <td>
                       <div>
                         {row.latestReason ?? row.instructions ?? "No detail"}
@@ -249,7 +235,12 @@ export default function PortalPatientMedicationPage() {
               {data?.recentEvents?.length > 0 ? (
                 data.recentEvents.map((event) => (
                   <tr key={event.id}>
-                    <td>{formatDateTime(event.at)}</td>
+                    <td>
+                      {formatDisplayDate(event.at, {
+                        fallback: "Not set",
+                        includeTime: true,
+                      })}
+                    </td>
                     <td>{event.label}</td>
                     <td>{event.by}</td>
                     <td>{event.reason ?? "No reason recorded"}</td>

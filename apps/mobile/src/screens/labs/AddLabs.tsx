@@ -14,6 +14,7 @@ import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { useAppDispatch } from "@/store/hooks";
 // import { fetchDashboard } from "@/store/slices/dashboardSlice";
 import { LAB_DEFINITIONS } from "./labDefs";
@@ -48,20 +49,6 @@ function buildDefaultLabs(baseDate: Date) {
     unit: lab.unit,
     value: "",
   }));
-}
-
-function formatDateUk(value: Date) {
-  return value.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function toUtcDateIso(value: Date) {
-  return new Date(
-    Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()),
-  ).toISOString();
 }
 
 export default function AddLabs() {
@@ -195,7 +182,7 @@ export default function AddLabs() {
         labs: filledLabs.map((item) => ({
           code: item.code,
           name: item.name,
-          takenAt: toUtcDateIso(item.takenAt),
+          takenAt: toMobileUtcDateIso(item.takenAt),
           unit: item.unit,
           value: item.cleanedValue,
         })),
@@ -233,7 +220,7 @@ export default function AddLabs() {
         </ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
           {isEdit && editTakenAt
-            ? `Editing labs for ${formatDateUk(new Date(editTakenAt))}.`
+            ? `Editing labs for ${formatMobileUkInputDate(new Date(editTakenAt))}.`
             : "Enter values for the labs you want to submit."}
         </ThemedText>
 
@@ -262,7 +249,7 @@ export default function AddLabs() {
                   style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
                 >
                   <ThemedText style={{ opacity: 0.8 }}>
-                    Taken: {formatDateUk(lab.takenAt)}
+                    Taken: {formatMobileUkInputDate(lab.takenAt)}
                   </ThemedText>
                   <TouchableOpacity
                     onPress={() => setShowDateIndex(index)}

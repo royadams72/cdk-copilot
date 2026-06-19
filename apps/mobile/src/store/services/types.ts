@@ -7,6 +7,10 @@ import {
   NutritionTrendChunk,
 } from "@/screens/dashboard/types";
 import {
+  TCarePlanActivityType,
+  TCarePlanStatus,
+  TCarePlanTaskFreq,
+  TCarePlanTaskStatus,
   TSymptomCreateRequest,
   TSymptomLedgerEvent,
   TSymptomListResponse,
@@ -259,8 +263,10 @@ export type MonthlyNutritionSummaryResponse = {
     to: string;
   };
 };
-export type CarePlanStatus = "draft" | "active" | "completed" | "archived";
-export type CarePlanTaskFrequency = "daily" | "weekly" | "once";
+export type CarePlanStatus = TCarePlanStatus;
+export type CarePlanTaskFrequency = TCarePlanTaskFreq;
+export type CarePlanTaskStatus = TCarePlanTaskStatus;
+export type CarePlanActivityTypeValue = TCarePlanActivityType;
 export type CarePlanListItem = {
   activatedAt: string | null;
   id: string;
@@ -286,21 +292,14 @@ export type CarePlanDetailTask = {
   id: string;
   instructions: string | null;
   label: string;
-  status: "open" | "paused" | "done";
+  status: CarePlanTaskStatus;
 };
 export type CarePlanActivityEvent = {
   at: string;
   by: string;
   id: string;
   note: string | null;
-  type:
-    | "created"
-    | "draft_updated"
-    | "activated"
-    | "completed"
-    | "archived"
-    | "task_completed"
-    | "task_reopened";
+  type: CarePlanActivityTypeValue;
 };
 export type CarePlanDetailResponse = {
   plan: {

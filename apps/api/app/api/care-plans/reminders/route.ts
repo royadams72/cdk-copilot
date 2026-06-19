@@ -4,26 +4,10 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { COLLECTIONS } from "@ckd/core/server";
-
-type CarePlanTaskDoc = {
-  freq: "daily" | "weekly" | "once";
-  instructions?: string;
-  key: string;
-  label: string;
-  status: "open" | "paused" | "done";
-};
-
-type CarePlanDoc = {
-  _id: ObjectId;
-  activatedAt?: Date | null;
-  patientId: ObjectId;
-  status: "draft" | "active" | "completed" | "archived";
-  tasks?: CarePlanTaskDoc[];
-  title: string;
-};
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const plans = await db
-      .collection<CarePlanDoc>(COLLECTIONS.CarePlans)
+      .collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans)
       .find(
         {
           patientId: new ObjectId(caller.patientId),

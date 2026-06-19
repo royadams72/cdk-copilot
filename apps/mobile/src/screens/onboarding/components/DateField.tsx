@@ -7,23 +7,13 @@ import {
   Text,
   View,
 } from "react-native";
+import {
+  formatMobileUkInputDate,
+  toMobileUtcDateIso,
+} from "@/lib/format/date";
 import { SelectionField } from "@/screens/onboarding/components/FormFields";
 import { styles } from "@/screens/onboarding/styles";
 import { PrimaryButton, SecondaryButton } from "./Buttons";
-
-function formatDateForUk(value: Date) {
-  return value.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function toIsoDate(selected: Date) {
-  return new Date(
-    Date.UTC(selected.getFullYear(), selected.getMonth(), selected.getDate()),
-  ).toISOString();
-}
 
 function buildDateFromParts(year: number, month: number, day: number) {
   return new Date(year, month, day);
@@ -142,7 +132,7 @@ export function DateField({
     <>
       <SelectionField
         label={label}
-        value={dateValue ? formatDateForUk(dateValue) : null}
+        value={dateValue ? formatMobileUkInputDate(dateValue) : null}
         placeholder={label}
         onPress={() => setVisible(true)}
         error={error}
@@ -244,7 +234,7 @@ export function DateField({
                 label="Save"
                 onPress={() => {
                   onChange(
-                    toIsoDate(
+                    toMobileUtcDateIso(
                       buildDateFromParts(draftYear, draftMonth, draftDay),
                     ),
                   );

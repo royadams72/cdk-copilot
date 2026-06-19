@@ -1,7 +1,5 @@
 export const runtime = "nodejs";
 
-import { createHash } from "crypto";
-
 import {
   AllergyFormItem,
   ConditionFormItem,
@@ -9,7 +7,6 @@ import {
   HealthProfilesCurrent,
   HealthProfilesUpsertRequest,
   HealthProfileCurrentEntry,
-  HealthProfileLedgerEvent,
   HealthProfileValue,
   ROLES,
 } from "@ckd/core";
@@ -20,33 +17,26 @@ import { treeifyError, z } from "zod";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import {
+  actorTypeFromRole,
+  type HealthProfileLedgerEventDoc,
+  type HealthProfilesCurrentDoc,
+  makeStableProfileKey,
+  makeConditionEntryId,
+  normalizeProfileLabel,
+  toConditionCurrentEntry,
+} from "@/apps/api/lib/health-profiles/shared";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 
 type TAllergyFormItem = z.infer<typeof AllergyFormItem>;
 type TConditionFormItem = z.infer<typeof ConditionFormItem>;
 type TDietaryPreferenceFormItem = z.infer<typeof DietaryPreferenceFormItem>;
-type THealthProfileCurrent = z.infer<typeof HealthProfilesCurrent>;
 type THealthProfileCurrentEntry = z.infer<typeof HealthProfileCurrentEntry>;
 type THealthProfileFormValues = z.infer<typeof HealthProfilesUpsertRequest>;
-type THealthProfileLedgerEvent = z.infer<typeof HealthProfileLedgerEvent>;
 type THealthProfileValue = z.infer<typeof HealthProfileValue>;
-type TAllergyCurrentEntry = THealthProfileCurrent["allergies"][number];
-type TConditionCurrentEntry = THealthProfileCurrent["conditions"][number];
-type TDietaryPreferenceCurrentEntry =
-  THealthProfileCurrent["dietaryPreferences"][number];
-
-type HealthProfilesCurrentDoc = Omit<THealthProfileCurrent, "patientId"> & {
-  patientId: ObjectId;
-};
-
-type HealthProfileLedgerEventDoc = Omit<
-  THealthProfileLedgerEvent,
-  "_id" | "correctionOf" | "patientId"
-> & {
-  _id: ObjectId;
-  correctionOf?: ObjectId | null;
-  patientId: ObjectId;
-};
+type TAllergyCurrentEntry = HealthProfilesCurrentDoc["allergies"][number];
+type TConditionCurrentEntry = HealthProfilesCurrentDoc["conditions"][number];
+type TDietaryPreferenceCurrentEntry = HealthProfilesCurrentDoc["dietaryPreferences"][number];
 
 const emptyHealthProfileFormValues: THealthProfileFormValues = {
   allergies: [],
@@ -54,62 +44,38 @@ const emptyHealthProfileFormValues: THealthProfileFormValues = {
   dietaryPreferences: [],
 };
 
-function actorTypeFromRole(role: string) {
-  if (role === ROLES.Patient) return "patient";
-  if (role === ROLES.Clinician) return "clinician";
-  if (role === ROLES.Dietitian) return "dietitian";
-  if (role === "admin") return "admin";
-  return "system";
-}
-
-function stableKey(parts: string[]) {
-  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
-}
-
-function normalizeLabel(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
 function makeAllergyEntryId(item: TAllergyFormItem) {
   switch (item.group) {
     case "food":
-      return `hp_allergy_${stableKey([
+      return `hp_allergy_${makeStableProfileKey([
         "food",
         item.key,
         item.childKey ?? "",
       ])}`;
     case "environmental":
-      return `hp_allergy_${stableKey([
+      return `hp_allergy_${makeStableProfileKey([
         "environmental",
         item.key,
         item.childKey ?? "",
       ])}`;
     case "latex":
-      return `hp_allergy_${stableKey(["latex", item.key])}`;
+      return `hp_allergy_${makeStableProfileKey(["latex", item.key])}`;
     case "medication":
-      return `hp_allergy_${stableKey([
+      return `hp_allergy_${makeStableProfileKey([
         "medication",
         item.medicationRefId ?? "",
         item.dmplusdCode ?? "",
         item.snomedCode ?? "",
         item.medicationCode ?? "",
-        normalizeLabel(item.label),
+        normalizeProfileLabel(item.label),
       ])}`;
     case "other":
-      return `hp_allergy_${stableKey(["other", normalizeLabel(item.label)])}`;
+      return `hp_allergy_${makeStableProfileKey(["other", normalizeProfileLabel(item.label)])}`;
   }
 }
 
 function makeDietaryPreferenceEntryId(item: TDietaryPreferenceFormItem) {
-  return `hp_diet_${stableKey([item.key])}`;
-}
-
-function makeConditionEntryId(item: TConditionFormItem) {
-  return `hp_condition_${stableKey([
-    item.codeSystem,
-    item.code,
-    normalizeLabel(item.label),
-  ])}`;
+  return `hp_diet_${makeStableProfileKey([item.key])}`;
 }
 
 function toAllergyCurrentEntry(allergy: TAllergyFormItem): TAllergyCurrentEntry {
@@ -125,15 +91,6 @@ function toDietaryPreferenceCurrentEntry(
   return {
     entryId: makeDietaryPreferenceEntryId(dietaryPreference),
     value: { dietaryPreference, kind: "dietary_preference" },
-  };
-}
-
-function toConditionCurrentEntry(
-  condition: TConditionFormItem,
-): TConditionCurrentEntry {
-  return {
-    entryId: makeConditionEntryId(condition),
-    value: { condition, kind: "condition" },
   };
 }
 
@@ -176,7 +133,7 @@ function toComparableValue(value: THealthProfileValue) {
 }
 
 function buildLedgerEvents(params: {
-  actor: THealthProfileLedgerEvent["createdBy"];
+  actor: HealthProfileLedgerEventDoc["createdBy"];
   currentEntries: ReturnType<typeof buildCurrentEntries>;
   now: Date;
   orgId?: string;

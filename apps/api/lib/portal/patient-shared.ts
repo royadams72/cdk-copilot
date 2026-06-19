@@ -1,3 +1,18 @@
+import {
+  CarePlanActivityType,
+  CarePlanSource,
+  CarePlanStatus,
+  TaskFreq,
+  TaskStatus,
+} from "@ckd/core";
+import { z } from "zod";
+
+type CarePlanActivityTypeValue = z.infer<typeof CarePlanActivityType>;
+type CarePlanSourceValue = z.infer<typeof CarePlanSource>;
+type CarePlanStatusValue = z.infer<typeof CarePlanStatus>;
+type CarePlanTaskFreqValue = z.infer<typeof TaskFreq>;
+type CarePlanTaskStatusValue = z.infer<typeof TaskStatus>;
+
 export const PORTAL_PATIENT_FILTERS = [
   "all",
   "worsening",
@@ -170,8 +185,8 @@ export type PortalPatientCarePlanRow = {
   id: string;
   notes: string | null;
   openTasksCount: number;
-  sources: Array<"manual" | "ai" | "template">;
-  status: "draft" | "active" | "completed" | "archived";
+  sources: CarePlanSourceValue[];
+  status: CarePlanStatusValue;
   tasksCount: number;
   title: string;
   updatedAt: string;
@@ -204,11 +219,11 @@ export type PortalPatientCarePlanDiagnosis = {
 };
 
 export type PortalPatientCarePlanTask = {
-  freq: "daily" | "weekly" | "once";
+  freq: CarePlanTaskFreqValue;
   id: string;
   instructions: string | null;
   label: string;
-  status: "open" | "paused" | "done";
+  status: CarePlanTaskStatusValue;
 };
 
 export type PortalPatientCarePlanActivity = {
@@ -216,14 +231,7 @@ export type PortalPatientCarePlanActivity = {
   by: string;
   id: string;
   note: string | null;
-  type:
-    | "created"
-    | "draft_updated"
-    | "activated"
-    | "completed"
-    | "archived"
-    | "task_completed"
-    | "task_reopened";
+  type: CarePlanActivityTypeValue;
 };
 
 export type PortalPatientCarePlanDetailData = {
@@ -240,8 +248,8 @@ export type PortalPatientCarePlanDetailData = {
       notes: string | null;
       ownerLabels: string[];
       reviewLabel: string | null;
-      sources: Array<"manual" | "ai" | "template">;
-      status: "draft" | "active" | "completed" | "archived";
+      sources: CarePlanSourceValue[];
+      status: CarePlanStatusValue;
       tasks: PortalPatientCarePlanTask[];
       title: string;
       updatedAt: string;

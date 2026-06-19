@@ -4,7 +4,9 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { toIsoDate } from "@/apps/api/lib/format/date";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import type { PortalPatientCarePlanData } from "@/apps/api/lib/portal/patient-shared";
 import {
@@ -38,31 +40,7 @@ type RawPortalPatientDetailDoc = {
   } | null;
 };
 
-type CarePlanDoc = {
-  _id: ObjectId;
-  activatedAt?: Date | null;
-  completedAt?: Date | null;
-  createdAt: Date;
-  goals?: Array<{ key: string; label: string }>;
-  notes?: string | null;
-  sources?: Array<"manual" | "ai" | "template">;
-  status: "draft" | "active" | "completed" | "archived";
-  tasks?: Array<{
-    freq: "daily" | "weekly" | "once";
-    key: string;
-    label: string;
-    status: "open" | "paused" | "done";
-  }>;
-  title: string;
-  updatedAt: Date;
-};
-
-function toIso(value: Date | string | null | undefined) {
-  if (!value) return null;
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
-
-function statusWeight(status: CarePlanDoc["status"]) {
+function statusWeight(status: CarePlanMongoDoc["status"]) {
   switch (status) {
     case "active":
       return 0;
@@ -77,7 +55,7 @@ function statusWeight(status: CarePlanDoc["status"]) {
   }
 }
 
-function isReviewDue(plan: CarePlanDoc) {
+function isReviewDue(plan: CarePlanMongoDoc) {
   if (plan.status !== "active") return false;
   const ageMs = Date.now() - plan.updatedAt.getTime();
   return ageMs > 1000 * 60 * 60 * 24 * 28;
@@ -145,7 +123,7 @@ export async function GET(
     }
 
     const carePlans = await db
-      .collection<CarePlanDoc>(COLLECTIONS.CarePlans)
+      .collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans)
       .find(
         { patientId: patientObjectId },
         {
@@ -174,8 +152,8 @@ export async function GET(
         return right.updatedAt.getTime() - left.updatedAt.getTime();
       })
       .map((plan) => ({
-        activatedAt: toIso(plan.activatedAt),
-        completedAt: toIso(plan.completedAt),
+        activatedAt: toIsoDate(plan.activatedAt),
+        completedAt: toIsoDate(plan.completedAt),
         goalsCount: plan.goals?.length ?? 0,
         id: plan._id.toHexString(),
         notes: plan.notes?.trim() || null,
