@@ -7,21 +7,13 @@ import { useEffect, useState } from "react";
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanData } from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type PortalCarePlansResponse = {
   data: PortalPatientCarePlanData;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
-}
 
 function formatStatusLabel(
   status: PortalPatientCarePlanData["rows"][number]["status"],
@@ -177,7 +169,7 @@ export default function PortalPatientCarePlansPage() {
                     <span>{row.goalsCount} goals</span>
                     <span>{row.tasksCount} tasks</span>
                     <span>{row.openTasksCount} open</span>
-                    <span>Updated {formatDate(row.updatedAt)}</span>
+                    <span>Updated {formatDisplayDate(row.updatedAt)}</span>
                   </div>
                   {row.notes ? (
                     <div className={styles.carePlanRowNote}>{row.notes}</div>

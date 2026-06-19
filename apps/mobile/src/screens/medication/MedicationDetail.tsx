@@ -12,17 +12,11 @@ import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatMobileDate } from "@/lib/format/date";
 import type { MedicationDetail } from "./types";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { useGetMedicationByIdQuery } from "@/store/services/medicationApi";
 import { NutritionStyles } from "../nutrition/styles";
-
-function formatDate(value: string | null) {
-  if (!value) return "Unknown";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "Unknown";
-  return d.toLocaleString("en-GB");
-}
 
 export default function MedicationDetail() {
   const router = useRouter();
@@ -81,10 +75,10 @@ export default function MedicationDetail() {
                 Status: {medication.status}
               </ThemedText>
               <ThemedText style={{ opacity: 0.8 }}>
-                Started: {formatDate(medication.startAt)}
+                Started: {formatMobileDate(medication.startAt, { fallback: "Unknown", includeTime: true })}
               </ThemedText>
               <ThemedText style={{ opacity: 0.8 }}>
-                Ended: {formatDate(medication.endAt)}
+                Ended: {formatMobileDate(medication.endAt, { fallback: "Unknown", includeTime: true })}
               </ThemedText>
             </View>
 
@@ -136,7 +130,7 @@ export default function MedicationDetail() {
                           : "Details edited"}
                       </ThemedText>
                       <ThemedText style={{ fontSize: 13, opacity: 0.8 }}>
-                        At: {formatDate(event.at)}
+                        At: {formatMobileDate(event.at, { fallback: "Unknown", includeTime: true })}
                       </ThemedText>
                       {event.toStatus ? (
                         <ThemedText style={{ fontSize: 13, opacity: 0.8 }}>

@@ -1,59 +1,18 @@
 export const runtime = "nodejs";
 
-import { createHash } from "crypto";
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-import { CarePlanActivity as CarePlanActivitySchema } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import type {
+  CarePlanActivityDoc,
+  CarePlanMongoDoc,
+} from "@/apps/api/lib/care-plans/shared";
+import { makeCarePlanActivityKey } from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { COLLECTIONS } from "@ckd/core/server";
-
-type CarePlanGoalDoc = {
-  key: string;
-  label: string;
-  target?: Record<string, unknown>;
-};
-
-type CarePlanDiagnosisDoc = {
-  code?: string;
-  codeSystem?: "SNOMED_CT" | "CUSTOM";
-  key: string;
-  label: string;
-};
-
-type CarePlanActivityDoc = z.infer<typeof CarePlanActivitySchema>;
-
-type CarePlanTaskDoc = {
-  dueRule?: string;
-  freq: "daily" | "weekly" | "once";
-  instructions?: string;
-  key: string;
-  label: string;
-  status: "open" | "paused" | "done";
-};
-
-type CarePlanDoc = {
-  _id: ObjectId;
-  activatedAt?: Date | null;
-  activity?: CarePlanActivityDoc[];
-  completedAt?: Date | null;
-  createdAt: Date;
-  createdBy: string;
-  diagnoses?: CarePlanDiagnosisDoc[];
-  goals?: CarePlanGoalDoc[];
-  notes?: string | null;
-  ownerLabels?: string[];
-  patientId: ObjectId;
-  reviewLabel?: string | null;
-  status: "draft" | "active" | "completed" | "archived";
-  tasks?: CarePlanTaskDoc[];
-  title: string;
-  updatedAt: Date;
-  updatedBy: string;
-};
 
 const UpdateCarePlanTaskBody = z.object({
   action: z.enum(["complete_task", "reopen_task"]),
@@ -129,14 +88,6 @@ function summarizeTarget(target: Record<string, unknown> | undefined) {
     .slice(0, 3)
     .map(([key, value]) => `${key}: ${String(value)}`);
   return parts.length ? parts.join(" • ") : null;
-}
-
-function stableKey(parts: string[]) {
-  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
-}
-
-function makeCarePlanActivityKey(type: CarePlanActivityDoc["type"], at: Date, by: string) {
-  return `care_plan_activity_${stableKey([type, at.toISOString(), by])}`;
 }
 
 async function loadActorNames(
@@ -232,7 +183,7 @@ export async function GET(
     }
 
     const db = await getDb();
-    const plan = await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).findOne(
+    const plan = await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).findOne(
       {
         _id: new ObjectId(carePlanId),
         patientId: new ObjectId(caller.patientId),
@@ -350,7 +301,7 @@ export async function PATCH(
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
     const carePlanObjectId = new ObjectId(carePlanId);
-    const plan = await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).findOne({
+    const plan = await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).findOne({
       _id: carePlanObjectId,
       patientId: patientObjectId,
     });
@@ -374,7 +325,7 @@ export async function PATCH(
 
     const now = new Date();
     const activityType = parsed.data.action === "complete_task" ? "task_completed" : "task_reopened";
-    await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).updateOne(
+    await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
       { _id: carePlanObjectId, patientId: patientObjectId },
       {
         $set: {

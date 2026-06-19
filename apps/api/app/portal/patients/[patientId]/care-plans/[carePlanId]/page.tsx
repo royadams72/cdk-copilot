@@ -6,21 +6,13 @@ import { useEffect, useState } from "react";
 
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type PortalCarePlanDetailResponse = {
   data: PortalPatientCarePlanDetailData;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "No date set";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
-}
 
 function formatStatusLabel(
   status: PortalPatientCarePlanDetailData["plan"]["status"],
@@ -44,9 +36,9 @@ function formatStatusSummary(plan: PortalPatientCarePlanDetailData["plan"]) {
     case "draft":
       return "Draft";
     case "active":
-      return `Active (${formatDate(plan.activatedAt)})`;
+      return `Active (${formatDisplayDate(plan.activatedAt, { fallback: "No date set" })})`;
     case "completed":
-      return `Completed (${formatDate(plan.completedAt)})`;
+      return `Completed (${formatDisplayDate(plan.completedAt, { fallback: "No date set" })})`;
     case "archived":
       return "Archived";
     default:
@@ -354,7 +346,7 @@ export default function PortalPatientCarePlanDetailPage() {
 
                 <td>{formatStatusSummary(data.plan)}</td>
                 <td>{data.plan.reviewLabel ?? "Not set"}</td>
-                <td>{formatDate(data.plan.activatedAt)}</td>
+                <td>{formatDisplayDate(data.plan.activatedAt, { fallback: "No date set" })}</td>
               </tr>
               {data.plan.notes ? (
                 <tr>
@@ -386,7 +378,9 @@ export default function PortalPatientCarePlanDetailPage() {
               <div className={styles.carePlanHistoryRow} key={event.id}>
                 <div className={styles.carePlanHistoryHeader}>
                   <p className={styles.carePlanMetaTitle}>{formatActivityLabel(event.type)}</p>
-                  <p className={styles.carePlanMetaTitle}>{formatDate(event.at)}</p>
+                  <p className={styles.carePlanMetaTitle}>
+                    {formatDisplayDate(event.at, { fallback: "No date set" })}
+                  </p>
                 </div>
                 <p className={styles.carePlanMetaValue}>{event.by}</p>
                 {event.note ? <p className={styles.carePlanMetaValue}>{event.note}</p> : null}

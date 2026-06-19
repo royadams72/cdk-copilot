@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { setLastViewedCarePlanAt } from "@/lib/carePlans";
+import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useGetCarePlanByIdQuery,
@@ -17,13 +18,6 @@ import {
 } from "@/store/services/carePlanApi";
 import { Card } from "@/screens/dashboard/components/Card";
 import { styles } from "@/screens/dashboard/styles";
-
-function formatDate(value: string | null) {
-  if (!value) return "Not set";
-  const next = new Date(value);
-  if (Number.isNaN(next.getTime())) return "Not set";
-  return next.toLocaleDateString("en-GB");
-}
 
 function formatStatus(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -114,9 +108,9 @@ export default function CarePlanDetail() {
                 <ThemedText style={styles.carePlanMetaLabel}>Status</ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
                   {data.status === "completed"
-                    ? `Completed (${formatDate(data.completedAt)})`
+                    ? `Completed (${formatMobileDate(data.completedAt)})`
                     : data.status === "active"
-                      ? `Active (${formatDate(data.activatedAt)})`
+                      ? `Active (${formatMobileDate(data.activatedAt)})`
                       : formatStatus(data.status)}
                 </ThemedText>
               </View>
@@ -129,7 +123,7 @@ export default function CarePlanDetail() {
               <View style={styles.carePlanSummaryCell}>
                 <ThemedText style={styles.carePlanMetaLabel}>Activated</ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
-                  {formatDate(data.activatedAt)}
+                  {formatMobileDate(data.activatedAt)}
                 </ThemedText>
               </View>
             </View>
@@ -154,7 +148,7 @@ export default function CarePlanDetail() {
                       {formatStatus(event.type.replace(/_/g, " "))}
                     </ThemedText>
                     <ThemedText style={styles.carePlanTaskMeta}>
-                      {formatDate(event.at)}
+                      {formatMobileDate(event.at)}
                     </ThemedText>
                   </View>
                   <ThemedText style={styles.carePlanBodyText}>{event.by}</ThemedText>

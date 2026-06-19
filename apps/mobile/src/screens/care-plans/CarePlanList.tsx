@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
+import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { useGetCarePlansQuery } from "@/store/services/carePlanApi";
 import { Card } from "@/screens/dashboard/components/Card";
@@ -16,13 +17,6 @@ import { styles } from "@/screens/dashboard/styles";
 
 function formatStatus(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "Not set";
-  const next = new Date(value);
-  if (Number.isNaN(next.getTime())) return "Not set";
-  return next.toLocaleDateString("en-GB");
 }
 
 export default function CarePlanList() {
@@ -89,8 +83,8 @@ export default function CarePlanList() {
                 {plan.reviewLabel ? ` · Review in ${plan.reviewLabel}` : ""}
               </ThemedText>
               <ThemedText style={styles.helperText}>
-                Activated {formatDate(plan.activatedAt)} · Updated{" "}
-                {formatDate(plan.updatedAt)}
+                Activated {formatMobileDate(plan.activatedAt)} · Updated{" "}
+                {formatMobileDate(plan.updatedAt)}
               </ThemedText>
             </Card>
           </TouchableOpacity>

@@ -1,21 +1,33 @@
 export const runtime = "nodejs";
 
-import { createHash } from "crypto";
-
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import {
-  CarePlanActivity as CarePlanActivitySchema,
   ConditionFormItem,
-  HealthProfileCurrentEntry,
-  HealthProfileLedgerEvent,
-  HealthProfilesCurrent,
-  ROLES,
 } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import type {
+  CarePlanActivityDoc,
+  CarePlanMongoDoc,
+} from "@/apps/api/lib/care-plans/shared";
+import {
+  buildCarePlanDiagnosisActivityNote,
+  makeCarePlanActivityKey,
+  normalizeCarePlanLabel,
+  slugifyCarePlanLabel,
+  stableCarePlanKey,
+} from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { toIsoDate } from "@/apps/api/lib/format/date";
+import {
+  actorTypeFromRole,
+  type ConditionCurrentEntry,
+  type HealthProfileLedgerEventDoc,
+  type HealthProfilesCurrentDoc,
+  toConditionCurrentEntry,
+} from "@/apps/api/lib/health-profiles/shared";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
 import { sendPatientPushNotification } from "@/apps/api/lib/utils/pushNotifications";
@@ -50,52 +62,6 @@ type RawPortalPatientDetailDoc = {
   } | null;
 };
 
-type CarePlanGoalDoc = {
-  key: string;
-  label: string;
-  target?: Record<string, unknown>;
-};
-
-type CarePlanDiagnosisDoc = {
-  code?: string;
-  codeSystem?: "SNOMED_CT" | "CUSTOM";
-  key: string;
-  label: string;
-};
-
-type CarePlanActivityDoc = z.infer<typeof CarePlanActivitySchema>;
-
-type CarePlanTaskDoc = {
-  dueRule?: string;
-  freq: "daily" | "weekly" | "once";
-  instructions?: string;
-  key: string;
-  label: string;
-  status: "open" | "paused" | "done";
-};
-
-type CarePlanDoc = {
-  _id: ObjectId;
-  activatedAt?: Date | null;
-  activity?: CarePlanActivityDoc[];
-  completedAt?: Date | null;
-  createdAt: Date;
-  createdBy: string;
-  diagnoses?: CarePlanDiagnosisDoc[];
-  goals?: CarePlanGoalDoc[];
-  notes?: string | null;
-  ownerLabels?: string[];
-  orgId: string;
-  patientId: ObjectId;
-  reviewLabel?: string | null;
-  sources?: Array<"manual" | "ai" | "template">;
-  status: "draft" | "active" | "completed" | "archived";
-  tasks?: CarePlanTaskDoc[];
-  title: string;
-  updatedAt: Date;
-  updatedBy: string;
-};
-
 type UserPiiActorDoc = {
   firstName?: string;
   lastName?: string;
@@ -117,22 +83,6 @@ type UserAccountActorDoc = {
 
 type PortalCaller = Awaited<ReturnType<typeof requireUser>>;
 type TConditionFormItem = z.infer<typeof ConditionFormItem>;
-type THealthProfileCurrentEntry = z.infer<typeof HealthProfileCurrentEntry>;
-type THealthProfilesCurrent = z.infer<typeof HealthProfilesCurrent>;
-type THealthProfileLedgerEvent = z.infer<typeof HealthProfileLedgerEvent>;
-
-type HealthProfilesCurrentDoc = Omit<THealthProfilesCurrent, "patientId"> & {
-  patientId: ObjectId;
-};
-
-type HealthProfileLedgerEventDoc = Omit<
-  THealthProfileLedgerEvent,
-  "_id" | "correctionOf" | "patientId"
-> & {
-  _id: ObjectId;
-  correctionOf?: ObjectId | null;
-  patientId: ObjectId;
-};
 
 const UPDATE_DRAFT_PAYLOAD = z.object({
   action: z.enum(["update_draft", "update_draft_and_activate"]),
@@ -153,11 +103,6 @@ const UPDATE_DRAFT_PAYLOAD = z.object({
   target: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(80),
 });
-
-function toIso(value: Date | string | null | undefined) {
-  if (!value) return null;
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
 
 function summarizeTarget(target: Record<string, unknown> | undefined) {
   if (!target) return null;
@@ -213,50 +158,6 @@ function prettifyActorToken(value: string | null | undefined) {
     .join(" ");
 }
 
-function normalizeLabel(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function stableKey(parts: string[]) {
-  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
-}
-
-function makeCarePlanActivityKey(type: CarePlanActivityDoc["type"], at: Date, by: string) {
-  return `care_plan_activity_${stableKey([type, at.toISOString(), by])}`;
-}
-
-function buildDiagnosisActivityNote(diagnoses: Array<{ label: string }>) {
-  if (!diagnoses.length) return undefined;
-  return `Diagnoses linked: ${diagnoses.map((diagnosis) => diagnosis.label).join(", ")}.`;
-}
-
-function makeConditionEntryId(item: TConditionFormItem) {
-  return `hp_condition_${stableKey([
-    item.codeSystem,
-    item.code,
-    normalizeLabel(item.label),
-  ])}`;
-}
-
-function toConditionCurrentEntry(
-  condition: TConditionFormItem,
-): THealthProfileCurrentEntry & {
-  value: { condition: TConditionFormItem; kind: "condition" };
-} {
-  return {
-    entryId: makeConditionEntryId(condition),
-    value: { condition, kind: "condition" },
-  };
-}
-
-function actorTypeFromRole(role: string) {
-  if (role === ROLES.Patient) return "patient";
-  if (role === ROLES.Clinician) return "clinician";
-  if (role === ROLES.Dietitian) return "dietitian";
-  if (role === "admin") return "admin";
-  return "system";
-}
-
 async function appendDiagnosesToHealthProfiles(params: {
   caller: PortalCaller;
   db: Awaited<ReturnType<typeof getDb>>;
@@ -276,11 +177,7 @@ async function appendDiagnosesToHealthProfiles(params: {
   const existingEntries = previousDocs
     .flatMap((doc) => doc.conditions ?? [])
     .reduce<
-      Array<
-        THealthProfileCurrentEntry & {
-          value: { condition: TConditionFormItem; kind: "condition" };
-        }
-      >
+      ConditionCurrentEntry[]
     >((acc, entry) => {
       if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
       acc.push(entry);
@@ -288,14 +185,14 @@ async function appendDiagnosesToHealthProfiles(params: {
     }, []);
   const existingKeys = new Set(
     existingEntries.map((entry) =>
-      `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeLabel(
+      `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeCarePlanLabel(
         entry.value.condition.label,
       )}`,
     ),
   );
   const newEntries = diagnoses
     .filter((condition) => {
-      const token = `${condition.codeSystem}|${condition.code}|${normalizeLabel(condition.label)}`;
+      const token = `${condition.codeSystem}|${condition.code}|${normalizeCarePlanLabel(condition.label)}`;
       if (existingKeys.has(token)) return false;
       existingKeys.add(token);
       return true;
@@ -492,7 +389,7 @@ async function buildCarePlanDetailData(
     return { error: bad("Patient not found", { code: "patient_not_found" }, 404) };
   }
 
-  const plan = await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).findOne(
+  const plan = await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).findOne(
     {
       _id: carePlanObjectId,
       patientId: patientObjectId,
@@ -536,8 +433,8 @@ async function buildCarePlanDetailData(
     headline: `${plan.title} - ${mappedPatient.name}`,
     patient: mappedPatient,
     plan: {
-      activatedAt: toIso(plan.activatedAt),
-      completedAt: toIso(plan.completedAt),
+      activatedAt: toIsoDate(plan.activatedAt),
+      completedAt: toIsoDate(plan.completedAt),
       createdAt: plan.createdAt.toISOString(),
       createdBy: actorNames.get(plan.createdBy) ?? plan.createdBy,
       diagnoses: (plan.diagnoses ?? []).map((diagnosis) => ({
@@ -659,7 +556,7 @@ export async function PATCH(
       return bad("Patient not found", { code: "patient_not_found" }, 404);
     }
 
-    const existing = await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).findOne({
+    const existing = await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).findOne({
       _id: carePlanObjectId,
       patientId: patientObjectId,
     });
@@ -670,7 +567,7 @@ export async function PATCH(
     const now = new Date();
 
     if (action === "delete") {
-      await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).deleteOne({
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).deleteOne({
         _id: carePlanObjectId,
         patientId: patientObjectId,
       });
@@ -690,8 +587,8 @@ export async function PATCH(
       const normalizedDiagnoses: TConditionFormItem[] = parsed.data.diagnoses.map((diagnosis) => ({
         code:
           diagnosis.code?.trim() ||
-          diagnosis.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") ||
-          stableKey(["custom-condition", diagnosis.label.trim()]),
+          slugifyCarePlanLabel(diagnosis.label) ||
+          stableCarePlanKey(["custom-condition", diagnosis.label.trim()]),
         codeSystem: diagnosis.codeSystem ?? (diagnosis.code?.trim() ? "SNOMED_CT" : "CUSTOM"),
         label: diagnosis.label.trim(),
         status: "active",
@@ -704,7 +601,7 @@ export async function PATCH(
           by: caller.principalId,
           key: makeCarePlanActivityKey("draft_updated", now, caller.principalId),
           note:
-            buildDiagnosisActivityNote(normalizedDiagnoses) ??
+            buildCarePlanDiagnosisActivityNote(normalizedDiagnoses) ??
             "Updated care plan draft.",
           type: "draft_updated",
         },
@@ -720,59 +617,53 @@ export async function PATCH(
         });
       }
 
-      await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).updateOne(
+      const draftUpdateSet: Partial<CarePlanMongoDoc> = {
+        diagnoses: normalizedDiagnoses.map((diagnosis) => ({
+          ...(diagnosis.code?.trim() ? { code: diagnosis.code.trim() } : {}),
+          codeSystem: diagnosis.codeSystem,
+          key: diagnosis.code.trim(),
+          label: diagnosis.label,
+        })),
+        goals: [
+          {
+            key: slugifyCarePlanLabel(parsed.data.title) || "primary_goal",
+            label: parsed.data.title,
+            target: { summary: parsed.data.target },
+          },
+        ],
+        ownerLabels: parsed.data.ownerLabels,
+        reviewLabel: parsed.data.reviewLabel,
+        ...(shouldActivateAfterUpdate
+          ? {
+              activatedAt: existing.activatedAt ?? activatedAt ?? now,
+              status: "active" as const,
+            }
+          : {}),
+        tasks: [
+          {
+            freq: parsed.data.frequency,
+            instructions: `Target to meet: ${parsed.data.target}. Review in: ${parsed.data.reviewLabel}.`,
+            key: "measure_progress",
+            label: parsed.data.measureUsing,
+            status: "open",
+          },
+        ],
+        title: parsed.data.title,
+        updatedAt: now,
+        updatedBy: caller.principalId,
+      };
+      if (parsed.data.notes?.trim()) {
+        draftUpdateSet.notes = parsed.data.notes.trim();
+      }
+
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
         { _id: carePlanObjectId, patientId: patientObjectId },
         {
-          $set: {
-            diagnoses: normalizedDiagnoses.map((diagnosis) => ({
-              ...(diagnosis.code?.trim() ? { code: diagnosis.code.trim() } : {}),
-              codeSystem: diagnosis.codeSystem,
-              key: diagnosis.code.trim(),
-              label: diagnosis.label,
-            })),
-            goals: [
-              {
-                key:
-                  parsed.data.title
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "_")
-                    .replace(/^_+|_+$/g, "")
-                    .slice(0, 40) || "primary_goal",
-                label: parsed.data.title,
-                target: { summary: parsed.data.target },
-              },
-            ],
-            ...(parsed.data.notes?.trim()
-              ? { notes: parsed.data.notes.trim() }
-              : { notes: null }),
-            ownerLabels: parsed.data.ownerLabels,
-            reviewLabel: parsed.data.reviewLabel,
-            ...(shouldActivateAfterUpdate
-              ? {
-                  activatedAt: existing.activatedAt ?? activatedAt ?? now,
-                  status: "active" as const,
-                }
-              : {}),
-            tasks: [
-              {
-                freq: parsed.data.frequency,
-                instructions: `Target to meet: ${parsed.data.target}. Review in: ${parsed.data.reviewLabel}.`,
-                key: "measure_progress",
-                label: parsed.data.measureUsing,
-                status: "open",
-              },
-            ],
-            title: parsed.data.title,
-            updatedAt: now,
-            updatedBy: caller.principalId,
+          $set: draftUpdateSet,
+          $unset: {
+            ...(!parsed.data.notes?.trim() ? { notes: "" } : {}),
+            ...(shouldActivateAfterUpdate ? { completedAt: "" } : {}),
           },
-          ...(shouldActivateAfterUpdate
-            ? {
-                $unset: {
-                  completedAt: "",
-                },
-              }
-            : {}),
           $push: {
             activity: {
               $each: activityEvents,
@@ -805,7 +696,7 @@ export async function PATCH(
     }
 
     if (action === "complete" && existing.status !== "completed") {
-      await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).updateOne(
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
         { _id: carePlanObjectId, patientId: patientObjectId },
         {
           $push: {
@@ -847,7 +738,7 @@ export async function PATCH(
     }
 
     if (action === "activate" && existing.status === "draft") {
-      await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).updateOne(
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
         { _id: carePlanObjectId, patientId: patientObjectId },
         {
           $push: {
@@ -886,7 +777,7 @@ export async function PATCH(
     }
 
     if (action === "archive" && existing.status === "completed") {
-      await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).updateOne(
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
         { _id: carePlanObjectId, patientId: patientObjectId },
         {
           $push: {

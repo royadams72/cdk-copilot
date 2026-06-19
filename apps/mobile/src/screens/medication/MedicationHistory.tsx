@@ -12,17 +12,11 @@ import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatMobileDate } from "@/lib/format/date";
 import type { MedicationHistoryItem, MedicationHistoryResponse } from "./types";
 import { useGetMedicationHistoryQuery } from "@/store/services/medicationApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { NutritionStyles } from "../nutrition/styles";
-
-function formatDate(value: string | null) {
-  if (!value) return "Unknown date";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "Unknown date";
-  return d.toLocaleDateString("en-GB");
-}
 
 function MedicationList({
   items,
@@ -65,7 +59,7 @@ function MedicationList({
               Current status: {item.status}
             </ThemedText>
             <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
-              Updated {formatDate(item.updatedAt)}
+              Updated {formatMobileDate(item.updatedAt, { fallback: "Unknown date" })}
             </ThemedText>
             {item.latestReason ? (
               <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>

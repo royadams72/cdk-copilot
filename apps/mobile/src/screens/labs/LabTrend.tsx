@@ -7,6 +7,7 @@ import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatMobileShortDayMonth } from "@/lib/format/date";
 
 type TrendPoint = {
   takenAt: string | null;
@@ -17,13 +18,6 @@ function asNumber(value: number | string): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getDate()}/${date.getMonth() + 1}`;
 }
 
 export default function LabTrend() {
@@ -74,7 +68,7 @@ export default function LabTrend() {
     () =>
       points
         .map((point) => ({
-          label: formatDate(point.takenAt),
+          label: formatMobileShortDayMonth(point.takenAt),
           value: asNumber(point.value),
         }))
         .filter((point) => point.value !== null) as Array<{ label: string; value: number }>,

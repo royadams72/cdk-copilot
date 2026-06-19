@@ -15,6 +15,7 @@ import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 
 import type {
   DrugSuggestion,
@@ -52,20 +53,6 @@ const DOSE_UNIT_OPTIONS = [
 
 function cleanText(value: string) {
   return value.trim().replace(/\s+/g, " ");
-}
-
-function formatDateUk(value: Date) {
-  return value.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function toUtcDateIso(value: Date) {
-  return new Date(
-    Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()),
-  ).toISOString();
 }
 
 function parseDose(value: string): {
@@ -246,7 +233,7 @@ export default function AddMedication() {
       nextFrequency !== originalSnapshot.frequency ||
       cleanText(route).toLowerCase() !== originalSnapshot.route ||
       cleanText(form).toLowerCase() !== originalSnapshot.form ||
-      toUtcDateIso(startAt) !== originalSnapshot.startAtIso
+      toMobileUtcDateIso(startAt) !== originalSnapshot.startAtIso
     );
   }
 
@@ -308,7 +295,7 @@ export default function AddMedication() {
           name: cleanedName,
           route: cleanText(route),
           snomedCode: selectedDrug?.snomedCode ?? undefined,
-          startAt: toUtcDateIso(startAt),
+          startAt: toMobileUtcDateIso(startAt),
         };
         createMedication(payload);
         // const res = await authFetch(`${API}/api/medications/create`, {
@@ -330,7 +317,7 @@ export default function AddMedication() {
           name: cleanedName,
           route: cleanText(route),
           snomedCode: selectedDrug?.snomedCode ?? undefined,
-          startAt: toUtcDateIso(startAt),
+          startAt: toMobileUtcDateIso(startAt),
           status,
         };
 
@@ -611,7 +598,7 @@ export default function AddMedication() {
               padding: 10,
             }}
           >
-            <ThemedText>{formatDateUk(startAt)}</ThemedText>
+            <ThemedText>{formatMobileUkInputDate(startAt)}</ThemedText>
           </TouchableOpacity>
           {showStartDatePicker ? (
             <View style={{ marginTop: 8 }}>

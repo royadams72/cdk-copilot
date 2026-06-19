@@ -11,6 +11,7 @@ import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { formatMobileDate } from "@/lib/format/date";
 
 type HistoryLab = {
   id: string;
@@ -27,13 +28,6 @@ type DateGroup = {
   items: HistoryLab[];
   takenAt: string | null;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "Unknown";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date.toLocaleDateString("en-GB");
-}
 
 export default function LabsHistory() {
   const router = useRouter();
@@ -138,7 +132,7 @@ export default function LabsHistory() {
                       }}
                     >
                       <ThemedText style={{ fontWeight: "700" }}>
-                        {formatDate(group.takenAt)}
+                        {formatMobileDate(group.takenAt, { fallback: "Unknown" })}
                       </ThemedText>
                       <ThemedText style={{ fontSize: 13, opacity: 0.75 }}>
                         {group.itemCount} lab{group.itemCount === 1 ? "" : "s"}
@@ -178,7 +172,7 @@ export default function LabsHistory() {
                     Latest: {String(item.value)} {item.unit ?? ""}
                   </ThemedText>
                   <ThemedText style={{ fontSize: 13, opacity: 0.75 }}>
-                    {formatDate(item.takenAt)}
+                    {formatMobileDate(item.takenAt, { fallback: "Unknown" })}
                   </ThemedText>
                 </TouchableOpacity>
               ))

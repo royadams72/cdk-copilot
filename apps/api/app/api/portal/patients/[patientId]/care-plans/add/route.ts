@@ -1,21 +1,29 @@
 export const runtime = "nodejs";
 
-import { createHash } from "crypto";
-
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import {
-  CarePlanActivity as CarePlanActivitySchema,
   ConditionFormItem,
-  HealthProfileCurrentEntry,
-  HealthProfileLedgerEvent,
-  HealthProfilesCurrent,
-  ROLES,
 } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
+import {
+  buildCarePlanDiagnosisActivityNote,
+  makeCarePlanActivityKey,
+  normalizeCarePlanLabel,
+  slugifyCarePlanLabel,
+  stableCarePlanKey,
+} from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import {
+  actorTypeFromRole,
+  type ConditionCurrentEntry,
+  type HealthProfileLedgerEventDoc,
+  type HealthProfilesCurrentDoc,
+  toConditionCurrentEntry,
+} from "@/apps/api/lib/health-profiles/shared";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { sendPatientPushNotification } from "@/apps/api/lib/utils/pushNotifications";
 import type {
@@ -29,22 +37,6 @@ import {
 import { COLLECTIONS } from "@ckd/core/server";
 
 type TConditionFormItem = z.infer<typeof ConditionFormItem>;
-type THealthProfileCurrentEntry = z.infer<typeof HealthProfileCurrentEntry>;
-type THealthProfilesCurrent = z.infer<typeof HealthProfilesCurrent>;
-type THealthProfileLedgerEvent = z.infer<typeof HealthProfileLedgerEvent>;
-
-type HealthProfilesCurrentDoc = Omit<THealthProfilesCurrent, "patientId"> & {
-  patientId: ObjectId;
-};
-
-type HealthProfileLedgerEventDoc = Omit<
-  THealthProfileLedgerEvent,
-  "_id" | "correctionOf" | "patientId"
-> & {
-  _id: ObjectId;
-  correctionOf?: ObjectId | null;
-  patientId: ObjectId;
-};
 
 type RawPortalPatientDetailDoc = {
   _id: ObjectId;
@@ -71,7 +63,7 @@ type RawPortalPatientDetailDoc = {
   } | null;
 };
 
-type ClinicalDoc = {
+type CarePlanClinicalDoc = {
   careTeam?: Array<{
     name?: string;
     role?: string;
@@ -93,45 +85,6 @@ type StaffProfileDoc = {
   title?: string;
 };
 
-type CarePlanDoc = {
-  _id: ObjectId;
-  activatedAt?: Date;
-  activity?: CarePlanActivityDoc[];
-  createdAt: Date;
-  createdBy: string;
-  diagnoses: Array<{
-    code?: string;
-    codeSystem?: "SNOMED_CT" | "CUSTOM";
-    key: string;
-    label: string;
-  }>;
-  goals: Array<{
-    key: string;
-    label: string;
-    target?: Record<string, unknown>;
-  }>;
-  notes?: string;
-  orgId: string;
-  ownerLabels: string[];
-  patientId: ObjectId;
-  reviewLabel?: string;
-  sources: Array<"manual" | "ai" | "template">;
-  status: "draft" | "active" | "completed" | "archived";
-  tasks: Array<{
-    dueRule?: string;
-    freq: "daily" | "weekly" | "once";
-    instructions?: string;
-    key: string;
-    label: string;
-    status: "open" | "paused" | "done";
-  }>;
-  title: string;
-  updatedAt: Date;
-  updatedBy: string;
-};
-
-type CarePlanActivityDoc = z.infer<typeof CarePlanActivitySchema>;
-
 const CREATE_PAYLOAD = z.object({
   action: z.enum(["activate_and_notify", "save_as_draft"]).default("activate_and_notify"),
   diagnoses: z
@@ -151,58 +104,6 @@ const CREATE_PAYLOAD = z.object({
   target: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(80),
 });
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40);
-}
-
-function normalizeLabel(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function stableKey(parts: string[]) {
-  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
-}
-
-function makeCarePlanActivityKey(type: CarePlanActivityDoc["type"], at: Date, by: string) {
-  return `care_plan_activity_${stableKey([type, at.toISOString(), by])}`;
-}
-
-function buildDiagnosisActivityNote(diagnoses: Array<{ label: string }>) {
-  if (!diagnoses.length) return undefined;
-  return `Diagnoses linked: ${diagnoses.map((diagnosis) => diagnosis.label).join(", ")}.`;
-}
-
-function makeConditionEntryId(item: TConditionFormItem) {
-  return `hp_condition_${stableKey([
-    item.codeSystem,
-    item.code,
-    normalizeLabel(item.label),
-  ])}`;
-}
-
-function toConditionCurrentEntry(
-  condition: TConditionFormItem,
-): THealthProfileCurrentEntry & {
-  value: { condition: TConditionFormItem; kind: "condition" };
-} {
-  return {
-    entryId: makeConditionEntryId(condition),
-    value: { condition, kind: "condition" },
-  };
-}
-
-function actorTypeFromRole(role: string) {
-  if (role === ROLES.Patient) return "patient";
-  if (role === ROLES.Clinician) return "clinician";
-  if (role === ROLES.Dietitian) return "dietitian";
-  if (role === "admin") return "admin";
-  return "system";
-}
 
 async function loadScopedPatient(
   db: Awaited<ReturnType<typeof getDb>>,
@@ -326,11 +227,7 @@ async function appendDiagnosesToHealthProfiles(params: {
   const existingEntries = previousDocs
     .flatMap((doc) => doc.conditions ?? [])
     .reduce<
-      Array<
-        THealthProfileCurrentEntry & {
-          value: { condition: TConditionFormItem; kind: "condition" };
-        }
-      >
+      ConditionCurrentEntry[]
     >((acc, entry) => {
       if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
       acc.push(entry);
@@ -338,14 +235,14 @@ async function appendDiagnosesToHealthProfiles(params: {
     }, []);
   const existingKeys = new Set(
     existingEntries.map((entry) =>
-      `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeLabel(
+      `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeCarePlanLabel(
         entry.value.condition.label,
       )}`,
     ),
   );
   const newEntries = diagnoses
     .filter((condition) => {
-      const token = `${condition.codeSystem}|${condition.code}|${normalizeLabel(condition.label)}`;
+      const token = `${condition.codeSystem}|${condition.code}|${normalizeCarePlanLabel(condition.label)}`;
       if (existingKeys.has(token)) return false;
       existingKeys.add(token);
       return true;
@@ -428,7 +325,7 @@ export async function GET(
     const patientObjectId = new ObjectId(patientId);
     const [patient, clinical, healthProfilesCurrentDocs, staffProfiles] = await Promise.all([
       loadScopedPatient(db, caller, patientObjectId),
-      db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
+      db.collection<CarePlanClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { careTeam: 1, diagnoses: 1 } },
       ),
@@ -506,7 +403,7 @@ export async function GET(
           .map((item) => ({
             code: item.code?.trim() || null,
             codeSystem: item.code?.trim() ? "SNOMED_CT" as const : null,
-            id: item.code?.trim() || slugify(item.label!.trim()),
+            id: item.code?.trim() || slugifyCarePlanLabel(item.label!.trim()),
             label: item.label!.trim(),
           })),
       ],
@@ -525,7 +422,7 @@ export async function GET(
     const fallbackCareTeamOptions = (clinical?.careTeam ?? [])
       .filter((entry) => entry?.name?.trim())
       .map((entry, index) => ({
-        id: `${slugify(entry.name!.trim())}_${index}`,
+        id: `${slugifyCarePlanLabel(entry.name!.trim())}_${index}`,
         label: entry.role?.trim()
           ? `${entry.role.trim()} ${entry.name!.trim()}`
           : entry.name!.trim(),
@@ -602,8 +499,8 @@ export async function POST(
     const normalizedDiagnoses: TConditionFormItem[] = diagnoses.map((diagnosis) => ({
       code:
         diagnosis.code?.trim() ||
-        slugify(diagnosis.label) ||
-        stableKey(["custom-condition", diagnosis.label.trim()]),
+        slugifyCarePlanLabel(diagnosis.label) ||
+        stableCarePlanKey(["custom-condition", diagnosis.label.trim()]),
       codeSystem: diagnosis.codeSystem ?? (diagnosis.code?.trim() ? "SNOMED_CT" : "CUSTOM"),
       label: diagnosis.label.trim(),
       status: "active",
@@ -611,7 +508,7 @@ export async function POST(
     const shouldActivate = action === "activate_and_notify";
     const createdActivityAt = new Date(now);
     const activatedActivityAt = shouldActivate ? new Date(now.getTime() + 1) : null;
-    const doc: CarePlanDoc = {
+    const doc: CarePlanMongoDoc = {
       _id: new ObjectId(),
       activity: [
         {
@@ -622,7 +519,7 @@ export async function POST(
             ? { note: 'Created care plan and prepared it for patient notification.' }
             : {
                 note:
-                  buildDiagnosisActivityNote(normalizedDiagnoses) ??
+                  buildCarePlanDiagnosisActivityNote(normalizedDiagnoses) ??
                   "Created care plan draft.",
               }),
           type: "created",
@@ -638,7 +535,7 @@ export async function POST(
                   caller.principalId,
                 ),
                 note:
-                  buildDiagnosisActivityNote(normalizedDiagnoses) ??
+                  buildCarePlanDiagnosisActivityNote(normalizedDiagnoses) ??
                   "Activated care plan and notified the patient.",
                 type: "activated" as const,
               },
@@ -655,7 +552,7 @@ export async function POST(
       })),
       goals: [
         {
-          key: slugify(title) || "primary_goal",
+          key: slugifyCarePlanLabel(title) || "primary_goal",
           label: title,
           target: { summary: target },
         },
@@ -682,7 +579,7 @@ export async function POST(
       ...(shouldActivate ? { activatedAt: now } : {}),
     };
 
-    await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).insertOne(doc);
+    await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).insertOne(doc);
     await appendDiagnosesToHealthProfiles({
       caller,
       db,
