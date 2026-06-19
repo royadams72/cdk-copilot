@@ -130,20 +130,19 @@ export async function sendPatientPushNotification(
     })),
   );
 
-  console.log("[push:send] patient notification result", {
-    filter: patientFilter,
-    matchedPatientId: user?.patientId ?? null,
-    principalId: user?.principalId ?? null,
-    result,
-    ticketErrors: result.tickets
-      .filter((ticket) => ticket.status !== "ok")
-      .map((ticket) => ({
+  const ticketErrors = result.tickets.filter((ticket) => ticket.status !== "ok");
+  if (ticketErrors.length) {
+    console.error("[push:send] patient notification failed", {
+      matchedPatientId: user?.patientId ?? null,
+      principalId: user?.principalId ?? null,
+      ticketErrors: ticketErrors.map((ticket) => ({
         details: ticket.details ?? null,
         message: ticket.message ?? null,
         status: ticket.status ?? null,
       })),
-    tokenCount: tokens.length,
-  });
+      tokenCount: tokens.length,
+    });
+  }
 
   return result;
 }

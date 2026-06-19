@@ -1,9 +1,19 @@
 export const runtime = "nodejs";
 
+import { createHash } from "crypto";
+
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
+import {
+  CarePlanActivity as CarePlanActivitySchema,
+  ConditionFormItem,
+  HealthProfileCurrentEntry,
+  HealthProfileLedgerEvent,
+  HealthProfilesCurrent,
+  ROLES,
+} from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
@@ -17,6 +27,24 @@ import {
   mapPortalPatientDetail,
 } from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "@ckd/core/server";
+
+type TConditionFormItem = z.infer<typeof ConditionFormItem>;
+type THealthProfileCurrentEntry = z.infer<typeof HealthProfileCurrentEntry>;
+type THealthProfilesCurrent = z.infer<typeof HealthProfilesCurrent>;
+type THealthProfileLedgerEvent = z.infer<typeof HealthProfileLedgerEvent>;
+
+type HealthProfilesCurrentDoc = Omit<THealthProfilesCurrent, "patientId"> & {
+  patientId: ObjectId;
+};
+
+type HealthProfileLedgerEventDoc = Omit<
+  THealthProfileLedgerEvent,
+  "_id" | "correctionOf" | "patientId"
+> & {
+  _id: ObjectId;
+  correctionOf?: ObjectId | null;
+  patientId: ObjectId;
+};
 
 type RawPortalPatientDetailDoc = {
   _id: ObjectId;
@@ -68,10 +96,12 @@ type StaffProfileDoc = {
 type CarePlanDoc = {
   _id: ObjectId;
   activatedAt?: Date;
+  activity?: CarePlanActivityDoc[];
   createdAt: Date;
   createdBy: string;
   diagnoses: Array<{
     code?: string;
+    codeSystem?: "SNOMED_CT" | "CUSTOM";
     key: string;
     label: string;
   }>;
@@ -100,11 +130,15 @@ type CarePlanDoc = {
   updatedBy: string;
 };
 
+type CarePlanActivityDoc = z.infer<typeof CarePlanActivitySchema>;
+
 const CREATE_PAYLOAD = z.object({
+  action: z.enum(["activate_and_notify", "save_as_draft"]).default("activate_and_notify"),
   diagnoses: z
     .array(
       z.object({
         code: z.string().trim().optional(),
+        codeSystem: z.enum(["SNOMED_CT", "CUSTOM"]).optional(),
         label: z.string().trim().min(1).max(120),
       }),
     )
@@ -124,6 +158,50 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 40);
+}
+
+function normalizeLabel(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function stableKey(parts: string[]) {
+  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
+}
+
+function makeCarePlanActivityKey(type: CarePlanActivityDoc["type"], at: Date, by: string) {
+  return `care_plan_activity_${stableKey([type, at.toISOString(), by])}`;
+}
+
+function buildDiagnosisActivityNote(diagnoses: Array<{ label: string }>) {
+  if (!diagnoses.length) return undefined;
+  return `Diagnoses linked: ${diagnoses.map((diagnosis) => diagnosis.label).join(", ")}.`;
+}
+
+function makeConditionEntryId(item: TConditionFormItem) {
+  return `hp_condition_${stableKey([
+    item.codeSystem,
+    item.code,
+    normalizeLabel(item.label),
+  ])}`;
+}
+
+function toConditionCurrentEntry(
+  condition: TConditionFormItem,
+): THealthProfileCurrentEntry & {
+  value: { condition: TConditionFormItem; kind: "condition" };
+} {
+  return {
+    entryId: makeConditionEntryId(condition),
+    value: { condition, kind: "condition" },
+  };
+}
+
+function actorTypeFromRole(role: string) {
+  if (role === ROLES.Patient) return "patient";
+  if (role === ROLES.Clinician) return "clinician";
+  if (role === ROLES.Dietitian) return "dietitian";
+  if (role === "admin") return "admin";
+  return "system";
 }
 
 async function loadScopedPatient(
@@ -199,6 +277,19 @@ function buildFrequencyOptions() {
   ];
 }
 
+function buildActionOptions() {
+  return [
+    {
+      id: "activate_and_notify",
+      label: "Add care plan and send to patient",
+    },
+    {
+      id: "save_as_draft",
+      label: "Save as draft",
+    },
+  ];
+}
+
 function formatActorName(parts: Array<string | null | undefined>) {
   const value = parts
     .filter((part): part is string => Boolean(part && part.trim()))
@@ -213,6 +304,108 @@ function formatStaffDisplayName(doc: StaffProfileDoc) {
     formatActorName([doc.title, doc.firstName, doc.lastName]) ||
     formatActorName([doc.firstName, doc.lastName]) ||
     null
+  );
+}
+
+async function appendDiagnosesToHealthProfiles(params: {
+  caller: Awaited<ReturnType<typeof requireUser>>;
+  db: Awaited<ReturnType<typeof getDb>>;
+  diagnoses: TConditionFormItem[];
+  patientId: ObjectId;
+}) {
+  const { caller, db, diagnoses, patientId } = params;
+  if (!diagnoses.length) return;
+
+  const currentCollection = db.collection<HealthProfilesCurrentDoc>(
+    COLLECTIONS.HealthProfilesCurrent,
+  );
+  const ledgerCollection = db.collection<HealthProfileLedgerEventDoc>(
+    COLLECTIONS.HealthProfilesLedger,
+  );
+  const previousDocs = await currentCollection.find({ patientId }).toArray();
+  const existingEntries = previousDocs
+    .flatMap((doc) => doc.conditions ?? [])
+    .reduce<
+      Array<
+        THealthProfileCurrentEntry & {
+          value: { condition: TConditionFormItem; kind: "condition" };
+        }
+      >
+    >((acc, entry) => {
+      if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
+      acc.push(entry);
+      return acc;
+    }, []);
+  const existingKeys = new Set(
+    existingEntries.map((entry) =>
+      `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeLabel(
+        entry.value.condition.label,
+      )}`,
+    ),
+  );
+  const newEntries = diagnoses
+    .filter((condition) => {
+      const token = `${condition.codeSystem}|${condition.code}|${normalizeLabel(condition.label)}`;
+      if (existingKeys.has(token)) return false;
+      existingKeys.add(token);
+      return true;
+    })
+    .map((condition) => toConditionCurrentEntry(condition));
+
+  if (!newEntries.length) return;
+
+  const now = new Date();
+  const actor = {
+    actorType: actorTypeFromRole(caller.role),
+    principalId: caller.principalId,
+  } as const;
+  const conditions = [...existingEntries, ...newEntries].sort((a, b) =>
+    a.entryId.localeCompare(b.entryId),
+  );
+
+  await ledgerCollection.insertMany(
+    newEntries.map((entry) => ({
+      _id: new ObjectId(),
+      after: entry.value,
+      before: null,
+      createdAt: now,
+      createdBy: actor,
+      entryId: entry.entryId,
+      eventType: "created",
+      ...(caller.orgId ? { orgId: caller.orgId } : {}),
+      patientId,
+      superseded: false,
+    })),
+    { ordered: true },
+  );
+
+  const currentUpdate = {
+    $set: {
+      conditions,
+      ...(caller.orgId ? { orgId: caller.orgId } : {}),
+      updatedAt: now,
+      updatedBy: actor,
+    },
+  };
+
+  if (previousDocs.length) {
+    await currentCollection.updateMany({ patientId }, currentUpdate);
+    return;
+  }
+
+  await currentCollection.updateOne(
+    { patientId },
+    {
+      ...currentUpdate,
+      $setOnInsert: {
+        allergies: [],
+        createdAt: now,
+        createdBy: actor,
+        dietaryPreferences: [],
+        patientId,
+      },
+    },
+    { upsert: true },
   );
 }
 
@@ -233,12 +426,18 @@ export async function GET(
 
     const db = await getDb();
     const patientObjectId = new ObjectId(patientId);
-    const [patient, clinical, staffProfiles] = await Promise.all([
+    const [patient, clinical, healthProfilesCurrentDocs, staffProfiles] = await Promise.all([
       loadScopedPatient(db, caller, patientObjectId),
       db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { careTeam: 1, diagnoses: 1 } },
       ),
+      db.collection<HealthProfilesCurrentDoc>(COLLECTIONS.HealthProfilesCurrent)
+        .find(
+        { patientId: patientObjectId },
+        { projection: { conditions: 1 } },
+        )
+        .toArray(),
       db
         .collection<StaffProfileDoc>(COLLECTIONS.UsersStaff)
         .find(
@@ -268,14 +467,49 @@ export async function GET(
     }
 
     const mappedPatient = mapPortalPatientDetail(patient);
+    const healthProfileConditions = healthProfilesCurrentDocs
+      .flatMap((doc) => doc.conditions ?? [])
+      .reduce<
+        Array<{
+          code?: string;
+          codeSystem?: "SNOMED_CT" | "CUSTOM";
+          entryId: string;
+          label: string;
+        }>
+      >(
+        (acc, entry) => {
+          if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
+          acc.push({
+            code: entry.value.condition.code?.trim() || undefined,
+            codeSystem:
+              entry.value.condition.codeSystem === "SNOMED_CT" ||
+              entry.value.condition.codeSystem === "CUSTOM"
+                ? entry.value.condition.codeSystem
+                : undefined,
+            entryId: entry.entryId,
+            label: entry.value.condition.label.trim(),
+          });
+          return acc;
+        },
+        [],
+      );
     const diagnosisOptions = dedupeByLabel(
-      (clinical?.diagnoses ?? [])
-        .filter((item) => item?.label?.trim())
-        .map((item) => ({
-          code: item.code?.trim() || null,
-          id: item.code?.trim() || slugify(item.label!.trim()),
-          label: item.label!.trim(),
+      [
+        ...healthProfileConditions.map((entry) => ({
+          code: entry.code || null,
+          codeSystem: entry.codeSystem ?? null,
+          id: entry.entryId,
+          label: entry.label,
         })),
+        ...(clinical?.diagnoses ?? [])
+          .filter((item) => item?.label?.trim())
+          .map((item) => ({
+            code: item.code?.trim() || null,
+            codeSystem: item.code?.trim() ? "SNOMED_CT" as const : null,
+            id: item.code?.trim() || slugify(item.label!.trim()),
+            label: item.label!.trim(),
+          })),
+      ],
     );
     const staffOwnerOptions = staffProfiles
       .map((staff) => {
@@ -307,6 +541,7 @@ export async function GET(
     );
 
     const data: PortalPatientCarePlanCreateData = {
+      actionOptions: buildActionOptions(),
       diagnosisOptions,
       frequencyOptions: buildFrequencyOptions(),
       headline: `Add Care Plan ${mappedPatient.name}`,
@@ -354,6 +589,7 @@ export async function POST(
 
     const now = new Date();
     const {
+      action,
       diagnoses,
       frequency,
       measureUsing,
@@ -363,15 +599,59 @@ export async function POST(
       target,
       title,
     } = parsed.data;
+    const normalizedDiagnoses: TConditionFormItem[] = diagnoses.map((diagnosis) => ({
+      code:
+        diagnosis.code?.trim() ||
+        slugify(diagnosis.label) ||
+        stableKey(["custom-condition", diagnosis.label.trim()]),
+      codeSystem: diagnosis.codeSystem ?? (diagnosis.code?.trim() ? "SNOMED_CT" : "CUSTOM"),
+      label: diagnosis.label.trim(),
+      status: "active",
+    }));
+    const shouldActivate = action === "activate_and_notify";
+    const createdActivityAt = new Date(now);
+    const activatedActivityAt = shouldActivate ? new Date(now.getTime() + 1) : null;
     const doc: CarePlanDoc = {
       _id: new ObjectId(),
-      activatedAt: now,
+      activity: [
+        {
+          at: createdActivityAt,
+          by: caller.principalId,
+          key: makeCarePlanActivityKey("created", createdActivityAt, caller.principalId),
+          ...(shouldActivate
+            ? { note: 'Created care plan and prepared it for patient notification.' }
+            : {
+                note:
+                  buildDiagnosisActivityNote(normalizedDiagnoses) ??
+                  "Created care plan draft.",
+              }),
+          type: "created",
+        },
+        ...(shouldActivate && activatedActivityAt
+          ? [
+              {
+                at: activatedActivityAt,
+                by: caller.principalId,
+                key: makeCarePlanActivityKey(
+                  "activated",
+                  activatedActivityAt,
+                  caller.principalId,
+                ),
+                note:
+                  buildDiagnosisActivityNote(normalizedDiagnoses) ??
+                  "Activated care plan and notified the patient.",
+                type: "activated" as const,
+              },
+            ]
+          : []),
+      ],
       createdAt: now,
       createdBy: caller.principalId,
-      diagnoses: diagnoses.map((diagnosis) => ({
+      diagnoses: normalizedDiagnoses.map((diagnosis) => ({
         ...(diagnosis.code?.trim() ? { code: diagnosis.code.trim() } : {}),
-        key: diagnosis.code?.trim() || slugify(diagnosis.label),
-        label: diagnosis.label.trim(),
+        codeSystem: diagnosis.codeSystem,
+        key: diagnosis.code.trim(),
+        label: diagnosis.label,
       })),
       goals: [
         {
@@ -386,7 +666,7 @@ export async function POST(
       patientId: patientObjectId,
       reviewLabel,
       sources: ["manual"],
-      status: "active",
+      status: shouldActivate ? "active" : "draft",
       tasks: [
         {
           freq: frequency,
@@ -399,21 +679,30 @@ export async function POST(
       title,
       updatedAt: now,
       updatedBy: caller.principalId,
+      ...(shouldActivate ? { activatedAt: now } : {}),
     };
 
     await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).insertOne(doc);
-    await sendPatientPushNotification(db, {
-      body: `Your care team added "${doc.title}" to guide your next steps and daily tasks.`,
-      data: {
-        carePlanId: doc._id.toHexString(),
-        screen: `/(dashboard)/care-plan?id=${doc._id.toHexString()}`,
-        type: "care-plan-created",
-      },
-      patientId,
-      title: "New care plan added",
-    }).catch((pushError) => {
-      console.error("[care-plan:add] push failed", pushError);
+    await appendDiagnosesToHealthProfiles({
+      caller,
+      db,
+      diagnoses: normalizedDiagnoses,
+      patientId: patientObjectId,
     });
+    if (shouldActivate) {
+      await sendPatientPushNotification(db, {
+        body: `Your care team added "${doc.title}" to guide your next steps and daily tasks.`,
+        data: {
+          carePlanId: doc._id.toHexString(),
+          screen: `/(dashboard)/care-plan?id=${doc._id.toHexString()}`,
+          type: "care-plan-created",
+        },
+        patientId,
+        title: "New care plan added",
+      }).catch((pushError) => {
+        console.error("[care-plan:add] push failed", pushError);
+      });
+    }
 
     return ok({ carePlanId: doc._id.toHexString() }, 201);
   } catch (error: any) {

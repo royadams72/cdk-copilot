@@ -9,6 +9,7 @@ import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider"
 import styles from "@/apps/api/app/portal/portal.module.css";
 import type {
   PortalPatientCarePlanCreateData,
+  PortalPatientCarePlanDetailData,
   PortalPatientCarePlanDiagnosis,
 } from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -17,38 +18,34 @@ type PortalCarePlanCreateResponse = {
   data: PortalPatientCarePlanCreateData;
 };
 
-type CreateCarePlanResult = {
-  data: {
-    carePlanId: string;
-  };
+type PortalCarePlanDetailResponse = {
+  data: PortalPatientCarePlanDetailData;
 };
 
-type CarePlanCreateAction = "activate_and_notify" | "save_as_draft";
+type UpdateCarePlanResult = {
+  data: PortalPatientCarePlanDetailData;
+};
+
 type ConditionSearchItem = {
   code: string;
   codeSystem: "SNOMED_CT";
   label: string;
 };
 
-export default function PortalPatientAddCarePlanPage() {
-  const params = useParams<{ patientId: string }>();
+export default function PortalPatientEditCarePlanPage() {
+  const params = useParams<{ patientId: string; carePlanId: string }>();
   const router = useRouter();
   const { session, status } = usePortalSession();
-  const [data, setData] = useState<PortalPatientCarePlanCreateData | null>(
-    null,
-  );
+  const [formData, setFormData] = useState<PortalPatientCarePlanCreateData | null>(null);
+  const [planData, setPlanData] = useState<PortalPatientCarePlanDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDiagnosisId, setSelectedDiagnosisId] = useState("");
   const [conditionQuery, setConditionQuery] = useState("");
-  const [conditionResults, setConditionResults] = useState<
-    ConditionSearchItem[]
-  >([]);
+  const [conditionResults, setConditionResults] = useState<ConditionSearchItem[]>([]);
   const [conditionSearchLoading, setConditionSearchLoading] = useState(false);
-  const [diagnoses, setDiagnoses] = useState<PortalPatientCarePlanDiagnosis[]>(
-    [],
-  );
+  const [diagnoses, setDiagnoses] = useState<PortalPatientCarePlanDiagnosis[]>([]);
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [measureUsing, setMeasureUsing] = useState("");
@@ -56,12 +53,17 @@ export default function PortalPatientAddCarePlanPage() {
   const [frequency, setFrequency] = useState("daily");
   const [reviewLabel, setReviewLabel] = useState("1_month");
   const [ownerLabels, setOwnerLabels] = useState<string[]>([]);
-  const [action, setAction] = useState<CarePlanCreateAction>(
-    "activate_and_notify",
+  const [draftAction, setDraftAction] = useState<"save_as_draft" | "activate_and_notify">(
+    "save_as_draft",
   );
 
   useEffect(() => {
-    if (status !== "authenticated" || !session || !params.patientId) {
+    if (
+      status !== "authenticated" ||
+      !session ||
+      !params.patientId ||
+      !params.carePlanId
+    ) {
       return;
     }
 
@@ -72,48 +74,71 @@ export default function PortalPatientAddCarePlanPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(
-          `/api/portal/patients/${params.patientId}/care-plans/add`,
-          {
+        const [formResponse, detailResponse] = await Promise.all([
+          fetch(`/api/portal/patients/${params.patientId}/care-plans/add`, {
             headers: getPortalSessionAuthHeaders(authenticatedSession.jwt),
             signal: controller.signal,
-          },
-        );
-        const body = (await response.json().catch(() => null)) as
+          }),
+          fetch(
+            `/api/portal/patients/${params.patientId}/care-plans/${params.carePlanId}`,
+            {
+              headers: getPortalSessionAuthHeaders(authenticatedSession.jwt),
+              signal: controller.signal,
+            },
+          ),
+        ]);
+
+        const formBody = (await formResponse.json().catch(() => null)) as
           | PortalCarePlanCreateResponse
           | { error?: { message?: string } }
           | null;
+        const detailBody = (await detailResponse.json().catch(() => null)) as
+          | PortalCarePlanDetailResponse
+          | { error?: { message?: string } }
+          | null;
 
-        if (!response.ok || !body || !("data" in body)) {
+        if (!formResponse.ok || !formBody || !("data" in formBody)) {
           throw new Error(
-            body && "error" in body
-              ? body.error?.message
+            formBody && "error" in formBody
+              ? formBody.error?.message
               : "Unable to load care plan form",
           );
         }
 
-        setData(body.data);
-        setFrequency(body.data.frequencyOptions[0]?.id ?? "daily");
+        if (!detailResponse.ok || !detailBody || !("data" in detailBody)) {
+          throw new Error(
+            detailBody && "error" in detailBody
+              ? detailBody.error?.message
+              : "Unable to load care plan",
+          );
+        }
+
+        if (detailBody.data.plan.status !== "draft") {
+          throw new Error("Only draft care plans can be edited.");
+        }
+
+        setFormData(formBody.data);
+        setPlanData(detailBody.data);
+        setDiagnoses(detailBody.data.plan.diagnoses);
+        setTitle(detailBody.data.plan.title);
+        setTarget(detailBody.data.plan.goals[0]?.targetSummary ?? "");
+        setMeasureUsing(detailBody.data.plan.tasks[0]?.label ?? "");
+        setNotes(detailBody.data.plan.notes ?? "");
+        setFrequency(detailBody.data.plan.tasks[0]?.freq ?? formBody.data.frequencyOptions[0]?.id ?? "daily");
         setReviewLabel(
-          body.data.reviewOptions[2]?.id ??
-            body.data.reviewOptions[0]?.id ??
+          formBody.data.reviewOptions.find(
+            (option) => option.label === detailBody.data.plan.reviewLabel,
+          )?.id ??
+            formBody.data.reviewOptions[0]?.id ??
             "1_month",
         );
-        setOwnerLabels(
-          body.data.ownerOptions[0] ? [body.data.ownerOptions[0].label] : [],
-        );
-        setAction(
-          (body.data.actionOptions[0]?.id as
-            | CarePlanCreateAction
-            | undefined) ?? "activate_and_notify",
-        );
-        setDiagnoses(body.data.diagnosisOptions);
+        setOwnerLabels(detailBody.data.plan.ownerLabels);
       } catch (nextError) {
         if (controller.signal.aborted) return;
         setError(
           nextError instanceof Error
             ? nextError.message
-            : "Unable to load care plan form",
+            : "Unable to load care plan draft",
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -124,7 +149,7 @@ export default function PortalPatientAddCarePlanPage() {
 
     loadForm();
     return () => controller.abort();
-  }, [params.patientId, session, status]);
+  }, [params.carePlanId, params.patientId, session, status]);
 
   useEffect(() => {
     if (status !== "authenticated" || !session) return;
@@ -140,9 +165,7 @@ export default function PortalPatientAddCarePlanPage() {
       setConditionSearchLoading(true);
       try {
         const response = await fetch(
-          `/api/terminology/conditions/search?query=${encodeURIComponent(
-            query,
-          )}&limit=8`,
+          `/api/terminology/conditions/search?query=${encodeURIComponent(query)}&limit=8`,
           {
             headers: getPortalSessionAuthHeaders(session.jwt),
             signal: controller.signal,
@@ -184,16 +207,6 @@ export default function PortalPatientAddCarePlanPage() {
     };
   }, [conditionQuery, session, status]);
 
-  function addSelectedDiagnosis() {
-    if (!data || !selectedDiagnosisId) return;
-    const match = data.diagnosisOptions.find(
-      (item) => item.id === selectedDiagnosisId,
-    );
-    if (!match) return;
-    addDiagnosis(match);
-    setSelectedDiagnosisId("");
-  }
-
   function addDiagnosis(diagnosis: PortalPatientCarePlanDiagnosis) {
     if (
       diagnoses.some(
@@ -209,12 +222,18 @@ export default function PortalPatientAddCarePlanPage() {
     setConditionResults([]);
   }
 
+  function addSelectedDiagnosis() {
+    if (!formData || !selectedDiagnosisId) return;
+    const match = formData.diagnosisOptions.find((item) => item.id === selectedDiagnosisId);
+    if (!match) return;
+    addDiagnosis(match);
+    setSelectedDiagnosisId("");
+  }
+
   function addCustomDiagnosis() {
     const label = conditionQuery.trim();
     if (!label) return;
-    if (
-      diagnoses.some((item) => item.label.toLowerCase() === label.toLowerCase())
-    ) {
+    if (diagnoses.some((item) => item.label.toLowerCase() === label.toLowerCase())) {
       setConditionQuery("");
       return;
     }
@@ -239,7 +258,7 @@ export default function PortalPatientAddCarePlanPage() {
   }
 
   async function submitForm() {
-    if (!session || !params.patientId || !data || submitting) {
+    if (!session || !params.patientId || !params.carePlanId || !formData || submitting) {
       return;
     }
 
@@ -248,10 +267,12 @@ export default function PortalPatientAddCarePlanPage() {
 
     try {
       const response = await fetch(
-        `/api/portal/patients/${params.patientId}/care-plans/add`,
+        `/api/portal/patients/${params.patientId}/care-plans/${params.carePlanId}`,
         {
           body: JSON.stringify({
-            action,
+            ...(draftAction === "activate_and_notify"
+              ? { action: "update_draft_and_activate" }
+              : { action: "update_draft" }),
             diagnoses: diagnoses.map((item) => ({
               ...(item.code ? { code: item.code } : {}),
               ...(item.codeSystem ? { codeSystem: item.codeSystem } : {}),
@@ -262,8 +283,8 @@ export default function PortalPatientAddCarePlanPage() {
             notes,
             ownerLabels,
             reviewLabel:
-              data.reviewOptions.find((option) => option.id === reviewLabel)
-                ?.label ?? reviewLabel,
+              formData.reviewOptions.find((option) => option.id === reviewLabel)?.label ??
+              reviewLabel,
             target,
             title,
           }),
@@ -271,11 +292,11 @@ export default function PortalPatientAddCarePlanPage() {
             ...getPortalSessionAuthHeaders(session.jwt),
             "Content-Type": "application/json",
           },
-          method: "POST",
+          method: "PATCH",
         },
       );
       const body = (await response.json().catch(() => null)) as
-        | CreateCarePlanResult
+        | UpdateCarePlanResult
         | { error?: { message?: string } }
         | null;
 
@@ -283,19 +304,19 @@ export default function PortalPatientAddCarePlanPage() {
         throw new Error(
           body && "error" in body
             ? body.error?.message
-            : "Unable to create care plan",
+            : "Unable to update care plan",
         );
       }
 
       router.push(
-        `/portal/patients/${params.patientId}/care-plans/${body.data.carePlanId}`,
+        `/portal/patients/${params.patientId}/care-plans/${params.carePlanId}`,
       );
       router.refresh();
     } catch (nextError) {
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Unable to create care plan",
+          : "Unable to update care plan",
       );
     } finally {
       setSubmitting(false);
@@ -303,58 +324,52 @@ export default function PortalPatientAddCarePlanPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>Loading care plan form...</section>
-    );
+    return <section className={styles.emptyState}>Loading care plan draft...</section>;
   }
 
-  if (!data) {
+  if (!formData || !planData) {
     return (
       <section className={styles.emptyState}>
         <Link className={styles.inlineLink} href="/portal">
           Back to portal
         </Link>
-        <h2>Add care plan unavailable</h2>
-        <p>{error ?? "The requested care plan form could not be loaded."}</p>
+        <h2>Edit care plan unavailable</h2>
+        <p>{error ?? "The requested care plan draft could not be loaded."}</p>
       </section>
     );
   }
 
-  const patientHref = data.patient?.id
-    ? `/portal/patients/${data.patient.id}`
+  const patientHref = planData.patient?.id
+    ? `/portal/patients/${planData.patient.id}`
     : params.patientId
       ? `/portal/patients/${params.patientId}`
       : "/portal";
   const carePlansHref = `${patientHref}/care-plans`;
 
-  const actionLead =
-    action === "save_as_draft"
-      ? "This will save the care plan as a draft so the team can review it before sending."
-      : "This will create the care plan and notify the patient to begin.";
-
   return (
     <section className={styles.subpageLayout}>
       <PortalPatientSubpageHeader
-        backHref={carePlansHref}
-        backLabel="Back to care plans"
-        headline={data.headline}
+        backHref={`${patientHref}/care-plans/${params.carePlanId}`}
+        backLabel="Back to care plan"
+        headline={`Edit Draft ${planData.patient.name}`}
       />
 
       <div className={styles.carePlanFormIntro}>
-        <h2 className={styles.carePlanFormTitle}>Add Care Plan</h2>
-        <p className={styles.carePlanFormLead}>{actionLead}</p>
+        <h2 className={styles.carePlanFormTitle}>Edit Care Plan Draft</h2>
+        <p className={styles.carePlanFormLead}>
+          {draftAction === "activate_and_notify"
+            ? "Update the draft and notify the patient that the care plan is ready."
+            : "Update the draft and keep it hidden from the patient for now."}
+        </p>
       </div>
 
       <section className={styles.carePlanFormShell}>
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>
-            Associated diagnoses
-          </label>
-
+          <label className={styles.carePlanFieldLabel}>Associated diagnoses</label>
           <p className={styles.dataScreenCaption}>
-            Select an existing diagnosis already recorded for this patient, or search SNOMED and add a new one. (optional)
+            Select an existing diagnosis already recorded for this patient, or search SNOMED and add a new one.
           </p>
-          {data.diagnosisOptions.length ? (
+          {formData.diagnosisOptions.length ? (
             <div className={styles.carePlanInlineRow}>
               <select
                 className={styles.carePlanInput}
@@ -362,7 +377,7 @@ export default function PortalPatientAddCarePlanPage() {
                 value={selectedDiagnosisId}
               >
                 <option value="">Select existing diagnosis</option>
-                {data.diagnosisOptions.map((option) => (
+                {formData.diagnosisOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
@@ -435,10 +450,7 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-title"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-title">
             Goal of care plan
           </label>
           <p className={styles.dataScreenCaption}>
@@ -455,10 +467,7 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-target"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-target">
             Target
           </label>
           <p className={styles.dataScreenCaption}>Target to meet.</p>
@@ -473,10 +482,7 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-measure"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-measure">
             Measure using
           </label>
           <p className={styles.dataScreenCaption}>
@@ -493,10 +499,7 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-notes"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-notes">
             Notes
           </label>
           <p className={styles.dataScreenCaption}>
@@ -514,10 +517,7 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-frequency"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-frequency">
             Frequency to measure
           </label>
           <select
@@ -526,7 +526,7 @@ export default function PortalPatientAddCarePlanPage() {
             onChange={(event) => setFrequency(event.target.value)}
             value={frequency}
           >
-            {data.frequencyOptions.map((option) => (
+            {formData.frequencyOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
@@ -535,10 +535,7 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-review"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-review">
             Review in
           </label>
           <select
@@ -547,7 +544,7 @@ export default function PortalPatientAddCarePlanPage() {
             onChange={(event) => setReviewLabel(event.target.value)}
             value={reviewLabel}
           >
-            {data.reviewOptions.map((option) => (
+            {formData.reviewOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
@@ -561,7 +558,7 @@ export default function PortalPatientAddCarePlanPage() {
             Who will review this? You can select multiple.
           </p>
           <div className={styles.carePlanOwnerList}>
-            {data.ownerOptions.map((option) => (
+            {formData.ownerOptions.map((option) => (
               <label className={styles.carePlanOwnerOption} key={option.id}>
                 <input
                   checked={ownerLabels.includes(option.label)}
@@ -575,29 +572,26 @@ export default function PortalPatientAddCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label
-            className={styles.carePlanFieldLabel}
-            htmlFor="care-plan-action"
-          >
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-draft-edit-action">
             Action
           </label>
           <p className={styles.dataScreenCaption}>
-            Choose whether to activate the plan now or keep it as a draft for
-            later review.
+            Choose whether to keep this as a draft or activate it and notify the patient now.
           </p>
           <select
             className={styles.carePlanInput}
-            id="care-plan-action"
+            id="care-plan-draft-edit-action"
             onChange={(event) =>
-              setAction(event.target.value as CarePlanCreateAction)
+              setDraftAction(
+                event.target.value === "activate_and_notify"
+                  ? "activate_and_notify"
+                  : "save_as_draft",
+              )
             }
-            value={action}
+            value={draftAction}
           >
-            {data.actionOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
+            <option value="save_as_draft">Save as draft</option>
+            <option value="activate_and_notify">Activate care plan and notify patient</option>
           </select>
         </div>
 
@@ -618,9 +612,9 @@ export default function PortalPatientAddCarePlanPage() {
           >
             {submitting
               ? "Saving..."
-              : action === "save_as_draft"
-                ? "Continue to draft"
-                : "Continue and notify patient"}
+              : draftAction === "activate_and_notify"
+                ? "Continue and notify patient"
+                : "Continue to draft"}
           </button>
         </div>
       </section>

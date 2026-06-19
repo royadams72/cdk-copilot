@@ -104,6 +104,12 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     opacity: 0.72,
   },
+  carePlanTaskAction: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1D4ED8",
+    marginTop: 2,
+  },
   carePlanViewButton: {
     marginTop: 4,
   },

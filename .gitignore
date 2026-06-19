@@ -14,7 +14,7 @@ web-build/
 dist/
 build/
 apps/mobile/android/app/google-services.json
-
+apps/mobile/ckd-app-b2e3f-firebase-adminsdk-fbsvc-dfa545b5d9.json
 # testing
 **/coverage
 

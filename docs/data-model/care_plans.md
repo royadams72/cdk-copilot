@@ -12,7 +12,7 @@
 - `orgId` · string
 - `patientId` · ObjectId (ref: patients)
 - `title` · string
-- `diagnoses` · array of { `key` string, `label` string, `code?` string }
+- `diagnoses` · array of { `key` string, `label` string, `code?` string, `codeSystem?` enum (`SNOMED_CT|CUSTOM`) }
 - `goals` · array of { `key` string, `label` string, `target?` object }
 - `ownerLabels` · array of strings
 - `reviewLabel` · string?
@@ -20,6 +20,7 @@
 - `status` · enum (`draft|active|completed|archived`)
 - `sources` · array of (`manual|ai|template`)
 - `notes` · string? (non-PII operational notes)
+- `activity` · array of { `key` string, `type` enum (`created|draft_updated|activated|completed|archived|task_completed|task_reopened`), `at` Date, `by` principalId, `note?` string }
 - `createdAt` / `updatedAt` · Date
 - `activatedAt?` / `completedAt?` · Date
 - `createdBy` / `updatedBy` · string ref: `principalId` from patients or users_accounts

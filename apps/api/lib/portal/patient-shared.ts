@@ -198,6 +198,7 @@ export type PortalPatientCarePlanGoal = {
 
 export type PortalPatientCarePlanDiagnosis = {
   code: string | null;
+  codeSystem?: "SNOMED_CT" | "CUSTOM" | null;
   id: string;
   label: string;
 };
@@ -208,6 +209,21 @@ export type PortalPatientCarePlanTask = {
   instructions: string | null;
   label: string;
   status: "open" | "paused" | "done";
+};
+
+export type PortalPatientCarePlanActivity = {
+  at: string;
+  by: string;
+  id: string;
+  note: string | null;
+  type:
+    | "created"
+    | "draft_updated"
+    | "activated"
+    | "completed"
+    | "archived"
+    | "task_completed"
+    | "task_reopened";
 };
 
 export type PortalPatientCarePlanDetailData = {
@@ -231,6 +247,7 @@ export type PortalPatientCarePlanDetailData = {
       updatedAt: string;
       updatedBy: string;
     };
+  activity: PortalPatientCarePlanActivity[];
 };
 
 export type PortalPatientCarePlanOption = {
@@ -239,6 +256,7 @@ export type PortalPatientCarePlanOption = {
 };
 
 export type PortalPatientCarePlanCreateData = {
+  actionOptions: PortalPatientCarePlanOption[];
   diagnosisOptions: PortalPatientCarePlanDiagnosis[];
   frequencyOptions: PortalPatientCarePlanOption[];
   headline: string;

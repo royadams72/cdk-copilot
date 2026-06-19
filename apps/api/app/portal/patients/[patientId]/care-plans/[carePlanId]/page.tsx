@@ -39,6 +39,36 @@ function formatStatusLabel(
   }
 }
 
+function formatStatusSummary(plan: PortalPatientCarePlanDetailData["plan"]) {
+  switch (plan.status) {
+    case "draft":
+      return "Draft";
+    case "active":
+      return `Active (${formatDate(plan.activatedAt)})`;
+    case "completed":
+      return `Completed (${formatDate(plan.completedAt)})`;
+    case "archived":
+      return "Archived";
+    default:
+      return plan.status;
+  }
+}
+
+function formatActivityLabel(
+  type: PortalPatientCarePlanDetailData["activity"][number]["type"],
+) {
+  switch (type) {
+    case "draft_updated":
+      return "Draft updated";
+    case "task_completed":
+      return "Task completed";
+    case "task_reopened":
+      return "Task reopened";
+    default:
+      return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+}
+
 export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
@@ -48,7 +78,7 @@ export default function PortalPatientCarePlanDetailPage() {
   );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [draftAction, setDraftAction] = useState<"activate" | "delete">(
+  const [draftAction, setDraftAction] = useState<"activate" | "edit" | "delete">(
     "activate",
   );
   const [error, setError] = useState<string | null>(null);
@@ -245,20 +275,29 @@ export default function PortalPatientCarePlanDetailPage() {
                 className={styles.nutritionFilterSelect}
                 id="care-plan-draft-action"
                 onChange={(event) =>
-                  setDraftAction(event.target.value as "activate" | "delete")
+                  setDraftAction(event.target.value as "activate" | "edit" | "delete")
                 }
                 value={draftAction}
               >
-                <option value="activate">Active</option>
+                <option value="activate">Activate and notify patient</option>
+                <option value="edit">Edit</option>
                 <option value="delete">Delete</option>
               </select>
               <button
                 className={styles.buttonPrimarySmall}
                 disabled={submitting}
-                onClick={() => void runAction(draftAction)}
+                onClick={() => {
+                  if (draftAction === "edit") {
+                    router.push(
+                      `/portal/patients/${params.patientId}/care-plans/${params.carePlanId}/edit`,
+                    );
+                    return;
+                  }
+                  void runAction(draftAction);
+                }}
                 type="button"
               >
-                {submitting ? "Saving..." : "Apply"}
+                {submitting ? "Saving..." : draftAction === "edit" ? "Continue" : "Apply"}
               </button>
             </div>
           ) : data.plan.status === "completed" ? (
@@ -294,7 +333,7 @@ export default function PortalPatientCarePlanDetailPage() {
             <thead>
               <tr>
                 <th>Associated diagnoses</th>
-                <th>Completed</th>
+                <th>Status</th>
                 <th>Review in</th>
                 <th>Activated</th>
               </tr>
@@ -313,7 +352,7 @@ export default function PortalPatientCarePlanDetailPage() {
                   )}
                 </td>
 
-                <td> {formatDate(data.plan.completedAt)}</td>
+                <td>{formatStatusSummary(data.plan)}</td>
                 <td>{data.plan.reviewLabel ?? "Not set"}</td>
                 <td>{formatDate(data.plan.activatedAt)}</td>
               </tr>
@@ -329,6 +368,33 @@ export default function PortalPatientCarePlanDetailPage() {
               ) : null}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className={styles.dataScreenCard}>
+        <div className={styles.dataScreenToolbar}>
+          <div>
+            <h2 className={styles.dataScreenTitle}>Activity history</h2>
+            <p className={styles.dataScreenCaption}>
+              Status changes, draft updates, and task actions for this care plan.
+            </p>
+          </div>
+        </div>
+        <div className={styles.carePlanHistoryList}>
+          {data.activity.length ? (
+            data.activity.map((event) => (
+              <div className={styles.carePlanHistoryRow} key={event.id}>
+                <div className={styles.carePlanHistoryHeader}>
+                  <p className={styles.carePlanMetaTitle}>{formatActivityLabel(event.type)}</p>
+                  <p className={styles.carePlanMetaTitle}>{formatDate(event.at)}</p>
+                </div>
+                <p className={styles.carePlanMetaValue}>{event.by}</p>
+                {event.note ? <p className={styles.carePlanMetaValue}>{event.note}</p> : null}
+              </div>
+            ))
+          ) : (
+            <p className={styles.dataScreenCaption}>No activity recorded yet.</p>
+          )}
         </div>
       </section>
 

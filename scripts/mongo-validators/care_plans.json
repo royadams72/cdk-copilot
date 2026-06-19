@@ -25,7 +25,8 @@
             "properties": {
               "key": { "bsonType": "string" },
               "label": { "bsonType": "string" },
-              "code": { "bsonType": "string" }
+              "code": { "bsonType": "string" },
+              "codeSystem": { "enum": ["SNOMED_CT", "CUSTOM"] }
             },
             "additionalProperties": true
           }
@@ -80,6 +81,31 @@
           "items": { "enum": ["manual", "ai", "template"] }
         },
         "notes": { "bsonType": "string" },
+        "activity": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "required": ["key", "type", "at", "by"],
+            "properties": {
+              "key": { "bsonType": "string" },
+              "type": {
+                "enum": [
+                  "created",
+                  "draft_updated",
+                  "activated",
+                  "completed",
+                  "archived",
+                  "task_completed",
+                  "task_reopened"
+                ]
+              },
+              "at": { "bsonType": "date" },
+              "by": { "bsonType": "string" },
+              "note": { "bsonType": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
         "createdAt": { "bsonType": "date" },
         "updatedAt": { "bsonType": "date" },
         "activatedAt": { "bsonType": "date" },
