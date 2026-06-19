@@ -54,6 +54,21 @@ function formatStatusSummary(plan: PortalPatientCarePlanDetailData["plan"]) {
   }
 }
 
+function formatActivityLabel(
+  type: PortalPatientCarePlanDetailData["activity"][number]["type"],
+) {
+  switch (type) {
+    case "draft_updated":
+      return "Draft updated";
+    case "task_completed":
+      return "Task completed";
+    case "task_reopened":
+      return "Task reopened";
+    default:
+      return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+}
+
 export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
@@ -264,7 +279,7 @@ export default function PortalPatientCarePlanDetailPage() {
                 }
                 value={draftAction}
               >
-                <option value="activate">Active</option>
+                <option value="activate">Activate and notify patient</option>
                 <option value="edit">Edit</option>
                 <option value="delete">Delete</option>
               </select>
@@ -353,6 +368,33 @@ export default function PortalPatientCarePlanDetailPage() {
               ) : null}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className={styles.dataScreenCard}>
+        <div className={styles.dataScreenToolbar}>
+          <div>
+            <h2 className={styles.dataScreenTitle}>Activity history</h2>
+            <p className={styles.dataScreenCaption}>
+              Status changes, draft updates, and task actions for this care plan.
+            </p>
+          </div>
+        </div>
+        <div className={styles.carePlanHistoryList}>
+          {data.activity.length ? (
+            data.activity.map((event) => (
+              <div className={styles.carePlanHistoryRow} key={event.id}>
+                <div className={styles.carePlanHistoryHeader}>
+                  <p className={styles.carePlanMetaTitle}>{formatActivityLabel(event.type)}</p>
+                  <p className={styles.carePlanMetaTitle}>{formatDate(event.at)}</p>
+                </div>
+                <p className={styles.carePlanMetaValue}>{event.by}</p>
+                {event.note ? <p className={styles.carePlanMetaValue}>{event.note}</p> : null}
+              </div>
+            ))
+          ) : (
+            <p className={styles.dataScreenCaption}>No activity recorded yet.</p>
+          )}
         </div>
       </section>
 

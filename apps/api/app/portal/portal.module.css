@@ -935,6 +935,30 @@
   justify-content: center;
 }
 
+.carePlanHistoryList {
+  display: grid;
+  gap: var(--portal-space-3);
+}
+
+.carePlanHistoryRow {
+  display: grid;
+  gap: var(--portal-space-1);
+  padding-top: var(--portal-space-2);
+  border-top: 1px solid var(--portal-line-soft);
+}
+
+.carePlanHistoryRow:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.carePlanHistoryHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--portal-space-3);
+  align-items: baseline;
+}
+
 .carePlanStatus {
   flex: 0 0 auto;
   padding-left: var(--portal-space-3);

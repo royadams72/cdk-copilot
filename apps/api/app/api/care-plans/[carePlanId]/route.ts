@@ -1,8 +1,11 @@
 export const runtime = "nodejs";
 
+import { createHash } from "crypto";
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
+import { z } from "zod";
 
+import { CarePlanActivity as CarePlanActivitySchema } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
@@ -16,9 +19,12 @@ type CarePlanGoalDoc = {
 
 type CarePlanDiagnosisDoc = {
   code?: string;
+  codeSystem?: "SNOMED_CT" | "CUSTOM";
   key: string;
   label: string;
 };
+
+type CarePlanActivityDoc = z.infer<typeof CarePlanActivitySchema>;
 
 type CarePlanTaskDoc = {
   dueRule?: string;
@@ -32,6 +38,7 @@ type CarePlanTaskDoc = {
 type CarePlanDoc = {
   _id: ObjectId;
   activatedAt?: Date | null;
+  activity?: CarePlanActivityDoc[];
   completedAt?: Date | null;
   createdAt: Date;
   createdBy: string;
@@ -47,6 +54,11 @@ type CarePlanDoc = {
   updatedAt: Date;
   updatedBy: string;
 };
+
+const UpdateCarePlanTaskBody = z.object({
+  action: z.enum(["complete_task", "reopen_task"]),
+  taskId: z.string().trim().min(1),
+});
 
 type UserStaffActorDoc = {
   displayName?: string;
@@ -117,6 +129,14 @@ function summarizeTarget(target: Record<string, unknown> | undefined) {
     .slice(0, 3)
     .map(([key, value]) => `${key}: ${String(value)}`);
   return parts.length ? parts.join(" • ") : null;
+}
+
+function stableKey(parts: string[]) {
+  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
+}
+
+function makeCarePlanActivityKey(type: CarePlanActivityDoc["type"], at: Date, by: string) {
+  return `care_plan_activity_${stableKey([type, at.toISOString(), by])}`;
 }
 
 async function loadActorNames(
@@ -224,28 +244,34 @@ export async function GET(
           completedAt: 1,
           createdAt: 1,
           createdBy: 1,
-          diagnoses: 1,
-          goals: 1,
-          notes: 1,
-          ownerLabels: 1,
-          patientId: 1,
-          reviewLabel: 1,
-          status: 1,
-          tasks: 1,
-          title: 1,
-          updatedAt: 1,
-          updatedBy: 1,
-        },
+        diagnoses: 1,
+        goals: 1,
+        notes: 1,
+        ownerLabels: 1,
+        patientId: 1,
+        reviewLabel: 1,
+        status: 1,
+        tasks: 1,
+        title: 1,
+        updatedAt: 1,
+        updatedBy: 1,
+        activity: 1,
       },
-    );
+    },
+  );
 
     if (!plan) {
       return bad("Care plan not found", { code: "care_plan_not_found" }, 404);
     }
+    if (!["active", "completed"].includes(plan.status)) {
+      return bad("Care plan not available", { code: "care_plan_not_available" }, 404);
+    }
 
     const actorNames = await loadActorNames(
       db,
-      Array.from(new Set([plan.createdBy, plan.updatedBy].filter(Boolean))),
+      Array.from(
+        new Set([plan.createdBy, plan.updatedBy, ...(plan.activity ?? []).map((event) => event.by)].filter(Boolean)),
+      ),
     );
 
     return ok({
@@ -256,6 +282,7 @@ export async function GET(
         createdBy: actorNames.get(plan.createdBy) ?? plan.createdBy,
         diagnoses: (plan.diagnoses ?? []).map((diagnosis) => ({
           code: diagnosis.code ?? null,
+          codeSystem: diagnosis.codeSystem ?? (diagnosis.code ? "SNOMED_CT" : null),
           id: diagnosis.key,
           label: diagnosis.label,
         })),
@@ -280,10 +307,102 @@ export async function GET(
         updatedAt: plan.updatedAt.toISOString(),
         updatedBy: actorNames.get(plan.updatedBy) ?? plan.updatedBy,
       },
+      activity: (plan.activity ?? [])
+        .slice()
+        .sort((a, b) => b.at.getTime() - a.at.getTime())
+        .map((event) => ({
+          at: event.at.toISOString(),
+          by: actorNames.get(event.by) ?? event.by,
+          id: event.key,
+          note: event.note?.trim() || null,
+          type: event.type,
+        })),
     });
   } catch (error: any) {
     return bad(
       error?.message || "Unable to load care plan",
+      undefined,
+      error?.status || 500,
+    );
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ carePlanId: string }> },
+) {
+  try {
+    const caller = await requireUser(req);
+    if (caller.role !== "patient" || !caller.patientId) {
+      return bad("Patient session required", { code: "patient_session_required" }, 403);
+    }
+
+    const { carePlanId } = await context.params;
+    if (!ObjectId.isValid(caller.patientId) || !ObjectId.isValid(carePlanId)) {
+      return bad("Invalid care plan request", { code: "invalid_care_plan_request" }, 400);
+    }
+
+    const parsed = UpdateCarePlanTaskBody.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return bad("Invalid care plan update payload", parsed.error.flatten(), 400);
+    }
+
+    const db = await getDb();
+    const patientObjectId = new ObjectId(caller.patientId);
+    const carePlanObjectId = new ObjectId(carePlanId);
+    const plan = await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).findOne({
+      _id: carePlanObjectId,
+      patientId: patientObjectId,
+    });
+
+    if (!plan) {
+      return bad("Care plan not found", { code: "care_plan_not_found" }, 404);
+    }
+    if (plan.status !== "active") {
+      return bad("Only active care plans can update tasks", { code: "care_plan_not_active" }, 409);
+    }
+
+    const targetTask = (plan.tasks ?? []).find((task) => task.key === parsed.data.taskId);
+    if (!targetTask) {
+      return bad("Task not found", { code: "care_plan_task_not_found" }, 404);
+    }
+
+    const nextStatus = parsed.data.action === "complete_task" ? "done" : "open";
+    if (targetTask.status === nextStatus) {
+      return ok({ updated: false });
+    }
+
+    const now = new Date();
+    const activityType = parsed.data.action === "complete_task" ? "task_completed" : "task_reopened";
+    await db.collection<CarePlanDoc>(COLLECTIONS.CarePlans).updateOne(
+      { _id: carePlanObjectId, patientId: patientObjectId },
+      {
+        $set: {
+          tasks: (plan.tasks ?? []).map((task) =>
+            task.key === parsed.data.taskId ? { ...task, status: nextStatus } : task,
+          ),
+          updatedAt: now,
+          updatedBy: caller.principalId,
+        },
+        $push: {
+          activity: {
+            at: now,
+            by: caller.principalId,
+            key: makeCarePlanActivityKey(activityType, now, caller.principalId),
+            note:
+              parsed.data.action === "complete_task"
+                ? `Completed task: ${targetTask.label}.`
+                : `Reopened task: ${targetTask.label}.`,
+            type: activityType,
+          },
+        },
+      },
+    );
+
+    return ok({ updated: true });
+  } catch (error: any) {
+    return bad(
+      error?.message || "Unable to update care plan task",
       undefined,
       error?.status || 500,
     );

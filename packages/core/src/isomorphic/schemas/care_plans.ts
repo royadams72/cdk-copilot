@@ -28,8 +28,27 @@ export const CarePlanGoal = z.object({
 
 export const CarePlanDiagnosis = z.object({
   code: z.string().min(1).optional(),
+  codeSystem: z.enum(["SNOMED_CT", "CUSTOM"]).optional(),
   key: z.string().min(1),
   label: z.string().min(1),
+});
+
+export const CarePlanActivityType = z.enum([
+  "created",
+  "draft_updated",
+  "activated",
+  "completed",
+  "archived",
+  "task_completed",
+  "task_reopened",
+]);
+
+export const CarePlanActivity = z.object({
+  key: z.string().min(1),
+  type: CarePlanActivityType,
+  at: z.coerce.date(),
+  by: PrincipalId,
+  note: z.string().max(4000).optional(),
 });
 
 export const CarePlanDoc = z.object({
@@ -44,6 +63,7 @@ export const CarePlanDoc = z.object({
   status: CarePlanStatus.default("draft"),
   sources: z.array(CarePlanSource).default(["manual"]),
   notes: z.string().max(4000).optional(),
+  activity: z.array(CarePlanActivity).default([]),
 
   // UUID actor IDs
   createdBy: PrincipalId,
@@ -56,3 +76,4 @@ export const CarePlanDoc = z.object({
   completedAt: z.coerce.date().optional(),
 });
 export type CarePlanDoc = z.infer<typeof CarePlanDoc>;
+export type TCarePlanActivity = z.infer<typeof CarePlanActivity>;

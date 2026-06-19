@@ -60,7 +60,7 @@ export default function CarePlanList() {
       <View style={styles.header}>
         <ThemedText type="title">Care plans</ThemedText>
         <ThemedText style={styles.subtleText}>
-          Active, completed, and draft care plans linked to your account.
+          Active and completed care plans linked to your account.
         </ThemedText>
       </View>
 

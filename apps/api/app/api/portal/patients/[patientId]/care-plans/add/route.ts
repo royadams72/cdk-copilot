@@ -7,6 +7,7 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import {
+  CarePlanActivity as CarePlanActivitySchema,
   ConditionFormItem,
   HealthProfileCurrentEntry,
   HealthProfileLedgerEvent,
@@ -95,10 +96,12 @@ type StaffProfileDoc = {
 type CarePlanDoc = {
   _id: ObjectId;
   activatedAt?: Date;
+  activity?: CarePlanActivityDoc[];
   createdAt: Date;
   createdBy: string;
   diagnoses: Array<{
     code?: string;
+    codeSystem?: "SNOMED_CT" | "CUSTOM";
     key: string;
     label: string;
   }>;
@@ -126,6 +129,8 @@ type CarePlanDoc = {
   updatedAt: Date;
   updatedBy: string;
 };
+
+type CarePlanActivityDoc = z.infer<typeof CarePlanActivitySchema>;
 
 const CREATE_PAYLOAD = z.object({
   action: z.enum(["activate_and_notify", "save_as_draft"]).default("activate_and_notify"),
@@ -161,6 +166,15 @@ function normalizeLabel(value: string) {
 
 function stableKey(parts: string[]) {
   return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
+}
+
+function makeCarePlanActivityKey(type: CarePlanActivityDoc["type"], at: Date, by: string) {
+  return `care_plan_activity_${stableKey([type, at.toISOString(), by])}`;
+}
+
+function buildDiagnosisActivityNote(diagnoses: Array<{ label: string }>) {
+  if (!diagnoses.length) return undefined;
+  return `Diagnoses linked: ${diagnoses.map((diagnosis) => diagnosis.label).join(", ")}.`;
 }
 
 function makeConditionEntryId(item: TConditionFormItem) {
@@ -595,12 +609,47 @@ export async function POST(
       status: "active",
     }));
     const shouldActivate = action === "activate_and_notify";
+    const createdActivityAt = new Date(now);
+    const activatedActivityAt = shouldActivate ? new Date(now.getTime() + 1) : null;
     const doc: CarePlanDoc = {
       _id: new ObjectId(),
+      activity: [
+        {
+          at: createdActivityAt,
+          by: caller.principalId,
+          key: makeCarePlanActivityKey("created", createdActivityAt, caller.principalId),
+          ...(shouldActivate
+            ? { note: 'Created care plan and prepared it for patient notification.' }
+            : {
+                note:
+                  buildDiagnosisActivityNote(normalizedDiagnoses) ??
+                  "Created care plan draft.",
+              }),
+          type: "created",
+        },
+        ...(shouldActivate && activatedActivityAt
+          ? [
+              {
+                at: activatedActivityAt,
+                by: caller.principalId,
+                key: makeCarePlanActivityKey(
+                  "activated",
+                  activatedActivityAt,
+                  caller.principalId,
+                ),
+                note:
+                  buildDiagnosisActivityNote(normalizedDiagnoses) ??
+                  "Activated care plan and notified the patient.",
+                type: "activated" as const,
+              },
+            ]
+          : []),
+      ],
       createdAt: now,
       createdBy: caller.principalId,
       diagnoses: normalizedDiagnoses.map((diagnosis) => ({
         ...(diagnosis.code?.trim() ? { code: diagnosis.code.trim() } : {}),
+        codeSystem: diagnosis.codeSystem,
         key: diagnosis.code.trim(),
         label: diagnosis.label,
       })),

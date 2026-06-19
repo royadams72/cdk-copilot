@@ -53,6 +53,9 @@ export default function PortalPatientEditCarePlanPage() {
   const [frequency, setFrequency] = useState("daily");
   const [reviewLabel, setReviewLabel] = useState("1_month");
   const [ownerLabels, setOwnerLabels] = useState<string[]>([]);
+  const [draftAction, setDraftAction] = useState<"save_as_draft" | "activate_and_notify">(
+    "save_as_draft",
+  );
 
   useEffect(() => {
     if (
@@ -267,7 +270,9 @@ export default function PortalPatientEditCarePlanPage() {
         `/api/portal/patients/${params.patientId}/care-plans/${params.carePlanId}`,
         {
           body: JSON.stringify({
-            action: "update_draft",
+            ...(draftAction === "activate_and_notify"
+              ? { action: "update_draft_and_activate" }
+              : { action: "update_draft" }),
             diagnoses: diagnoses.map((item) => ({
               ...(item.code ? { code: item.code } : {}),
               ...(item.codeSystem ? { codeSystem: item.codeSystem } : {}),
@@ -352,7 +357,9 @@ export default function PortalPatientEditCarePlanPage() {
       <div className={styles.carePlanFormIntro}>
         <h2 className={styles.carePlanFormTitle}>Edit Care Plan Draft</h2>
         <p className={styles.carePlanFormLead}>
-          Update the draft before activating it for the patient.
+          {draftAction === "activate_and_notify"
+            ? "Update the draft and notify the patient that the care plan is ready."
+            : "Update the draft and keep it hidden from the patient for now."}
         </p>
       </div>
 
@@ -564,6 +571,30 @@ export default function PortalPatientEditCarePlanPage() {
           </div>
         </div>
 
+        <div className={styles.carePlanFormGroup}>
+          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-draft-edit-action">
+            Action
+          </label>
+          <p className={styles.dataScreenCaption}>
+            Choose whether to keep this as a draft or activate it and notify the patient now.
+          </p>
+          <select
+            className={styles.carePlanInput}
+            id="care-plan-draft-edit-action"
+            onChange={(event) =>
+              setDraftAction(
+                event.target.value === "activate_and_notify"
+                  ? "activate_and_notify"
+                  : "save_as_draft",
+              )
+            }
+            value={draftAction}
+          >
+            <option value="save_as_draft">Save as draft</option>
+            <option value="activate_and_notify">Activate care plan and notify patient</option>
+          </select>
+        </div>
+
         {error ? <p className={styles.dataScreenCaption}>{error}</p> : null}
 
         <div className={styles.carePlanSubmitRow}>
@@ -579,7 +610,11 @@ export default function PortalPatientEditCarePlanPage() {
             onClick={() => void submitForm()}
             type="button"
           >
-            {submitting ? "Saving..." : "Save draft changes"}
+            {submitting
+              ? "Saving..."
+              : draftAction === "activate_and_notify"
+                ? "Continue and notify patient"
+                : "Continue to draft"}
           </button>
         </div>
       </section>

@@ -28,20 +28,12 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser(req);
     if (!user.patientId) {
-      console.log("[push:register] missing patient context", {
-        principalId: user.principalId,
-      });
       return bad("Patient context missing", undefined, 403);
     }
 
     const body = await req.json().catch(() => null);
     const parsed = RegisterPushDeviceBody.safeParse(body);
     if (!parsed.success) {
-      console.log("[push:register] validation failed", {
-        body,
-        patientId: user.patientId,
-        principalId: user.principalId,
-      });
       return bad("Validation failed", parsed.error.flatten(), 400);
     }
 
@@ -61,15 +53,7 @@ export async function POST(req: NextRequest) {
         }
       : { principalId: user.principalId };
 
-    console.log("[push:register] writing token", {
-      filter: patientFilter,
-      patientId: user.patientId,
-      platform: parsed.data.platform,
-      principalId: user.principalId,
-      pushToken: parsed.data.pushToken,
-    });
-
-    const pullResult = await usersPii.updateOne(
+    await usersPii.updateOne(
       patientFilter,
       {
         $pull: {
@@ -77,13 +61,6 @@ export async function POST(req: NextRequest) {
         },
       },
     );
-
-    console.log("[push:register] pull result", {
-      filter: patientFilter,
-      matchedCount: pullResult.matchedCount,
-      modifiedCount: pullResult.modifiedCount,
-      patientId: user.patientId,
-    });
 
     const pushResult = await usersPii.updateOne(
       patientFilter,
@@ -101,32 +78,16 @@ export async function POST(req: NextRequest) {
         },
       },
     );
-
-    console.log("[push:register] push result", {
-      filter: patientFilter,
-      matchedCount: pushResult.matchedCount,
-      modifiedCount: pushResult.modifiedCount,
-      patientId: user.patientId,
-      upsertedCount: pushResult.upsertedCount,
-      upsertedId: pushResult.upsertedId ?? null,
-    });
-
-    const persisted = await usersPii.findOne(
-      patientFilter,
-      {
-        projection: {
-          devices: 1,
-          principalId: 1,
-          patientId: 1,
-        },
-      },
-    );
-
-    console.log("[push:register] persisted device state", persisted);
+    if (pushResult.matchedCount === 0) {
+      console.error("[push:register] no patient profile matched token registration", {
+        patientId: user.patientId,
+        principalId: user.principalId,
+      });
+    }
 
     return ok({ registered: true });
   } catch (err: any) {
-    console.log("[push:register] failed", err);
+    console.error("[push:register] failed", err);
     return bad(err?.message || "Server error", undefined, err?.status || 500);
   }
 }

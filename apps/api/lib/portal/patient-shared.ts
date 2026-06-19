@@ -211,6 +211,21 @@ export type PortalPatientCarePlanTask = {
   status: "open" | "paused" | "done";
 };
 
+export type PortalPatientCarePlanActivity = {
+  at: string;
+  by: string;
+  id: string;
+  note: string | null;
+  type:
+    | "created"
+    | "draft_updated"
+    | "activated"
+    | "completed"
+    | "archived"
+    | "task_completed"
+    | "task_reopened";
+};
+
 export type PortalPatientCarePlanDetailData = {
   headline: string;
   patient: PortalPatientDetail;
@@ -232,6 +247,7 @@ export type PortalPatientCarePlanDetailData = {
       updatedAt: string;
       updatedBy: string;
     };
+  activity: PortalPatientCarePlanActivity[];
 };
 
 export type PortalPatientCarePlanOption = {

@@ -155,7 +155,7 @@ export default function Dashboard() {
     let cancelled = false;
 
     async function syncBanner() {
-      const latest = carePlanData?.latestActivePlan;
+      const latest = carePlanData?.latestUpdatedPlan;
       if (!latest?.updatedAt) {
         if (!cancelled) setShowCarePlanBanner(false);
         return;
@@ -218,21 +218,29 @@ export default function Dashboard() {
             ) : null}
           </View>
 
-          {showCarePlanBanner && carePlanData?.latestActivePlan ? (
+          {showCarePlanBanner && carePlanData?.latestUpdatedPlan ? (
             <Card style={styles.carePlanNotificationCard}>
-              <ThemedText type="defaultSemiBold">New care plan update</ThemedText>
+              <ThemedText type="defaultSemiBold">
+                {carePlanData.latestUpdatedPlan.status === "completed"
+                  ? "Care plan completed"
+                  : "New care plan update"}
+              </ThemedText>
               <ThemedText style={styles.helperText}>
-                {carePlanData.latestActivePlan.title}
+                {carePlanData.latestUpdatedPlan.title}
               </ThemedText>
               <Pressable
                 style={[styles.primaryActionButton, styles.carePlanViewButton]}
                 onPress={() =>
                   router.push(
-                    `/(dashboard)/care-plan?id=${carePlanData.latestActivePlan!.id}` as never,
+                    `/(dashboard)/care-plan?id=${carePlanData.latestUpdatedPlan!.id}` as never,
                   )
                 }
               >
-                <ThemedText style={styles.primaryActionText}>View care plan</ThemedText>
+                <ThemedText style={styles.primaryActionText}>
+                  {carePlanData.latestUpdatedPlan.status === "completed"
+                    ? "Review completion"
+                    : "View care plan"}
+                </ThemedText>
               </Pressable>
             </Card>
           ) : null}

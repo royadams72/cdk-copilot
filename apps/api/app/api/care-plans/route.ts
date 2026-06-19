@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       .find(
         {
           patientId: patientObjectId,
-          status: { $in: ["active", "completed", "draft"] },
+          status: { $in: ["active", "completed"] },
         },
         {
           projection: {
@@ -76,10 +76,12 @@ export async function GET(req: NextRequest) {
 
     const latestActivePlan =
       items.find((plan) => plan.status === "active") ?? items[0] ?? null;
+    const latestUpdatedPlan = items[0] ?? null;
 
     return ok({
       items,
       latestActivePlan,
+      latestUpdatedPlan,
       latestUpdatedAt: items[0]?.updatedAt ?? null,
     });
   } catch (error: any) {

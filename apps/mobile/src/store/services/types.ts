@@ -273,6 +273,7 @@ export type CarePlanListItem = {
 export type CarePlanListResponse = {
   items: CarePlanListItem[];
   latestActivePlan: CarePlanListItem | null;
+  latestUpdatedPlan: CarePlanListItem | null;
   latestUpdatedAt: string | null;
 };
 export type CarePlanDetailGoal = {
@@ -287,13 +288,32 @@ export type CarePlanDetailTask = {
   label: string;
   status: "open" | "paused" | "done";
 };
+export type CarePlanActivityEvent = {
+  at: string;
+  by: string;
+  id: string;
+  note: string | null;
+  type:
+    | "created"
+    | "draft_updated"
+    | "activated"
+    | "completed"
+    | "archived"
+    | "task_completed"
+    | "task_reopened";
+};
 export type CarePlanDetailResponse = {
   plan: {
     activatedAt: string | null;
     completedAt: string | null;
     createdAt: string;
     createdBy: string;
-    diagnoses: Array<{ code: string | null; id: string; label: string }>;
+    diagnoses: Array<{
+      code: string | null;
+      codeSystem?: "SNOMED_CT" | "CUSTOM" | null;
+      id: string;
+      label: string;
+    }>;
     goals: CarePlanDetailGoal[];
     id: string;
     notes: string | null;
@@ -305,6 +325,7 @@ export type CarePlanDetailResponse = {
     updatedAt: string;
     updatedBy: string;
   };
+  activity: CarePlanActivityEvent[];
 };
 export type WeeklySleepSummary = {
   advice: string[];

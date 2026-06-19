@@ -11,7 +11,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText } from "@/components/themed-text";
 import { setLastViewedCarePlanAt } from "@/lib/carePlans";
 import { toQueryErrorMessage } from "@/store/services/appApi";
-import { useGetCarePlanByIdQuery } from "@/store/services/carePlanApi";
+import {
+  useGetCarePlanByIdQuery,
+  useUpdateCarePlanTaskStatusMutation,
+} from "@/store/services/carePlanApi";
 import { Card } from "@/screens/dashboard/components/Card";
 import { styles } from "@/screens/dashboard/styles";
 
@@ -32,6 +35,8 @@ export default function CarePlanDetail() {
   const carePlanId = typeof params.id === "string" ? params.id : "";
   const { data, error, isFetching, isLoading, refetch } =
     useGetCarePlanByIdQuery(carePlanId, { skip: !carePlanId });
+  const [updateTaskStatus, { isLoading: isUpdatingTask }] =
+    useUpdateCarePlanTaskStatusMutation();
   const refreshing = isFetching && !!data;
   const loading = isLoading && !data;
   const errorMessage = toQueryErrorMessage(error, "We couldn't load your care plan.");
@@ -44,6 +49,14 @@ export default function CarePlanDetail() {
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const handleTaskAction = useCallback(
+    async (taskId: string, action: "complete_task" | "reopen_task") => {
+      if (!carePlanId) return;
+      await updateTaskStatus({ action, carePlanId, taskId }).unwrap();
+    },
+    [carePlanId, updateTaskStatus],
+  );
 
   if (loading) {
     return (
@@ -98,9 +111,13 @@ export default function CarePlanDetail() {
                 )}
               </View>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Completed</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>Status</ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
-                  {formatDate(data.completedAt)}
+                  {data.status === "completed"
+                    ? `Completed (${formatDate(data.completedAt)})`
+                    : data.status === "active"
+                      ? `Active (${formatDate(data.activatedAt)})`
+                      : formatStatus(data.status)}
                 </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
@@ -122,6 +139,33 @@ export default function CarePlanDetail() {
                 <ThemedText style={styles.carePlanBodyText}>{data.notes}</ThemedText>
               </View>
             ) : null}
+          </Card>
+
+          <Card>
+            <ThemedText type="defaultSemiBold">Recent activity</ThemedText>
+            <ThemedText style={styles.helperText}>
+              Changes made by you or your care team on this plan.
+            </ThemedText>
+            {data.activity?.length ? (
+              data.activity.map((event) => (
+                <View key={event.id} style={styles.carePlanListRow}>
+                  <View style={styles.carePlanTaskHeader}>
+                    <ThemedText style={styles.carePlanListTitle}>
+                      {formatStatus(event.type.replace(/_/g, " "))}
+                    </ThemedText>
+                    <ThemedText style={styles.carePlanTaskMeta}>
+                      {formatDate(event.at)}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={styles.carePlanBodyText}>{event.by}</ThemedText>
+                  {event.note ? (
+                    <ThemedText style={styles.carePlanBodyText}>{event.note}</ThemedText>
+                  ) : null}
+                </View>
+              ))
+            ) : (
+              <ThemedText style={styles.helperText}>No recent activity recorded.</ThemedText>
+            )}
           </Card>
 
           <Card>
@@ -185,6 +229,21 @@ export default function CarePlanDetail() {
                     <ThemedText style={styles.carePlanBodyText}>
                       {task.instructions}
                     </ThemedText>
+                  ) : null}
+                  {data.status === "active" ? (
+                    <TouchableOpacity
+                      disabled={isUpdatingTask}
+                      onPress={() =>
+                        void handleTaskAction(
+                          task.id,
+                          task.status === "done" ? "reopen_task" : "complete_task",
+                        )
+                      }
+                    >
+                      <ThemedText style={styles.carePlanTaskAction}>
+                        {task.status === "done" ? "Mark as open" : "Mark as done"}
+                      </ThemedText>
+                    </TouchableOpacity>
                   ) : null}
                 </View>
               ))
