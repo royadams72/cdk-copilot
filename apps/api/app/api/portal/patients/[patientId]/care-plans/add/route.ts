@@ -31,37 +31,14 @@ import type {
   PortalPatientCarePlanDiagnosis,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
+  buildPortalPatientDetailPipeline,
   buildPortalPatientAccessMatch,
   mapPortalPatientDetail,
+  type RawPortalPatientDetailDoc,
 } from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "@ckd/core/server";
 
 type TConditionFormItem = z.infer<typeof ConditionFormItem>;
-
-type RawPortalPatientDetailDoc = {
-  _id: ObjectId;
-  assignments?: Array<{
-    careTeamId?: string;
-    consentStatus?: string;
-    endsAt?: Date | string | null;
-    facilityId?: string;
-    orgId?: string;
-    startsAt?: Date | string | null;
-    status?: string;
-  }>;
-  flags?: string[];
-  pii?: {
-    dateOfBirth?: Date | string | null;
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-  } | null;
-  stage?: string | null;
-  summary?: {
-    lastContactAt?: Date | string | null;
-    risk?: "green" | "amber" | "red" | null;
-  } | null;
-};
 
 type CarePlanClinicalDoc = {
   careTeam?: Array<{
@@ -112,42 +89,12 @@ async function loadScopedPatient(
 ) {
   return db
     .collection(COLLECTIONS.Patients)
-    .aggregate<RawPortalPatientDetailDoc>([
-      {
-        $match: {
-          ...buildPortalPatientAccessMatch(caller),
-          _id: patientObjectId,
-        },
-      },
-      {
-        $lookup: {
-          as: "pii",
-          foreignField: "patientId",
-          from: COLLECTIONS.UsersPII,
-          pipeline: [
-            {
-              $project: {
-                _id: 0,
-                dateOfBirth: 1,
-                email: 1,
-                firstName: 1,
-                lastName: 1,
-              },
-            },
-          ],
-          localField: "_id",
-        },
-      },
-      {
-        $project: {
-          assignments: 1,
-          flags: 1,
-          pii: { $arrayElemAt: ["$pii", 0] },
-          stage: 1,
-          summary: 1,
-        },
-      },
-    ])
+    .aggregate<RawPortalPatientDetailDoc>(
+      buildPortalPatientDetailPipeline({
+        ...buildPortalPatientAccessMatch(caller),
+        _id: patientObjectId,
+      }),
+    )
     .next();
 }
 

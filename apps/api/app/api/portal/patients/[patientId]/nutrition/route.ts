@@ -4,6 +4,14 @@ import { NextRequest } from "next/server";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import {
+  buildChartMonths,
+  formatMonthLabel,
+  formatMonthLongLabel,
+  monthKey,
+  parsePositiveInt,
+  startOfMonth,
+} from "@/apps/api/lib/portal/time";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   mapSummaryTopFoodsToPortalRows,
@@ -17,8 +25,10 @@ import {
   type PortalPatientNutritionData,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
+  buildPortalPatientDetailPipeline,
   buildPortalPatientAccessMatch,
   mapPortalPatientDetail,
+  type RawPortalPatientDetailDoc,
 } from "@/apps/api/lib/portal/patients";
 import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -27,68 +37,9 @@ import { ObjectId } from "mongodb";
 const DEFAULT_DAYS = 365;
 const MAX_DAYS = 400;
 
-type RawPortalPatientDetailDoc = {
-  _id: ObjectId;
-  assignments?: Array<{
-    careTeamId?: string;
-    consentStatus?: string;
-    endsAt?: Date | string | null;
-    facilityId?: string;
-    orgId?: string;
-    startsAt?: Date | string | null;
-    status?: string;
-  }>;
-  flags?: string[];
-  pii?: {
-    dateOfBirth?: Date | string | null;
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-  } | null;
-  stage?: string | null;
-  summary?: {
-    lastContactAt?: Date | string | null;
-    risk?: "green" | "amber" | "red" | null;
-  } | null;
-};
-
-type ClinicalDoc = {
+type PortalNutritionClinicalDoc = {
   egfrCurrent?: number | null;
 };
-
-function parsePositiveInt(value: string | null, fallback: number) {
-  if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return parsed;
-}
-
-function monthKey(date: Date) {
-  return date.toISOString().slice(0, 7);
-}
-
-function startOfMonth(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-}
-
-function addMonths(date: Date, delta: number) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + delta, 1));
-}
-
-function formatMonthLabel(month: string) {
-  const [year, monthPart] = month.split("-");
-  const date = new Date(Date.UTC(Number(year), Number(monthPart) - 1, 1));
-  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date).toUpperCase();
-}
-
-function formatMonthLongLabel(month: string) {
-  const [year, monthPart] = month.split("-");
-  const date = new Date(Date.UTC(Number(year), Number(monthPart) - 1, 1));
-  return new Intl.DateTimeFormat("en-GB", {
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
 
 function resolveTargetValue(
   targets: Partial<Record<PortalNutritionFilter, number>>,
@@ -96,12 +47,6 @@ function resolveTargetValue(
 ) {
   const value = targets[filter];
   return typeof value === "number" ? value : null;
-}
-
-function buildChartMonths(currentMonthStart: Date) {
-  return Array.from({ length: 12 }, (_, offset) =>
-    monthKey(addMonths(currentMonthStart, offset - 11)),
-  );
 }
 
 export async function GET(
@@ -138,42 +83,12 @@ export async function GET(
     const patientObjectId = new ObjectId(patientId);
     const patient = await db
       .collection(COLLECTIONS.Patients)
-      .aggregate<RawPortalPatientDetailDoc>([
-        {
-          $match: {
-            ...buildPortalPatientAccessMatch(caller),
-            _id: patientObjectId,
-          },
-        },
-        {
-          $lookup: {
-            as: "pii",
-            foreignField: "patientId",
-            from: COLLECTIONS.UsersPII,
-            pipeline: [
-              {
-                $project: {
-                  _id: 0,
-                  dateOfBirth: 1,
-                  email: 1,
-                  firstName: 1,
-                  lastName: 1,
-                },
-              },
-            ],
-            localField: "_id",
-          },
-        },
-        {
-          $project: {
-            assignments: 1,
-            flags: 1,
-            pii: { $arrayElemAt: ["$pii", 0] },
-            stage: 1,
-            summary: 1,
-          },
-        },
-      ])
+      .aggregate<RawPortalPatientDetailDoc>(
+        buildPortalPatientDetailPipeline({
+          ...buildPortalPatientAccessMatch(caller),
+          _id: patientObjectId,
+        }),
+      )
       .next();
 
     if (!patient) {
@@ -206,7 +121,7 @@ export async function GET(
         orgId: caller.orgId,
         seedPrincipalId: caller.principalId,
       }),
-      db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
+      db.collection<PortalNutritionClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { _id: 0, egfrCurrent: 1 } },
       ),
