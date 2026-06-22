@@ -49,6 +49,50 @@ export type PortalPatientDetail = PortalPatientListItem & {
   }>;
 };
 
+export type PortalPatientOverviewRow = {
+  href?: string | null;
+  label: string;
+  meta?: string | null;
+  value: string;
+};
+
+export type PortalPatientAttentionItem = {
+  detail: string;
+  href?: string | null;
+  title: string;
+  tone: "neutral" | "success" | "warning";
+};
+
+export type PortalPatientRecentActivityItem = {
+  at: string;
+  detail: string | null;
+  id: string;
+  label: string;
+};
+
+export type PortalPatientCarePlanSnapshot = {
+  href: string | null;
+  nextReviewAt: string | null;
+  openTasksLabel: string;
+  reviewLabel: string | null;
+  status: string;
+  title: string;
+  updatedAt: string;
+} | null;
+
+export type PortalPatientDashboardData = {
+  actionCards: string[];
+  attentionItems: PortalPatientAttentionItem[];
+  carePlanSnapshot: PortalPatientCarePlanSnapshot;
+  clinicalSummary: PortalPatientOverviewRow[];
+  currentStatus: PortalPatientOverviewRow[];
+  engagementSummary: PortalPatientOverviewRow[];
+  headline: string;
+  latestReadings: PortalPatientOverviewRow[];
+  recentActivity: PortalPatientRecentActivityItem[];
+  subheadline: string;
+};
+
 export const PORTAL_NUTRITION_FILTERS = [
   "phosphorusMg",
   "potassiumMg",

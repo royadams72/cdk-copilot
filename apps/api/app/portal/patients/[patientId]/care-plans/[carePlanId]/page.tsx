@@ -70,9 +70,9 @@ export default function PortalPatientCarePlanDetailPage() {
   );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [draftAction, setDraftAction] = useState<"activate" | "edit" | "delete">(
-    "activate",
-  );
+  const [draftAction, setDraftAction] = useState<
+    "activate" | "edit" | "delete"
+  >("activate");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -267,7 +267,9 @@ export default function PortalPatientCarePlanDetailPage() {
                 className={styles.nutritionFilterSelect}
                 id="care-plan-draft-action"
                 onChange={(event) =>
-                  setDraftAction(event.target.value as "activate" | "edit" | "delete")
+                  setDraftAction(
+                    event.target.value as "activate" | "edit" | "delete",
+                  )
                 }
                 value={draftAction}
               >
@@ -289,7 +291,11 @@ export default function PortalPatientCarePlanDetailPage() {
                 }}
                 type="button"
               >
-                {submitting ? "Saving..." : draftAction === "edit" ? "Continue" : "Apply"}
+                {submitting
+                  ? "Saving..."
+                  : draftAction === "edit"
+                    ? "Continue"
+                    : "Apply"}
               </button>
             </div>
           ) : data.plan.status === "completed" ? (
@@ -346,7 +352,11 @@ export default function PortalPatientCarePlanDetailPage() {
 
                 <td>{formatStatusSummary(data.plan)}</td>
                 <td>{data.plan.reviewLabel ?? "Not set"}</td>
-                <td>{formatDisplayDate(data.plan.activatedAt, { fallback: "No date set" })}</td>
+                <td>
+                  {formatDisplayDate(data.plan.activatedAt, {
+                    fallback: "No date set",
+                  })}
+                </td>
               </tr>
               {data.plan.notes ? (
                 <tr>
@@ -360,35 +370,6 @@ export default function PortalPatientCarePlanDetailPage() {
               ) : null}
             </tbody>
           </table>
-        </div>
-      </section>
-
-      <section className={styles.dataScreenCard}>
-        <div className={styles.dataScreenToolbar}>
-          <div>
-            <h2 className={styles.dataScreenTitle}>Activity history</h2>
-            <p className={styles.dataScreenCaption}>
-              Status changes, draft updates, and task actions for this care plan.
-            </p>
-          </div>
-        </div>
-        <div className={styles.carePlanHistoryList}>
-          {data.activity.length ? (
-            data.activity.map((event) => (
-              <div className={styles.carePlanHistoryRow} key={event.id}>
-                <div className={styles.carePlanHistoryHeader}>
-                  <p className={styles.carePlanMetaTitle}>{formatActivityLabel(event.type)}</p>
-                  <p className={styles.carePlanMetaTitle}>
-                    {formatDisplayDate(event.at, { fallback: "No date set" })}
-                  </p>
-                </div>
-                <p className={styles.carePlanMetaValue}>{event.by}</p>
-                {event.note ? <p className={styles.carePlanMetaValue}>{event.note}</p> : null}
-              </div>
-            ))
-          ) : (
-            <p className={styles.dataScreenCaption}>No activity recorded yet.</p>
-          )}
         </div>
       </section>
 
