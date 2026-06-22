@@ -6,38 +6,15 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
+  buildPortalPatientDetailPipeline,
   buildPortalPatientAccessMatch,
   mapPortalPatientDetail,
+  type RawPortalPatientDetailDoc,
 } from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-type RawPortalPatientDetailDoc = {
-  _id: ObjectId;
-  assignments?: Array<{
-    careTeamId?: string;
-    consentStatus?: string;
-    endsAt?: Date | string | null;
-    facilityId?: string;
-    orgId?: string;
-    startsAt?: Date | string | null;
-    status?: string;
-  }>;
-  flags?: string[];
-  pii?: {
-    dateOfBirth?: Date | string | null;
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-  } | null;
-  stage?: string | null;
-  summary?: {
-    lastContactAt?: Date | string | null;
-    risk?: "green" | "amber" | "red" | null;
-  } | null;
-};
 
 type MeasurementDoc = {
   diastolicMmHg?: number;
@@ -55,7 +32,7 @@ type NutritionDoc = {
   };
 };
 
-type ClinicalDoc = {
+type PortalPatientSummaryClinicalDoc = {
   egfrCurrent?: number | null;
   medications?: Array<{ name?: string }>;
 };
@@ -156,42 +133,12 @@ export async function GET(
     const patientObjectId = new ObjectId(patientId);
     const patient = await db
       .collection(COLLECTIONS.Patients)
-      .aggregate<RawPortalPatientDetailDoc>([
-        {
-          $match: {
-            ...buildPortalPatientAccessMatch(caller),
-            _id: patientObjectId,
-          },
-        },
-        {
-          $lookup: {
-            as: "pii",
-            foreignField: "patientId",
-            from: COLLECTIONS.UsersPII,
-            pipeline: [
-              {
-                $project: {
-                  _id: 0,
-                  dateOfBirth: 1,
-                  email: 1,
-                  firstName: 1,
-                  lastName: 1,
-                },
-              },
-            ],
-            localField: "_id",
-          },
-        },
-        {
-          $project: {
-            assignments: 1,
-            flags: 1,
-            pii: { $arrayElemAt: ["$pii", 0] },
-            stage: 1,
-            summary: 1,
-          },
-        },
-      ])
+      .aggregate<RawPortalPatientDetailDoc>(
+        buildPortalPatientDetailPipeline({
+          ...buildPortalPatientAccessMatch(caller),
+          _id: patientObjectId,
+        }),
+      )
       .next();
 
     if (!patient) {
@@ -200,7 +147,7 @@ export async function GET(
 
     const windowStart = new Date(Date.now() - 31 * DAY_MS);
     const [clinical, nutritionDocs, measurementDocs] = await Promise.all([
-      db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
+      db.collection<PortalPatientSummaryClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { _id: 0, egfrCurrent: 1, medications: 1 } },
       ),

@@ -1,5 +1,6 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
+import { COLLECTIONS } from "@ckd/core/server";
 import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
   normalizePortalPatientFilter,
@@ -30,6 +31,15 @@ type PortalPatientPii = {
   email?: string;
   firstName?: string;
   lastName?: string;
+};
+
+export type RawPortalPatientDetailDoc = {
+  _id: ObjectId;
+  assignments?: PortalPatientAssignment[];
+  flags?: string[];
+  pii?: PortalPatientPii | null;
+  stage?: string | null;
+  summary?: PortalPatientSummary | null;
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -86,6 +96,42 @@ export function buildPortalPatientAccessMatch(user: SessionUser) {
   }
 
   return { $and: clauses };
+}
+
+export function buildPortalPatientDetailPipeline(match: Document) {
+  return [
+    {
+      $match: match,
+    },
+    {
+      $lookup: {
+        as: "pii",
+        foreignField: "patientId",
+        from: COLLECTIONS.UsersPII,
+        pipeline: [
+          {
+            $project: {
+              _id: 0,
+              dateOfBirth: 1,
+              email: 1,
+              firstName: 1,
+              lastName: 1,
+            },
+          },
+        ],
+        localField: "_id",
+      },
+    },
+    {
+      $project: {
+        assignments: 1,
+        flags: 1,
+        pii: { $arrayElemAt: ["$pii", 0] },
+        stage: 1,
+        summary: 1,
+      },
+    },
+  ];
 }
 
 function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {

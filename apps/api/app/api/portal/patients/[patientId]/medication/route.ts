@@ -5,40 +5,18 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { toIsoDate } from "@/apps/api/lib/format/date";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import type { PortalPatientMedicationData } from "@/apps/api/lib/portal/patient-shared";
 import {
+  buildPortalPatientDetailPipeline,
   buildPortalPatientAccessMatch,
   mapPortalPatientDetail,
+  type RawPortalPatientDetailDoc,
 } from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "@ckd/core/server";
 
-type RawPortalPatientDetailDoc = {
-  _id: ObjectId;
-  assignments?: Array<{
-    careTeamId?: string;
-    consentStatus?: string;
-    endsAt?: Date | string | null;
-    facilityId?: string;
-    orgId?: string;
-    startsAt?: Date | string | null;
-    status?: string;
-  }>;
-  flags?: string[];
-  pii?: {
-    dateOfBirth?: Date | string | null;
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-  } | null;
-  stage?: string | null;
-  summary?: {
-    lastContactAt?: Date | string | null;
-    risk?: "green" | "amber" | "red" | null;
-  } | null;
-};
-
-type ClinicalDoc = {
+type PortalMedicationClinicalDoc = {
   egfrCurrent?: number | null;
   medications?: Array<{
     dose?: string;
@@ -102,11 +80,6 @@ type UserAccountActorDoc = {
   principalId: string;
 };
 
-function toIso(value: Date | string | null | undefined) {
-  if (!value) return null;
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
-
 function formatEventLabel(eventType: MedicationEventType) {
   if (eventType === "created") return "Medication created";
   if (eventType === "status_changed") return "Status changed";
@@ -149,42 +122,12 @@ export async function GET(
     const patientObjectId = new ObjectId(patientId);
     const patient = await db
       .collection(COLLECTIONS.Patients)
-      .aggregate<RawPortalPatientDetailDoc>([
-        {
-          $match: {
-            ...buildPortalPatientAccessMatch(caller),
-            _id: patientObjectId,
-          },
-        },
-        {
-          $lookup: {
-            as: "pii",
-            foreignField: "patientId",
-            from: COLLECTIONS.UsersPII,
-            pipeline: [
-              {
-                $project: {
-                  _id: 0,
-                  dateOfBirth: 1,
-                  email: 1,
-                  firstName: 1,
-                  lastName: 1,
-                },
-              },
-            ],
-            localField: "_id",
-          },
-        },
-        {
-          $project: {
-            assignments: 1,
-            flags: 1,
-            pii: { $arrayElemAt: ["$pii", 0] },
-            stage: 1,
-            summary: 1,
-          },
-        },
-      ])
+      .aggregate<RawPortalPatientDetailDoc>(
+        buildPortalPatientDetailPipeline({
+          ...buildPortalPatientAccessMatch(caller),
+          _id: patientObjectId,
+        }),
+      )
       .next();
 
     if (!patient) {
@@ -194,7 +137,7 @@ export async function GET(
     const mappedPatient = mapPortalPatientDetail(patient);
 
     const [clinical, currentDocs, eventDocs] = await Promise.all([
-      db.collection<ClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
+      db.collection<PortalMedicationClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { _id: 0, egfrCurrent: 1, medications: 1 } },
       ),
@@ -293,7 +236,7 @@ export async function GET(
 
     const projectedRows = currentDocs.map((doc) => ({
       dose: doc.dose?.trim() || null,
-      endAt: toIso(doc.endAt),
+        endAt: toIsoDate(doc.endAt),
       form: doc.form?.trim() || null,
       frequency: doc.frequency?.trim() || null,
       id: (doc.medicationId ?? doc._id).toString(),
@@ -302,9 +245,9 @@ export async function GET(
       name: doc.name?.trim() || "Medication",
       route: doc.route?.trim() || null,
       source: "current_projection" as const,
-      startAt: toIso(doc.startAt),
+        startAt: toIsoDate(doc.startAt),
       status: doc.status ?? "active",
-      updatedAt: toIso(doc.updatedAt),
+        updatedAt: toIsoDate(doc.updatedAt),
     }));
 
     const clinicalRows =
@@ -320,7 +263,7 @@ export async function GET(
             name: medication.name?.trim() || `Medication ${index + 1}`,
             route: null,
             source: "clinical_profile" as const,
-            startAt: toIso(medication.startedAt),
+            startAt: toIsoDate(medication.startedAt),
             status: "active" as const,
             updatedAt: null,
           }))
