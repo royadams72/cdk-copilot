@@ -106,7 +106,7 @@ export default function PortalPatientDetailPage() {
 
   function renderOverviewValue(row: { href?: string | null; value: string }) {
     return row.href ? (
-      <Link className={styles.patientPanelLink} href={row.href}>
+      <Link className={styles.patientPanelLink} href={row.href} prefetch={false}>
         {row.value}
       </Link>
     ) : (
@@ -117,7 +117,7 @@ export default function PortalPatientDetailPage() {
   return (
     <section className={styles.detailLayout}>
       <div className={styles.patientHeadlineContainer}>
-        <Link className={styles.patientBackLink} href="/portal">
+        <Link className={styles.patientBackLink} href="/portal" prefetch={false}>
           &larr; Back to patient list
         </Link>
         <div className={styles.patientHeadline}>
@@ -148,6 +148,7 @@ export default function PortalPatientDetailPage() {
               className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/nutrition`}
               key={label}
+              prefetch={false}
             >
               {label}
             </Link>
@@ -156,6 +157,7 @@ export default function PortalPatientDetailPage() {
               className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/health`}
               key={label}
+              prefetch={false}
             >
               {label}
             </Link>
@@ -164,6 +166,7 @@ export default function PortalPatientDetailPage() {
               className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/medication`}
               key={label}
+              prefetch={false}
             >
               {label}
             </Link>
@@ -172,6 +175,7 @@ export default function PortalPatientDetailPage() {
               className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/care-plans`}
               key={label}
+              prefetch={false}
             >
               {label}
             </Link>
@@ -235,6 +239,7 @@ export default function PortalPatientDetailPage() {
                     <Link
                       className={styles.patientPanelLink}
                       href={dashboard.carePlanSnapshot.href}
+                      prefetch={false}
                     >
                       {dashboard.carePlanSnapshot.title}
                     </Link>
@@ -248,6 +253,7 @@ export default function PortalPatientDetailPage() {
                     <Link
                       className={styles.patientPanelLink}
                       href={dashboard.carePlanSnapshot.href}
+                      prefetch={false}
                     >
                       {dashboard.carePlanSnapshot.status}
                     </Link>
@@ -261,6 +267,7 @@ export default function PortalPatientDetailPage() {
                     <Link
                       className={styles.patientPanelLink}
                       href={dashboard.carePlanSnapshot.href}
+                      prefetch={false}
                     >
                       {dashboard.carePlanSnapshot.openTasksLabel}
                     </Link>
@@ -274,6 +281,7 @@ export default function PortalPatientDetailPage() {
                     <Link
                       className={styles.patientPanelLink}
                       href={dashboard.carePlanSnapshot.href}
+                      prefetch={false}
                     >
                       {formatDisplayDate(dashboard.carePlanSnapshot.nextReviewAt, {
                         fallback: dashboard.carePlanSnapshot.reviewLabel
@@ -312,10 +320,18 @@ export default function PortalPatientDetailPage() {
                 >
                   {item.href ? (
                     <>
-                      <Link className={styles.patientPanelLink} href={item.href}>
+                      <Link
+                        className={styles.patientPanelLink}
+                        href={item.href}
+                        prefetch={false}
+                      >
                         {item.title}
                       </Link>
-                      <Link className={styles.patientAttentionLink} href={item.href}>
+                      <Link
+                        className={styles.patientAttentionLink}
+                        href={item.href}
+                        prefetch={false}
+                      >
                         {item.detail}
                       </Link>
                     </>

@@ -52,6 +52,21 @@ const STORAGE_KEYS = {
 
 const PortalSessionContext = createContext<PortalSessionContextValue | null>(null);
 
+function portalSessionMatches(
+  currentState: PortalSessionState,
+  nextSession: PortalSessionSnapshot & { user: PortalSessionUser },
+) {
+  if (currentState.status !== "authenticated") {
+    return false;
+  }
+
+  return (
+    currentState.session.jwt === nextSession.jwt &&
+    currentState.session.refreshToken === nextSession.refreshToken &&
+    JSON.stringify(currentState.session.user) === JSON.stringify(nextSession.user)
+  );
+}
+
 function useEventCallback<TArgs extends unknown[], TResult>(
   callback: (...args: TArgs) => TResult,
 ) {
@@ -96,8 +111,13 @@ export function PortalSessionProvider({ children }: PropsWithChildren) {
   const [warningOpen, setWarningOpen] = useState(false);
   const [lastActivityAt, setLastActivityAt] = useState(() => Date.now());
   const [isLeaderTab, setIsLeaderTab] = useState(false);
+  const stateRef = useRef<PortalSessionState>(state);
   const tabIdRef = useRef("");
   const channelRef = useRef<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const logout = useEventCallback((reason: LogoutReason) => {
     clearPortalSessionSnapshot();
@@ -108,7 +128,6 @@ export function PortalSessionProvider({ children }: PropsWithChildren) {
     setIsLeaderTab(false);
     setState({ status: "unauthenticated", session: null });
     router.push("/login");
-    router.refresh();
   });
 
   const noteActivity = useEventCallback(() => {
@@ -134,13 +153,18 @@ export function PortalSessionProvider({ children }: PropsWithChildren) {
           user: PortalSessionUser;
         };
       };
-      setState({
+      const nextState = {
         status: "authenticated",
         session: {
           ...snapshot,
           user: body.data.user,
         },
-      });
+      } satisfies PortalSessionState;
+
+      if (!portalSessionMatches(stateRef.current, nextState.session)) {
+        setState(nextState);
+      }
+
       return true;
     }
 

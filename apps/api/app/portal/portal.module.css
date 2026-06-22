@@ -420,6 +420,117 @@
   gap: var(--portal-space-2);
 }
 
+.worseningToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-3);
+}
+
+.worseningSelect {
+  min-width: 156px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--portal-line);
+  border-radius: 12px;
+  color: var(--portal-text-soft);
+  font-size: 15px;
+  line-height: 22px;
+  background: var(--portal-surface);
+}
+
+.worseningCheckbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--portal-accent);
+  cursor: pointer;
+}
+
+.worseningRow {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) auto;
+  align-items: center;
+  gap: var(--portal-space-3);
+  padding: 0 var(--portal-space-3);
+}
+
+.worseningRow:nth-child(odd) {
+  background: var(--portal-surface-row);
+}
+
+.worseningRow:nth-child(even) {
+  background: var(--portal-surface);
+}
+
+.worseningPatientButton {
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.worseningPatientName {
+  color: var(--portal-accent-dark);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.worseningPatientMeta {
+  color: var(--portal-text-soft);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.worseningSignalBlock {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.worseningSignalSummary {
+  color: var(--portal-danger);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.worseningModalCard {
+  width: min(560px, 100%);
+}
+
+.worseningModalList {
+  display: grid;
+  gap: var(--portal-space-2);
+  margin-top: var(--portal-space-4);
+}
+
+.worseningModalItem {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface-muted);
+}
+
+.worseningModalItem strong {
+  color: var(--portal-danger);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.worseningModalItem span {
+  color: var(--portal-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
 .patientMeta {
   font-weight: 700;
 }
