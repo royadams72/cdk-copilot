@@ -512,6 +512,44 @@
   font-weight: 700;
 }
 
+.patientHeadlineMeta {
+  margin: 0;
+  color: var(--portal-text-soft);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.patientOverviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--portal-space-3);
+}
+
+.patientOverviewPanel {
+  overflow: hidden;
+  border: 1px solid var(--portal-line-strong);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-surface);
+}
+
+.patientOverviewHeader {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--portal-line);
+  background: var(--portal-surface-row-strong);
+}
+
+.patientOverviewTitle {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.patientOverviewBody {
+  display: grid;
+}
+
 .patientSummaryGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -531,7 +569,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--portal-space-3);
-  padding: 0 8px;
+  padding: var(--portal-space-1) var(--portal-space-3);
   color: var(--portal-text);
   font-size: 16px;
   line-height: 22px;
@@ -545,42 +583,139 @@
   font-weight: 700;
 }
 
-.patientActionGrid {
+.patientPanelLink {
+  color: var(--portal-accent-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.patientPanelLink:hover {
+  text-decoration: underline;
+}
+
+.patientSummaryMeta {
+  display: block;
+  margin-top: 2px;
+  color: var(--portal-text-soft);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.patientAttentionList {
   display: grid;
-  grid-template-columns: repeat(3, 266px);
+  gap: 1px;
+  background: var(--portal-line);
+}
+
+.patientAttentionItem {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--portal-surface);
+  color: var(--portal-text);
+}
+
+.patientAttentionItem strong {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.patientAttentionItem span {
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.patientAttentionLink {
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.patientAttentionLink:hover {
+  text-decoration: underline;
+}
+
+.patientAttentionItem[data-tone="warning"] strong {
+  color: var(--portal-danger);
+}
+
+.patientAttentionItem[data-tone="success"] strong {
+  color: var(--portal-success);
+}
+
+.patientActivityList {
+  display: grid;
+  gap: 1px;
+  background: var(--portal-line);
+}
+
+.patientActivityRow {
+  display: flex;
+  justify-content: space-between;
   gap: var(--portal-space-3);
+  align-items: flex-start;
+  padding: 12px 16px;
+  background: var(--portal-surface);
+}
+
+.patientActivityDetail {
+  margin: 4px 0 0;
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.patientActivityAt {
+  flex: 0 0 auto;
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: right;
+}
+
+.patientPanelEmpty {
+  padding: 12px 16px;
+  color: var(--portal-text-soft);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.patientActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--portal-space-2);
+  align-items: center;
+}
+
+.patientActionInlineButton,
+.patientActionInlineLink {
+  min-height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  margin: 0 auto var(--portal-space-2);
-}
-
-.patientActionButton {
-  width: 266px;
-  height: 77px;
-  border: 0;
-  border-radius: 10px;
-  color: var(--portal-surface);
-  font-size: 19px;
-  line-height: 28px;
-  font-weight: 500;
-  background: var(--portal-accent-dark);
-  cursor: pointer;
-}
-
-.patientActionLink {
-  width: 266px;
-  height: 77px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  color: var(--portal-surface);
-  font-size: 19px;
-  line-height: 28px;
-  font-weight: 500;
+  border: 1px solid var(--portal-line);
+  border-radius: 999px;
+  color: var(--portal-accent-dark);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
   text-align: center;
   text-decoration: none;
-  background: var(--portal-accent-dark);
+  background: var(--portal-surface);
 }
 
+.patientActionInlineButton {
+  cursor: pointer;
+}
+.patientActionInlineButton:hover,
+.patientActionInlineLink:hover {
+  background-color: var(--portal-accent-dark);
+  color: var(--portal-surface);
+}
 .subpageLayout {
   display: grid;
   gap: var(--portal-space-4);
@@ -1475,7 +1610,8 @@
   .detailGrid,
   .detailFacts,
   .assignmentRow,
-  .patientSummaryGrid {
+  .patientSummaryGrid,
+  .patientOverviewGrid {
     grid-template-columns: 1fr;
   }
 
@@ -1498,12 +1634,12 @@
     gap: var(--portal-space-1);
   }
 
-  .patientActionGrid {
-    grid-template-columns: 1fr;
+  .patientActionRow {
+    align-items: stretch;
   }
 
-  .patientActionButton,
-  .patientActionLink {
+  .patientActionInlineButton,
+  .patientActionInlineLink {
     width: 100%;
   }
 

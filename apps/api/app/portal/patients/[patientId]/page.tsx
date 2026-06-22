@@ -6,17 +6,16 @@ import { useEffect, useState } from "react";
 
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
-import type { PortalPatientDetail } from "@/apps/api/lib/portal/patient-shared";
+import { formatDisplayDate } from "@/apps/api/lib/format/date";
+import type {
+  PortalPatientDashboardData,
+  PortalPatientDetail,
+} from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type PortalPatientDetailResponse = {
   data: {
-    dashboard: {
-      actionCards: string[];
-      clinicalSummary: Array<{ label: string; value: string }>;
-      engagementSummary: Array<{ label: string; value: string }>;
-      headline: string;
-    };
+    dashboard: PortalPatientDashboardData;
     patient: PortalPatientDetail;
   };
 };
@@ -30,13 +29,12 @@ export default function PortalPatientDetailPage() {
   >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const jwt = session?.jwt;
   useEffect(() => {
-    if (status !== "authenticated" || !session || !params.patientId) {
+    if (status !== "authenticated" || !jwt || !params.patientId) {
       return;
     }
-
-    const authenticatedSession = session;
+    const jwtForRequest = jwt;
     const controller = new AbortController();
 
     async function loadPatient() {
@@ -47,7 +45,7 @@ export default function PortalPatientDetailPage() {
         const response = await fetch(
           `/api/portal/patients/${params.patientId}`,
           {
-            headers: getPortalSessionAuthHeaders(authenticatedSession.jwt),
+            headers: getPortalSessionAuthHeaders(jwtForRequest),
             signal: controller.signal,
           },
         );
@@ -84,7 +82,7 @@ export default function PortalPatientDetailPage() {
 
     loadPatient();
     return () => controller.abort();
-  }, [params.patientId, session, status]);
+  }, [params.patientId, jwt, status]);
 
   if (status === "loading" || loading) {
     return (
@@ -106,6 +104,16 @@ export default function PortalPatientDetailPage() {
     );
   }
 
+  function renderOverviewValue(row: { href?: string | null; value: string }) {
+    return row.href ? (
+      <Link className={styles.patientPanelLink} href={row.href}>
+        {row.value}
+      </Link>
+    ) : (
+      <strong>{row.value}</strong>
+    );
+  }
+
   return (
     <section className={styles.detailLayout}>
       <div className={styles.patientHeadlineContainer}>
@@ -123,6 +131,9 @@ export default function PortalPatientDetailPage() {
                 {dashboard?.headline ?? `Viewing ${patient.name}`}
               </div>
             </div>
+            {dashboard?.subheadline ? (
+              <p className={styles.patientHeadlineMeta}>{dashboard.subheadline}</p>
+            ) : null}
           </div>
         </div>
         <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
@@ -130,31 +141,11 @@ export default function PortalPatientDetailPage() {
         </span>
       </div>
 
-      <div className={styles.patientSummaryGrid}>
-        <article className={styles.patientSummaryPanel}>
-          {dashboard?.clinicalSummary.map((row) => (
-            <div className={styles.patientSummaryRow} key={row.label}>
-              <span>{row.label}:</span>
-              <strong>{row.value}</strong>
-            </div>
-          ))}
-        </article>
-
-        <article className={styles.patientSummaryPanel}>
-          {dashboard?.engagementSummary.map((row) => (
-            <div className={styles.patientSummaryRow} key={row.label}>
-              <span>{row.label}:</span>
-              <strong>{row.value}</strong>
-            </div>
-          ))}
-        </article>
-      </div>
-
-      <div className={styles.patientActionGrid}>
-        {dashboard?.actionCards.map((label) => (
+      <div className={styles.patientActionRow}>
+        {dashboard?.actionCards.map((label) =>
           label === "Nutrition Data" ? (
             <Link
-              className={styles.patientActionLink}
+              className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/nutrition`}
               key={label}
             >
@@ -162,7 +153,7 @@ export default function PortalPatientDetailPage() {
             </Link>
           ) : label === "Health Data" ? (
             <Link
-              className={styles.patientActionLink}
+              className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/health`}
               key={label}
             >
@@ -170,7 +161,7 @@ export default function PortalPatientDetailPage() {
             </Link>
           ) : label === "Medication Profile" ? (
             <Link
-              className={styles.patientActionLink}
+              className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/medication`}
               key={label}
             >
@@ -178,7 +169,7 @@ export default function PortalPatientDetailPage() {
             </Link>
           ) : label === "Care Plans" ? (
             <Link
-              className={styles.patientActionLink}
+              className={styles.patientActionInlineLink}
               href={`/portal/patients/${patient.id}/care-plans`}
               key={label}
             >
@@ -186,16 +177,214 @@ export default function PortalPatientDetailPage() {
             </Link>
           ) : (
             <button
-              className={styles.patientActionButton}
+              className={styles.patientActionInlineButton}
               key={label}
               onClick={() => window.alert(`${label} is the next portal slice.`)}
               type="button"
             >
               {label}
             </button>
-          )
-        ))}
+          ),
+        )}
       </div>
+
+      <div className={styles.patientOverviewGrid}>
+        <article className={styles.patientOverviewPanel}>
+          <div className={styles.patientOverviewHeader}>
+            <h3 className={styles.patientOverviewTitle}>Current status</h3>
+          </div>
+          <div className={styles.patientOverviewBody}>
+            {dashboard?.currentStatus.map((row) => (
+              <div className={styles.patientSummaryRow} key={row.label}>
+                <span>{row.label}</span>
+                {renderOverviewValue(row)}
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className={styles.patientOverviewPanel}>
+          <div className={styles.patientOverviewHeader}>
+            <h3 className={styles.patientOverviewTitle}>Latest readings</h3>
+          </div>
+          <div className={styles.patientOverviewBody}>
+            {dashboard?.latestReadings.map((row) => (
+              <div className={styles.patientSummaryRow} key={row.label}>
+                <span>
+                  {row.label}
+                  {row.meta ? (
+                    <small className={styles.patientSummaryMeta}>{row.meta}</small>
+                  ) : null}
+                </span>
+                {renderOverviewValue(row)}
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className={styles.patientOverviewPanel}>
+          <div className={styles.patientOverviewHeader}>
+            <h3 className={styles.patientOverviewTitle}>Care plan snapshot</h3>
+          </div>
+          <div className={styles.patientOverviewBody}>
+            {dashboard?.carePlanSnapshot ? (
+              <>
+                <div className={styles.patientSummaryRow}>
+                  <span>Latest plan</span>
+                  {dashboard.carePlanSnapshot.href ? (
+                    <Link
+                      className={styles.patientPanelLink}
+                      href={dashboard.carePlanSnapshot.href}
+                    >
+                      {dashboard.carePlanSnapshot.title}
+                    </Link>
+                  ) : (
+                    <strong>{dashboard.carePlanSnapshot.title}</strong>
+                  )}
+                </div>
+                <div className={styles.patientSummaryRow}>
+                  <span>Status</span>
+                  {dashboard.carePlanSnapshot.href ? (
+                    <Link
+                      className={styles.patientPanelLink}
+                      href={dashboard.carePlanSnapshot.href}
+                    >
+                      {dashboard.carePlanSnapshot.status}
+                    </Link>
+                  ) : (
+                    <strong>{dashboard.carePlanSnapshot.status}</strong>
+                  )}
+                </div>
+                <div className={styles.patientSummaryRow}>
+                  <span>Open tasks</span>
+                  {dashboard.carePlanSnapshot.href ? (
+                    <Link
+                      className={styles.patientPanelLink}
+                      href={dashboard.carePlanSnapshot.href}
+                    >
+                      {dashboard.carePlanSnapshot.openTasksLabel}
+                    </Link>
+                  ) : (
+                    <strong>{dashboard.carePlanSnapshot.openTasksLabel}</strong>
+                  )}
+                </div>
+                <div className={styles.patientSummaryRow}>
+                  <span>Next review</span>
+                  {dashboard.carePlanSnapshot.href ? (
+                    <Link
+                      className={styles.patientPanelLink}
+                      href={dashboard.carePlanSnapshot.href}
+                    >
+                      {formatDisplayDate(dashboard.carePlanSnapshot.nextReviewAt, {
+                        fallback: dashboard.carePlanSnapshot.reviewLabel
+                          ? `Review cadence ${dashboard.carePlanSnapshot.reviewLabel}`
+                          : "Not set",
+                      })}
+                    </Link>
+                  ) : (
+                    <strong>
+                      {formatDisplayDate(dashboard.carePlanSnapshot.nextReviewAt, {
+                        fallback: dashboard.carePlanSnapshot.reviewLabel
+                          ? `Review cadence ${dashboard.carePlanSnapshot.reviewLabel}`
+                          : "Not set",
+                      })}
+                    </strong>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={styles.patientPanelEmpty}>No care plans recorded yet.</div>
+            )}
+          </div>
+        </article>
+
+        <article className={styles.patientOverviewPanel}>
+          <div className={styles.patientOverviewHeader}>
+            <h3 className={styles.patientOverviewTitle}>Attention needed</h3>
+          </div>
+          <div className={styles.patientOverviewBody}>
+            <div className={styles.patientAttentionList}>
+              {dashboard?.attentionItems.map((item) => (
+                <div
+                  className={styles.patientAttentionItem}
+                  data-tone={item.tone}
+                  key={`${item.title}-${item.detail}`}
+                >
+                  {item.href ? (
+                    <>
+                      <Link className={styles.patientPanelLink} href={item.href}>
+                        {item.title}
+                      </Link>
+                      <Link className={styles.patientAttentionLink} href={item.href}>
+                        {item.detail}
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{item.title}</strong>
+                      <span>{item.detail}</span>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div className={styles.patientSummaryGrid}>
+        <article className={styles.patientSummaryPanel}>
+          <div className={styles.patientOverviewHeader}>
+            <h3 className={styles.patientOverviewTitle}>31-day clinical trends</h3>
+          </div>
+          {dashboard?.clinicalSummary.map((row) => (
+            <div className={styles.patientSummaryRow} key={row.label}>
+              <span>{row.label}</span>
+              <strong>{row.value}</strong>
+            </div>
+          ))}
+        </article>
+
+        <article className={styles.patientSummaryPanel}>
+          <div className={styles.patientOverviewHeader}>
+            <h3 className={styles.patientOverviewTitle}>31-day engagement</h3>
+          </div>
+          {dashboard?.engagementSummary.map((row) => (
+            <div className={styles.patientSummaryRow} key={row.label}>
+              <span>{row.label}</span>
+              <strong>{row.value}</strong>
+            </div>
+          ))}
+        </article>
+      </div>
+
+      <article className={styles.patientOverviewPanel}>
+        <div className={styles.patientOverviewHeader}>
+          <h3 className={styles.patientOverviewTitle}>Recent activity</h3>
+        </div>
+        <div className={styles.patientOverviewBody}>
+          {dashboard?.recentActivity.length ? (
+            <div className={styles.patientActivityList}>
+              {dashboard.recentActivity.map((item) => (
+                <div className={styles.patientActivityRow} key={item.id}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    {item.detail ? (
+                      <p className={styles.patientActivityDetail}>{item.detail}</p>
+                    ) : null}
+                  </div>
+                  <span className={styles.patientActivityAt}>
+                    {formatDisplayDate(item.at, { includeTime: true })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.patientPanelEmpty}>No recent activity to show.</div>
+          )}
+        </div>
+      </article>
+
     </section>
   );
 }

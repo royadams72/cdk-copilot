@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   buildPortalPatientDetailPipeline,
@@ -37,12 +38,42 @@ type PortalPatientSummaryClinicalDoc = {
   medications?: Array<{ name?: string }>;
 };
 
+type CarePlanActivityDoc = {
+  at: Date;
+  key: string;
+  note?: string | null;
+  type: string;
+};
+
+type CarePlanDoc = {
+  _id: ObjectId;
+  activatedAt?: Date | null;
+  activity?: CarePlanActivityDoc[];
+  completedAt?: Date | null;
+  reviewLabel?: string | null;
+  status: "draft" | "active" | "completed" | "archived";
+  tasks?: Array<{ status?: string }>;
+  title: string;
+  updatedAt: Date;
+};
+
 function dateKey(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
 function countDistinctDays(values: Date[]) {
   return new Set(values.map(dateKey)).size;
+}
+
+function latestByDate<T>(items: T[], getDate: (item: T) => Date | null | undefined) {
+  return items.reduce<T | null>((latest, item) => {
+    const date = getDate(item);
+    if (!date) return latest;
+    if (!latest) return item;
+    const latestDate = getDate(latest);
+    if (!latestDate) return item;
+    return date.getTime() > latestDate.getTime() ? item : latest;
+  }, null);
 }
 
 function getWeightTrend(measurements: MeasurementDoc[]) {
@@ -114,6 +145,78 @@ function getThresholdCopy(
   return `${overTargetDays} days above target`;
 }
 
+function getRiskLabel(risk: "green" | "amber" | "red" | "unknown") {
+  switch (risk) {
+    case "green":
+      return "Green";
+    case "amber":
+      return "Amber";
+    case "red":
+      return "Red";
+    default:
+      return "Unknown";
+  }
+}
+
+function formatBloodPressure(doc: MeasurementDoc | null) {
+  if (!doc) return "No reading";
+  if (typeof doc.systolicMmHg !== "number" || typeof doc.diastolicMmHg !== "number") {
+    return "Incomplete reading";
+  }
+  return `${doc.systolicMmHg}/${doc.diastolicMmHg} mmHg`;
+}
+
+function formatWeight(doc: MeasurementDoc | null) {
+  if (!doc || typeof doc.valueKg !== "number") return "No reading";
+  return `${doc.valueKg.toFixed(1)} kg`;
+}
+
+function getReviewIntervalDays(reviewLabel: string | null | undefined) {
+  switch (reviewLabel) {
+    case "1_week":
+      return 7;
+    case "2_weeks":
+      return 14;
+    case "1_month":
+      return 30;
+    case "3_months":
+      return 90;
+    default:
+      return null;
+  }
+}
+
+function getNextReviewAt(plan: CarePlanDoc) {
+  const days = getReviewIntervalDays(plan.reviewLabel);
+  if (!days) return null;
+  const base = plan.activatedAt ?? plan.updatedAt;
+  return new Date(base.getTime() + days * DAY_MS);
+}
+
+function isReviewDue(plan: CarePlanDoc) {
+  if (plan.status !== "active") return false;
+  const nextReviewAt = getNextReviewAt(plan);
+  if (!nextReviewAt) return false;
+  return nextReviewAt.getTime() <= Date.now();
+}
+
+function getCarePlanActivityLabel(type: string) {
+  switch (type) {
+    case "activated":
+      return "Care plan activated";
+    case "completed":
+      return "Care plan completed";
+    case "archived":
+      return "Care plan archived";
+    case "draft_updated":
+      return "Care plan draft updated";
+    case "created":
+      return "Care plan created";
+    default:
+      return "Care plan updated";
+  }
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ patientId: string }> },
@@ -146,7 +249,7 @@ export async function GET(
     }
 
     const windowStart = new Date(Date.now() - 31 * DAY_MS);
-    const [clinical, nutritionDocs, measurementDocs] = await Promise.all([
+    const [clinical, nutritionDocs, measurementDocs, carePlans] = await Promise.all([
       db.collection<PortalPatientSummaryClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
         { projection: { _id: 0, egfrCurrent: 1, medications: 1 } },
@@ -177,18 +280,172 @@ export async function GET(
         )
         .sort({ measuredAt: 1 })
         .toArray(),
+      db.collection<CarePlanDoc>(COLLECTIONS.CarePlans)
+        .find(
+          { patientId: patientObjectId },
+          {
+            projection: {
+              _id: 1,
+              activatedAt: 1,
+              activity: 1,
+              completedAt: 1,
+              reviewLabel: 1,
+              status: 1,
+              tasks: 1,
+              title: 1,
+              updatedAt: 1,
+            },
+          },
+        )
+        .toArray(),
     ]);
 
+    const mappedPatient = mapPortalPatientDetail(patient);
     const weightDocs = measurementDocs.filter((doc) => doc.kind === "weight");
     const bloodPressureDocs = measurementDocs.filter(
       (doc) => doc.kind === "blood_pressure",
     );
+    const latestBloodPressure = latestByDate(bloodPressureDocs, (doc) => doc.measuredAt);
+    const latestWeight = latestByDate(weightDocs, (doc) => doc.measuredAt);
+    const latestMealLog = latestByDate(nutritionDocs, (doc) => doc.eatenAt);
+    const activeCarePlan = latestByDate(
+      carePlans.filter((plan) => plan.status === "active"),
+      (plan) => plan.updatedAt,
+    );
+    const latestCarePlan = latestByDate(carePlans, (plan) => plan.updatedAt);
     const mealLoggingDays = countDistinctDays(nutritionDocs.map((doc) => doc.eatenAt));
     const bloodPressureLoggingDays = countDistinctDays(
       bloodPressureDocs.map((doc) => doc.measuredAt),
     );
     const weightLoggingDays = countDistinctDays(weightDocs.map((doc) => doc.measuredAt));
+    const activeCarePlanCount = carePlans.filter((plan) => plan.status === "active").length;
+    const reviewDueCount = carePlans.filter(isReviewDue).length;
+    const daysSinceLastContact = mappedPatient.lastContactAt
+      ? Math.floor((Date.now() - new Date(mappedPatient.lastContactAt).getTime()) / DAY_MS)
+      : null;
 
+    const attentionItems = [];
+    if (activeCarePlanCount === 0) {
+      attentionItems.push({
+        detail: "There is no active care plan for this patient.",
+        href: `/portal/patients/${patientId}/care-plans`,
+        title: "No active care plan",
+        tone: "warning" as const,
+      });
+    }
+    if (reviewDueCount > 0) {
+      attentionItems.push({
+        detail: `${reviewDueCount} active care plan${reviewDueCount === 1 ? "" : "s"} should be reviewed.`,
+        href: `/portal/patients/${patientId}/care-plans`,
+        title: "Care plan review due",
+        tone: "warning" as const,
+      });
+    }
+    if (!latestBloodPressure || Date.now() - latestBloodPressure.measuredAt.getTime() > 14 * DAY_MS) {
+      attentionItems.push({
+        detail: "No blood pressure reading has been logged in the last 14 days.",
+        href: `/portal/patients/${patientId}/health`,
+        title: "Missing recent blood pressure data",
+        tone: "warning" as const,
+      });
+    }
+    if (!latestWeight || Date.now() - latestWeight.measuredAt.getTime() > 14 * DAY_MS) {
+      attentionItems.push({
+        detail: "No weight reading has been logged in the last 14 days.",
+        href: `/portal/patients/${patientId}/health`,
+        title: "Missing recent weight data",
+        tone: "warning" as const,
+      });
+    }
+    if (daysSinceLastContact !== null && daysSinceLastContact >= 14) {
+      attentionItems.push({
+        detail: `Last contact was ${daysSinceLastContact} day${daysSinceLastContact === 1 ? "" : "s"} ago.`,
+        href: `/portal/patients/${patientId}/nutrition`,
+        title: "Patient may be disengaged",
+        tone: "warning" as const,
+      });
+    }
+    if (
+      activeCarePlan &&
+      (activeCarePlan.tasks?.filter((task) => task.status === "open").length ?? 0) > 0 &&
+      mealLoggingDays === 0 &&
+      bloodPressureLoggingDays === 0 &&
+      weightLoggingDays === 0
+    ) {
+      attentionItems.push({
+        detail: "An active care plan exists, but there has been no nutrition, blood pressure or weight data in the last 31 days.",
+        href: `/portal/patients/${patientId}/health`,
+        title: "Active plan with no recent patient data",
+        tone: "warning" as const,
+      });
+    }
+    if (
+      latestBloodPressure &&
+      ((latestBloodPressure.systolicMmHg ?? 0) >= 140 ||
+        (latestBloodPressure.diastolicMmHg ?? 0) >= 90)
+    ) {
+      attentionItems.push({
+        detail: `${formatBloodPressure(latestBloodPressure)} on ${formatDisplayDate(
+          latestBloodPressure.measuredAt,
+        )}.`,
+        href: `/portal/patients/${patientId}/health`,
+        title: "Latest blood pressure above target",
+        tone: "warning" as const,
+      });
+    }
+    if (attentionItems.length === 0) {
+      attentionItems.push({
+        detail: "Nothing urgent is flagged on the overview right now.",
+        title: "No urgent issues",
+        tone: "success" as const,
+      });
+    }
+
+    const recentActivity = [
+      ...((latestCarePlan?.activity ?? []).map((event) => {
+        const planTitle = latestCarePlan?.title ?? "Care plan";
+        return {
+          at: event.at.toISOString(),
+          detail: event.note?.trim()
+            ? `${planTitle}: ${event.note.trim()}`
+            : planTitle,
+          id: `care-plan-${event.key}`,
+          label: getCarePlanActivityLabel(event.type),
+        };
+      })),
+      ...(latestBloodPressure
+        ? [
+            {
+              at: latestBloodPressure.measuredAt.toISOString(),
+              detail: formatBloodPressure(latestBloodPressure),
+              id: `bp-${latestBloodPressure.measuredAt.toISOString()}`,
+              label: "Blood pressure logged",
+            },
+          ]
+        : []),
+      ...(latestWeight
+        ? [
+            {
+              at: latestWeight.measuredAt.toISOString(),
+              detail: formatWeight(latestWeight),
+              id: `weight-${latestWeight.measuredAt.toISOString()}`,
+              label: "Weight logged",
+            },
+          ]
+        : []),
+      ...(latestMealLog
+        ? [
+            {
+              at: latestMealLog.eatenAt.toISOString(),
+              detail: "Nutrition data logged",
+              id: `meal-${latestMealLog.eatenAt.toISOString()}`,
+              label: "Meal logged",
+            },
+          ]
+        : []),
+    ]
+      .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime())
+      .slice(0, 5);
     return ok({
       dashboard: {
         actionCards: [
@@ -201,6 +458,33 @@ export async function GET(
           "Diagnoses",
           "Messaging",
         ],
+        attentionItems,
+        carePlanSnapshot: activeCarePlan
+          ? {
+              href: `/portal/patients/${patientId}/care-plans/${activeCarePlan._id.toHexString()}`,
+              nextReviewAt: getNextReviewAt(activeCarePlan)?.toISOString() ?? null,
+              openTasksLabel: `${
+                activeCarePlan.tasks?.filter((task) => task.status === "open").length ?? 0
+              } open tasks`,
+              reviewLabel: activeCarePlan.reviewLabel?.trim() || null,
+              status: "Active",
+              title: activeCarePlan.title,
+              updatedAt: activeCarePlan.updatedAt.toISOString(),
+            }
+          : latestCarePlan
+            ? {
+                href: `/portal/patients/${patientId}/care-plans/${latestCarePlan._id.toHexString()}`,
+                nextReviewAt: getNextReviewAt(latestCarePlan)?.toISOString() ?? null,
+                openTasksLabel: `${
+                  latestCarePlan.tasks?.filter((task) => task.status === "open").length ?? 0
+                } open tasks`,
+                reviewLabel: latestCarePlan.reviewLabel?.trim() || null,
+                status:
+                  latestCarePlan.status.charAt(0).toUpperCase() + latestCarePlan.status.slice(1),
+                title: latestCarePlan.title,
+                updatedAt: latestCarePlan.updatedAt.toISOString(),
+              }
+            : null,
         clinicalSummary: [
           {
             label: "Blood pressure",
@@ -219,6 +503,20 @@ export async function GET(
             value: getThresholdCopy(nutritionDocs, "potassiumMg", 3500),
           },
         ],
+        currentStatus: [
+          { label: "CKD stage", value: mappedPatient.stage ?? "Not recorded" },
+          { label: "Risk", value: getRiskLabel(mappedPatient.risk) },
+          {
+            href: `/portal/patients/${patientId}/care-plans`,
+            label: "Active care plans",
+            value: String(activeCarePlanCount),
+          },
+          {
+            href: `/portal/patients/${patientId}/medication`,
+            label: "Medication profile",
+            value: `${clinical?.medications?.length ?? 0} medicines`,
+          },
+        ],
         engagementSummary: [
           { label: "Meal logging", value: `${mealLoggingDays}/31 days` },
           {
@@ -231,11 +529,52 @@ export async function GET(
             value: `${clinical?.medications?.length ?? 0} medicines`,
           },
         ],
-        headline: `Viewing ${mapPortalPatientDetail(patient).name} - eGFR stable - ${
-          clinical?.egfrCurrent ?? "n/a"
+        headline: `Viewing ${mappedPatient.name}`,
+        latestReadings: [
+          {
+            href: `/portal/patients/${patientId}/health`,
+            label: "Blood pressure",
+            meta: latestBloodPressure
+              ? `Recorded ${formatDisplayDate(latestBloodPressure.measuredAt)}`
+              : "No recent reading",
+            value: formatBloodPressure(latestBloodPressure),
+          },
+          {
+            href: `/portal/patients/${patientId}/health`,
+            label: "Weight",
+            meta: latestWeight
+              ? `Recorded ${formatDisplayDate(latestWeight.measuredAt)}`
+              : "No recent reading",
+            value: formatWeight(latestWeight),
+          },
+          {
+            href: `/portal/patients/${patientId}/health`,
+            label: "eGFR",
+            meta: "Latest clinical profile",
+            value:
+              typeof clinical?.egfrCurrent === "number"
+                ? String(clinical.egfrCurrent)
+                : "Not recorded",
+          },
+          {
+            href: `/portal/patients/${patientId}/nutrition`,
+            label: "Meal logging",
+            meta: latestMealLog
+              ? `Last log ${formatDisplayDate(latestMealLog.eatenAt)}`
+              : "No recent meal logs",
+            value: `${mealLoggingDays}/31 days`,
+          },
+        ],
+        recentActivity,
+        subheadline: `${
+          typeof clinical?.egfrCurrent === "number" ? `eGFR ${clinical.egfrCurrent}` : "eGFR not recorded"
+        } • ${
+          mappedPatient.lastContactAt
+            ? `last contact ${formatDisplayDate(mappedPatient.lastContactAt)}`
+            : "no last-contact date"
         }`,
       },
-      patient: mapPortalPatientDetail(patient),
+      patient: mappedPatient,
     });
   } catch (error: any) {
     return bad(error?.message || "Unable to load portal patient", undefined, error?.status || 500);
