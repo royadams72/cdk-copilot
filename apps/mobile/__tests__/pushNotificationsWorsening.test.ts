@@ -17,6 +17,10 @@ const mockScheduleNotificationAsync = jest.fn<
   Promise<string>,
   [any]
 >(async () => "notification-id");
+const mockPresentNotificationAsync = jest.fn<
+  Promise<string>,
+  [any]
+>(async () => "presented-notification-id");
 const mockSetNotificationChannelAsync = jest.fn<
   Promise<void>,
   [string, any]
@@ -30,10 +34,12 @@ const mockGetItemAsync = jest.fn<Promise<string | null>, [string]>(
 const mockSetItemAsync = jest.fn(async () => undefined);
 
 const mockAuthFetch = jest.fn();
+const mockAlert = jest.fn();
 
 jest.mock("expo-notifications", () => ({
   AndroidImportance: {
     DEFAULT: "default",
+    HIGH: "high",
   },
   SchedulableTriggerInputTypes: {
     DAILY: "daily",
@@ -43,6 +49,7 @@ jest.mock("expo-notifications", () => ({
   cancelScheduledNotificationAsync: mockCancelScheduledNotificationAsync,
   getAllScheduledNotificationsAsync: mockGetAllScheduledNotificationsAsync,
   getPermissionsAsync: mockGetPermissionsAsync,
+  presentNotificationAsync: mockPresentNotificationAsync,
   requestPermissionsAsync: mockRequestPermissionsAsync,
   scheduleNotificationAsync: mockScheduleNotificationAsync,
   setNotificationChannelAsync: mockSetNotificationChannelAsync,
@@ -63,6 +70,9 @@ jest.mock("expo-constants", () => ({
 }));
 
 jest.mock("react-native", () => ({
+  Alert: {
+    alert: (...args: unknown[]) => mockAlert(...args),
+  },
   Platform: {
     OS: "android",
     select: <T,>(options: { android?: T; default?: T; ios?: T }) =>
@@ -81,6 +91,7 @@ describe("syncWorseningTrendNotifications", () => {
     jest.clearAllMocks();
     mockGetAllScheduledNotificationsAsync.mockResolvedValue([]);
     mockGetPermissionsAsync.mockResolvedValue({ status: "granted" });
+    mockPresentNotificationAsync.mockResolvedValue("presented-notification-id");
     mockGetItemAsync.mockImplementation(async (key: string) => {
       if (key === "ckd_jwt") {
         return "jwt-token";
@@ -129,31 +140,37 @@ describe("syncWorseningTrendNotifications", () => {
 
     expect(result).toBe(true);
     expect(mockSetNotificationChannelAsync).toHaveBeenCalledWith(
-      "worsening-trend-reminders",
-      expect.objectContaining({ name: "Worsening trend reminders" }),
+      "worsening-trend-alerts",
+      expect.objectContaining({ importance: "high", name: "Worsening trend alerts" }),
     );
-    expect(mockScheduleNotificationAsync).toHaveBeenNthCalledWith(
+    expect(mockSetNotificationChannelAsync).toHaveBeenCalledWith(
+      "worsening-trend-reminders",
+      expect.objectContaining({ importance: "default", name: "Worsening trend reminders" }),
+    );
+    expect(mockPresentNotificationAsync).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        content: expect.objectContaining({
-          data: expect.objectContaining({
-            trendKey: "steps_decline",
-            type: "worsening-trend-reminder",
-          }),
-          title: "Activity down",
+        channelId: "worsening-trend-alerts",
+        data: expect.objectContaining({
+          type: "worsening-trend-alert",
+          trendKey: "steps_decline",
         }),
-        trigger: {
-          seconds: 1,
-          type: "timeInterval",
-        },
+        title: "Activity down",
       }),
+    );
+    expect(mockAlert).toHaveBeenCalledWith(
+      "Activity down",
+      "Your recent activity is below your normal baseline.",
     );
     expect(mockCancelScheduledNotificationAsync).toHaveBeenCalledWith(
       "old-reminder-id",
     );
     expect(mockScheduleNotificationAsync).toHaveBeenNthCalledWith(
-      2,
+      1,
       expect.objectContaining({
+        content: expect.objectContaining({
+          channelId: "worsening-trend-reminders",
+        }),
         trigger: {
           hour: 9,
           minute: 0,
@@ -207,6 +224,8 @@ describe("syncWorseningTrendNotifications", () => {
     });
 
     expect(result).toBe(true);
+    expect(mockAlert).not.toHaveBeenCalled();
+    expect(mockPresentNotificationAsync).not.toHaveBeenCalled();
     expect(mockScheduleNotificationAsync).not.toHaveBeenCalled();
     expect(mockSetItemAsync).toHaveBeenCalledWith(
       "ckd_worsening_trend_alert_state",
@@ -276,16 +295,18 @@ describe("syncWorseningTrendNotifications", () => {
     const result = await syncWorseningTrendNotifications();
 
     expect(result).toBe(true);
-    expect(mockScheduleNotificationAsync).toHaveBeenCalledWith(
+    expect(mockPresentNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: expect.objectContaining({
-          title: "Weight up this week",
+        channelId: "worsening-trend-alerts",
+        data: expect.objectContaining({
+          type: "worsening-trend-alert",
         }),
-        trigger: {
-          seconds: 1,
-          type: "timeInterval",
-        },
+        title: "Weight up this week",
       }),
+    );
+    expect(mockAlert).toHaveBeenCalledWith(
+      "Weight up this week",
+      "Your weight is up this week.",
     );
     expect(mockSetItemAsync).toHaveBeenCalledWith(
       "ckd_worsening_trend_alert_state",

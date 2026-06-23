@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import type {
   PatientWorseningTrendAlert,
   PatientWorseningTrendAlertsResponse,
@@ -12,8 +12,13 @@ import { authFetch } from "@/lib/authFetch";
 
 const SLEEP_REMINDER_NOTIFICATION_ID_KEY = "ckd_sleep_morning_reminder_id";
 const CARE_PLAN_REMINDER_TYPE = "care-plan-reminder";
+const CARE_PLAN_REMINDER_CHANNEL_ID = "care-plan-reminders";
+const WORSENING_TREND_ALERT_TYPE = "worsening-trend-alert";
 const WORSENING_TREND_REMINDER_TYPE = "worsening-trend-reminder";
 const WORSENING_TREND_ALERT_STATE_KEY = "ckd_worsening_trend_alert_state";
+const WORSENING_TREND_ALERT_CHANNEL_ID = "worsening-trend-alerts";
+const WORSENING_TREND_REMINDER_CHANNEL_ID = "worsening-trend-reminders";
+const deliveredWorseningAlertIdsInSession = new Map<string, string>();
 
 type WorseningTrendAlertStateEntry = {
   detectedAt?: string | null;
@@ -24,6 +29,11 @@ type WorseningTrendAlertState = Record<string, WorseningTrendAlertStateEntry>;
 
 type SyncWorseningTrendNotificationsOptions = {
   suppressImmediateAlerts?: boolean;
+};
+
+type ApiEnvelope<T> = {
+  data?: T;
+  ok?: boolean;
 };
 
 Notifications.setNotificationHandler({
@@ -233,14 +243,19 @@ function getWorseningState(raw: string | null): WorseningTrendAlertState {
 
 function buildWorseningNotificationContent(
   item: PatientWorseningTrendAlert,
+  notificationType: string,
 ) {
   return {
     body: item.body,
+    channelId:
+      notificationType === WORSENING_TREND_ALERT_TYPE
+        ? WORSENING_TREND_ALERT_CHANNEL_ID
+        : WORSENING_TREND_REMINDER_CHANNEL_ID,
     data: {
       screen: item.screen,
       trendId: item.id,
       trendKey: item.key,
-      type: WORSENING_TREND_REMINDER_TYPE,
+      type: notificationType,
     },
     sound: true,
     title: item.title,
@@ -252,6 +267,57 @@ function buildImmediateWorseningNotificationTrigger() {
     seconds: 1,
     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
   } as const;
+}
+
+async function presentImmediateWorseningNotification(
+  item: PatientWorseningTrendAlert,
+) {
+  const content = buildWorseningNotificationContent(
+    item,
+    WORSENING_TREND_ALERT_TYPE,
+  );
+  console.log("[worsening] present start", {
+    id: item.id,
+    key: item.key,
+    title: item.title,
+  });
+  Alert.alert(item.title, item.body);
+  const presentNotificationAsync = (
+    Notifications as typeof Notifications & {
+      presentNotificationAsync?: (content: Record<string, unknown>) => Promise<string>;
+    }
+  ).presentNotificationAsync;
+
+  if (typeof presentNotificationAsync === "function") {
+    await presentNotificationAsync(content);
+    console.log("[worsening] present direct success", {
+      id: item.id,
+      key: item.key,
+    });
+    return;
+  }
+
+  await Notifications.scheduleNotificationAsync({
+    content,
+    trigger: buildImmediateWorseningNotificationTrigger(),
+  });
+  console.log("[worsening] present fallback schedule success", {
+    id: item.id,
+    key: item.key,
+  });
+}
+
+function unwrapApiData<T>(raw: unknown, fallback: T): T {
+  if (!raw || typeof raw !== "object") {
+    return fallback;
+  }
+
+  const envelope = raw as ApiEnvelope<T>;
+  if ("ok" in envelope && "data" in envelope) {
+    return (envelope.data ?? fallback) as T;
+  }
+
+  return raw as T;
 }
 
 function nextMorningDate(baseIso: string | null) {
@@ -287,7 +353,34 @@ export async function syncCarePlanReminderNotifications() {
       return false;
     }
 
-    const data = (await res.json().catch(() => null)) as {
+    const raw =
+      (await res.json().catch(() => null)) as
+        | ApiEnvelope<{
+            items?: Array<{
+              activatedAt?: string | null;
+              freq: "daily" | "weekly" | "once";
+              instructions?: string | null;
+              planId: string;
+              planTitle: string;
+              taskId: string;
+              taskLabel: string;
+            }>;
+          }>
+        | {
+            items?: Array<{
+              activatedAt?: string | null;
+              freq: "daily" | "weekly" | "once";
+              instructions?: string | null;
+              planId: string;
+              planTitle: string;
+              taskId: string;
+              taskLabel: string;
+            }>;
+          }
+        | null;
+    const data = unwrapApiData(raw, {
+      items: [],
+    }) as {
       items?: Array<{
         activatedAt?: string | null;
         freq: "daily" | "weekly" | "once";
@@ -297,10 +390,10 @@ export async function syncCarePlanReminderNotifications() {
         taskId: string;
         taskLabel: string;
       }>;
-    } | null;
+    };
 
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("care-plan-reminders", {
+      await Notifications.setNotificationChannelAsync(CARE_PLAN_REMINDER_CHANNEL_ID, {
         importance: Notifications.AndroidImportance.DEFAULT,
         name: "Care plan reminders",
       });
@@ -311,6 +404,7 @@ export async function syncCarePlanReminderNotifications() {
     for (const item of data?.items ?? []) {
       const content = {
         body: item.instructions?.trim() || `Task: ${item.taskLabel}`,
+        channelId: CARE_PLAN_REMINDER_CHANNEL_ID,
         data: {
           carePlanId: item.planId,
           screen: `/(dashboard)/care-plan?id=${item.planId}`,
@@ -386,54 +480,115 @@ export async function syncWorseningTrendNotifications(
       return false;
     }
 
-    const data =
-      ((await res.json().catch(() => null)) as PatientWorseningTrendAlertsResponse | null) ??
-      { items: [] };
+    const raw =
+      (await res.json().catch(() => null)) as
+        | ApiEnvelope<PatientWorseningTrendAlertsResponse>
+        | PatientWorseningTrendAlertsResponse
+        | null;
+    const data = unwrapApiData<PatientWorseningTrendAlertsResponse>(raw, {
+      items: [],
+    });
+    console.log("[worsening] active response", {
+      itemCount: data.items?.length ?? 0,
+      items: (data.items ?? []).map((item) => ({
+        detectedAt: item.detectedAt,
+        id: item.id,
+        key: item.key,
+        repeatAtLocalTime: item.repeatAtLocalTime ?? null,
+        title: item.title,
+      })),
+      suppressImmediateAlerts: Boolean(options?.suppressImmediateAlerts),
+    });
 
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("worsening-trend-reminders", {
+      await Notifications.setNotificationChannelAsync(
+        WORSENING_TREND_ALERT_CHANNEL_ID,
+        {
+          importance: Notifications.AndroidImportance.HIGH,
+          name: "Worsening trend alerts",
+        },
+      );
+      await Notifications.setNotificationChannelAsync(
+        WORSENING_TREND_REMINDER_CHANNEL_ID,
+        {
         importance: Notifications.AndroidImportance.DEFAULT,
         name: "Worsening trend reminders",
-      });
+        },
+      );
     }
 
     const previousState = getWorseningState(
       await SecureStore.getItemAsync(WORSENING_TREND_ALERT_STATE_KEY),
     );
-    const currentIds = new Set(data.items.map((item) => item.id));
+    console.log("[worsening] previous state", previousState);
+    const items = data.items ?? [];
+    const currentIds = new Set(items.map((item) => item.id));
     const nextState: WorseningTrendAlertState = {};
     const deliveredAtIso = new Date().toISOString();
 
-    for (const item of data.items) {
+    for (const item of items) {
       const seenEntry = previousState[item.id];
+      const deliveredInSessionAt =
+        deliveredWorseningAlertIdsInSession.get(item.id) ?? null;
       const suppressImmediateAlert =
         Boolean(options?.suppressImmediateAlerts) && !item.repeatAtLocalTime;
+      console.log("[worsening] evaluate item", {
+        deliveredInSessionAt,
+        id: item.id,
+        key: item.key,
+        seenEntry: seenEntry ?? null,
+        suppressImmediateAlert,
+      });
 
       if (seenEntry) {
         nextState[item.id] = {
           detectedAt: item.detectedAt,
           lastDeliveredAt: seenEntry.lastDeliveredAt ?? null,
         };
+        console.log("[worsening] skip seen item", {
+          id: item.id,
+          key: item.key,
+        });
+        continue;
+      }
+
+      if (deliveredInSessionAt) {
+        nextState[item.id] = {
+          detectedAt: item.detectedAt,
+          lastDeliveredAt: deliveredInSessionAt,
+        };
+        console.log("[worsening] skip delivered in session", {
+          deliveredInSessionAt,
+          id: item.id,
+          key: item.key,
+        });
         continue;
       }
 
       if (suppressImmediateAlert) {
+        console.log("[worsening] suppress immediate item", {
+          id: item.id,
+          key: item.key,
+        });
         continue;
       }
 
-      await Notifications.scheduleNotificationAsync({
-        content: buildWorseningNotificationContent(item),
-        trigger: buildImmediateWorseningNotificationTrigger(),
-      });
+      deliveredWorseningAlertIdsInSession.set(item.id, deliveredAtIso);
+      await presentImmediateWorseningNotification(item);
       nextState[item.id] = {
         detectedAt: item.detectedAt,
         lastDeliveredAt: deliveredAtIso,
       };
+      console.log("[worsening] delivered item", {
+        id: item.id,
+        key: item.key,
+      });
     }
 
     await cancelWorseningTrendNotifications();
+    console.log("[worsening] cancelled existing repeating reminders");
 
-    for (const item of data.items) {
+    for (const item of items) {
       const time = parseLocalTime(item.repeatAtLocalTime);
       if (!time) {
         continue;
@@ -448,12 +603,21 @@ export async function syncWorseningTrendNotifications(
       }
 
       await Notifications.scheduleNotificationAsync({
-        content: buildWorseningNotificationContent(item),
+        content: buildWorseningNotificationContent(
+          item,
+          WORSENING_TREND_REMINDER_TYPE,
+        ),
         trigger: {
           hour: time.hour,
           minute: time.minute,
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
         },
+      });
+      console.log("[worsening] scheduled repeating reminder", {
+        hour: time.hour,
+        id: item.id,
+        key: item.key,
+        minute: time.minute,
       });
     }
 
@@ -467,6 +631,12 @@ export async function syncWorseningTrendNotifications(
         ),
       ),
     );
+    for (const deliveredId of [...deliveredWorseningAlertIdsInSession.keys()]) {
+      if (!currentIds.has(deliveredId)) {
+        deliveredWorseningAlertIdsInSession.delete(deliveredId);
+      }
+    }
+    console.log("[worsening] saved state", nextState);
 
     return true;
   } catch (error) {

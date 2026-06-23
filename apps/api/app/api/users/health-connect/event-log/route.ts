@@ -6,8 +6,8 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import {
-  parseHealthSyncProvider,
   type HealthSyncProvider,
+  parseHealthSyncProvider,
 } from "@/apps/api/lib/healthSync/provider";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
@@ -65,14 +65,14 @@ export async function POST(req: NextRequest) {
     };
     const events = Array.isArray(body.events) ? body.events : [];
     const requestProvider = parseHealthSyncProvider(body.provider);
-    console.log("[health-connect-event-log] POST received", {
-      eventCount: events.length,
-      orgId: caller.orgId ?? "org_demo",
-      patientId: caller.patientId,
-      role: caller.role,
-    });
+    // console.log("[health-connect-event-log] POST received", {
+    //   eventCount: events.length,
+    //   orgId: caller.orgId ?? "org_demo",
+    //   patientId: caller.patientId,
+    //   role: caller.role,
+    // });
     if (!events.length) {
-      console.warn("[health-connect-event-log] POST rejected: no events supplied");
+      // console.warn("[health-connect-event-log] POST rejected: no events supplied");
       return bad("events is required", undefined, 400);
     }
 
@@ -130,38 +130,38 @@ export async function POST(req: NextRequest) {
       .filter((doc): doc is NonNullable<typeof doc> => doc !== null);
 
     if (!docs.length) {
-      console.warn("[health-connect-event-log] POST rejected: no valid events after normalization", {
-        received: events.length,
-      });
+      // console.warn("[health-connect-event-log] POST rejected: no valid events after normalization", {
+      //   received: events.length,
+      // });
       return bad("No valid events supplied", undefined, 400);
     }
 
     const db = await getDb();
-    console.log("[health-connect-event-log] inserting events", {
-      insertedAttemptCount: docs.length,
-      sampleEvents: docs.slice(0, 3).map((doc) => ({
-        event: doc.event,
-        platform: doc.platform,
-        source: doc.source,
-        status: doc.status,
-        trigger: doc.trigger,
-      })),
-    });
+    // console.log("[health-connect-event-log] inserting events", {
+    //   insertedAttemptCount: docs.length,
+    //   sampleEvents: docs.slice(0, 3).map((doc) => ({
+    //     event: doc.event,
+    //     platform: doc.platform,
+    //     source: doc.source,
+    //     status: doc.status,
+    //     trigger: doc.trigger,
+    //   })),
+    // });
     await db.collection(COLLECTIONS.HealthConnectEventLogs).insertMany(docs, {
       ordered: false,
     });
-    console.log("[health-connect-event-log] insert success", {
-      insertedCount: docs.length,
-      patientId: caller.patientId,
-    });
+    // console.log("[health-connect-event-log] insert success", {
+    //   insertedCount: docs.length,
+    //   patientId: caller.patientId,
+    // });
 
     return ok({ inserted: docs.length });
   } catch (err: any) {
-    console.error("[health-connect-event-log] POST failed", {
-      message: err?.message || "Server error",
-      status: err?.status || 500,
-      stack: err?.stack,
-    });
+    // console.error("[health-connect-event-log] POST failed", {
+    //   message: err?.message || "Server error",
+    //   status: err?.status || 500,
+    //   stack: err?.stack,
+    // });
     return bad(err?.message || "Server error", undefined, err?.status || 500);
   }
 }
@@ -207,19 +207,19 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .toArray();
 
-    console.log("[health-connect-event-log] GET success", {
-      limit,
-      returned: logs.length,
-      patientId: caller.patientId,
-    });
+    // console.log("[health-connect-event-log] GET success", {
+    //   limit,
+    //   returned: logs.length,
+    //   patientId: caller.patientId,
+    // });
 
     return ok({ items: logs });
   } catch (err: any) {
-    console.error("[health-connect-event-log] GET failed", {
-      message: err?.message || "Server error",
-      status: err?.status || 500,
-      stack: err?.stack,
-    });
+    // console.error("[health-connect-event-log] GET failed", {
+    //   message: err?.message || "Server error",
+    //   status: err?.status || 500,
+    //   stack: err?.stack,
+    // });
     return bad(err?.message || "Server error", undefined, err?.status || 500);
   }
 }

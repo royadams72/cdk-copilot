@@ -1,4 +1,6 @@
 import {
+  evaluateBloodPressureUpTrend,
+  evaluateWeightDecreaseTrend,
   evaluateStepsDeclineTrend,
   evaluateWeightIncreaseTrend,
 } from "../lib/utils/worseningTrends";
@@ -92,5 +94,62 @@ describe("worseningTrends", () => {
 
     expect(result.triggered).toBe(false);
     expect(result.changeKg).toBe(0.9);
+  });
+
+  it("detects a weight decrease of 2kg or more across 7 days", () => {
+    const result = evaluateWeightDecreaseTrend({
+      now: new Date("2026-06-23T12:00:00.000Z"),
+      points: [
+        {
+          dateKey: "2026-06-16",
+          measuredAt: "2026-06-16T08:00:00.000Z",
+          valueKg: 83.8,
+        },
+        {
+          dateKey: "2026-06-20",
+          measuredAt: "2026-06-20T08:00:00.000Z",
+          valueKg: 82.1,
+        },
+        {
+          dateKey: "2026-06-23",
+          measuredAt: "2026-06-23T08:00:00.000Z",
+          valueKg: 81.2,
+        },
+      ],
+    });
+
+    expect(result.triggered).toBe(true);
+    expect(result.changeKg).toBe(2.6);
+    expect(result.previousWeightKg).toBe(83.8);
+    expect(result.currentWeightKg).toBe(81.2);
+  });
+
+  it("detects blood pressure rising against the previous 28-day baseline", () => {
+    const points = [
+      ...Array.from({ length: 28 }, (_, index) => ({
+        dateKey: new Date(Date.UTC(2026, 4, index + 19)).toISOString().slice(0, 10),
+        diastolicMmHg: 82,
+        measuredAt: new Date(Date.UTC(2026, 4, index + 19, 8)).toISOString(),
+        systolicMmHg: 126,
+      })),
+      ...Array.from({ length: 8 }, (_, index) => ({
+        dateKey: new Date(Date.UTC(2026, 5, index + 16)).toISOString().slice(0, 10),
+        diastolicMmHg: 94,
+        measuredAt: new Date(Date.UTC(2026, 5, index + 16, 8)).toISOString(),
+        systolicMmHg: 146,
+      })),
+    ];
+
+    const result = evaluateBloodPressureUpTrend({
+      now: new Date("2026-06-23T12:00:00.000Z"),
+      points,
+      systolicTargetValue: 135,
+    });
+
+    expect(result.triggered).toBe(true);
+    expect(result.currentAverageSystolic).toBe(146);
+    expect(result.previousAverageSystolic).toBe(126);
+    expect(result.deltaSystolic).toBe(20);
+    expect(result.systolicAboveTargetBy).toBe(11);
   });
 });
