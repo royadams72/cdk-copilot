@@ -1,0 +1,96 @@
+import {
+  evaluateStepsDeclineTrend,
+  evaluateWeightIncreaseTrend,
+} from "../lib/utils/worseningTrends";
+
+describe("worseningTrends", () => {
+  it("detects a 30%+ steps decline against the previous 28-day baseline", () => {
+    const dailyPoints = [
+      ...Array.from({ length: 28 }, (_, index) => ({
+        count: 10000,
+        dateKey: new Date(Date.UTC(2026, 5, index + 1)).toISOString().slice(0, 10),
+      })),
+      ...Array.from({ length: 7 }, (_, index) => ({
+        count: 6500,
+        dateKey: new Date(Date.UTC(2026, 5, index + 29))
+          .toISOString()
+          .slice(0, 10),
+      })),
+    ];
+
+    const result = evaluateStepsDeclineTrend({
+      dailyPoints,
+      now: new Date("2026-07-05T12:00:00.000Z"),
+      targetValue: 9000,
+    });
+
+    expect(result.triggered).toBe(true);
+    expect(result.currentAverage).toBe(6500);
+    expect(result.previousAverage).toBe(10000);
+    expect(result.declinePct).toBe(35);
+  });
+
+  it("does not trigger a steps decline alert when coverage is too sparse", () => {
+    const result = evaluateStepsDeclineTrend({
+      dailyPoints: [
+        { count: 10000, dateKey: "2026-06-01" },
+        { count: 10000, dateKey: "2026-06-02" },
+        { count: 6500, dateKey: "2026-07-04" },
+      ],
+      now: new Date("2026-07-05T12:00:00.000Z"),
+      targetValue: 9000,
+    });
+
+    expect(result.triggered).toBe(false);
+    expect(result.currentAverage).toBe(0);
+  });
+
+  it("detects a weight increase of 2kg or more across 7 days", () => {
+    const result = evaluateWeightIncreaseTrend({
+      now: new Date("2026-06-22T12:00:00.000Z"),
+      points: [
+        {
+          dateKey: "2026-06-16",
+          measuredAt: "2026-06-16T08:00:00.000Z",
+          valueKg: 81.2,
+        },
+        {
+          dateKey: "2026-06-20",
+          measuredAt: "2026-06-20T08:00:00.000Z",
+          valueKg: 82.7,
+        },
+        {
+          dateKey: "2026-06-22",
+          measuredAt: "2026-06-22T08:00:00.000Z",
+          valueKg: 83.5,
+        },
+      ],
+    });
+
+    expect(result.triggered).toBe(true);
+    expect(result.changeKg).toBe(2.3);
+    expect(result.previousWeightKg).toBe(81.2);
+    expect(result.currentWeightKg).toBe(83.5);
+  });
+
+  it("does not trigger a weight increase alert below threshold", () => {
+    const result = evaluateWeightIncreaseTrend({
+      now: new Date("2026-06-22T12:00:00.000Z"),
+      points: [
+        {
+          dateKey: "2026-06-16",
+          measuredAt: "2026-06-16T08:00:00.000Z",
+          valueKg: 81.2,
+        },
+        {
+          dateKey: "2026-06-22",
+          measuredAt: "2026-06-22T08:00:00.000Z",
+          valueKg: 82.1,
+        },
+      ],
+    });
+
+    expect(result.triggered).toBe(false);
+    expect(result.changeKg).toBe(0.9);
+  });
+});

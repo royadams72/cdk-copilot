@@ -40,7 +40,7 @@ export type StructuredTargetStateLike = Exclude<TargetStateLike, null> & {
   unit: string;
 };
 
-type TargetsCurrentDoc = {
+export type TargetsCurrentDoc = {
   _id?: ObjectId;
   engine?: {
     computedAt: Date;
@@ -366,7 +366,7 @@ export function resolveTargetStateForWeight(
   };
 }
 
-function resolveTargetValue(
+export function resolveTargetValue(
   state: TargetStateLike | number | null | undefined,
   weightKg: number | null,
 ): number | null {
@@ -495,7 +495,7 @@ export async function getMappedNutritionTargets(
   return mapNutritionTargets(targetsCurrentDoc?.targets ?? null, weightKg);
 }
 
-async function findTargetsCurrentDoc(db: Db, patientId: ObjectId) {
+export async function findTargetsCurrentDoc(db: Db, patientId: ObjectId) {
   const collection = db.collection<TargetsCurrentDoc>(
     COLLECTIONS.TargetsCurrent,
   );

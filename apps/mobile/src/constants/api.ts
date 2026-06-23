@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const fallbackApi =
@@ -7,6 +8,10 @@ const fallbackApi =
     default: "http://localhost:3000",
   }) || "http://localhost:3000";
 
-const configuredApi = process.env.EXPO_PUBLIC_API_URL?.trim();
+const configuredApi =
+  (typeof Constants.expoConfig?.extra?.apiUrl === "string"
+    ? Constants.expoConfig.extra.apiUrl.trim()
+    : null) ||
+  process.env.EXPO_PUBLIC_API_URL?.trim();
 
 export const API = (configuredApi?.replace(/\/+$/, "") || fallbackApi) as string;

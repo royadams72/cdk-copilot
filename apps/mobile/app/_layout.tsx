@@ -12,6 +12,7 @@ import {
   syncCarePlanReminderNotifications,
   syncPushToken,
   syncSleepReminderNotification,
+  syncWorseningTrendNotifications,
 } from "@/lib/pushNotifications";
 import { syncNativeAuthSessionMirrorFromSecureStore } from "@/lib/authSession";
 import { ensureNativeHealthConnectBackgroundSyncScheduled } from "@/lib/healthConnectNativeSync";
@@ -38,6 +39,7 @@ export default function RootLayout() {
         syncPushToken(),
         syncCarePlanReminderNotifications(),
         syncSleepReminderNotification(),
+        syncWorseningTrendNotifications(),
       ]);
     }
 
@@ -60,8 +62,13 @@ export default function RootLayout() {
         if (typeof screen === "string" && screen.startsWith("/")) {
           router.push(screen as never);
         }
-        if (typeof data?.type === "string" && data.type.startsWith("care-plan-")) {
+        if (
+          typeof data?.type === "string" &&
+          (data.type.startsWith("care-plan-") ||
+            data.type.startsWith("worsening-trend-"))
+        ) {
           void syncCarePlanReminderNotifications();
+          void syncWorseningTrendNotifications();
         }
       },
     );

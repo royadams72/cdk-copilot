@@ -19,6 +19,7 @@ import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { localDateKey } from "@/lib/healthConnectSyncPipeline";
 import { completedBackfillWindowKeys } from "@/lib/healthConnectSyncState";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
+import { useStepCount } from "@/hooks/useStepCount";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateMeasurementMutation,
@@ -187,6 +188,11 @@ export default function FitnessMetricTrend() {
   } = useGetMeasurementHistoryQuery(kind);
   const { data: currentUserSettings } = useGetCurrentUserSettingsQuery();
   const {
+    status: liveStepStatus,
+    stepSummary: liveStepSummary,
+    stepsToday,
+  } = useStepCount();
+  const {
     data: exerciseReference,
     error: exerciseReferenceError,
     isFetching: exerciseCatalogLoading,
@@ -207,8 +213,62 @@ export default function FitnessMetricTrend() {
   const weightOptions =
     preferredWeightUnit === "lb" ? weightLbOptions : weightKgOptions;
 
-  const points = history?.points ?? [];
-  const entriesByDate = history?.entriesByDate ?? {};
+  const historyPoints = history?.points ?? [];
+  const historyEntriesByDate = history?.entriesByDate ?? {};
+  const points = useMemo(() => {
+    if (
+      kind !== "steps" ||
+      liveStepStatus !== "ready" ||
+      typeof stepsToday !== "number"
+    ) {
+      return historyPoints;
+    }
+
+    const today = new Date();
+    const todayKey = dateKey(today);
+    const nextPoints = historyPoints.filter((point) => point.date !== todayKey);
+    nextPoints.push({
+      date: todayKey,
+      measuredAt: today.toISOString(),
+      value: Math.max(0, Math.round(stepsToday)),
+      value2: null,
+    });
+
+    return nextPoints.sort((a, b) => (a.date < b.date ? -1 : 1));
+  }, [historyPoints, kind, liveStepStatus, stepsToday]);
+  const entriesByDate = useMemo(() => {
+    if (
+      kind !== "steps" ||
+      liveStepStatus !== "ready" ||
+      typeof stepsToday !== "number"
+    ) {
+      return historyEntriesByDate;
+    }
+
+    const today = new Date();
+    const todayKey = dateKey(today);
+    return {
+      ...historyEntriesByDate,
+      [todayKey]: [
+        {
+          averageSpeedKph: liveStepSummary?.averageSpeedKph ?? null,
+          caloriesKcal: liveStepSummary?.caloriesKcal ?? null,
+          distanceMeters: liveStepSummary?.distanceMeters ?? null,
+          measuredAt: today.toISOString(),
+          value: Math.max(0, Math.round(stepsToday)),
+          value2: null,
+        },
+      ],
+    };
+  }, [
+    historyEntriesByDate,
+    kind,
+    liveStepStatus,
+    liveStepSummary?.averageSpeedKph,
+    liveStepSummary?.caloriesKcal,
+    liveStepSummary?.distanceMeters,
+    stepsToday,
+  ]);
   const exerciseCatalog = exerciseReference?.categories ?? [];
   const loading = isHistoryLoading && !history;
   const refreshing = isHistoryFetching && !!history;

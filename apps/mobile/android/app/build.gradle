@@ -5,19 +5,24 @@ apply plugin: "com.google.gms.google-services"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 def repoRoot = rootDir.getAbsoluteFile().getParentFile().getParentFile().getParentFile().getAbsolutePath()
+def mobileEnvOverride = (System.getenv("CKD_MOBILE_ENV") ?: "").trim()
 
 def readEnvValue = { String key ->
     def direct = System.getenv(key)
     if (direct != null && direct.trim()) {
         return direct.trim()
     }
-    def envFiles = [
+    def envFiles = []
+    if (mobileEnvOverride) {
+        envFiles << new File(projectRoot, ".env.${mobileEnvOverride}")
+    }
+    envFiles.addAll([
         new File(projectRoot, ".env.local"),
         new File(projectRoot, ".env"),
         new File(projectRoot, ".env.production"),
         new File(repoRoot, ".env.local"),
         new File(repoRoot, ".env"),
-    ]
+    ])
     def prefix = "${key}="
 
     for (envFile in envFiles) {
@@ -39,6 +44,11 @@ def readEnvValue = { String key ->
     }
     return null
 }
+
+def apiUrl = readEnvValue("EXPO_PUBLIC_API_URL") ?: readEnvValue("APP_ORIGIN") ?: "http://10.0.2.2:3000"
+def allowCleartextTraffic =
+    ((System.getenv("CKD_ALLOW_CLEARTEXT") ?: "").trim().toLowerCase() in ["1", "true", "yes"]) ||
+    apiUrl.toLowerCase().startsWith("http://")
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -130,9 +140,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        manifestPlaceholders = [
+            usesCleartextTraffic: allowCleartextTraffic ? "true" : "false"
+        ]
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-        def apiUrl = readEnvValue("EXPO_PUBLIC_API_URL") ?: readEnvValue("APP_ORIGIN") ?: "http://10.0.2.2:3000"
         buildConfigField "String", "API_BASE_URL", "\"${apiUrl.replaceAll('/+\$','')}\""
     }
     signingConfigs {

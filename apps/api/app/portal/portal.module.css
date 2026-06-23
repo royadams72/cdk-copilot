@@ -353,6 +353,10 @@
   padding: 0 var(--portal-space-3);
   background: var(--portal-surface-muted);
 }
+.patientListRow {
+  padding-top: var(--portal-space-2);
+  padding-bottom: var(--portal-space-2);
+}
 
 .listHeaderRow {
   font-size: 16px;
