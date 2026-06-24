@@ -18,7 +18,7 @@ function metricLabel(kind: GuidedMetric) {
     case "heart_rate":
       return "heart rate";
     case "exercise":
-      return "exercise";
+      return Platform.OS === "ios" ? "workout sessions" : "exercise";
     default:
       return "sleep";
   }

@@ -1,16 +1,15 @@
-import * as SecureStore from "expo-secure-store";
-
 import { refreshSessionTokenOnce } from "@/lib/authSession";
+import { secureStorage } from "@/lib/secureStorage";
 
 export async function authFetch(input: string, init: RequestInit = {}) {
   const makeRequest = async () => {
-    let jwt = await SecureStore.getItemAsync("ckd_jwt");
+    let jwt = await secureStorage.getItem("ckd_jwt");
     if (!jwt) {
       const refreshed = await refreshSessionTokenOnce();
       if (!refreshed) {
         throw new Error("No JWT in SecureStore");
       }
-      jwt = await SecureStore.getItemAsync("ckd_jwt");
+      jwt = await secureStorage.getItem("ckd_jwt");
     }
     if (!jwt) throw new Error("No JWT in SecureStore");
     const headers = new Headers(init.headers || {});

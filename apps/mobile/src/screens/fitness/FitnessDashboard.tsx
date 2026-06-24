@@ -194,7 +194,7 @@ function stepStatusLabel(status: ReturnType<typeof useStepCount>["status"]) {
         : "Allow Health Connect access to show phone or watch health readings.";
     case "permission-denied":
       return Platform.OS === "ios"
-        ? "Apple Health access was denied. Open Settings for CKD Copilot, then open the Health app and go to Sharing or Data Access for CKD Copilot."
+        ? "Apple Health access still looks incomplete. Open the Health app, go to Sharing or Data Access for CKD Copilot, and review the categories you want to share."
         : "Health Connect access was denied. Tap to allow stored health readings.";
     case "health-connect-unavailable":
       return "Health Connect is not available on this device.";
@@ -235,7 +235,7 @@ function getStepSubtext(
 ) {
   if (status === "ready" && hasMissingHealthPermissions) {
     return Platform.OS === "ios"
-      ? "Steps are connected. Allow more Apple Health access for heart rate, exercise, sleep, and blood pressure."
+      ? "Steps are connected. Allow more Apple Health access for heart rate, workout sessions, sleep, and blood pressure."
       : "Steps are connected. Allow more Health Connect access for heart rate, exercise, sleep, and blood pressure.";
   }
 
@@ -257,18 +257,18 @@ function getFitnessHealthSetupMessage(
 
   if (hasMissingHealthPermissions && stepStatus === "ready") {
     return Platform.OS === "ios"
-      ? "Steps are connected, but Apple Health access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too."
+      ? "Steps are connected, but Apple Health access for heart rate, workout sessions, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too."
       : "Steps are connected, but Health Connect access for heart rate, exercise, sleep, or blood pressure is still missing. Allow the remaining access so those readings can sync too.";
   }
 
   switch (stepStatus) {
     case "permission-required":
       return Platform.OS === "ios"
-        ? "Grant Apple Health access so the app can read steps, heart rate, exercise, sleep, and blood pressure from your iPhone or Apple Watch. If the prompt does not appear, open the Health app, go to Sharing or Data Access for CKD Copilot, and enable the categories you want to share."
+        ? "Grant Apple Health access so the app can read steps, heart rate, workout sessions, sleep, and blood pressure from your iPhone or Apple Watch. If the prompt does not appear, open the Health app, go to Sharing or Data Access for CKD Copilot, and enable the categories you want to share."
         : "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
     case "permission-denied":
       return Platform.OS === "ios"
-        ? "Apple Health access was denied. Open Settings for CKD Copilot, then open the Health app and go to Sharing or Data Access for CKD Copilot. Turn on steps, heart rate, exercise, sleep, and blood pressure if you want those readings to sync here."
+        ? "Apple Health access still looks incomplete. Open the Health app, go to Sharing or Data Access for CKD Copilot, and turn on steps, heart rate, workout sessions, sleep, and blood pressure. Then return here and try again."
         : "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
     case "health-connect-unavailable":
       return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";
@@ -296,6 +296,7 @@ export default function FitnessDashboard() {
     debug: stepDebug,
     hasAnyMeasurementAccess,
     missingHealthPermissions,
+    openAppSettings,
     openHealthAccessSettings,
     percentOfGoal,
     requestAccess,
@@ -379,9 +380,7 @@ export default function FitnessDashboard() {
         stepStatus === "permission-required" ||
         stepStatus === "permission-denied" ||
         hasMissingHealthPermissions
-          ? Platform.OS === "ios" && stepStatus === "permission-denied"
-            ? openHealthAccessSettings
-            : requestAccess
+          ? requestAccess
           : undefined,
       progressLabel:
         typeof stepProgress === "number"
@@ -550,11 +549,41 @@ export default function FitnessDashboard() {
                   void requestBackgroundReadAccess();
                   return;
                 }
-                if (Platform.OS === "ios" && stepStatus === "permission-denied") {
-                  void openHealthAccessSettings();
-                  return;
-                }
-                void requestAccess();
+                void (async () => {
+                  const result = await requestAccess();
+                  if (
+                    Platform.OS === "ios" &&
+                    result &&
+                    (result.status === "permission-required" ||
+                      result.status === "permission-denied")
+                  ) {
+                    Alert.alert(
+                      "Apple Health access",
+                      "The Apple Health prompt still has not completed. You can try the prompt again, open the Health app for CKD Copilot sharing, or open normal app settings.",
+                      [
+                        {
+                          text: "Try again",
+                          onPress: () => {
+                            void requestAccess();
+                          },
+                        },
+                        {
+                          text: "Open Health app",
+                          onPress: () => {
+                            void openHealthAccessSettings();
+                          },
+                        },
+                        {
+                          text: "Open Settings",
+                          onPress: () => {
+                            void openAppSettings();
+                          },
+                        },
+                        { text: "Cancel", style: "cancel" },
+                      ],
+                    );
+                  }
+                })();
               }}
               style={{ marginTop: 8 }}
             >
@@ -563,12 +592,10 @@ export default function FitnessDashboard() {
                   ? Platform.OS === "ios"
                     ? "Enable Apple Health background sync"
                     : "Open additional health access settings"
-                  : Platform.OS === "ios" && stepStatus === "permission-denied"
-                    ? "Open app settings"
                   : hasMissingHealthPermissions
                     ? `Allow more ${healthProviderName()} access`
                   : Platform.OS === "ios"
-                      ? "Allow Apple Health access"
+                      ? "Check Apple Health access"
                       : "Allow Health Connect access"}
               </ThemedText>
             </TouchableOpacity>

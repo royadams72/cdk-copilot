@@ -1,6 +1,5 @@
 import React from "react";
 import { Button, Text, View } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
   useFieldArray,
@@ -13,7 +12,7 @@ import { TLabsFormValues, LabsSchema } from "@ckd/core";
 import { useRouter } from "expo-router";
 import { PrimaryButton } from "../components/Buttons";
 import { DateField } from "../components/DateField";
-import { LabeledInput } from "../components/FormFields";
+import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
 
 const emptyLab: TLabsFormValues["labs"][number] = {
@@ -31,6 +30,29 @@ const emptyLab: TLabsFormValues["labs"][number] = {
   sourceAbnormalFlag: null,
   note: "",
 };
+
+const LAB_SOURCE_OPTIONS = [
+  { label: "Manual", value: "manual" },
+  { label: "Import", value: "import" },
+  { label: "Integration", value: "integration" },
+] as const;
+
+const LAB_STATUS_OPTIONS = [
+  { label: "Final", value: "final" },
+  { label: "Corrected", value: "corrected" },
+  { label: "Preliminary", value: "preliminary" },
+  { label: "Cancelled", value: "cancelled" },
+] as const;
+
+const LAB_ABNORMAL_FLAG_OPTIONS = [
+  { label: "None", value: "" },
+  { label: "Low (L)", value: "L" },
+  { label: "Critical low (LL)", value: "LL" },
+  { label: "High (H)", value: "H" },
+  { label: "Critical high (HH)", value: "HH" },
+  { label: "Abnormal (A)", value: "A" },
+  { label: "Normal (N)", value: "N" },
+] as const;
 
 export default function LabsForm({
   defaults,
@@ -227,14 +249,12 @@ export default function LabsForm({
               control={control}
               name={`${base}.source`}
               render={({ field: { value, onChange } }) => (
-                <View>
-                  <Text>Source</Text>
-                  <Picker selectedValue={value} onValueChange={onChange}>
-                    <Picker.Item label="Manual" value="manual" />
-                    <Picker.Item label="Import" value="import" />
-                    <Picker.Item label="Integration" value="integration" />
-                  </Picker>
-                </View>
+                <OptionSelectField
+                  label="Source"
+                  value={value}
+                  options={[...LAB_SOURCE_OPTIONS]}
+                  onChange={onChange}
+                />
               )}
             />
 
@@ -242,15 +262,12 @@ export default function LabsForm({
               control={control}
               name={`${base}.status`}
               render={({ field: { value, onChange } }) => (
-                <View>
-                  <Text>Status</Text>
-                  <Picker selectedValue={value} onValueChange={onChange}>
-                    <Picker.Item label="Final" value="final" />
-                    <Picker.Item label="Corrected" value="corrected" />
-                    <Picker.Item label="Preliminary" value="preliminary" />
-                    <Picker.Item label="Cancelled" value="cancelled" />
-                  </Picker>
-                </View>
+                <OptionSelectField
+                  label="Status"
+                  value={value}
+                  options={[...LAB_STATUS_OPTIONS]}
+                  onChange={onChange}
+                />
               )}
             />
 
@@ -258,23 +275,14 @@ export default function LabsForm({
               control={control}
               name={`${base}.sourceAbnormalFlag`}
               render={({ field: { value, onChange } }) => (
-                <View>
-                  <Text>Abnormal flag</Text>
-                  <Picker
-                    selectedValue={value ?? ""}
-                    onValueChange={(nextValue: string) =>
-                      onChange(nextValue === "" ? null : nextValue)
-                    }
-                  >
-                    <Picker.Item label="None" value="" />
-                    <Picker.Item label="Low (L)" value="L" />
-                    <Picker.Item label="Critical low (LL)" value="LL" />
-                    <Picker.Item label="High (H)" value="H" />
-                    <Picker.Item label="Critical high (HH)" value="HH" />
-                    <Picker.Item label="Abnormal (A)" value="A" />
-                    <Picker.Item label="Normal (N)" value="N" />
-                  </Picker>
-                </View>
+                <OptionSelectField
+                  label="Abnormal flag"
+                  value={(value ?? "") as "" | "L" | "LL" | "H" | "HH" | "A" | "N"}
+                  options={[...LAB_ABNORMAL_FLAG_OPTIONS]}
+                  onChange={(nextValue) =>
+                    onChange(nextValue === "" ? null : nextValue)
+                  }
+                />
               )}
             />
 

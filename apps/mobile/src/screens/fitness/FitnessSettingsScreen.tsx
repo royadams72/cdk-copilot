@@ -1,13 +1,23 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, ScrollView, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { useStepCount } from "@/hooks/useStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import type { NativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectNativeBridge";
-import type { NativeHealthKitStatus } from "@/lib/healthKitNativeBridge";
+import {
+  getNativeHealthKitStatus,
+  type NativeHealthKitStatus,
+} from "@/lib/healthKitNativeBridge";
 
 import { Card } from "../dashboard/components/Card";
 
@@ -22,6 +32,7 @@ function providerDisplayName() {
 
 export default function FitnessSettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     backgroundReadGranted,
     missingHealthPermissions,
@@ -34,11 +45,13 @@ export default function FitnessSettingsScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    const provider = getCurrentHealthSyncProvider();
 
     void (async () => {
       try {
-        const status = await provider?.getBackgroundSyncStatus();
+        const status =
+          Platform.OS === "ios"
+            ? await getNativeHealthKitStatus()
+            : await getCurrentHealthSyncProvider()?.getBackgroundSyncStatus();
         if (!cancelled) {
           setWorkerStatus(status ?? null);
         }
@@ -78,7 +91,12 @@ export default function FitnessSettingsScreen() {
     <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{
+          gap: 12,
+          padding: 16,
+          paddingBottom: 32,
+          paddingTop: Math.max(insets.top + 8, 20),
+        }}
       >
         <View
           style={{

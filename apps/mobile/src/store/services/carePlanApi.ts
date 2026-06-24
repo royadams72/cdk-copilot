@@ -3,6 +3,10 @@ import type {
   CarePlanDetailResponse,
   CarePlanListResponse,
 } from "./types";
+import {
+  scheduleCarePlanTaskCompletedNotification,
+  syncCarePlanReminderNotifications,
+} from "@/lib/pushNotifications";
 
 export const carePlanApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,12 +33,36 @@ export const carePlanApi = appApi.injectEndpoints({
     }),
     updateCarePlanTaskStatus: builder.mutation<
       { updated: boolean },
-      { action: "complete_task" | "reopen_task"; carePlanId: string; taskId: string }
+      {
+        action: "complete_task" | "reopen_task";
+        carePlanId: string;
+        planTitle?: string;
+        taskId: string;
+        taskLabel?: string;
+      }
     >({
       invalidatesTags: (_result, _error, arg) => [
         { id: arg.carePlanId, type: "CarePlan" as const },
         { id: "LIST", type: "CarePlan" as const },
       ],
+      async onQueryStarted(arg, { queryFulfilled }) {
+        try {
+          const result = await queryFulfilled;
+          if (result.data?.updated) {
+            await syncCarePlanReminderNotifications();
+            if (arg.action === "complete_task") {
+              await scheduleCarePlanTaskCompletedNotification({
+                planId: arg.carePlanId,
+                planTitle: arg.planTitle ?? null,
+                taskId: arg.taskId,
+                taskLabel: arg.taskLabel ?? null,
+              });
+            }
+          }
+        } catch {
+          // The care plan update itself is primary; reminder re-sync is best-effort.
+        }
+      },
       query: ({ action, carePlanId, taskId }) => ({
         body: { action, taskId },
         method: "PATCH",

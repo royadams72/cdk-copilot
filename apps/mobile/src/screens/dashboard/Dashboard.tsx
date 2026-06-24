@@ -48,6 +48,7 @@ export default function Dashboard() {
     backgroundReadGranted,
     hasAnyMeasurementAccess,
     missingHealthPermissions,
+    openAppSettings,
     openHealthAccessSettings,
     percentOfGoal,
     requestAccess,
@@ -62,7 +63,12 @@ export default function Dashboard() {
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const { data: carePlanData } = useGetCarePlansQuery();
+  const {
+    data: carePlanData,
+    refetch: refetchCarePlans,
+  } = useGetCarePlansQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const [openPatientEngagement, { isLoading: isOpeningEngagement }] =
     useOpenPatientEngagementMutation();
   const [showCarePlanBanner, setShowCarePlanBanner] = useState(false);
@@ -77,7 +83,8 @@ export default function Dashboard() {
 
   const handleRefresh = useCallback(() => {
     refetch();
-  }, [refetch]);
+    void refetchCarePlans();
+  }, [refetch, refetchCarePlans]);
 
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {
@@ -337,20 +344,48 @@ export default function Dashboard() {
                   <Pressable
                     style={styles.primaryActionButton}
                     onPress={() => {
-                      if (Platform.OS === "ios" && stepStatus === "permission-denied") {
-                        void openHealthAccessSettings();
-                        return;
-                      }
-                      void requestAccess();
+                      void (async () => {
+                        const result = await requestAccess();
+                        if (
+                          Platform.OS === "ios" &&
+                          result &&
+                          (result.status === "permission-required" ||
+                            result.status === "permission-denied")
+                        ) {
+                          Alert.alert(
+                            "Apple Health access",
+                            "The Apple Health prompt still has not completed. You can try the prompt again, open the Health app for CKD Copilot sharing, or open normal app settings.",
+                            [
+                              {
+                                text: "Try again",
+                                onPress: () => {
+                                  void requestAccess();
+                                },
+                              },
+                              {
+                                text: "Open Health app",
+                                onPress: () => {
+                                  void openHealthAccessSettings();
+                                },
+                              },
+                              {
+                                text: "Open Settings",
+                                onPress: () => {
+                                  void openAppSettings();
+                                },
+                              },
+                              { text: "Cancel", style: "cancel" },
+                            ],
+                          );
+                        }
+                      })();
                     }}
                   >
                     <ThemedText style={styles.primaryActionText}>
-                      {Platform.OS === "ios" && stepStatus === "permission-denied"
-                        ? "Open app settings"
-                        : hasMissingHealthPermissions
+                      {hasMissingHealthPermissions
                           ? `Allow more ${healthProviderName()} access`
                           : Platform.OS === "ios"
-                            ? "Allow Apple Health access"
+                            ? "Check Apple Health access"
                             : "Allow step access"}
                     </ThemedText>
                   </Pressable>
@@ -492,7 +527,7 @@ function getHealthStatusMessage(
         : "Grant Health Connect access so the app can read phone or watch steps, heart rate, exercise, sleep, and blood pressure after the app has been closed.";
     case "permission-denied":
       return Platform.OS === "ios"
-        ? "Apple Health access was denied. Open Settings for CKD Copilot, then open the Health app and go to Sharing or Data Access for CKD Copilot. Turn on steps, heart rate, exercise, sleep, and blood pressure if you want those readings to appear here."
+        ? "Apple Health access still looks incomplete. Open the Health app, go to Sharing or Data Access for CKD Copilot, and turn on steps, heart rate, exercise, sleep, and blood pressure. Then return here and try again."
         : "Health Connect access was denied. Allow it to show stored phone or watch health readings on the dashboard.";
     case "health-connect-unavailable":
       return "Health Connect is not available on this device. On Android 13 and below, install Health Connect first.";

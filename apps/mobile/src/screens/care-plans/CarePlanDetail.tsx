@@ -45,11 +45,21 @@ export default function CarePlanDetail() {
   }, [refetch]);
 
   const handleTaskAction = useCallback(
-    async (taskId: string, action: "complete_task" | "reopen_task") => {
+    async (
+      taskId: string,
+      action: "complete_task" | "reopen_task",
+      taskLabel?: string,
+    ) => {
       if (!carePlanId) return;
-      await updateTaskStatus({ action, carePlanId, taskId }).unwrap();
+      await updateTaskStatus({
+        action,
+        carePlanId,
+        planTitle: data?.title,
+        taskId,
+        taskLabel,
+      }).unwrap();
     },
-    [carePlanId, updateTaskStatus],
+    [carePlanId, data?.title, updateTaskStatus],
   );
 
   if (loading) {
@@ -231,6 +241,7 @@ export default function CarePlanDetail() {
                         void handleTaskAction(
                           task.id,
                           task.status === "done" ? "reopen_task" : "complete_task",
+                          task.label,
                         )
                       }
                     >

@@ -1,6 +1,5 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import * as SecureStore from "expo-secure-store";
 import { Alert, Platform } from "react-native";
 import type {
   PatientWorseningTrendAlert,
@@ -9,10 +8,14 @@ import type {
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { secureStorage } from "@/lib/secureStorage";
 
 const SLEEP_REMINDER_NOTIFICATION_ID_KEY = "ckd_sleep_morning_reminder_id";
 const CARE_PLAN_REMINDER_TYPE = "care-plan-reminder";
+const CARE_PLAN_ALERT_TYPE = "care-plan-alert";
+const CARE_PLAN_COMPLETED_TYPE = "care-plan-completed";
 const CARE_PLAN_REMINDER_CHANNEL_ID = "care-plan-reminders";
+const CARE_PLAN_ALERT_STATE_KEY = "ckd_care_plan_alert_state";
 const WORSENING_TREND_ALERT_TYPE = "worsening-trend-alert";
 const WORSENING_TREND_REMINDER_TYPE = "worsening-trend-reminder";
 const WORSENING_TREND_ALERT_STATE_KEY = "ckd_worsening_trend_alert_state";
@@ -67,6 +70,13 @@ function shouldAttemptPushRegistration() {
   return true;
 }
 
+function isMissingApsEnvironmentEntitlement(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+
+  return message.includes("aps-environment");
+}
+
 async function ensureNotificationPermission() {
   if (Platform.OS !== "ios" && Platform.OS !== "android") {
     return false;
@@ -117,7 +127,7 @@ export async function registerForPushNotificationsAsync() {
 
 export async function syncPushToken() {
   try {
-    const jwt = await SecureStore.getItemAsync("ckd_jwt");
+    const jwt = await secureStorage.getItem("ckd_jwt");
     if (!jwt) {
       return false;
     }
@@ -137,6 +147,11 @@ export async function syncPushToken() {
 
     return res.ok;
   } catch (error) {
+    if (__DEV__ && Platform.OS === "ios" && isMissingApsEnvironmentEntitlement(error)) {
+      console.log("syncPushToken skipped: iOS dev build has no APNs entitlement");
+      return false;
+    }
+
     console.error("syncPushToken failed", error);
     return false;
   }
@@ -187,6 +202,127 @@ function parseLocalTime(value: string | null | undefined) {
   }
 
   return { hour, minute };
+}
+
+function getStoredStringArray(raw: string | null) {
+  try {
+    const parsed = JSON.parse(raw ?? "[]") as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildCarePlanNotificationContent(
+  item: {
+    instructions?: string | null;
+    planId: string;
+    planTitle: string;
+    taskId: string;
+    taskLabel: string;
+  },
+  type: typeof CARE_PLAN_ALERT_TYPE | typeof CARE_PLAN_REMINDER_TYPE,
+  taskCountForPlan = 1,
+) {
+  const plural = taskCountForPlan === 1 ? "" : "s";
+
+  return {
+    body:
+      type === CARE_PLAN_ALERT_TYPE
+        ? taskCountForPlan === 1
+          ? item.instructions?.trim() || `New care plan task: ${item.taskLabel}`
+          : `${taskCountForPlan} new care plan tasks are ready to review.`
+        : item.instructions?.trim() || `Task: ${item.taskLabel}`,
+    channelId: CARE_PLAN_REMINDER_CHANNEL_ID,
+    data: {
+      carePlanId: item.planId,
+      screen: `/(dashboard)/care-plan?id=${item.planId}`,
+      taskId: item.taskId,
+      type,
+    },
+    sound: true,
+    title:
+      type === CARE_PLAN_ALERT_TYPE
+        ? taskCountForPlan === 1
+          ? `New care plan task`
+          : `New care plan tasks`
+        : `${item.planTitle}: ${item.taskLabel}`,
+  } as const;
+}
+
+function buildImmediateCarePlanNotificationTrigger() {
+  return {
+    seconds: 1,
+    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+  } as const;
+}
+
+export async function scheduleCarePlanTaskCompletedNotification(args: {
+  planId: string;
+  planTitle?: string | null;
+  taskId: string;
+  taskLabel?: string | null;
+}) {
+  try {
+    const hasPermission = await ensureNotificationPermission();
+    if (!hasPermission) {
+      return false;
+    }
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync(CARE_PLAN_REMINDER_CHANNEL_ID, {
+        importance: Notifications.AndroidImportance.DEFAULT,
+        name: "Care plan reminders",
+      });
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        body: args.taskLabel?.trim()
+          ? `Completed: ${args.taskLabel.trim()}`
+          : "You completed a care plan task.",
+        channelId: CARE_PLAN_REMINDER_CHANNEL_ID,
+        data: {
+          carePlanId: args.planId,
+          screen: `/(dashboard)/care-plan?id=${args.planId}`,
+          taskId: args.taskId,
+          type: CARE_PLAN_COMPLETED_TYPE,
+        },
+        sound: true,
+        title: args.planTitle?.trim()
+          ? `${args.planTitle.trim()} updated`
+          : "Care plan task completed",
+      },
+      trigger: buildImmediateCarePlanNotificationTrigger(),
+    });
+
+    return true;
+  } catch (error) {
+    console.log("scheduleCarePlanTaskCompletedNotification failed", error);
+    return false;
+  }
+}
+
+async function scheduleImmediateCarePlanNotification(
+  item: {
+    instructions?: string | null;
+    planId: string;
+    planTitle: string;
+    taskId: string;
+    taskLabel: string;
+  },
+  taskCountForPlan: number,
+) {
+  await Notifications.scheduleNotificationAsync({
+    content: buildCarePlanNotificationContent(
+      item,
+      CARE_PLAN_ALERT_TYPE,
+      taskCountForPlan,
+    ),
+    trigger: buildImmediateCarePlanNotificationTrigger(),
+  });
 }
 
 function getWorseningStateItemIds(raw: string | null) {
@@ -336,9 +472,10 @@ export async function syncCarePlanReminderNotifications() {
       return false;
     }
 
-    const jwt = await SecureStore.getItemAsync("ckd_jwt");
+    const jwt = await secureStorage.getItem("ckd_jwt");
     if (!jwt) {
       await cancelCarePlanReminderNotifications();
+      await secureStorage.removeItem(CARE_PLAN_ALERT_STATE_KEY);
       return false;
     }
 
@@ -399,21 +536,49 @@ export async function syncCarePlanReminderNotifications() {
       });
     }
 
+    const items = data?.items ?? [];
+    const previousAlertIds = new Set(
+      getStoredStringArray(await secureStorage.getItem(CARE_PLAN_ALERT_STATE_KEY)),
+    );
+    const currentAlertIds = items.map((item) => `${item.planId}:${item.taskId}`);
+    const unseenByPlan = new Map<
+      string,
+      Array<{
+        activatedAt?: string | null;
+        freq: "daily" | "weekly" | "once";
+        instructions?: string | null;
+        planId: string;
+        planTitle: string;
+        taskId: string;
+        taskLabel: string;
+      }>
+    >();
+
+    for (const item of items) {
+      const itemId = `${item.planId}:${item.taskId}`;
+      if (previousAlertIds.has(itemId)) {
+        continue;
+      }
+
+      const existing = unseenByPlan.get(item.planId) ?? [];
+      existing.push(item);
+      unseenByPlan.set(item.planId, existing);
+    }
+
     await cancelCarePlanReminderNotifications();
 
-    for (const item of data?.items ?? []) {
-      const content = {
-        body: item.instructions?.trim() || `Task: ${item.taskLabel}`,
-        channelId: CARE_PLAN_REMINDER_CHANNEL_ID,
-        data: {
-          carePlanId: item.planId,
-          screen: `/(dashboard)/care-plan?id=${item.planId}`,
-          taskId: item.taskId,
-          type: CARE_PLAN_REMINDER_TYPE,
-        },
-        sound: true,
-        title: `${item.planTitle}: ${item.taskLabel}`,
-      } as const;
+    for (const [, unseenItems] of unseenByPlan) {
+      const firstItem = unseenItems[0];
+      if (firstItem) {
+        await scheduleImmediateCarePlanNotification(firstItem, unseenItems.length);
+      }
+    }
+
+    for (const item of items) {
+      const content = buildCarePlanNotificationContent(
+        item,
+        CARE_PLAN_REMINDER_TYPE,
+      );
 
       if (item.freq === "daily") {
         await Notifications.scheduleNotificationAsync({
@@ -446,6 +611,11 @@ export async function syncCarePlanReminderNotifications() {
       });
     }
 
+    await secureStorage.setItem(
+      CARE_PLAN_ALERT_STATE_KEY,
+      JSON.stringify(currentAlertIds.sort()),
+    );
+
     return true;
   } catch (error) {
     console.log("syncCarePlanReminderNotifications failed", error);
@@ -461,10 +631,10 @@ export async function syncWorseningTrendNotifications(
       return false;
     }
 
-    const jwt = await SecureStore.getItemAsync("ckd_jwt");
+    const jwt = await secureStorage.getItem("ckd_jwt");
     if (!jwt) {
       await cancelWorseningTrendNotifications();
-      await SecureStore.deleteItemAsync(WORSENING_TREND_ALERT_STATE_KEY).catch(
+      await secureStorage.removeItem(WORSENING_TREND_ALERT_STATE_KEY).catch(
         () => undefined,
       );
       return false;
@@ -518,7 +688,7 @@ export async function syncWorseningTrendNotifications(
     }
 
     const previousState = getWorseningState(
-      await SecureStore.getItemAsync(WORSENING_TREND_ALERT_STATE_KEY),
+      await secureStorage.getItem(WORSENING_TREND_ALERT_STATE_KEY),
     );
     console.log("[worsening] previous state", previousState);
     const items = data.items ?? [];
@@ -621,7 +791,7 @@ export async function syncWorseningTrendNotifications(
       });
     }
 
-    await SecureStore.setItemAsync(
+    await secureStorage.setItem(
       WORSENING_TREND_ALERT_STATE_KEY,
       JSON.stringify(
         Object.fromEntries(
@@ -646,7 +816,7 @@ export async function syncWorseningTrendNotifications(
 }
 
 async function cancelSleepReminderNotification() {
-  const existingId = await SecureStore.getItemAsync(
+  const existingId = await secureStorage.getItem(
     SLEEP_REMINDER_NOTIFICATION_ID_KEY,
   );
 
@@ -654,7 +824,7 @@ async function cancelSleepReminderNotification() {
     await Notifications.cancelScheduledNotificationAsync(existingId).catch(
       () => undefined,
     );
-    await SecureStore.deleteItemAsync(SLEEP_REMINDER_NOTIFICATION_ID_KEY);
+    await secureStorage.removeItem(SLEEP_REMINDER_NOTIFICATION_ID_KEY);
   }
 }
 
@@ -704,7 +874,7 @@ export async function syncSleepReminderNotification() {
       return false;
     }
 
-    const jwt = await SecureStore.getItemAsync("ckd_jwt");
+    const jwt = await secureStorage.getItem("ckd_jwt");
     if (!jwt) {
       await cancelSleepReminderNotification();
       return false;
@@ -757,7 +927,7 @@ export async function syncSleepReminderNotification() {
       },
     });
 
-    await SecureStore.setItemAsync(
+    await secureStorage.setItem(
       SLEEP_REMINDER_NOTIFICATION_ID_KEY,
       reminderId,
     );

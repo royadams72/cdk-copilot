@@ -47,34 +47,32 @@ async function loadIosPedometerStepState(): Promise<CurrentStepAccessState> {
     return unsupportedState();
   }
 
-  const stepAuthorization = status.readAuthorization.steps;
-  const hasStepAccess = stepAuthorization === "authorized";
-  if (!hasStepAccess) {
+  const now = new Date();
+  let summary = null;
+
+  try {
+    summary = await iosHealthKitProvider.readStepSummaryForDate(now);
+  } catch {
+    summary = null;
+  }
+
+  if (!summary) {
     return {
       ...unsupportedState(),
+      backgroundReadGranted: status.backgroundDeliveryEnabled,
       canRequestPermission: true,
-      hasAnyMeasurementAccess: Object.values(status.readAuthorization).some(
-        (value) => value === "authorized",
-      ),
-      missingHealthPermissions: Object.entries(status.readAuthorization)
-        .filter(([, value]) => value !== "authorized")
-        .map(([key]) => key),
-      status:
-        stepAuthorization === "denied"
-          ? "permission-denied"
-          : "permission-required",
+      dataOrigins: ["apple.healthkit"],
+      hasAnyMeasurementAccess: false,
+      missingHealthPermissions: [],
+      selectedDataOrigin: "apple.healthkit",
+      status: "permission-required",
     };
   }
 
-  const now = new Date();
-  const summary = await iosHealthKitProvider.readStepSummaryForDate(now);
   const stepsToday =
     typeof summary?.steps === "number" && Number.isFinite(summary.steps)
       ? Math.max(0, Math.round(summary.steps))
       : 0;
-  const missingPermissions = Object.entries(status.readAuthorization)
-    .filter(([key, value]) => key !== "steps" && value !== "authorized")
-    .map(([key]) => key);
 
   return {
     backgroundReadGranted: status.backgroundDeliveryEnabled,
@@ -82,7 +80,7 @@ async function loadIosPedometerStepState(): Promise<CurrentStepAccessState> {
     dataOrigins: ["apple.healthkit"],
     debug: null,
     hasAnyMeasurementAccess: true,
-    missingHealthPermissions: missingPermissions,
+    missingHealthPermissions: [],
     selectedDataOrigin: "apple.healthkit",
     status: "ready",
     stepsToday,
@@ -164,6 +162,24 @@ export async function requestCurrentBackgroundStepAccess() {
 }
 
 export async function openCurrentHealthAccessSettings() {
+  if (Platform.OS === "ios") {
+    const healthAppUrl = "x-apple-health://";
+
+    try {
+      const canOpenHealthApp = await Linking.canOpenURL(healthAppUrl);
+      if (canOpenHealthApp) {
+        await Linking.openURL(healthAppUrl);
+        return;
+      }
+    } catch {
+      // Fall through to app settings.
+    }
+  }
+
+  await Linking.openSettings();
+}
+
+export async function openCurrentAppSettings() {
   await Linking.openSettings();
 }
 

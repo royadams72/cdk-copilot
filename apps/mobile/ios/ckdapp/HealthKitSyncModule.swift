@@ -165,7 +165,6 @@ class HealthKitSyncModule: NSObject {
         predicate: predicate
       ) { value, error in
         distance = value
-        if firstError == nil { firstError = error }
         group.leave()
       }
     }
@@ -178,7 +177,6 @@ class HealthKitSyncModule: NSObject {
         predicate: predicate
       ) { value, error in
         calories = value
-        if firstError == nil { firstError = error }
         group.leave()
       }
     }
@@ -681,6 +679,12 @@ class HealthKitSyncModule: NSObject {
     if let workout = HKObjectType.workoutType() as HKObjectType? {
       types["exercise"] = workout
     }
+    if let distanceWalkingRunning = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning) {
+      types["distance_walking_running"] = distanceWalkingRunning
+    }
+    if let activeEnergyBurned = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+      types["active_energy_burned"] = activeEnergyBurned
+    }
 
     return types
   }
@@ -690,11 +694,7 @@ class HealthKitSyncModule: NSObject {
   }
 
   private func backgroundDeliveryTypes() -> [HKObjectType] {
-    var types = Array(readTypes())
-    if let bloodPressureCorrelation = HKObjectType.correlationType(forIdentifier: .bloodPressure) {
-      types.append(bloodPressureCorrelation)
-    }
-    return types
+    return Array(readTypes())
   }
 
   private func observedTypeKeys() -> [String] {

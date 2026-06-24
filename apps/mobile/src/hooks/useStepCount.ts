@@ -8,6 +8,7 @@ import {
 } from "@/lib/healthConnectStepSummary";
 import {
   loadCurrentStepAccessState,
+  openCurrentAppSettings,
   openCurrentHealthAccessSettings,
   requestCurrentBackgroundStepAccess,
   requestCurrentStepAccess,
@@ -119,6 +120,7 @@ export function useStepCount(goal = 10000) {
       setStatus(result.status);
       setStepsToday(result.stepsToday);
       setBackgroundReadGranted(result.backgroundReadGranted);
+      return result;
     } catch (error) {
       console.log("Health Connect permission request failed", {
         error: toErrorMessage(error),
@@ -169,6 +171,7 @@ export function useStepCount(goal = 10000) {
     goal,
     hasAnyMeasurementAccess,
     missingHealthPermissions,
+    openAppSettings: openCurrentAppSettings,
     percentOfGoal,
     openHealthAccessSettings: openCurrentHealthAccessSettings,
     requestAccess,

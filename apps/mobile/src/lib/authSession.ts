@@ -1,7 +1,7 @@
-import * as SecureStore from "expo-secure-store";
 import { NativeModules, Platform } from "react-native";
 
 import { API } from "@/constants/api";
+import { secureStorage } from "@/lib/secureStorage";
 
 type RefreshResponse = {
   data?: {
@@ -41,28 +41,28 @@ export async function syncNativeAuthSessionMirror(
 }
 
 export async function syncNativeAuthSessionMirrorFromSecureStore() {
-  const jwt = await SecureStore.getItemAsync("ckd_jwt");
-  const refreshToken = await SecureStore.getItemAsync("ckd_refresh");
+  const jwt = await secureStorage.getItem("ckd_jwt");
+  const refreshToken = await secureStorage.getItem("ckd_refresh");
   await syncNativeAuthSession(jwt, refreshToken);
 }
 
 export async function loadSessionToken() {
-  const jwt = await SecureStore.getItemAsync("ckd_jwt");
-  const refreshToken = await SecureStore.getItemAsync("ckd_refresh");
+  const jwt = await secureStorage.getItem("ckd_jwt");
+  const refreshToken = await secureStorage.getItem("ckd_refresh");
   await syncNativeAuthSession(jwt, refreshToken);
   return { jwt, refreshToken };
 }
 
 export async function clearSessionToken() {
-  await SecureStore.deleteItemAsync("ckd_jwt");
-  await SecureStore.deleteItemAsync("ckd_refresh");
+  await secureStorage.removeItem("ckd_jwt");
+  await secureStorage.removeItem("ckd_refresh");
   await nativeBackgroundSyncModule?.clearAuthSession?.();
 }
 
 export async function refreshSessionToken() {
-  const refreshToken = await SecureStore.getItemAsync("ckd_refresh");
+  const refreshToken = await secureStorage.getItem("ckd_refresh");
   if (!refreshToken) {
-    await SecureStore.deleteItemAsync("ckd_jwt");
+    await secureStorage.removeItem("ckd_jwt");
     return false;
   }
 
@@ -81,10 +81,10 @@ export async function refreshSessionToken() {
     return false;
   }
 
-  await SecureStore.setItemAsync("ckd_jwt", nextJwt);
+  await secureStorage.setItem("ckd_jwt", nextJwt);
   const nextRefreshToken = refreshBody.data?.refreshToken?.trim();
   if (nextRefreshToken) {
-    await SecureStore.setItemAsync("ckd_refresh", nextRefreshToken);
+    await secureStorage.setItem("ckd_refresh", nextRefreshToken);
   }
   await syncNativeAuthSession(nextJwt, nextRefreshToken || refreshToken);
 

@@ -5,11 +5,11 @@ import type {
 } from "@reduxjs/toolkit/query";
 import type { SerializedError } from "@reduxjs/toolkit";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import * as SecureStore from "expo-secure-store";
 
 import { API } from "@/constants/api";
 import { formatApiError } from "@/lib/formatApiError";
 import { refreshSessionTokenOnce } from "@/lib/authSession";
+import { secureStorage } from "@/lib/secureStorage";
 
 type ApiEnvelope<T> = {
   data?: T;
@@ -21,7 +21,7 @@ type ApiEnvelope<T> = {
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API,
   prepareHeaders: async (headers) => {
-    const jwt = await SecureStore.getItemAsync("ckd_jwt");
+    const jwt = await secureStorage.getItem("ckd_jwt");
     if (jwt) {
       headers.set("Authorization", `Bearer ${jwt}`);
     }
