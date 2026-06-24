@@ -1,7 +1,9 @@
 import {
   evaluateBloodPressureUpTrend,
+  evaluateNutritionWorsening,
   evaluateWeightDecreaseTrend,
   evaluateStepsDeclineTrend,
+  evaluateSymptomsWorsening,
   evaluateWeightIncreaseTrend,
 } from "../lib/utils/worseningTrends";
 
@@ -151,5 +153,49 @@ describe("worseningTrends", () => {
     expect(result.previousAverageSystolic).toBe(126);
     expect(result.deltaSystolic).toBe(20);
     expect(result.systolicAboveTargetBy).toBe(11);
+  });
+
+  it("detects worsening symptoms from frequent symptom days", () => {
+    const result = evaluateSymptomsWorsening({
+      entries: [
+        { normalizedName: "fatigue", recordedAt: new Date("2026-06-17T08:00:00.000Z"), severity: 2 },
+        { normalizedName: "fatigue", recordedAt: new Date("2026-06-18T08:00:00.000Z"), severity: 3 },
+        { normalizedName: "nausea", recordedAt: new Date("2026-06-19T08:00:00.000Z"), severity: 2 },
+        { normalizedName: "fatigue", recordedAt: new Date("2026-06-21T08:00:00.000Z"), severity: 4 },
+      ],
+      now: new Date("2026-06-23T12:00:00.000Z"),
+    });
+
+    expect(result.triggered).toBe(true);
+    expect(result.distinctSymptomDaysRecent).toBe(4);
+    expect(result.repeatedSymptomName).toBe("fatigue");
+  });
+
+  it("detects nutrition worsening from repeated multi-target breach days", () => {
+    const entries = Array.from({ length: 7 }, (_, index) => ({
+      eatenAt: new Date(Date.UTC(2026, 5, 17 + index, 12)),
+      totals: {
+        caloriesKcal: 2200,
+        phosphorusMg: 1000,
+        potassiumMg: 2500,
+        proteinG: 1.1,
+        sodiumMg: 2500,
+      },
+    }));
+
+    const result = evaluateNutritionWorsening({
+      entries,
+      now: new Date("2026-06-23T12:00:00.000Z"),
+      targets: {
+        caloriesKcal: 1800,
+        phosphorusMg: 800,
+        potassiumMg: 2000,
+        proteinG: 0.8,
+        sodiumMg: 2000,
+      },
+    });
+
+    expect(result.triggered).toBe(true);
+    expect(result.breachDaysRecent).toBe(7);
   });
 });

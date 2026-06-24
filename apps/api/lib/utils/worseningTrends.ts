@@ -1,13 +1,16 @@
 import type { Db, Filter, ObjectId } from "mongodb";
 
 import {
-  WORSENING_TREND_RULES,
   type PatientWorseningTrendAlert,
+  type TNutritionEntry,
+  type TSymptomEntry,
+  WORSENING_TREND_RULES,
   type WorseningEscalationLevel,
 } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import {
   findTargetsCurrentDoc,
+  getMappedNutritionTargets,
   resolveTargetValue,
   type TargetsCurrentDoc,
   type TargetStateLike,
@@ -72,6 +75,33 @@ type WeightTrendEvaluation = {
   window: { endDate: string; startDate: string };
 };
 
+type SymptomHistoryEntryDoc = Pick<
+  TSymptomEntry,
+  "normalizedName" | "recordedAt" | "severity"
+> & {
+  patientId: ObjectId;
+};
+
+type NutritionEntryDoc = Pick<TNutritionEntry, "eatenAt" | "status" | "totals"> & {
+  patientId: ObjectId;
+};
+
+type SymptomsWorseningEvaluation = {
+  distinctSymptomDaysRecent: number;
+  distinctSymptomDaysPrevious: number;
+  repeatedSymptomName: string | null;
+  severeRecentCount: number;
+  triggered: boolean;
+  window: { endDate: string; startDate: string };
+};
+
+type NutritionWorseningEvaluation = {
+  breachDaysRecent: number;
+  breachDaysFourteen: number;
+  triggered: boolean;
+  window: { endDate: string; startDate: string };
+};
+
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -131,6 +161,10 @@ function average(values: number[]) {
 function round(value: number, decimals = 1) {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
+}
+
+function countDistinctUtcDays(dates: Date[]) {
+  return new Set(dates.map((date) => isoDay(date))).size;
 }
 
 function toStepsWindow(
@@ -211,11 +245,16 @@ export function evaluateBloodPressureUpTrend(input: {
     .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt));
   const recentPoints = points.filter((point) => {
     const pointMs = new Date(point.measuredAt).getTime();
-    return pointMs >= recentStart.getTime() && pointMs < recentEndExclusive.getTime();
+    return (
+      pointMs >= recentStart.getTime() && pointMs < recentEndExclusive.getTime()
+    );
   });
   const previousPoints = points.filter((point) => {
     const pointMs = new Date(point.measuredAt).getTime();
-    return pointMs >= previousStart.getTime() && pointMs < previousEndExclusive.getTime();
+    return (
+      pointMs >= previousStart.getTime() &&
+      pointMs < previousEndExclusive.getTime()
+    );
   });
 
   if (recentPoints.length < 2 || previousPoints.length < 8) {
@@ -246,7 +285,8 @@ export function evaluateBloodPressureUpTrend(input: {
   );
   const deltaSystolic = currentAverageSystolic - previousAverageSystolic;
   const systolicAboveTargetBy =
-    input.systolicTargetValue !== null && input.systolicTargetValue !== undefined
+    input.systolicTargetValue !== null &&
+    input.systolicTargetValue !== undefined
       ? currentAverageSystolic - input.systolicTargetValue
       : null;
 
@@ -322,6 +362,141 @@ export function evaluateWeightDecreaseTrend(input: {
   points: WeightPoint[];
 }) {
   return evaluateWeightTrend({ ...input, direction: "decrease" });
+}
+
+export function evaluateSymptomsWorsening(input: {
+  entries: Array<Pick<SymptomHistoryEntryDoc, "normalizedName" | "recordedAt" | "severity">>;
+  now?: Date;
+}): SymptomsWorseningEvaluation {
+  const now = startOfUtcDay(input.now ?? new Date());
+  const recentStart = addUtcDays(now, -7);
+  const previousStart = addUtcDays(recentStart, -7);
+  const previousEndExclusive = recentStart;
+  const recentEndExclusive = addUtcDays(now, 1);
+
+  const entries = input.entries
+    .map((entry) => ({
+      normalizedName: entry.normalizedName,
+      recordedAt:
+        entry.recordedAt instanceof Date ? entry.recordedAt : new Date(entry.recordedAt),
+      severity: entry.severity,
+    }))
+    .filter((entry) => !Number.isNaN(entry.recordedAt.getTime()));
+
+  const recentEntries = entries.filter(
+    (entry) =>
+      entry.recordedAt.getTime() >= recentStart.getTime() &&
+      entry.recordedAt.getTime() < recentEndExclusive.getTime(),
+  );
+  const previousEntries = entries.filter(
+    (entry) =>
+      entry.recordedAt.getTime() >= previousStart.getTime() &&
+      entry.recordedAt.getTime() < previousEndExclusive.getTime(),
+  );
+
+  const distinctSymptomDaysRecent = countDistinctUtcDays(
+    recentEntries.map((entry) => entry.recordedAt),
+  );
+  const distinctSymptomDaysPrevious = countDistinctUtcDays(
+    previousEntries.map((entry) => entry.recordedAt),
+  );
+  const repeatedByName = recentEntries.reduce<Record<string, number>>((acc, entry) => {
+    acc[entry.normalizedName] = (acc[entry.normalizedName] ?? 0) + 1;
+    return acc;
+  }, {});
+  const repeatedSymptomName =
+    Object.entries(repeatedByName).find(([, count]) => count >= 3)?.[0] ?? null;
+  const severeRecentCount = recentEntries.filter((entry) => entry.severity >= 4).length;
+
+  return {
+    distinctSymptomDaysPrevious,
+    distinctSymptomDaysRecent,
+    repeatedSymptomName,
+    severeRecentCount,
+    triggered:
+      distinctSymptomDaysRecent >= 4 ||
+      distinctSymptomDaysRecent >= distinctSymptomDaysPrevious + 2 ||
+      repeatedSymptomName !== null,
+    window: { endDate: isoDay(now), startDate: isoDay(recentStart) },
+  };
+}
+
+export function evaluateNutritionWorsening(input: {
+  entries: Array<Pick<NutritionEntryDoc, "eatenAt" | "totals">>;
+  now?: Date;
+  targets: Partial<Record<"caloriesKcal" | "phosphorusMg" | "potassiumMg" | "proteinG" | "sodiumMg", number>>;
+}): NutritionWorseningEvaluation {
+  const now = startOfUtcDay(input.now ?? new Date());
+  const recentStart = addUtcDays(now, -7);
+  const fourteenStart = addUtcDays(now, -14);
+  const endExclusive = addUtcDays(now, 1);
+  const trackedKeys = [
+    "caloriesKcal",
+    "proteinG",
+    "phosphorusMg",
+    "potassiumMg",
+    "sodiumMg",
+  ] as const;
+  const availableTargetKeys = trackedKeys.filter(
+    (key) => typeof input.targets[key] === "number",
+  );
+
+  if (availableTargetKeys.length < 4) {
+    return {
+      breachDaysFourteen: 0,
+      breachDaysRecent: 0,
+      triggered: false,
+      window: { endDate: isoDay(now), startDate: isoDay(recentStart) },
+    };
+  }
+
+  const entries = input.entries
+    .map((entry) => ({
+      eatenAt: entry.eatenAt instanceof Date ? entry.eatenAt : new Date(entry.eatenAt),
+      totals: entry.totals ?? {},
+    }))
+    .filter((entry) => !Number.isNaN(entry.eatenAt.getTime()));
+
+  const byDay = new Map<string, Partial<Record<(typeof trackedKeys)[number], number>>>();
+  for (const entry of entries) {
+    const token = isoDay(entry.eatenAt);
+    const current = byDay.get(token) ?? {};
+    for (const key of trackedKeys) {
+      const value = entry.totals[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        current[key] = (current[key] ?? 0) + value;
+      }
+    }
+    byDay.set(token, current);
+  }
+
+  const breachDays = Array.from(byDay.entries()).map(([token, totals]) => {
+    let breaches = 0;
+    for (const key of availableTargetKeys) {
+      const actual = totals[key];
+      const target = input.targets[key];
+      if (typeof actual === "number" && typeof target === "number" && actual > target) {
+        breaches += 1;
+      }
+    }
+    return { breaches, token };
+  });
+
+  const breachDaysRecent = breachDays.filter(({ breaches, token }) => {
+    const pointMs = new Date(`${token}T00:00:00.000Z`).getTime();
+    return pointMs >= recentStart.getTime() && pointMs < endExclusive.getTime() && breaches >= 4;
+  }).length;
+  const breachDaysFourteen = breachDays.filter(({ breaches, token }) => {
+    const pointMs = new Date(`${token}T00:00:00.000Z`).getTime();
+    return pointMs >= fourteenStart.getTime() && pointMs < endExclusive.getTime() && breaches >= 4;
+  }).length;
+
+  return {
+    breachDaysFourteen,
+    breachDaysRecent,
+    triggered: breachDaysRecent >= 6,
+    window: { endDate: isoDay(now), startDate: isoDay(recentStart) },
+  };
 }
 
 async function loadDailyStepsPoints(db: Db, patientId: ObjectId, now: Date) {
@@ -403,7 +578,8 @@ async function loadWeightPoints(db: Db, patientId: ObjectId, now: Date) {
 
 async function loadBloodPressurePoints(db: Db, patientId: ObjectId, now: Date) {
   const from = addUtcDays(startOfUtcDay(now), -41);
-  const includeProviderBloodPressure = shouldUseProviderBloodPressureForWorsening();
+  const includeProviderBloodPressure =
+    shouldUseProviderBloodPressureForWorsening();
   const measurements = await db
     .collection<MeasurementDoc>(COLLECTIONS.MeasurementsLedger)
     .find(
@@ -452,6 +628,56 @@ async function loadBloodPressurePoints(db: Db, patientId: ObjectId, now: Date) {
     .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt));
 }
 
+async function loadSymptomHistoryEntries(
+  db: Db,
+  patientId: ObjectId,
+  now: Date,
+) {
+  const from = addUtcDays(startOfUtcDay(now), -21);
+  const docs = await db
+    .collection<{
+      after?: SymptomHistoryEntryDoc;
+      patientId: ObjectId;
+    }>(COLLECTIONS.SymptomsLedger)
+    .find(
+      {
+        patientId,
+        "after.recordedAt": { $gte: from, $lt: addUtcDays(startOfUtcDay(now), 1) },
+      },
+      {
+        projection: {
+          "after.normalizedName": 1,
+          "after.recordedAt": 1,
+          "after.severity": 1,
+        },
+      },
+    )
+    .toArray();
+
+  return docs
+    .map((doc) => doc.after ?? null)
+    .filter((entry): entry is SymptomHistoryEntryDoc => Boolean(entry));
+}
+
+async function loadNutritionEntries(
+  db: Db,
+  patientId: ObjectId,
+  now: Date,
+) {
+  const from = addUtcDays(startOfUtcDay(now), -21);
+  return db
+    .collection<NutritionEntryDoc>(COLLECTIONS.NutritionLedger)
+    .find(
+      {
+        patientId,
+        eatenAt: { $gte: from, $lt: addUtcDays(startOfUtcDay(now), 1) },
+        status: { $ne: "deleted" },
+      } as Filter<NutritionEntryDoc>,
+      { projection: { eatenAt: 1, totals: 1 } },
+    )
+    .toArray();
+}
+
 function buildAlert(input: {
   id: string;
   body: string;
@@ -487,8 +713,16 @@ export async function getActivePatientWorseningTrendAlerts(
   const now = input.now ?? new Date();
   const alerts: PatientWorseningTrendAlert[] = [];
 
-  const [dailySteps, stepsTarget, weightPoints, bloodPressurePoints, systolicTarget] =
-    await Promise.all([
+  const [
+    dailySteps,
+    stepsTarget,
+    weightPoints,
+    bloodPressurePoints,
+    systolicTarget,
+    symptomHistoryEntries,
+    nutritionEntries,
+    nutritionTargets,
+  ] = await Promise.all([
     loadDailyStepsPoints(db, input.patientId, now),
     resolveTargetMetricValue(db, input.patientId, ["steps_per_day"]),
     loadWeightPoints(db, input.patientId, now),
@@ -498,6 +732,9 @@ export async function getActivePatientWorseningTrendAlerts(
       "systolicMmHg",
       "systolic_mmhg",
     ]),
+    loadSymptomHistoryEntries(db, input.patientId, now),
+    loadNutritionEntries(db, input.patientId, now),
+    getMappedNutritionTargets(db, input.patientId),
   ]);
 
   const stepsEvaluation = evaluateStepsDeclineTrend({
@@ -604,6 +841,65 @@ export async function getActivePatientWorseningTrendAlerts(
         repeatUntil: null,
         screen: "/(tabs)/measurements",
         title: "Blood pressure up",
+      }),
+    );
+  }
+
+  const symptomsEvaluation = evaluateSymptomsWorsening({
+    entries: symptomHistoryEntries,
+    now,
+  });
+
+  if (symptomsEvaluation.triggered) {
+    const portalEscalationEligible =
+      (symptomsEvaluation.distinctSymptomDaysRecent >= 4 &&
+        symptomsEvaluation.distinctSymptomDaysPrevious >= 4) ||
+      symptomsEvaluation.severeRecentCount >= 3;
+    alerts.push(
+      buildAlert({
+        id: `symptoms_worsening:${symptomsEvaluation.window.startDate}:${symptomsEvaluation.window.endDate}:${symptomsEvaluation.repeatedSymptomName ?? "mixed"}`,
+        body: "You have logged more symptoms this week. Review them and tell us whether they are improving, the same, or getting worse.",
+        detail:
+          symptomsEvaluation.repeatedSymptomName !== null
+            ? `Repeated symptom this week: ${symptomsEvaluation.repeatedSymptomName}. Logged on ${symptomsEvaluation.distinctSymptomDaysRecent} days in the last 7 days.`
+            : `Symptoms were logged on ${symptomsEvaluation.distinctSymptomDaysRecent} of the last 7 days.`,
+        detectedAt: new Date().toISOString(),
+        key: "symptoms_worsening",
+        level: portalEscalationEligible
+          ? "level_3_escalate"
+          : "level_2_check_in",
+        portalEscalationEligible,
+        repeatAtLocalTime: null,
+        repeatUntil: null,
+        screen: "/(tabs)/symptoms",
+        title: "More symptoms reported",
+      }),
+    );
+  }
+
+  const nutritionEvaluation = evaluateNutritionWorsening({
+    entries: nutritionEntries,
+    now,
+    targets: nutritionTargets,
+  });
+
+  if (nutritionEvaluation.triggered) {
+    const portalEscalationEligible = nutritionEvaluation.breachDaysFourteen >= 12;
+    alerts.push(
+      buildAlert({
+        id: `nutrition_worsening:${nutritionEvaluation.window.startDate}:${nutritionEvaluation.window.endDate}:${nutritionEvaluation.breachDaysRecent}`,
+        body: "Your meal pattern has been over target on most logged days this week. Review meals and your care-plan tasks.",
+        detail: `Nutrition targets were exceeded on 4 of 5 tracked nutrients across ${nutritionEvaluation.breachDaysRecent} of the last 7 logged days.`,
+        detectedAt: new Date().toISOString(),
+        key: "nutrition_worsening",
+        level: portalEscalationEligible
+          ? "level_3_escalate"
+          : "level_1_nudge",
+        portalEscalationEligible,
+        repeatAtLocalTime: null,
+        repeatUntil: null,
+        screen: "/(tabs)/nutrition",
+        title: "Nutrition worsening",
       }),
     );
   }
