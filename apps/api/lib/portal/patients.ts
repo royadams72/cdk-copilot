@@ -8,6 +8,7 @@ import {
   type PortalPatientFilter,
   type PortalPatientListItem,
   type PortalPatientStat,
+  type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
 
 type PortalPatientSummary = {
@@ -147,6 +148,92 @@ function normalizeName(pii: PortalPatientPii) {
   return fullName || "Patient record";
 }
 
+function flagIncludes(flag: string, terms: string[]) {
+  const normalized = flag.toLowerCase();
+  return terms.some((term) => normalized.includes(term));
+}
+
+function buildPortalPatientWorseningItems(raw: {
+  flags?: string[];
+  risk?: PortalPatientListItem["risk"];
+}): PortalPatientWorseningItem[] {
+  const flags = raw.flags ?? [];
+  const items: PortalPatientWorseningItem[] = [];
+
+  const definitions: Array<{
+    detail: string;
+    href: string;
+    kind: Exclude<PortalPatientWorseningItem["kind"], "general">;
+    label: string;
+    terms: string[];
+  }> = [
+    {
+      detail: "Recent blood pressure readings are above the patient's recent baseline.",
+      href: "/health?metric=blood_pressure",
+      kind: "bloodPressure",
+      label: "Blood pressure up",
+      terms: ["blood pressure", "blood-pressure", "blood_pressure", "bp", "hypertension"],
+    },
+    {
+      detail: "Weight has increased over the current review window.",
+      href: "/health?metric=weight",
+      kind: "weightIncrease",
+      label: "Weight increase",
+      terms: ["weight increase", "weight-increase", "weight_increase", "weight gain", "weight-gain", "weight_gain", "weight up"],
+    },
+    {
+      detail: "Weight has decreased over the current review window.",
+      href: "/health?metric=weight",
+      kind: "weightDecrease",
+      label: "Weight decrease",
+      terms: ["weight decrease", "weight-decrease", "weight_decrease", "weight loss", "weight-loss", "weight_loss", "weight down"],
+    },
+    {
+      detail: "Symptom reporting has increased compared with the prior review window.",
+      href: "/health?metric=symptoms",
+      kind: "symptoms",
+      label: "More symptoms reported",
+      terms: ["symptom", "symptoms"],
+    },
+    {
+      detail: "Activity levels have fallen compared with the prior review window.",
+      href: "/health?metric=symptoms",
+      kind: "activity",
+      label: "Activity down",
+      terms: ["activity", "inactive", "low activity", "low-activity", "activity-down"],
+    },
+    {
+      detail: "Nutrition logging suggests more target breaches this month.",
+      href: "/nutrition",
+      kind: "nutrition",
+      label: "Over nutrition targets",
+      terms: ["nutrition", "meal target", "meal-target", "phosphorus", "sodium", "potassium", "protein target", "target breach", "target-breach"],
+    },
+  ];
+
+  for (const definition of definitions) {
+    if (flags.some((flag) => flagIncludes(flag, definition.terms))) {
+      items.push({
+        detail: definition.detail,
+        href: definition.href,
+        kind: definition.kind,
+        label: definition.label,
+      });
+    }
+  }
+
+  if (!items.length && raw.risk === "red") {
+    items.push({
+      detail: "The patient's overall risk status has escalated and needs review.",
+      href: "/health?metric=blood_pressure",
+      kind: "general",
+      label: "Clinical risk escalated",
+    });
+  }
+
+  return items;
+}
+
 export function mapPortalPatientListItem(raw: {
   _id: ObjectId;
   assignments?: PortalPatientAssignment[];
@@ -170,6 +257,10 @@ export function mapPortalPatientListItem(raw: {
     name: normalizeName(raw.pii ?? {}),
     risk,
     stage: raw.stage ?? null,
+    worseningItems: buildPortalPatientWorseningItems({
+      flags: raw.flags ?? [],
+      risk,
+    }),
   };
 }
 

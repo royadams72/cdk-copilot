@@ -3,6 +3,7 @@ const mockReadNativeHealthKitHeartRateEntriesForDate = jest.fn();
 const mockReadNativeHealthKitBloodPressureEntriesForDate = jest.fn();
 const mockReadNativeHealthKitSleepEntriesForDate = jest.fn();
 const mockReadNativeHealthKitExerciseEntriesForDate = jest.fn();
+const mockSyncWorseningTrendNotifications = jest.fn(async () => true);
 const mockCreateMeasurementDirect = jest.fn();
 const mockMeasurementsBatchUpsert = jest.fn();
 const mockInvalidateMeasurementCaches = jest.fn();
@@ -28,6 +29,10 @@ jest.mock("@/lib/healthKitNativeBridge", () => ({
 
 jest.mock("@/lib/healthConnectEventLogger", () => ({
   logHealthConnectEvent: jest.fn(),
+}));
+
+jest.mock("@/lib/pushNotifications", () => ({
+  syncWorseningTrendNotifications: mockSyncWorseningTrendNotifications,
 }));
 
 jest.mock("@/lib/healthConnectSyncPipeline", () => ({

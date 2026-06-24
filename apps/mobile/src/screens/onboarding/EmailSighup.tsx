@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert } from "react-native";
+import * as Linking from "expo-linking";
 import { API } from "@/constants/api";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { LabeledInput } from "./components/FormFields";
@@ -26,6 +27,11 @@ export default function EmailSignup() {
           "Signup failed",
           `Status ${res.status}\n${String(data?.error ?? data?.message ?? "Unknown error").slice(0, 500)}`,
         );
+        return;
+      }
+
+      if (typeof data?.devLink === "string" && data.devLink.length > 0) {
+        await Linking.openURL(data.devLink);
         return;
       }
 

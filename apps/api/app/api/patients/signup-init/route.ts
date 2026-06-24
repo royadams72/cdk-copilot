@@ -24,6 +24,51 @@ const REDIRECT_URI = process.env.REDIRECT_URI || null;
 const EMAIL_FROM = process.env.EMAIL_FROM || null;
 const APP_ORIGIN = process.env.APP_ORIGIN || null;
 
+function isLocalLikeOrigin(origin: string | null | undefined) {
+  if (!origin) return false;
+
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveRequestOrigin(req: NextRequest) {
+  const forwardedProto = req.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  const forwardedHost = req.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const host = req.headers.get("host")?.trim();
+  const candidateHost = forwardedHost || host || null;
+  const protocol =
+    forwardedProto ||
+    req.nextUrl.protocol.replace(/:$/, "") ||
+    "http";
+
+  if (
+    candidateHost &&
+    !/^0\.0\.0\.0(?::\d+)?$/i.test(candidateHost) &&
+    !/^localhost(?::\d+)?$/i.test(candidateHost)
+  ) {
+    return `${protocol}://${candidateHost}`;
+  }
+
+  return req.nextUrl.origin;
+}
+
 export async function POST(req: NextRequest) {
   try {
     // TODO create one off guard with server secret for first time signup
@@ -37,11 +82,21 @@ export async function POST(req: NextRequest) {
     const parsed = Body.safeParse(body);
     // console.log(body);
 
+    const requestOrigin = resolveRequestOrigin(req);
+    const isLocalDev =
+      isLocalLikeOrigin(requestOrigin) ||
+      isLocalLikeOrigin(APP_ORIGIN) ||
+      process.env.NODE_ENV !== "production";
+    const linkBaseOrigin =
+      isLocalDev && requestOrigin
+        ? requestOrigin
+        : APP_ORIGIN;
+
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
     }
 
-    if (!VERIFY_URL || !REDIRECT_URI || !EMAIL_FROM || !APP_ORIGIN) {
+    if (!VERIFY_URL || !REDIRECT_URI || !linkBaseOrigin) {
       return NextResponse.json(
         {
           error: "missing_params: env",
@@ -273,27 +328,48 @@ export async function POST(req: NextRequest) {
       };
       await auth_tokens.insertOne(auth_tokens_doc);
 
-      const signInUrl = new URL("/api/auth/open-app", APP_ORIGIN);
+      const signInUrl = new URL("/api/auth/open-app", linkBaseOrigin);
       signInUrl.searchParams.set("token", token);
-      if (resend) {
-        await resend.emails.send({
-          from: EMAIL_FROM,
-          html: `
-          <p>Use this secure link to sign in.</p>
-          <p><a href="${signInUrl.toString()}">Sign in</a></p>
-          <p>This link expires at ${expiresAt.toISOString()}.</p>
-        `,
-          subject: "Sign in to CKD Copilot",
-          to: email,
-        });
+      let devLink: string | undefined;
+
+      if (resend && EMAIL_FROM) {
+        try {
+          await resend.emails.send({
+            from: EMAIL_FROM,
+            html: `
+            <p>Use this secure link to sign in.</p>
+            <p><a href="${signInUrl.toString()}">Sign in</a></p>
+            <p>This link expires at ${expiresAt.toISOString()}.</p>
+          `,
+            subject: "Sign in to CKD Copilot",
+            to: email,
+          });
+
+          if (isLocalDev) {
+            devLink = signInUrl.toString();
+            console.log("[DEV] Patient sign-in email accepted by Resend", {
+              email,
+            });
+          }
+        } catch (error) {
+          if (!isLocalDev) {
+            throw error;
+          }
+          console.warn(
+            "patient signup-init: resend failed, falling back to dev sign-in link",
+            error,
+          );
+          devLink = signInUrl.toString();
+        }
       } else {
-        console.log(
-          "[DEV] Email disabled. Sign-in link:",
-          signInUrl.toString(),
-        );
+        devLink = signInUrl.toString();
       }
 
-      return NextResponse.json({ status: "ok" });
+      if (devLink) {
+        console.log("[DEV] Patient sign-in link for", email, "=", devLink);
+      }
+
+      return NextResponse.json({ devLink, status: "ok" });
     }
 
     // New user: issue verification token and continue provisioning via /api/auth/verify.
@@ -329,29 +405,49 @@ export async function POST(req: NextRequest) {
 
     await auth_tokens.insertOne(auth_tokens_doc);
 
-    const base = APP_ORIGIN;
-    const verifyUrl = new URL(VERIFY_URL, base);
+    const verifyUrl = new URL(VERIFY_URL, linkBaseOrigin);
     verifyUrl.searchParams.set("token", token);
 
-    if (resend) {
-      await resend.emails.send({
-        from: EMAIL_FROM,
-        html: `
-        <p>Confirm your email to continue.</p>
-        <p><a href="${verifyUrl.toString()}">Verify email</a></p>
-        <p>This link expires at ${expiresAt.toISOString()}.</p>
-      `,
-        subject: "Confirm your email",
-        to: email,
-      });
+    let devLink: string | undefined;
+
+    if (resend && EMAIL_FROM) {
+      try {
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          html: `
+          <p>Confirm your email to continue.</p>
+          <p><a href="${verifyUrl.toString()}">Verify email</a></p>
+          <p>This link expires at ${expiresAt.toISOString()}.</p>
+        `,
+          subject: "Confirm your email",
+          to: email,
+        });
+
+        if (isLocalDev) {
+          devLink = verifyUrl.toString();
+          console.log("[DEV] Patient verify email accepted by Resend", {
+            email,
+          });
+        }
+      } catch (error) {
+        if (!isLocalDev) {
+          throw error;
+        }
+        console.warn(
+          "patient signup-init: resend failed, falling back to dev verify link",
+          error,
+        );
+        devLink = verifyUrl.toString();
+      }
     } else {
-      console.log(
-        "[DEV] Email disabled. Verification link:",
-        verifyUrl.toString(),
-      );
+      devLink = verifyUrl.toString();
     }
 
-    return NextResponse.json({ status: "ok" });
+    if (devLink) {
+      console.log("[DEV] Patient verification link for", email, "=", devLink);
+    }
+
+    return NextResponse.json({ devLink, status: "ok" });
   } catch (e: any) {
     if (e?.status === 429) {
       return NextResponse.json(

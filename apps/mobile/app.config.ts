@@ -5,9 +5,17 @@ import path from "node:path";
 
 const projectRoot = __dirname;
 const repoRoot = path.resolve(projectRoot, "../..");
+const mobileEnvOverride = process.env.CKD_MOBILE_ENV?.trim() || null;
 
 dotenv.config({ path: path.join(repoRoot, ".env.local") });
 dotenv.config({ path: path.join(repoRoot, ".env") });
+
+if (mobileEnvOverride) {
+  dotenv.config({
+    override: true,
+    path: path.join(projectRoot, `.env.${mobileEnvOverride}`),
+  });
+}
 
 const googleServicesPath = path.join(
   projectRoot,
@@ -24,6 +32,7 @@ const easProjectId =
   rawEasProjectId && uuidPattern.test(rawEasProjectId)
     ? rawEasProjectId
     : null;
+const apiUrl = process.env.EXPO_PUBLIC_API_URL?.trim() || null;
 
 const config: ExpoConfig = {
   android: {
@@ -67,6 +76,7 @@ const config: ExpoConfig = {
     reactCompiler: true,
   },
   extra: {
+    apiUrl,
     eas: easProjectId ? { projectId: easProjectId } : undefined,
     router: { appDir: "app" },
   },

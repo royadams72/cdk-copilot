@@ -2,7 +2,7 @@
 
 ## Purpose
 
-CKD Copilot uses [Resend](https://resend.com/)to send email links for patient sign-in and email verification.
+CKD Copilot uses [Resend](https://resend.com/) to send email links for patient sign-in and email verification.
 
 The main implementation lives in [apps/api/app/api/patients/signup-init/route.ts](/Users/royadams/Sites/ckd-copilot/apps/api/app/api/patients/signup-init/route.ts).
 
@@ -25,21 +25,27 @@ The email links are backed by auth token documents and later consumed by:
 The signup-init route expects these env vars:
 
 - `RESEND_API_KEY`
-- `EMAIL_FROM`
 - `VERIFY_URL`
 - `REDIRECT_URI`
 - `APP_ORIGIN`
+- `EMAIL_FROM` for real email sending
 
-If `VERIFY_URL`, `REDIRECT_URI`, `EMAIL_FROM`, or `APP_ORIGIN` are missing, the route returns `missing_params: env`.
+If `VERIFY_URL`, `REDIRECT_URI`, or `APP_ORIGIN` are missing, the route returns `missing_params: env`.
 
 ## Resend Behavior
 
 Resend is initialized only when `RESEND_API_KEY` exists.
 
 - With `RESEND_API_KEY`: the route sends real emails via `resend.emails.send(...)`
-- Without `RESEND_API_KEY`: the route logs the generated sign-in or verification link to the server console instead
+- Without `RESEND_API_KEY`: the route falls back to a local dev link flow
 
-That makes local development possible without a live email provider.
+For local development:
+
+- the route returns `devLink` in the JSON response
+- [apps/mobile/src/screens/onboarding/EmailSighup.tsx](/Users/royadams/Sites/ckd-copilot/apps/mobile/src/screens/onboarding/EmailSighup.tsx) opens that link directly
+- if Resend is configured but fails locally, the route still falls back to `devLink`
+
+This makes local development possible without relying on inbox delivery.
 
 ## Email Content
 
@@ -51,9 +57,12 @@ Both links currently expire after 30 minutes.
 
 ## Mobile Notes
 
-After submitting an email, the app navigates to:
+After submitting an email:
 
-- [apps/mobile/src/screens/onboarding/CheckEmail.tsx](/Users/royadams/Sites/ckd-copilot/apps/mobile/src/screens/onboarding/CheckEmail.tsx)
+- deployed environments usually show the normal “check your email” path
+- local environments can return `devLink`, which the app opens immediately
+
+For the full local phone/release setup, see [docs/mobile-local-release-testing.md](/Users/royadams/Sites/ckd-copilot/docs/mobile-local-release-testing.md).
 
 If you are testing against a deployed API and not receiving mail:
 

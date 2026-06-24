@@ -35,6 +35,26 @@ export type PortalPatientListItem = {
   name: string;
   risk: "green" | "amber" | "red" | "unknown";
   stage: string | null;
+  worseningItems: PortalPatientWorseningItem[];
+};
+
+export const PORTAL_WORSENING_KINDS = [
+  "all",
+  "activity",
+  "bloodPressure",
+  "nutrition",
+  "symptoms",
+  "weightDecrease",
+  "weightIncrease",
+] as const;
+
+export type PortalWorseningKind = (typeof PORTAL_WORSENING_KINDS)[number];
+
+export type PortalPatientWorseningItem = {
+  detail: string;
+  href: string | null;
+  kind: Exclude<PortalWorseningKind, "all"> | "general";
+  label: string;
 };
 
 export type PortalPatientDetail = PortalPatientListItem & {
@@ -330,6 +350,14 @@ export function normalizePortalPatientFilter(
 ): PortalPatientFilter {
   return PORTAL_PATIENT_FILTERS.includes(value as PortalPatientFilter)
     ? (value as PortalPatientFilter)
+    : "all";
+}
+
+export function normalizePortalWorseningKind(
+  value: string | null | undefined,
+): PortalWorseningKind {
+  return PORTAL_WORSENING_KINDS.includes(value as PortalWorseningKind)
+    ? (value as PortalWorseningKind)
     : "all";
 }
 

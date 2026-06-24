@@ -257,8 +257,6 @@ async function saveMeasurement(
     return fallback;
   });
   candidates.push(...auditStripped);
-  console.dir(candidates, { depth: null });
-
   let result: any = null;
   let lastErr: any = null;
   for (const candidate of candidates) {

@@ -29,6 +29,7 @@ import {
   stepSyncEventSource,
   updateServerHealthConnectSyncState,
 } from "@/lib/healthConnectSyncCommon";
+import { syncWorseningTrendNotifications } from "@/lib/pushNotifications";
 import type { CreateMeasurementArgs } from "@/store/services/types";
 
 const HEALTHKIT_PROVIDER = {
@@ -366,6 +367,7 @@ export async function syncTodayHealthKitSteps(
 
     await createMeasurementDirect(payload);
     invalidateMeasurementCaches("steps");
+    await syncWorseningTrendNotifications();
     healthKitRuntimeState.lastSyncedStepSlotKey = slotKey;
     await updateServerHealthConnectSyncState(recordLatestSyncedAt([payload], "steps") ?? {});
   } finally {
