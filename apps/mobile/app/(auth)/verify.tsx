@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
-import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { API } from "@/constants/api";
 import { syncNativeAuthSessionMirror } from "@/lib/authSession";
+import { secureStorage } from "@/lib/secureStorage";
 import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 
@@ -26,9 +26,9 @@ export default function VerifyScreen() {
       if (res.ok) {
         const data = await res.json();
         const { jwt, refreshToken } = data;
-        await SecureStore.setItemAsync("ckd_jwt", jwt);
+        await secureStorage.setItem("ckd_jwt", jwt);
         if (refreshToken) {
-          await SecureStore.setItemAsync("ckd_refresh", refreshToken);
+          await secureStorage.setItem("ckd_refresh", refreshToken);
         }
         await syncNativeAuthSessionMirror(jwt, refreshToken ?? null);
         logPostAuthRouteDecision("verify", data);

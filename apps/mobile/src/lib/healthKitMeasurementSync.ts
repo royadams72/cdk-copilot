@@ -467,7 +467,7 @@ export async function syncRecentHealthKitMeasurements(
   options: { force?: boolean } = {},
 ) {
   const status = await getNativeHealthKitStatus();
-  if (!status?.available || status.readAuthorization.heart_rate !== "authorized") {
+  if (!status?.available) {
     return;
   }
 
@@ -486,17 +486,12 @@ export async function syncRecentHealthKitMeasurements(
       ? (["blood_pressure", "exercise", "heart_rate", "sleep", "steps"] as const)
       : await consumeNativeHealthKitPendingObserverTypes();
 
-    const authorizedMeasurementTypes = (
-      [
-        status.readAuthorization.blood_pressure_diastolic === "authorized" &&
-        status.readAuthorization.blood_pressure_systolic === "authorized"
-          ? "blood_pressure"
-          : null,
-        status.readAuthorization.exercise === "authorized" ? "exercise" : null,
-        status.readAuthorization.heart_rate === "authorized" ? "heart_rate" : null,
-        status.readAuthorization.sleep === "authorized" ? "sleep" : null,
-      ] as const
-    ).filter((value): value is "blood_pressure" | "exercise" | "heart_rate" | "sleep" => value !== null);
+    const authorizedMeasurementTypes = [
+      "blood_pressure",
+      "exercise",
+      "heart_rate",
+      "sleep",
+    ] as const;
 
     const requestedTypes =
       options.force || reason !== "background-task"

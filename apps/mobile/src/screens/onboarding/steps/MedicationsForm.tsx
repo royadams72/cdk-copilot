@@ -1,6 +1,5 @@
 import React from "react";
 import { Button, Text, View } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import {
   Controller,
   type Resolver,
@@ -14,7 +13,7 @@ import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
 import { useRouter } from "expo-router";
 import { PrimaryButton } from "../components/Buttons";
 import { DateField } from "../components/DateField";
-import { LabeledInput } from "../components/FormFields";
+import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
 
 const emptyMedication: TMedicationFormValues["medications"][number] = {
@@ -31,6 +30,13 @@ const emptyMedication: TMedicationFormValues["medications"][number] = {
   status: "active",
   strength: "",
 };
+
+const MEDICATION_STATUS_OPTIONS = [
+  { label: "Yes", value: "active" },
+  { label: "Paused", value: "paused" },
+  { label: "Stopped", value: "stopped" },
+  { label: "Completed", value: "completed" },
+] as const;
 
 export default function MedicationsForm({
   defaults,
@@ -229,15 +235,12 @@ export default function MedicationsForm({
               control={control}
               name={`${base}.status`}
               render={({ field: { value, onChange } }) => (
-                <View>
-                  <Text>Are you taking this now?</Text>
-                  <Picker selectedValue={value} onValueChange={onChange}>
-                    <Picker.Item label="Yes" value="active" />
-                    <Picker.Item label="Paused" value="paused" />
-                    <Picker.Item label="Stopped" value="stopped" />
-                    <Picker.Item label="Completed" value="completed" />
-                  </Picker>
-                </View>
+                <OptionSelectField
+                  label="Are you taking this now?"
+                  value={value}
+                  options={[...MEDICATION_STATUS_OPTIONS]}
+                  onChange={onChange}
+                />
               )}
             />
             <Controller

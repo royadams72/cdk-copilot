@@ -21,7 +21,12 @@ function formatStatus(value: string) {
 
 export default function CarePlanList() {
   const router = useRouter();
-  const { data, error, isFetching, isLoading, refetch } = useGetCarePlansQuery();
+  const { data, error, isFetching, isLoading, refetch } = useGetCarePlansQuery(
+    undefined,
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
   const errorMessage = toQueryErrorMessage(error, "We couldn't load your care plans.");

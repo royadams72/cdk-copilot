@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { Controller, type Path, type Resolver, useForm } from "react-hook-form";
-import { Picker } from "@react-native-picker/picker";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 
@@ -20,7 +19,11 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import { onboardingDrafts } from "@/lib/onboarding";
-import { PickerField, SelectionField } from "../components/FormFields";
+import {
+  OptionSelectField,
+  PickerField,
+  SelectionField,
+} from "../components/FormFields";
 import { PrimaryButton, SecondaryButton } from "../components/Buttons";
 import { DateField } from "../components/DateField";
 import { OnboardingFormScreen } from "../components/Onboarding";
@@ -407,108 +410,81 @@ export default function OnboardingPiiForm({
           control={control}
           name="sexAtBirth"
           render={({ field: { onChange, value } }) => (
-            <PickerField
+            <OptionSelectField
               label="Sex at birth"
+              placeholder="Select"
+              value={(value as SexAtBirth) || undefined}
+              options={SEX_AT_BIRTH_OPTIONS.filter((option) => option.value !== "")}
+              onChange={(nextValue) => {
+                const sexValue = nextValue as SexAtBirth;
+                onChange(sexValue);
+                if (genderIdentitySameAsBirth === "yes") {
+                  setValue("genderIdentity", sexValue as any, {
+                    shouldValidate: false,
+                  });
+                }
+                void persistIfValid("sexAtBirth");
+                void saveDraft();
+              }}
               error={errors.sexAtBirth?.message as string | undefined}
-            >
-              <Picker
-                selectedValue={value as SexAtBirth}
-                onValueChange={(nextValue) => {
-                  const sexValue = nextValue as SexAtBirth;
-                  onChange(sexValue);
-                  if (genderIdentitySameAsBirth === "yes") {
-                    setValue("genderIdentity", sexValue as any, {
-                      shouldValidate: false,
-                    });
-                  }
-                  void persistIfValid("sexAtBirth");
-                  void saveDraft();
-                }}
-              >
-                {SEX_AT_BIRTH_OPTIONS.map((option) => (
-                  <Picker.Item
-                    key={option.value}
-                    label={option.label}
-                    value={option.value}
-                  />
-                ))}
-              </Picker>
-            </PickerField>
+            />
           )}
         />
 
-        <PickerField label="Gender identity same as birth">
-          <Picker
-            selectedValue={genderIdentitySameAsBirth}
-            onValueChange={(nextValue) => {
-              const sameValue = nextValue as GenderIdentitySameAsBirth;
-              const currentSex = getValues("sexAtBirth") as SexAtBirth;
-              setGenderIdentitySameAsBirth(sameValue);
+        <OptionSelectField
+          label="Gender identity same as birth"
+          value={genderIdentitySameAsBirth}
+          options={GENDER_IDENTITY_SAME_AS_BIRTH_OPTIONS}
+          onChange={(nextValue) => {
+            const sameValue = nextValue as GenderIdentitySameAsBirth;
+            const currentSex = getValues("sexAtBirth") as SexAtBirth;
+            setGenderIdentitySameAsBirth(sameValue);
 
-              if (sameValue === "no") {
-                const currentIdentity = getValues("genderIdentity");
-                const derivedIdentity =
-                  currentIdentity &&
-                  currentIdentity !== currentSex &&
-                  currentIdentity !== "prefer_not_to_say" &&
-                  currentIdentity !== "unknown"
-                    ? currentIdentity
-                    : "woman";
+            if (sameValue === "no") {
+              const currentIdentity = getValues("genderIdentity");
+              const derivedIdentity =
+                currentIdentity &&
+                currentIdentity !== currentSex &&
+                currentIdentity !== "prefer_not_to_say" &&
+                currentIdentity !== "unknown"
+                  ? currentIdentity
+                  : "woman";
 
-                setValue("genderIdentity", derivedIdentity as any, {
-                  shouldValidate: false,
-                });
-              } else {
-                setValue(
-                  "genderIdentity",
-                  buildGenderIdentityValue(
-                    currentSex,
-                    sameValue,
-                    getValues("genderIdentity"),
-                  ) as any,
-                  { shouldValidate: false },
-                );
-              }
+              setValue("genderIdentity", derivedIdentity as any, {
+                shouldValidate: false,
+              });
+            } else {
+              setValue(
+                "genderIdentity",
+                buildGenderIdentityValue(
+                  currentSex,
+                  sameValue,
+                  getValues("genderIdentity"),
+                ) as any,
+                { shouldValidate: false },
+              );
+            }
 
-              void persistIfValid("genderIdentity");
-              void saveDraft();
-            }}
-          >
-            {GENDER_IDENTITY_SAME_AS_BIRTH_OPTIONS.map((option) => (
-              <Picker.Item
-                key={option.value}
-                label={option.label}
-                value={option.value}
-              />
-            ))}
-          </Picker>
-        </PickerField>
+            void persistIfValid("genderIdentity");
+            void saveDraft();
+          }}
+        />
 
         {showGenderIdentityPicker ? (
           <Controller
             control={control}
             name="genderIdentity"
             render={({ field: { onChange, value } }) => (
-              <PickerField
+              <OptionSelectField
                 label="Gender identity"
+                value={(value as string | null) ?? "woman"}
+                options={[...GENDER_IDENTITY_OPTIONS]}
+                onChange={(nextValue) => {
+                  onChange(nextValue);
+                  void persistIfValid("genderIdentity");
+                }}
                 error={errors.genderIdentity?.message as string | undefined}
-              >
-                <Picker
-                  selectedValue={(value as string | null) ?? "woman"}
-                  onValueChange={(nextValue) => {
-                    onChange(nextValue);
-                    void persistIfValid("genderIdentity");
-                  }}
-                >
-                  {GENDER_IDENTITY_OPTIONS.map((option) => (
-                    <Picker.Item
-                      key={option.value}
-                      label={option.label}
-                      value={option.value}
-                    />
-                  ))}
-                </Picker>
-              </PickerField>
+              />
             )}
           />
         ) : null}
@@ -534,21 +510,19 @@ export default function OnboardingPiiForm({
           control={control}
           name="units"
           render={({ field: { onChange, value } }) => (
-            <PickerField
+            <OptionSelectField
               label="Units"
+              value={value as Units}
+              options={[
+                { label: "Metric", value: "metric" as Units },
+                { label: "Imperial", value: "imperial" as Units },
+              ]}
+              onChange={(nextValue) => {
+                onChange(nextValue as Units);
+                void persistIfValid("units");
+              }}
               error={errors.units?.message as string | undefined}
-            >
-              <Picker
-                selectedValue={value as Units}
-                onValueChange={(nextValue) => {
-                  onChange(nextValue as Units);
-                  void persistIfValid("units");
-                }}
-              >
-                <Picker.Item label="Metric" value="metric" />
-                <Picker.Item label="Imperial" value="imperial" />
-              </Picker>
-            </PickerField>
+            />
           )}
         />
 
