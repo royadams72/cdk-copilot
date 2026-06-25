@@ -116,6 +116,15 @@ function nextResolvedAt(status: TSymptomStatus, resolvedAt: Date | null) {
   return status === "resolved" ? resolvedAt : null;
 }
 
+function coerceRecordedAt(params: {
+  recordedAt: Date;
+  startedAt?: Date | null;
+}) {
+  const { recordedAt, startedAt } = params;
+  if (!startedAt) return recordedAt;
+  return recordedAt.getTime() < startedAt.getTime() ? startedAt : recordedAt;
+}
+
 function toEntryDoc(input: {
   actor: TSymptomActor;
   createdAt?: Date;
@@ -264,7 +273,11 @@ export async function createPatientSymptom(
   const actor = buildSymptomActor(caller);
   const now = new Date();
   const patientId = new ObjectId(caller.patientId);
-  const recordedAt = parsed.data.recordedAt ?? now;
+  const startedAt = parsed.data.startedAt ?? null;
+  const recordedAt = coerceRecordedAt({
+    recordedAt: parsed.data.recordedAt ?? now,
+    startedAt,
+  });
   const symptomId = makeSymptomId({
     normalizedName: normalizeSymptomName(parsed.data.name),
     patientId: caller.patientId,
@@ -280,7 +293,7 @@ export async function createPatientSymptom(
     resolvedAt: parsed.data.status === "resolved" ? recordedAt : null,
     severity: parsed.data.severity,
     source: actor.actorType,
-    startedAt: parsed.data.startedAt ?? null,
+    startedAt,
     status: parsed.data.status,
     symptomId,
     triggers: parsed.data.triggers,
@@ -343,7 +356,14 @@ export async function updatePatientSymptom(
   const actor = buildSymptomActor(caller);
   const nextStatus = parsed.data.status ?? existing.status;
   assertValidStatusTransition(existing.status, nextStatus);
-  const recordedAt = parsed.data.recordedAt ?? existing.recordedAt;
+  const startedAt =
+    parsed.data.startedAt !== undefined
+      ? parsed.data.startedAt
+      : (existing.startedAt ?? null);
+  const recordedAt = coerceRecordedAt({
+    recordedAt: parsed.data.recordedAt ?? existing.recordedAt,
+    startedAt,
+  });
   const updatedAt = new Date();
 
   const updated = toEntryDoc({
@@ -361,10 +381,7 @@ export async function updatePatientSymptom(
         : null,
     severity: parsed.data.severity ?? existing.severity,
     source: existing.source,
-    startedAt:
-      parsed.data.startedAt !== undefined
-        ? parsed.data.startedAt
-        : (existing.startedAt ?? null),
+    startedAt,
     status: nextStatus,
     symptomId,
     triggers:
