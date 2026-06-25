@@ -2,6 +2,7 @@ import type { Db, Filter, ObjectId } from "mongodb";
 
 import {
   type PatientWorseningTrendAlert,
+  type PatientWorseningTrendCheckIn,
   type TNutritionEntry,
   type TSymptomEntry,
   WORSENING_TREND_RULES,
@@ -102,6 +103,16 @@ type NutritionWorseningEvaluation = {
   window: { endDate: string; startDate: string };
 };
 
+type WorseningTrendCheckInDoc = Omit<
+  PatientWorseningTrendCheckIn,
+  "createdAt" | "patientId" | "submittedAt" | "updatedAt"
+> & {
+  createdAt: Date;
+  patientId: ObjectId;
+  submittedAt: Date;
+  updatedAt: Date;
+};
+
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -165,6 +176,46 @@ function round(value: number, decimals = 1) {
 
 function countDistinctUtcDays(dates: Date[]) {
   return new Set(dates.map((date) => isoDay(date))).size;
+}
+
+function buildCheckInScreenPath(
+  alertId: string,
+  key: PatientWorseningTrendAlert["key"],
+) {
+  return `/(dashboard)/worsening-check-in?alertId=${encodeURIComponent(alertId)}&key=${encodeURIComponent(key)}`;
+}
+
+function getConcerningWeightIncreaseResponses() {
+  return new Set([
+    "swelling",
+    "breathless",
+    "less_urine",
+    "other_worsening_symptoms",
+    "unknown",
+  ]);
+}
+
+function getExplainedWeightIncreaseResponses() {
+  return new Set([
+    "holiday",
+    "ate_more",
+    "more_salty_food",
+    "more_fluid",
+    "missed_tasks",
+    "trying_to_gain_weight",
+  ]);
+}
+
+function getConcerningWeightDecreaseResponses() {
+  return new Set([
+    "poor_appetite",
+    "nausea",
+    "vomiting",
+    "diarrhoea",
+    "unwell",
+    "other_symptoms",
+    "unknown",
+  ]);
 }
 
 function toStepsWindow(
@@ -678,9 +729,51 @@ async function loadNutritionEntries(
     .toArray();
 }
 
+async function loadLatestWorseningTrendCheckIns(
+  db: Db,
+  patientId: ObjectId,
+  alertIds: string[],
+) {
+  if (!alertIds.length) {
+    return new Map<string, WorseningTrendCheckInDoc>();
+  }
+
+  const docs = await db
+    .collection<WorseningTrendCheckInDoc>(COLLECTIONS.WorseningTrendCheckIns)
+    .find(
+      {
+        alertId: { $in: alertIds },
+        patientId,
+      },
+      {
+        projection: {
+          alertId: 1,
+          key: 1,
+          promptQuestion: 1,
+          responseCode: 1,
+          responseLabel: 1,
+          submittedAt: 1,
+        },
+      },
+    )
+    .sort({ submittedAt: -1 })
+    .toArray();
+
+  const latestByAlertId = new Map<string, WorseningTrendCheckInDoc>();
+  for (const doc of docs) {
+    if (!latestByAlertId.has(doc.alertId)) {
+      latestByAlertId.set(doc.alertId, doc);
+    }
+  }
+
+  return latestByAlertId;
+}
+
 function buildAlert(input: {
   id: string;
   body: string;
+  checkInResponseCode?: string | null;
+  checkInSubmittedAt?: string | null;
   detail: string;
   detectedAt: string;
   key: PatientWorseningTrendAlert["key"];
@@ -694,6 +787,8 @@ function buildAlert(input: {
   return {
     id: input.id,
     body: input.body,
+    checkInResponseCode: input.checkInResponseCode ?? null,
+    checkInSubmittedAt: input.checkInSubmittedAt ?? null,
     detail: input.detail,
     detectedAt: input.detectedAt,
     key: input.key,
@@ -743,6 +838,30 @@ export async function getActivePatientWorseningTrendAlerts(
     targetValue: stepsTarget,
   });
 
+  const weightIncreaseEvaluation = evaluateWeightIncreaseTrend({
+    now,
+    points: weightPoints,
+  });
+  const weightIncreaseAlertId = weightIncreaseEvaluation.triggered
+    ? `weight_increase:${weightIncreaseEvaluation.window.startDate}:${weightIncreaseEvaluation.window.endDate}:${weightIncreaseEvaluation.currentWeightKg.toFixed(1)}`
+    : null;
+
+  const weightDecreaseEvaluation = evaluateWeightDecreaseTrend({
+    now,
+    points: weightPoints,
+  });
+  const weightDecreaseAlertId = weightDecreaseEvaluation.triggered
+    ? `weight_decrease:${weightDecreaseEvaluation.window.startDate}:${weightDecreaseEvaluation.window.endDate}:${weightDecreaseEvaluation.currentWeightKg.toFixed(1)}`
+    : null;
+
+  const latestCheckInsByAlertId = await loadLatestWorseningTrendCheckIns(
+    db,
+    input.patientId,
+    [weightIncreaseAlertId, weightDecreaseAlertId].filter(
+      (value): value is string => Boolean(value),
+    ),
+  );
+
   if (stepsEvaluation.triggered) {
     const rule = WORSENING_TREND_RULES.steps_decline;
     alerts.push(
@@ -764,53 +883,70 @@ export async function getActivePatientWorseningTrendAlerts(
     );
   }
 
-  const weightIncreaseEvaluation = evaluateWeightIncreaseTrend({
-    now,
-    points: weightPoints,
-  });
-
-  if (weightIncreaseEvaluation.triggered) {
-    const portalEscalationEligible = weightIncreaseEvaluation.changeKg >= 4;
+  if (weightIncreaseEvaluation.triggered && weightIncreaseAlertId) {
+    const checkIn = latestCheckInsByAlertId.get(weightIncreaseAlertId) ?? null;
+    const responseCode = checkIn?.responseCode ?? null;
+    const responseLabel = checkIn?.responseLabel ?? null;
+    const hasConcerningResponse =
+      responseCode !== null && getConcerningWeightIncreaseResponses().has(responseCode);
+    const hasExplainedResponse =
+      responseCode !== null && getExplainedWeightIncreaseResponses().has(responseCode);
+    const portalEscalationEligible =
+      weightIncreaseEvaluation.changeKg >= 4 || hasConcerningResponse;
     alerts.push(
       buildAlert({
-        id: `weight_increase:${weightIncreaseEvaluation.window.startDate}:${weightIncreaseEvaluation.window.endDate}:${weightIncreaseEvaluation.currentWeightKg.toFixed(1)}`,
-        body: "Your weight is up this week. Review meals, salt, fluid intake, and your care-plan tasks.",
-        detail: `Weight increased by ${weightIncreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightIncreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightIncreaseEvaluation.currentWeightKg.toFixed(1)} kg).`,
+        id: weightIncreaseAlertId,
+        body: hasExplainedResponse
+          ? "Thanks for checking in. Keep monitoring your weight, meals, salt intake, fluids, and care-plan tasks."
+          : "Your weight is up this week. Review meals, salt, fluid intake, and your care-plan tasks.",
+        checkInResponseCode: responseCode,
+        checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
+        detail: `${`Weight increased by ${weightIncreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightIncreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightIncreaseEvaluation.currentWeightKg.toFixed(1)} kg).`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
         detectedAt: new Date().toISOString(),
         key: "weight_increase",
         level: portalEscalationEligible
           ? "level_3_escalate"
-          : "level_2_check_in",
+          : hasExplainedResponse
+            ? "level_1_nudge"
+            : "level_2_check_in",
         portalEscalationEligible,
         repeatAtLocalTime: null,
         repeatUntil: null,
-        screen: "/(fitness)/fitness-details",
+        screen: buildCheckInScreenPath(weightIncreaseAlertId, "weight_increase"),
         title: "Weight up this week",
       }),
     );
   }
 
-  const weightDecreaseEvaluation = evaluateWeightDecreaseTrend({
-    now,
-    points: weightPoints,
-  });
-
-  if (weightDecreaseEvaluation.triggered) {
-    const portalEscalationEligible = weightDecreaseEvaluation.changeKg >= 4;
+  if (weightDecreaseEvaluation.triggered && weightDecreaseAlertId) {
+    const checkIn = latestCheckInsByAlertId.get(weightDecreaseAlertId) ?? null;
+    const responseCode = checkIn?.responseCode ?? null;
+    const responseLabel = checkIn?.responseLabel ?? null;
+    const hasConcerningResponse =
+      responseCode !== null && getConcerningWeightDecreaseResponses().has(responseCode);
+    const hasExplainedResponse = responseCode === "intentional_weight_loss";
+    const portalEscalationEligible =
+      weightDecreaseEvaluation.changeKg >= 4 || hasConcerningResponse;
     alerts.push(
       buildAlert({
-        id: `weight_decrease:${weightDecreaseEvaluation.window.startDate}:${weightDecreaseEvaluation.window.endDate}:${weightDecreaseEvaluation.currentWeightKg.toFixed(1)}`,
-        body: "Your weight is down this week. Review appetite, food intake, recent illness, and your care-plan tasks.",
-        detail: `Weight decreased by ${weightDecreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightDecreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightDecreaseEvaluation.currentWeightKg.toFixed(1)} kg).`,
+        id: weightDecreaseAlertId,
+        body: hasExplainedResponse
+          ? "Thanks for checking in. Keep monitoring appetite, food intake, recent illness, and your care-plan tasks."
+          : "Your weight is down this week. Review appetite, food intake, recent illness, and your care-plan tasks.",
+        checkInResponseCode: responseCode,
+        checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
+        detail: `${`Weight decreased by ${weightDecreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightDecreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightDecreaseEvaluation.currentWeightKg.toFixed(1)} kg).`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
         detectedAt: new Date().toISOString(),
         key: "weight_decrease",
         level: portalEscalationEligible
           ? "level_3_escalate"
-          : "level_2_check_in",
+          : hasExplainedResponse
+            ? "level_1_nudge"
+            : "level_2_check_in",
         portalEscalationEligible,
         repeatAtLocalTime: null,
         repeatUntil: null,
-        screen: "/(fitness)/fitness-details",
+        screen: buildCheckInScreenPath(weightDecreaseAlertId, "weight_decrease"),
         title: "Weight down this week",
       }),
     );

@@ -1,4 +1,8 @@
-import type { PatientWorseningTrendAlertsResponse } from "@ckd/core";
+import type {
+  PatientWorseningTrendAlertsResponse,
+  PatientWorseningTrendCheckIn,
+  PatientWorseningTrendCheckInRequest,
+} from "@ckd/core";
 
 import { appApi } from "./appApi";
 
@@ -13,8 +17,22 @@ export const worseningTrendApi = appApi.injectEndpoints({
       transformResponse: (response: PatientWorseningTrendAlertsResponse) =>
         response?.items ?? [],
     }),
+    submitWorseningTrendCheckIn: builder.mutation<
+      PatientWorseningTrendCheckIn,
+      PatientWorseningTrendCheckInRequest
+    >({
+      invalidatesTags: [{ id: "active", type: "Engagement" as const }],
+      query: (body) => ({
+        body,
+        method: "POST",
+        url: "/api/worsening-trends/check-in",
+      }),
+    }),
   }),
   overrideExisting: __DEV__,
 });
 
-export const { useGetActiveWorseningTrendsQuery } = worseningTrendApi;
+export const {
+  useGetActiveWorseningTrendsQuery,
+  useSubmitWorseningTrendCheckInMutation,
+} = worseningTrendApi;
