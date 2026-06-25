@@ -136,6 +136,8 @@ export type WorseningTrendRule = z.infer<typeof WorseningTrendRule>;
 
 export const PatientWorseningTrendAlert = z.object({
   body: z.string(),
+  checkInResponseCode: z.string().nullable().default(null),
+  checkInSubmittedAt: z.string().nullable().default(null),
   detail: z.string().nullable().default(null),
   detectedAt: z.string(),
   id: z.string(),
@@ -150,6 +152,34 @@ export const PatientWorseningTrendAlert = z.object({
 
 export type PatientWorseningTrendAlert = z.infer<
   typeof PatientWorseningTrendAlert
+>;
+
+export const PatientWorseningTrendCheckInRequest = z.object({
+  alertId: z.string().min(1),
+  key: WorseningTrendKey,
+  responseCode: z.string().min(1),
+});
+
+export type PatientWorseningTrendCheckInRequest = z.infer<
+  typeof PatientWorseningTrendCheckInRequest
+>;
+
+export const PatientWorseningTrendCheckIn = z.object({
+  alertId: z.string().min(1),
+  createdAt: z.string(),
+  key: WorseningTrendKey,
+  orgId: z.string().min(1),
+  patientId: z.string().min(1),
+  principalId: z.string().min(1),
+  promptQuestion: z.string().min(1),
+  responseCode: z.string().min(1),
+  responseLabel: z.string().min(1),
+  submittedAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type PatientWorseningTrendCheckIn = z.infer<
+  typeof PatientWorseningTrendCheckIn
 >;
 
 export const PatientWorseningTrendAlertsResponse = z.object({

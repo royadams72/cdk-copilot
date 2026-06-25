@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
 import { Alert, Platform } from "react-native";
 import type {
   PatientWorseningTrendAlert,
@@ -431,7 +432,22 @@ async function presentImmediateWorseningNotification(
     key: item.key,
     title: item.title,
   });
-  Alert.alert(item.title, item.body);
+  const opensCheckIn =
+    typeof item.screen === "string" && item.screen.startsWith("/worsening-check-in");
+  Alert.alert(item.title, item.body, [
+    {
+      style: "cancel",
+      text: "Later",
+    },
+    {
+      onPress: () => {
+        if (typeof item.screen === "string" && item.screen.startsWith("/")) {
+          router.push(item.screen as never);
+        }
+      },
+      text: opensCheckIn ? "Check in now" : "Review now",
+    },
+  ]);
   const presentNotificationAsync = (
     Notifications as typeof Notifications & {
       presentNotificationAsync?: (content: Record<string, unknown>) => Promise<string>;
