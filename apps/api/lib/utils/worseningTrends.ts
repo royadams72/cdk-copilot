@@ -182,7 +182,14 @@ function buildCheckInScreenPath(
   alertId: string,
   key: PatientWorseningTrendAlert["key"],
 ) {
-  return `/(dashboard)/worsening-check-in?alertId=${encodeURIComponent(alertId)}&key=${encodeURIComponent(key)}`;
+  return `/worsening-check-in?alertId=${encodeURIComponent(alertId)}&key=${encodeURIComponent(key)}`;
+}
+
+function buildMetricTrendScreenPath(input: {
+  kind: "blood_pressure" | "weight";
+  label: string;
+}) {
+  return `/metric-trend?kind=${encodeURIComponent(input.kind)}&label=${encodeURIComponent(input.label)}`;
 }
 
 function getConcerningWeightIncreaseResponses() {
@@ -877,7 +884,7 @@ export async function getActivePatientWorseningTrendAlerts(
           stepsEvaluation.currentAverage < stepsEvaluation.targetValue,
         repeatAtLocalTime: rule.appNotification?.repeatAtLocalTime ?? null,
         repeatUntil: rule.appNotification?.repeatUntil ?? null,
-        screen: "/(fitness)/fitness-details",
+        screen: "/fitness-details",
         title: "Activity down",
       }),
     );
@@ -975,7 +982,10 @@ export async function getActivePatientWorseningTrendAlerts(
         portalEscalationEligible,
         repeatAtLocalTime: null,
         repeatUntil: null,
-        screen: "/(tabs)/measurements",
+        screen: buildMetricTrendScreenPath({
+          kind: "blood_pressure",
+          label: "Blood pressure",
+        }),
         title: "Blood pressure up",
       }),
     );
@@ -1007,7 +1017,7 @@ export async function getActivePatientWorseningTrendAlerts(
         portalEscalationEligible,
         repeatAtLocalTime: null,
         repeatUntil: null,
-        screen: "/(tabs)/symptoms",
+        screen: "/symptoms",
         title: "More symptoms reported",
       }),
     );
@@ -1034,7 +1044,7 @@ export async function getActivePatientWorseningTrendAlerts(
         portalEscalationEligible,
         repeatAtLocalTime: null,
         repeatUntil: null,
-        screen: "/(tabs)/nutrition",
+        screen: "/nutrition-details",
         title: "Nutrition worsening",
       }),
     );

@@ -432,6 +432,8 @@ async function presentImmediateWorseningNotification(
     key: item.key,
     title: item.title,
   });
+  const opensCheckIn =
+    typeof item.screen === "string" && item.screen.startsWith("/worsening-check-in");
   Alert.alert(item.title, item.body, [
     {
       style: "cancel",
@@ -443,7 +445,7 @@ async function presentImmediateWorseningNotification(
           router.push(item.screen as never);
         }
       },
-      text: item.level === "level_2_check_in" ? "Check in now" : "Review now",
+      text: opensCheckIn ? "Check in now" : "Review now",
     },
   ]);
   const presentNotificationAsync = (

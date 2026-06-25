@@ -27,15 +27,15 @@ function getReviewRoute(key: WorseningTrendKeyType) {
   switch (key) {
     case "weight_increase":
     case "weight_decrease":
-      return "/(fitness)/fitness-details";
+      return "/metric-trend?kind=weight&label=Weight";
     case "blood_pressure_up":
-      return "/(tabs)/measurements";
+      return "/metric-trend?kind=blood_pressure&label=Blood%20pressure";
     case "symptoms_worsening":
-      return "/(symptoms)/symptoms";
+      return "/symptoms";
     case "nutrition_worsening":
-      return "/(nutrition)/nutrition-details";
+      return "/nutrition-details";
     case "steps_decline":
-      return "/(fitness)/fitness-details";
+      return "/fitness-details";
   }
 }
 
