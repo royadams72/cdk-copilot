@@ -4,9 +4,7 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-import {
-  ConditionFormItem,
-} from "@ckd/core";
+import { ConditionFormItem } from "@ckd/core";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
 import {
@@ -31,8 +29,8 @@ import type {
   PortalPatientCarePlanDiagnosis,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
-  buildPortalPatientDetailPipeline,
   buildPortalPatientAccessMatch,
+  buildPortalPatientDetailPipeline,
   mapPortalPatientDetail,
   type RawPortalPatientDetailDoc,
 } from "@/apps/api/lib/portal/patients";
@@ -63,7 +61,9 @@ type StaffProfileDoc = {
 };
 
 const CREATE_PAYLOAD = z.object({
-  action: z.enum(["activate_and_notify", "save_as_draft"]).default("activate_and_notify"),
+  action: z
+    .enum(["activate_and_notify", "save_as_draft"])
+    .default("activate_and_notify"),
   diagnoses: z
     .array(
       z.object({
@@ -173,18 +173,18 @@ async function appendDiagnosesToHealthProfiles(params: {
   const previousDocs = await currentCollection.find({ patientId }).toArray();
   const existingEntries = previousDocs
     .flatMap((doc) => doc.conditions ?? [])
-    .reduce<
-      ConditionCurrentEntry[]
-    >((acc, entry) => {
-      if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
+    .reduce<ConditionCurrentEntry[]>((acc, entry) => {
+      if (acc.some((candidate) => candidate.entryId === entry.entryId))
+        return acc;
       acc.push(entry);
       return acc;
     }, []);
   const existingKeys = new Set(
-    existingEntries.map((entry) =>
-      `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeCarePlanLabel(
-        entry.value.condition.label,
-      )}`,
+    existingEntries.map(
+      (entry) =>
+        `${entry.value.condition.codeSystem}|${entry.value.condition.code}|${normalizeCarePlanLabel(
+          entry.value.condition.label,
+        )}`,
     ),
   );
   const newEntries = diagnoses
@@ -260,7 +260,11 @@ export async function GET(
   try {
     const caller = await requireUser(req);
     if (caller.role === "patient") {
-      return bad("Portal staff session required", { code: "portal_staff_required" }, 403);
+      return bad(
+        "Portal staff session required",
+        { code: "portal_staff_required" },
+        403,
+      );
     }
 
     const { patientId } = await context.params;
@@ -270,41 +274,47 @@ export async function GET(
 
     const db = await getDb();
     const patientObjectId = new ObjectId(patientId);
-    const [patient, clinical, healthProfilesCurrentDocs, staffProfiles] = await Promise.all([
-      loadScopedPatient(db, caller, patientObjectId),
-      db.collection<CarePlanClinicalDoc>(COLLECTIONS.UsersClinical).findOne(
-        { patientId: patientObjectId },
-        { projection: { careTeam: 1, diagnoses: 1 } },
-      ),
-      db.collection<HealthProfilesCurrentDoc>(COLLECTIONS.HealthProfilesCurrent)
-        .find(
-        { patientId: patientObjectId },
-        { projection: { conditions: 1 } },
-        )
-        .toArray(),
-      db
-        .collection<StaffProfileDoc>(COLLECTIONS.UsersStaff)
-        .find(
-          {
-            ...(caller.orgId ? { orgId: caller.orgId } : {}),
-            isActive: true,
-          },
-          {
-            projection: {
-              _id: 0,
-              displayName: 1,
-              firstName: 1,
-              jobTitle: 1,
-              lastName: 1,
-              orgId: 1,
-              principalId: 1,
-              title: 1,
+    const [patient, clinical, healthProfilesCurrentDocs, staffProfiles] =
+      await Promise.all([
+        loadScopedPatient(db, caller, patientObjectId),
+        db
+          .collection<CarePlanClinicalDoc>(COLLECTIONS.UsersClinical)
+          .findOne(
+            { patientId: patientObjectId },
+            { projection: { careTeam: 1, diagnoses: 1 } },
+          ),
+        db
+          .collection<HealthProfilesCurrentDoc>(
+            COLLECTIONS.HealthProfilesCurrent,
+          )
+          .find(
+            { patientId: patientObjectId },
+            { projection: { conditions: 1 } },
+          )
+          .toArray(),
+        db
+          .collection<StaffProfileDoc>(COLLECTIONS.UsersStaff)
+          .find(
+            {
+              ...(caller.orgId ? { orgId: caller.orgId } : {}),
+              isActive: true,
             },
-            sort: { lastName: 1, firstName: 1 },
-          },
-        )
-        .toArray(),
-    ]);
+            {
+              projection: {
+                _id: 0,
+                displayName: 1,
+                firstName: 1,
+                jobTitle: 1,
+                lastName: 1,
+                orgId: 1,
+                principalId: 1,
+                title: 1,
+              },
+              sort: { lastName: 1, firstName: 1 },
+            },
+          )
+          .toArray(),
+      ]);
 
     if (!patient) {
       return bad("Patient not found", { code: "patient_not_found" }, 404);
@@ -320,41 +330,38 @@ export async function GET(
           entryId: string;
           label: string;
         }>
-      >(
-        (acc, entry) => {
-          if (acc.some((candidate) => candidate.entryId === entry.entryId)) return acc;
-          acc.push({
-            code: entry.value.condition.code?.trim() || undefined,
-            codeSystem:
-              entry.value.condition.codeSystem === "SNOMED_CT" ||
-              entry.value.condition.codeSystem === "CUSTOM"
-                ? entry.value.condition.codeSystem
-                : undefined,
-            entryId: entry.entryId,
-            label: entry.value.condition.label.trim(),
-          });
+      >((acc, entry) => {
+        if (acc.some((candidate) => candidate.entryId === entry.entryId))
           return acc;
-        },
-        [],
-      );
-    const diagnosisOptions = dedupeByLabel(
-      [
-        ...healthProfileConditions.map((entry) => ({
-          code: entry.code || null,
-          codeSystem: entry.codeSystem ?? null,
-          id: entry.entryId,
-          label: entry.label,
+        acc.push({
+          code: entry.value.condition.code?.trim() || undefined,
+          codeSystem:
+            entry.value.condition.codeSystem === "SNOMED_CT" ||
+            entry.value.condition.codeSystem === "CUSTOM"
+              ? entry.value.condition.codeSystem
+              : undefined,
+
+          entryId: entry.entryId,
+          label: entry.value.condition.label.trim(),
+        });
+        return acc;
+      }, []);
+    const diagnosisOptions = dedupeByLabel([
+      ...healthProfileConditions.map((entry) => ({
+        id: entry.entryId,
+        code: entry.code || null,
+        codeSystem: entry.codeSystem ?? null,
+        label: entry.label,
+      })),
+      ...(clinical?.diagnoses ?? [])
+        .filter((item) => item?.label?.trim())
+        .map((item) => ({
+          id: item.code?.trim() || slugifyCarePlanLabel(item.label!.trim()),
+          code: item.code?.trim() || null,
+          codeSystem: item.code?.trim() ? ("SNOMED_CT" as const) : null,
+          label: item.label!.trim(),
         })),
-        ...(clinical?.diagnoses ?? [])
-          .filter((item) => item?.label?.trim())
-          .map((item) => ({
-            code: item.code?.trim() || null,
-            codeSystem: item.code?.trim() ? "SNOMED_CT" as const : null,
-            id: item.code?.trim() || slugifyCarePlanLabel(item.label!.trim()),
-            label: item.label!.trim(),
-          })),
-      ],
-    );
+    ]);
     const staffOwnerOptions = staffProfiles
       .map((staff) => {
         const label = formatStaffDisplayName(staff);
@@ -379,7 +386,9 @@ export async function GET(
       new Map(
         [
           { id: "patient", label: mappedPatient.name },
-          ...(staffOwnerOptions.length ? staffOwnerOptions : fallbackCareTeamOptions),
+          ...(staffOwnerOptions.length
+            ? staffOwnerOptions
+            : fallbackCareTeamOptions),
         ].map((item) => [item.label.toLowerCase(), item]),
       ).values(),
     );
@@ -411,7 +420,11 @@ export async function POST(
   try {
     const caller = await requireUser(req);
     if (caller.role === "patient") {
-      return bad("Portal staff session required", { code: "portal_staff_required" }, 403);
+      return bad(
+        "Portal staff session required",
+        { code: "portal_staff_required" },
+        403,
+      );
     }
 
     const { patientId } = await context.params;
@@ -421,7 +434,11 @@ export async function POST(
 
     const parsed = CREATE_PAYLOAD.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return bad("Invalid care plan payload", { issues: parsed.error.flatten() }, 400);
+      return bad(
+        "Invalid care plan payload",
+        { issues: parsed.error.flatten() },
+        400,
+      );
     }
 
     const db = await getDb();
@@ -443,37 +460,50 @@ export async function POST(
       target,
       title,
     } = parsed.data;
-    const normalizedDiagnoses: TConditionFormItem[] = diagnoses.map((diagnosis) => ({
-      code:
-        diagnosis.code?.trim() ||
-        slugifyCarePlanLabel(diagnosis.label) ||
-        stableCarePlanKey(["custom-condition", diagnosis.label.trim()]),
-      codeSystem: diagnosis.codeSystem ?? (diagnosis.code?.trim() ? "SNOMED_CT" : "CUSTOM"),
-      label: diagnosis.label.trim(),
-      status: "active",
-    }));
+    const normalizedDiagnoses: TConditionFormItem[] = diagnoses.map(
+      (diagnosis) => ({
+        code:
+          diagnosis.code?.trim() ||
+          slugifyCarePlanLabel(diagnosis.label) ||
+          stableCarePlanKey(["custom-condition", diagnosis.label.trim()]),
+        codeSystem:
+          diagnosis.codeSystem ??
+          (diagnosis.code?.trim() ? "SNOMED_CT" : "CUSTOM"),
+        label: diagnosis.label.trim(),
+        status: "active",
+      }),
+    );
     const shouldActivate = action === "activate_and_notify";
     const createdActivityAt = new Date(now);
-    const activatedActivityAt = shouldActivate ? new Date(now.getTime() + 1) : null;
+    const activatedActivityAt = shouldActivate
+      ? new Date(now.getTime() + 1)
+      : null;
     const doc: CarePlanMongoDoc = {
       _id: new ObjectId(),
       activity: [
         {
+          type: "created",
           at: createdActivityAt,
           by: caller.principalId,
-          key: makeCarePlanActivityKey("created", createdActivityAt, caller.principalId),
           ...(shouldActivate
-            ? { note: 'Created care plan and prepared it for patient notification.' }
+            ? {
+                note: "Created care plan and prepared it for patient notification.",
+              }
             : {
                 note:
                   buildCarePlanDiagnosisActivityNote(normalizedDiagnoses) ??
                   "Created care plan draft.",
               }),
-          type: "created",
+          key: makeCarePlanActivityKey(
+            "created",
+            createdActivityAt,
+            caller.principalId,
+          ),
         },
         ...(shouldActivate && activatedActivityAt
           ? [
               {
+                type: "activated" as const,
                 at: activatedActivityAt,
                 by: caller.principalId,
                 key: makeCarePlanActivityKey(
@@ -484,7 +514,6 @@ export async function POST(
                 note:
                   buildCarePlanDiagnosisActivityNote(normalizedDiagnoses) ??
                   "Activated care plan and notified the patient.",
-                type: "activated" as const,
               },
             ]
           : []),

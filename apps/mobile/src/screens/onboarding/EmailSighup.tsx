@@ -14,9 +14,10 @@ export default function EmailSignup() {
   async function submit() {
     try {
       setSubmitting(true);
+      const trimmedEmail = email.trim();
       const deviceId = await getOrCreateAuthDeviceId();
       const res = await fetch(`${API}/api/patients/signup-init`, {
-        body: JSON.stringify({ deviceId, email }),
+        body: JSON.stringify({ deviceId, trimmedEmail }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });

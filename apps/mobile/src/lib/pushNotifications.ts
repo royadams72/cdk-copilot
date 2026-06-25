@@ -259,6 +259,24 @@ function buildImmediateCarePlanNotificationTrigger() {
   } as const;
 }
 
+async function presentImmediateCarePlanNotification(content: Record<string, unknown>) {
+  const presentNotificationAsync = (
+    Notifications as typeof Notifications & {
+      presentNotificationAsync?: (content: Record<string, unknown>) => Promise<string>;
+    }
+  ).presentNotificationAsync;
+
+  if (typeof presentNotificationAsync === "function") {
+    await presentNotificationAsync(content);
+    return;
+  }
+
+  await Notifications.scheduleNotificationAsync({
+    content,
+    trigger: buildImmediateCarePlanNotificationTrigger(),
+  });
+}
+
 export async function scheduleCarePlanTaskCompletedNotification(args: {
   planId: string;
   planTitle?: string | null;
@@ -278,24 +296,21 @@ export async function scheduleCarePlanTaskCompletedNotification(args: {
       });
     }
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        body: args.taskLabel?.trim()
-          ? `Completed: ${args.taskLabel.trim()}`
-          : "You completed a care plan task.",
-        channelId: CARE_PLAN_REMINDER_CHANNEL_ID,
-        data: {
-          carePlanId: args.planId,
-          screen: `/(dashboard)/care-plan?id=${args.planId}`,
-          taskId: args.taskId,
-          type: CARE_PLAN_COMPLETED_TYPE,
-        },
-        sound: true,
-        title: args.planTitle?.trim()
-          ? `${args.planTitle.trim()} updated`
-          : "Care plan task completed",
+    await presentImmediateCarePlanNotification({
+      body: args.taskLabel?.trim()
+        ? `Completed: ${args.taskLabel.trim()}`
+        : "You completed a care plan task.",
+      channelId: CARE_PLAN_REMINDER_CHANNEL_ID,
+      data: {
+        carePlanId: args.planId,
+        screen: `/(dashboard)/care-plan?id=${args.planId}`,
+        taskId: args.taskId,
+        type: CARE_PLAN_COMPLETED_TYPE,
       },
-      trigger: buildImmediateCarePlanNotificationTrigger(),
+      sound: true,
+      title: args.planTitle?.trim()
+        ? `${args.planTitle.trim()} updated`
+        : "Care plan task completed",
     });
 
     return true;
@@ -315,14 +330,13 @@ async function scheduleImmediateCarePlanNotification(
   },
   taskCountForPlan: number,
 ) {
-  await Notifications.scheduleNotificationAsync({
-    content: buildCarePlanNotificationContent(
+  await presentImmediateCarePlanNotification(
+    buildCarePlanNotificationContent(
       item,
       CARE_PLAN_ALERT_TYPE,
       taskCountForPlan,
     ),
-    trigger: buildImmediateCarePlanNotificationTrigger(),
-  });
+  );
 }
 
 function getWorseningStateItemIds(raw: string | null) {
