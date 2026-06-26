@@ -2,13 +2,16 @@ import type { Db, Filter, ObjectId } from "mongodb";
 
 import {
   type PatientWorseningTrendAlert,
-  type PatientWorseningTrendCheckIn,
   type TNutritionEntry,
   type TSymptomEntry,
   WORSENING_TREND_RULES,
   type WorseningEscalationLevel,
 } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
+import type {
+  TWorseningTrendCheckInDoc,
+  TWorseningTrendStateDoc,
+} from "@ckd/core/server";
 import {
   findTargetsCurrentDoc,
   getMappedNutritionTargets,
@@ -83,13 +86,16 @@ type SymptomHistoryEntryDoc = Pick<
   patientId: ObjectId;
 };
 
-type NutritionEntryDoc = Pick<TNutritionEntry, "eatenAt" | "status" | "totals"> & {
+type NutritionEntryDoc = Pick<
+  TNutritionEntry,
+  "eatenAt" | "status" | "totals"
+> & {
   patientId: ObjectId;
 };
 
 type SymptomsWorseningEvaluation = {
-  distinctSymptomDaysRecent: number;
   distinctSymptomDaysPrevious: number;
+  distinctSymptomDaysRecent: number;
   repeatedSymptomName: string | null;
   severeRecentCount: number;
   triggered: boolean;
@@ -97,21 +103,16 @@ type SymptomsWorseningEvaluation = {
 };
 
 type NutritionWorseningEvaluation = {
-  breachDaysRecent: number;
   breachDaysFourteen: number;
+  breachDaysRecent: number;
   triggered: boolean;
   window: { endDate: string; startDate: string };
 };
 
-type WorseningTrendCheckInDoc = Omit<
-  PatientWorseningTrendCheckIn,
-  "createdAt" | "patientId" | "submittedAt" | "updatedAt"
-> & {
-  createdAt: Date;
-  patientId: ObjectId;
-  submittedAt: Date;
-  updatedAt: Date;
-};
+type RawWorseningTrendAlert = Omit<
+  PatientWorseningTrendAlert,
+  "firstDetectedAt" | "id" | "lastDetectedAt" | "viewedAt"
+>;
 
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -185,13 +186,6 @@ function buildCheckInScreenPath(
   return `/worsening-check-in?alertId=${encodeURIComponent(alertId)}&key=${encodeURIComponent(key)}`;
 }
 
-function buildMetricTrendScreenPath(input: {
-  kind: "blood_pressure" | "weight";
-  label: string;
-}) {
-  return `/metric-trend?kind=${encodeURIComponent(input.kind)}&label=${encodeURIComponent(input.label)}`;
-}
-
 function getConcerningWeightIncreaseResponses() {
   return new Set([
     "swelling",
@@ -223,6 +217,27 @@ function getConcerningWeightDecreaseResponses() {
     "other_symptoms",
     "unknown",
   ]);
+}
+
+function getConcerningBloodPressureResponses() {
+  return new Set(["headache", "swelling", "breathless", "unknown"]);
+}
+
+function getExplainedBloodPressureResponses() {
+  return new Set([
+    "more_salty_food",
+    "missed_medication",
+    "stress",
+    "poor_sleep",
+    "illness",
+  ]);
+}
+
+function buildWorseningEpisodeId(
+  key: PatientWorseningTrendAlert["key"],
+  now: Date,
+) {
+  return `${key}:${now.toISOString()}`;
 }
 
 function toStepsWindow(
@@ -423,7 +438,9 @@ export function evaluateWeightDecreaseTrend(input: {
 }
 
 export function evaluateSymptomsWorsening(input: {
-  entries: Array<Pick<SymptomHistoryEntryDoc, "normalizedName" | "recordedAt" | "severity">>;
+  entries: Array<
+    Pick<SymptomHistoryEntryDoc, "normalizedName" | "recordedAt" | "severity">
+  >;
   now?: Date;
 }): SymptomsWorseningEvaluation {
   const now = startOfUtcDay(input.now ?? new Date());
@@ -436,7 +453,9 @@ export function evaluateSymptomsWorsening(input: {
     .map((entry) => ({
       normalizedName: entry.normalizedName,
       recordedAt:
-        entry.recordedAt instanceof Date ? entry.recordedAt : new Date(entry.recordedAt),
+        entry.recordedAt instanceof Date
+          ? entry.recordedAt
+          : new Date(entry.recordedAt),
       severity: entry.severity,
     }))
     .filter((entry) => !Number.isNaN(entry.recordedAt.getTime()));
@@ -458,13 +477,18 @@ export function evaluateSymptomsWorsening(input: {
   const distinctSymptomDaysPrevious = countDistinctUtcDays(
     previousEntries.map((entry) => entry.recordedAt),
   );
-  const repeatedByName = recentEntries.reduce<Record<string, number>>((acc, entry) => {
-    acc[entry.normalizedName] = (acc[entry.normalizedName] ?? 0) + 1;
-    return acc;
-  }, {});
+  const repeatedByName = recentEntries.reduce<Record<string, number>>(
+    (acc, entry) => {
+      acc[entry.normalizedName] = (acc[entry.normalizedName] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
   const repeatedSymptomName =
     Object.entries(repeatedByName).find(([, count]) => count >= 3)?.[0] ?? null;
-  const severeRecentCount = recentEntries.filter((entry) => entry.severity >= 4).length;
+  const severeRecentCount = recentEntries.filter(
+    (entry) => entry.severity >= 4,
+  ).length;
 
   return {
     distinctSymptomDaysPrevious,
@@ -482,7 +506,12 @@ export function evaluateSymptomsWorsening(input: {
 export function evaluateNutritionWorsening(input: {
   entries: Array<Pick<NutritionEntryDoc, "eatenAt" | "totals">>;
   now?: Date;
-  targets: Partial<Record<"caloriesKcal" | "phosphorusMg" | "potassiumMg" | "proteinG" | "sodiumMg", number>>;
+  targets: Partial<
+    Record<
+      "caloriesKcal" | "phosphorusMg" | "potassiumMg" | "proteinG" | "sodiumMg",
+      number
+    >
+  >;
 }): NutritionWorseningEvaluation {
   const now = startOfUtcDay(input.now ?? new Date());
   const recentStart = addUtcDays(now, -7);
@@ -510,12 +539,16 @@ export function evaluateNutritionWorsening(input: {
 
   const entries = input.entries
     .map((entry) => ({
-      eatenAt: entry.eatenAt instanceof Date ? entry.eatenAt : new Date(entry.eatenAt),
+      eatenAt:
+        entry.eatenAt instanceof Date ? entry.eatenAt : new Date(entry.eatenAt),
       totals: entry.totals ?? {},
     }))
     .filter((entry) => !Number.isNaN(entry.eatenAt.getTime()));
 
-  const byDay = new Map<string, Partial<Record<(typeof trackedKeys)[number], number>>>();
+  const byDay = new Map<
+    string,
+    Partial<Record<(typeof trackedKeys)[number], number>>
+  >();
   for (const entry of entries) {
     const token = isoDay(entry.eatenAt);
     const current = byDay.get(token) ?? {};
@@ -533,7 +566,11 @@ export function evaluateNutritionWorsening(input: {
     for (const key of availableTargetKeys) {
       const actual = totals[key];
       const target = input.targets[key];
-      if (typeof actual === "number" && typeof target === "number" && actual > target) {
+      if (
+        typeof actual === "number" &&
+        typeof target === "number" &&
+        actual > target
+      ) {
         breaches += 1;
       }
     }
@@ -542,11 +579,19 @@ export function evaluateNutritionWorsening(input: {
 
   const breachDaysRecent = breachDays.filter(({ breaches, token }) => {
     const pointMs = new Date(`${token}T00:00:00.000Z`).getTime();
-    return pointMs >= recentStart.getTime() && pointMs < endExclusive.getTime() && breaches >= 4;
+    return (
+      pointMs >= recentStart.getTime() &&
+      pointMs < endExclusive.getTime() &&
+      breaches >= 4
+    );
   }).length;
   const breachDaysFourteen = breachDays.filter(({ breaches, token }) => {
     const pointMs = new Date(`${token}T00:00:00.000Z`).getTime();
-    return pointMs >= fourteenStart.getTime() && pointMs < endExclusive.getTime() && breaches >= 4;
+    return (
+      pointMs >= fourteenStart.getTime() &&
+      pointMs < endExclusive.getTime() &&
+      breaches >= 4
+    );
   }).length;
 
   return {
@@ -699,8 +744,11 @@ async function loadSymptomHistoryEntries(
     }>(COLLECTIONS.SymptomsLedger)
     .find(
       {
+        "after.recordedAt": {
+          $gte: from,
+          $lt: addUtcDays(startOfUtcDay(now), 1),
+        },
         patientId,
-        "after.recordedAt": { $gte: from, $lt: addUtcDays(startOfUtcDay(now), 1) },
       },
       {
         projection: {
@@ -717,18 +765,14 @@ async function loadSymptomHistoryEntries(
     .filter((entry): entry is SymptomHistoryEntryDoc => Boolean(entry));
 }
 
-async function loadNutritionEntries(
-  db: Db,
-  patientId: ObjectId,
-  now: Date,
-) {
+async function loadNutritionEntries(db: Db, patientId: ObjectId, now: Date) {
   const from = addUtcDays(startOfUtcDay(now), -21);
   return db
     .collection<NutritionEntryDoc>(COLLECTIONS.NutritionLedger)
     .find(
       {
-        patientId,
         eatenAt: { $gte: from, $lt: addUtcDays(startOfUtcDay(now), 1) },
+        patientId,
         status: { $ne: "deleted" },
       } as Filter<NutritionEntryDoc>,
       { projection: { eatenAt: 1, totals: 1 } },
@@ -742,11 +786,11 @@ async function loadLatestWorseningTrendCheckIns(
   alertIds: string[],
 ) {
   if (!alertIds.length) {
-    return new Map<string, WorseningTrendCheckInDoc>();
+    return new Map<string, TWorseningTrendCheckInDoc>();
   }
 
   const docs = await db
-    .collection<WorseningTrendCheckInDoc>(COLLECTIONS.WorseningTrendCheckIns)
+    .collection<TWorseningTrendCheckInDoc>(COLLECTIONS.WorseningTrendCheckIns)
     .find(
       {
         alertId: { $in: alertIds },
@@ -766,7 +810,7 @@ async function loadLatestWorseningTrendCheckIns(
     .sort({ submittedAt: -1 })
     .toArray();
 
-  const latestByAlertId = new Map<string, WorseningTrendCheckInDoc>();
+  const latestByAlertId = new Map<string, TWorseningTrendCheckInDoc>();
   for (const doc of docs) {
     if (!latestByAlertId.has(doc.alertId)) {
       latestByAlertId.set(doc.alertId, doc);
@@ -776,35 +820,161 @@ async function loadLatestWorseningTrendCheckIns(
   return latestByAlertId;
 }
 
+async function loadActiveWorseningTrendStates(db: Db, patientId: ObjectId) {
+  const docs = await db
+    .collection<TWorseningTrendStateDoc>(COLLECTIONS.WorseningTrendStates)
+    .find({
+      patientId,
+      status: "active",
+    })
+    .toArray();
+
+  return new Map(docs.map((doc) => [doc.key, doc] as const));
+}
+
+async function syncWorseningTrendStates(
+  db: Db,
+  patientId: ObjectId,
+  candidateAlerts: RawWorseningTrendAlert[],
+  activeStatesByKey: Map<
+    PatientWorseningTrendAlert["key"],
+    TWorseningTrendStateDoc
+  >,
+  now: Date,
+) {
+  const collection = db.collection<TWorseningTrendStateDoc>(
+    COLLECTIONS.WorseningTrendStates,
+  );
+  const nextStateByKey = new Map<
+    PatientWorseningTrendAlert["key"],
+    TWorseningTrendStateDoc
+  >();
+  const activeKeys = new Set(candidateAlerts.map((item) => item.key));
+
+  for (const alert of candidateAlerts) {
+    const existing = activeStatesByKey.get(alert.key);
+    const firstDetectedAt = existing?.firstDetectedAt ?? now;
+    const episodeId =
+      existing?.episodeId ?? buildWorseningEpisodeId(alert.key, now);
+    const viewedAt = existing?.viewedAt ?? null;
+
+    await collection.updateOne(
+      existing?._id
+        ? {
+            _id: existing._id,
+          }
+        : {
+            key: alert.key,
+            patientId,
+            status: "active",
+          },
+      {
+        $set: {
+          body: alert.body,
+          detail: alert.detail,
+          firstDetectedAt,
+          key: alert.key,
+          lastDetectedAt: now,
+          level: alert.level,
+          portalEscalationEligible: alert.portalEscalationEligible,
+          repeatAtLocalTime: alert.repeatAtLocalTime ?? null,
+          repeatUntil: alert.repeatUntil ?? null,
+          resolvedAt: null,
+          screen: alert.screen,
+          status: "active",
+          title: alert.title,
+          updatedAt: now,
+          viewedAt,
+        },
+        $setOnInsert: {
+          episodeId,
+          patientId,
+        },
+      },
+      { upsert: true },
+    );
+
+    nextStateByKey.set(alert.key, {
+      body: alert.body,
+      detail: alert.detail,
+      episodeId,
+      firstDetectedAt,
+      key: alert.key,
+      lastDetectedAt: now,
+      level: alert.level,
+      patientId,
+      portalEscalationEligible: alert.portalEscalationEligible,
+      repeatAtLocalTime: alert.repeatAtLocalTime ?? null,
+      repeatUntil: alert.repeatUntil ?? null,
+      resolvedAt: null,
+      screen: alert.screen,
+      status: "active",
+      title: alert.title,
+      updatedAt: now,
+      viewedAt,
+    });
+  }
+
+  for (const [key, state] of activeStatesByKey) {
+    if (activeKeys.has(key)) {
+      continue;
+    }
+
+    await collection.updateOne(
+      {
+        episodeId: state.episodeId,
+        patientId,
+      },
+      {
+        $set: {
+          resolvedAt: now,
+          status: "resolved",
+          updatedAt: now,
+        },
+      },
+    );
+  }
+
+  return nextStateByKey;
+}
+
 function buildAlert(input: {
   id: string;
   body: string;
   checkInResponseCode?: string | null;
+  checkInResponseLabel?: string | null;
   checkInSubmittedAt?: string | null;
-  detail: string;
+  detail: string | null;
   detectedAt: string;
+  firstDetectedAt: string;
   key: PatientWorseningTrendAlert["key"];
+  lastDetectedAt: string;
   level: WorseningEscalationLevel;
   portalEscalationEligible?: boolean;
   repeatAtLocalTime?: string | null;
   repeatUntil?: string | null;
   screen: string;
   title: string;
+  viewedAt?: string | null;
 }): PatientWorseningTrendAlert {
   return {
     id: input.id,
     body: input.body,
     checkInResponseCode: input.checkInResponseCode ?? null,
+    checkInResponseLabel: input.checkInResponseLabel ?? null,
     checkInSubmittedAt: input.checkInSubmittedAt ?? null,
-    detail: input.detail,
+    detail: input.detail ?? null,
     detectedAt: input.detectedAt,
+    firstDetectedAt: input.firstDetectedAt,
     key: input.key,
+    lastDetectedAt: input.lastDetectedAt,
     level: input.level,
     portalEscalationEligible: Boolean(input.portalEscalationEligible),
     repeatAtLocalTime: input.repeatAtLocalTime ?? null,
     repeatUntil: input.repeatUntil ?? null,
     screen: input.screen,
     title: input.title,
+    viewedAt: input.viewedAt ?? null,
   };
 }
 
@@ -813,9 +983,9 @@ export async function getActivePatientWorseningTrendAlerts(
   input: { now?: Date; patientId: ObjectId },
 ) {
   const now = input.now ?? new Date();
-  const alerts: PatientWorseningTrendAlert[] = [];
 
   const [
+    activeStatesByKey,
     dailySteps,
     stepsTarget,
     weightPoints,
@@ -825,6 +995,7 @@ export async function getActivePatientWorseningTrendAlerts(
     nutritionEntries,
     nutritionTargets,
   ] = await Promise.all([
+    loadActiveWorseningTrendStates(db, input.patientId),
     loadDailyStepsPoints(db, input.patientId, now),
     resolveTargetMetricValue(db, input.patientId, ["steps_per_day"]),
     loadWeightPoints(db, input.patientId, now),
@@ -844,13 +1015,28 @@ export async function getActivePatientWorseningTrendAlerts(
     now,
     targetValue: stepsTarget,
   });
+  const candidateEpisodeIdByKey = new Map<
+    PatientWorseningTrendAlert["key"],
+    string
+  >();
+
+  function getEpisodeIdForKey(key: PatientWorseningTrendAlert["key"]) {
+    const existing = candidateEpisodeIdByKey.get(key);
+    if (existing) {
+      return existing;
+    }
+    const fromState = activeStatesByKey.get(key)?.episodeId;
+    const episodeId = fromState ?? buildWorseningEpisodeId(key, now);
+    candidateEpisodeIdByKey.set(key, episodeId);
+    return episodeId;
+  }
 
   const weightIncreaseEvaluation = evaluateWeightIncreaseTrend({
     now,
     points: weightPoints,
   });
   const weightIncreaseAlertId = weightIncreaseEvaluation.triggered
-    ? `weight_increase:${weightIncreaseEvaluation.window.startDate}:${weightIncreaseEvaluation.window.endDate}:${weightIncreaseEvaluation.currentWeightKg.toFixed(1)}`
+    ? getEpisodeIdForKey("weight_increase")
     : null;
 
   const weightDecreaseEvaluation = evaluateWeightDecreaseTrend({
@@ -858,36 +1044,98 @@ export async function getActivePatientWorseningTrendAlerts(
     points: weightPoints,
   });
   const weightDecreaseAlertId = weightDecreaseEvaluation.triggered
-    ? `weight_decrease:${weightDecreaseEvaluation.window.startDate}:${weightDecreaseEvaluation.window.endDate}:${weightDecreaseEvaluation.currentWeightKg.toFixed(1)}`
+    ? getEpisodeIdForKey("weight_decrease")
+    : null;
+  const bloodPressureEvaluation = evaluateBloodPressureUpTrend({
+    now,
+    points: bloodPressurePoints,
+    systolicTargetValue: systolicTarget,
+  });
+
+  console.log(
+    "loodPressureEvaluation.triggered",
+    bloodPressureEvaluation.triggered,
+  );
+
+  const bloodPressureAlertId = bloodPressureEvaluation.triggered
+    ? getEpisodeIdForKey("blood_pressure_up")
+    : null;
+  const symptomsEvaluation = evaluateSymptomsWorsening({
+    entries: symptomHistoryEntries,
+    now,
+  });
+  const symptomsAlertId = symptomsEvaluation.triggered
+    ? getEpisodeIdForKey("symptoms_worsening")
+    : null;
+  const nutritionEvaluation = evaluateNutritionWorsening({
+    entries: nutritionEntries,
+    now,
+    targets: nutritionTargets,
+  });
+  const nutritionAlertId = nutritionEvaluation.triggered
+    ? getEpisodeIdForKey("nutrition_worsening")
+    : null;
+  const existingStepsState = activeStatesByKey.get("steps_decline");
+  const stepsStillBelowTarget =
+    stepsEvaluation.targetValue !== null &&
+    stepsEvaluation.currentAverage > 0 &&
+    stepsEvaluation.currentAverage < stepsEvaluation.targetValue;
+  const stepsStillBelowBaseline =
+    stepsEvaluation.currentAverage > 0 && stepsEvaluation.declinePct >= 30;
+  const stepsUnresolved =
+    stepsEvaluation.triggered ||
+    Boolean(
+      existingStepsState && (stepsStillBelowTarget || stepsStillBelowBaseline),
+    );
+  const stepsAlertId = stepsUnresolved
+    ? getEpisodeIdForKey("steps_decline")
     : null;
 
   const latestCheckInsByAlertId = await loadLatestWorseningTrendCheckIns(
     db,
     input.patientId,
-    [weightIncreaseAlertId, weightDecreaseAlertId].filter(
-      (value): value is string => Boolean(value),
-    ),
+    [
+      stepsAlertId,
+      weightIncreaseAlertId,
+      weightDecreaseAlertId,
+      bloodPressureAlertId,
+      symptomsAlertId,
+      nutritionAlertId,
+    ].filter((value): value is string => Boolean(value)),
   );
+  const candidateAlerts: RawWorseningTrendAlert[] = [];
 
-  if (stepsEvaluation.triggered) {
+  if (stepsUnresolved && stepsAlertId) {
     const rule = WORSENING_TREND_RULES.steps_decline;
-    alerts.push(
-      buildAlert({
-        id: `steps_decline:${stepsEvaluation.window.startDate}:${stepsEvaluation.window.endDate}`,
-        body: "Your recent activity is below your normal baseline. Aim to move towards your daily target today.",
-        detail: `7-day average ${Math.round(stepsEvaluation.currentAverage).toLocaleString()} steps vs previous 28-day average ${Math.round(stepsEvaluation.previousAverage).toLocaleString()} steps.`,
-        detectedAt: new Date().toISOString(),
-        key: "steps_decline",
-        level: "level_1_nudge",
-        portalEscalationEligible:
-          stepsEvaluation.targetValue !== null &&
-          stepsEvaluation.currentAverage < stepsEvaluation.targetValue,
-        repeatAtLocalTime: rule.appNotification?.repeatAtLocalTime ?? null,
-        repeatUntil: rule.appNotification?.repeatUntil ?? null,
-        screen: "/fitness-details",
-        title: "Activity down",
-      }),
-    );
+    const stepsFirstDetectedAt =
+      activeStatesByKey.get("steps_decline")?.firstDetectedAt ?? now;
+    const unresolvedDays =
+      Math.floor(
+        (startOfUtcDay(now).getTime() -
+          startOfUtcDay(stepsFirstDetectedAt).getTime()) /
+          (24 * 60 * 60 * 1000),
+      ) + 1;
+    candidateAlerts.push({
+      body: "Your recent activity is below your normal baseline. Aim to move towards your daily target today.",
+      checkInResponseCode: null,
+      checkInResponseLabel: null,
+      checkInSubmittedAt: null,
+      detail: `7-day average ${Math.round(stepsEvaluation.currentAverage).toLocaleString()} steps vs previous 28-day average ${Math.round(stepsEvaluation.previousAverage).toLocaleString()} steps.`,
+      detectedAt: new Date().toISOString(),
+      key: "steps_decline",
+      level:
+        unresolvedDays >= 14 &&
+        (stepsStillBelowTarget || stepsStillBelowBaseline)
+          ? "level_3_escalate"
+          : "level_1_nudge",
+      portalEscalationEligible:
+        unresolvedDays >= 14 &&
+        (stepsStillBelowTarget || stepsStillBelowBaseline),
+      repeatAtLocalTime: rule.appNotification?.repeatAtLocalTime ?? null,
+      repeatUntil: rule.appNotification?.repeatUntil ?? null,
+      screen: "/fitness-details",
+      title: "Activity down",
+    });
   }
 
   if (weightIncreaseEvaluation.triggered && weightIncreaseAlertId) {
@@ -895,34 +1143,34 @@ export async function getActivePatientWorseningTrendAlerts(
     const responseCode = checkIn?.responseCode ?? null;
     const responseLabel = checkIn?.responseLabel ?? null;
     const hasConcerningResponse =
-      responseCode !== null && getConcerningWeightIncreaseResponses().has(responseCode);
+      responseCode !== null &&
+      getConcerningWeightIncreaseResponses().has(responseCode);
     const hasExplainedResponse =
-      responseCode !== null && getExplainedWeightIncreaseResponses().has(responseCode);
+      responseCode !== null &&
+      getExplainedWeightIncreaseResponses().has(responseCode);
     const portalEscalationEligible =
       weightIncreaseEvaluation.changeKg >= 4 || hasConcerningResponse;
-    alerts.push(
-      buildAlert({
-        id: weightIncreaseAlertId,
-        body: hasExplainedResponse
-          ? "Thanks for checking in. Keep monitoring your weight, meals, salt intake, fluids, and care-plan tasks."
-          : "Your weight is up this week. Review meals, salt, fluid intake, and your care-plan tasks.",
-        checkInResponseCode: responseCode,
-        checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
-        detail: `${`Weight increased by ${weightIncreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightIncreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightIncreaseEvaluation.currentWeightKg.toFixed(1)} kg).`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
-        detectedAt: new Date().toISOString(),
-        key: "weight_increase",
-        level: portalEscalationEligible
-          ? "level_3_escalate"
-          : hasExplainedResponse
-            ? "level_1_nudge"
-            : "level_2_check_in",
-        portalEscalationEligible,
-        repeatAtLocalTime: null,
-        repeatUntil: null,
-        screen: buildCheckInScreenPath(weightIncreaseAlertId, "weight_increase"),
-        title: "Weight up this week",
-      }),
-    );
+    candidateAlerts.push({
+      body: hasExplainedResponse
+        ? "Thanks for checking in. Keep monitoring your weight, meals, salt intake, fluids, and care-plan tasks."
+        : "Your weight is up this week. Review meals, salt, fluid intake, and your care-plan tasks.",
+      checkInResponseCode: responseCode,
+      checkInResponseLabel: responseLabel,
+      checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
+      detail: `${`Weight increased by ${weightIncreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightIncreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightIncreaseEvaluation.currentWeightKg.toFixed(1)} kg).`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
+      detectedAt: new Date().toISOString(),
+      key: "weight_increase",
+      level: portalEscalationEligible
+        ? "level_3_escalate"
+        : hasExplainedResponse
+          ? "level_1_nudge"
+          : "level_2_check_in",
+      portalEscalationEligible,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      screen: buildCheckInScreenPath(weightIncreaseAlertId, "weight_increase"),
+      title: "Weight up this week",
+    });
   }
 
   if (weightDecreaseEvaluation.triggered && weightDecreaseAlertId) {
@@ -930,125 +1178,148 @@ export async function getActivePatientWorseningTrendAlerts(
     const responseCode = checkIn?.responseCode ?? null;
     const responseLabel = checkIn?.responseLabel ?? null;
     const hasConcerningResponse =
-      responseCode !== null && getConcerningWeightDecreaseResponses().has(responseCode);
+      responseCode !== null &&
+      getConcerningWeightDecreaseResponses().has(responseCode);
     const hasExplainedResponse = responseCode === "intentional_weight_loss";
     const portalEscalationEligible =
       weightDecreaseEvaluation.changeKg >= 4 || hasConcerningResponse;
-    alerts.push(
-      buildAlert({
-        id: weightDecreaseAlertId,
-        body: hasExplainedResponse
-          ? "Thanks for checking in. Keep monitoring appetite, food intake, recent illness, and your care-plan tasks."
-          : "Your weight is down this week. Review appetite, food intake, recent illness, and your care-plan tasks.",
-        checkInResponseCode: responseCode,
-        checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
-        detail: `${`Weight decreased by ${weightDecreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightDecreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightDecreaseEvaluation.currentWeightKg.toFixed(1)} kg).`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
-        detectedAt: new Date().toISOString(),
-        key: "weight_decrease",
-        level: portalEscalationEligible
-          ? "level_3_escalate"
-          : hasExplainedResponse
-            ? "level_1_nudge"
-            : "level_2_check_in",
-        portalEscalationEligible,
-        repeatAtLocalTime: null,
-        repeatUntil: null,
-        screen: buildCheckInScreenPath(weightDecreaseAlertId, "weight_decrease"),
-        title: "Weight down this week",
-      }),
-    );
-  }
-
-  const bloodPressureEvaluation = evaluateBloodPressureUpTrend({
-    now,
-    points: bloodPressurePoints,
-    systolicTargetValue: systolicTarget,
-  });
-
-  if (bloodPressureEvaluation.triggered) {
-    const portalEscalationEligible =
-      bloodPressureEvaluation.deltaSystolic >= 20 &&
-      (bloodPressureEvaluation.systolicAboveTargetBy ?? 0) > 0;
-    alerts.push(
-      buildAlert({
-        id: `blood_pressure_up:${bloodPressureEvaluation.window.startDate}:${bloodPressureEvaluation.window.endDate}:${bloodPressureEvaluation.currentAverageSystolic.toFixed(1)}`,
-        body: "Your blood pressure trend is higher than usual. Review salt intake, medication, symptoms, and today's plan.",
-        detail: `7-day average ${Math.round(bloodPressureEvaluation.currentAverageSystolic)}/${Math.round(bloodPressureEvaluation.currentAverageDiastolic)} mmHg vs previous 28-day average ${Math.round(bloodPressureEvaluation.previousAverageSystolic)}/${Math.round(bloodPressureEvaluation.previousAverageDiastolic)} mmHg.`,
-        detectedAt: new Date().toISOString(),
-        key: "blood_pressure_up",
-        level: portalEscalationEligible
-          ? "level_3_escalate"
+    candidateAlerts.push({
+      body: hasExplainedResponse
+        ? "Thanks for checking in. Keep monitoring appetite, food intake, recent illness, and your care-plan tasks."
+        : "Your weight is down this week. Review appetite, food intake, recent illness, and your care-plan tasks.",
+      checkInResponseCode: responseCode,
+      checkInResponseLabel: responseLabel,
+      checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
+      detail: `${`Weight decreased by ${weightDecreaseEvaluation.changeKg.toFixed(1)} kg over the last 7 days (${weightDecreaseEvaluation.previousWeightKg.toFixed(1)} kg to ${weightDecreaseEvaluation.currentWeightKg.toFixed(1)} kg).`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
+      detectedAt: new Date().toISOString(),
+      key: "weight_decrease",
+      level: portalEscalationEligible
+        ? "level_3_escalate"
+        : hasExplainedResponse
+          ? "level_1_nudge"
           : "level_2_check_in",
-        portalEscalationEligible,
-        repeatAtLocalTime: null,
-        repeatUntil: null,
-        screen: buildMetricTrendScreenPath({
-          kind: "blood_pressure",
-          label: "Blood pressure",
-        }),
-        title: "Blood pressure up",
-      }),
-    );
+      portalEscalationEligible,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      screen: buildCheckInScreenPath(weightDecreaseAlertId, "weight_decrease"),
+      title: "Weight down this week",
+    });
   }
 
-  const symptomsEvaluation = evaluateSymptomsWorsening({
-    entries: symptomHistoryEntries,
-    now,
-  });
-
-  if (symptomsEvaluation.triggered) {
+  if (bloodPressureEvaluation.triggered && bloodPressureAlertId) {
+    const checkIn = latestCheckInsByAlertId.get(bloodPressureAlertId) ?? null;
+    const responseCode = checkIn?.responseCode ?? null;
+    const responseLabel = checkIn?.responseLabel ?? null;
+    const hasConcerningResponse =
+      responseCode !== null &&
+      getConcerningBloodPressureResponses().has(responseCode);
+    const hasExplainedResponse =
+      responseCode !== null &&
+      getExplainedBloodPressureResponses().has(responseCode);
     const portalEscalationEligible =
+      hasConcerningResponse ||
+      (bloodPressureEvaluation.deltaSystolic >= 20 &&
+        (bloodPressureEvaluation.systolicAboveTargetBy ?? 0) > 0);
+    candidateAlerts.push({
+      body: "Your blood pressure trend is higher than usual. Review salt intake, medication, symptoms, and today's plan.",
+      checkInResponseCode: responseCode,
+      checkInResponseLabel: responseLabel,
+      checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
+      detail: `${`7-day average ${Math.round(bloodPressureEvaluation.currentAverageSystolic)}/${Math.round(bloodPressureEvaluation.currentAverageDiastolic)} mmHg vs previous 28-day average ${Math.round(bloodPressureEvaluation.previousAverageSystolic)}/${Math.round(bloodPressureEvaluation.previousAverageDiastolic)} mmHg.`}${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
+      detectedAt: new Date().toISOString(),
+      key: "blood_pressure_up",
+      level: portalEscalationEligible
+        ? "level_3_escalate"
+        : hasExplainedResponse
+          ? "level_1_nudge"
+          : "level_2_check_in",
+      portalEscalationEligible,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      screen: buildCheckInScreenPath(bloodPressureAlertId, "blood_pressure_up"),
+      title: "Blood pressure up",
+    });
+  }
+
+  if (symptomsEvaluation.triggered && symptomsAlertId) {
+    const checkIn = latestCheckInsByAlertId.get(symptomsAlertId) ?? null;
+    const responseCode = checkIn?.responseCode ?? null;
+    const responseLabel = checkIn?.responseLabel ?? null;
+    const persistedWorse = responseCode === "worse";
+    const persistedImproving = responseCode === "improving";
+    const portalEscalationEligible =
+      persistedWorse ||
       (symptomsEvaluation.distinctSymptomDaysRecent >= 4 &&
         symptomsEvaluation.distinctSymptomDaysPrevious >= 4) ||
       symptomsEvaluation.severeRecentCount >= 3;
-    alerts.push(
-      buildAlert({
-        id: `symptoms_worsening:${symptomsEvaluation.window.startDate}:${symptomsEvaluation.window.endDate}:${symptomsEvaluation.repeatedSymptomName ?? "mixed"}`,
-        body: "You have logged more symptoms this week. Review them and tell us whether they are improving, the same, or getting worse.",
-        detail:
-          symptomsEvaluation.repeatedSymptomName !== null
-            ? `Repeated symptom this week: ${symptomsEvaluation.repeatedSymptomName}. Logged on ${symptomsEvaluation.distinctSymptomDaysRecent} days in the last 7 days.`
-            : `Symptoms were logged on ${symptomsEvaluation.distinctSymptomDaysRecent} of the last 7 days.`,
-        detectedAt: new Date().toISOString(),
-        key: "symptoms_worsening",
-        level: portalEscalationEligible
-          ? "level_3_escalate"
+    candidateAlerts.push({
+      body: "You have logged more symptoms this week. Review them and tell us whether they are improving, the same, or getting worse.",
+      checkInResponseCode: responseCode,
+      checkInResponseLabel: responseLabel,
+      checkInSubmittedAt: checkIn?.submittedAt?.toISOString() ?? null,
+      detail: `${
+        symptomsEvaluation.repeatedSymptomName !== null
+          ? `Repeated symptom this week: ${symptomsEvaluation.repeatedSymptomName}. Logged on ${symptomsEvaluation.distinctSymptomDaysRecent} days in the last 7 days.`
+          : `Symptoms were logged on ${symptomsEvaluation.distinctSymptomDaysRecent} of the last 7 days.`
+      }${responseLabel ? ` You reported: ${responseLabel}.` : ""}`,
+      detectedAt: new Date().toISOString(),
+      key: "symptoms_worsening",
+      level: portalEscalationEligible
+        ? "level_3_escalate"
+        : persistedImproving
+          ? "level_1_nudge"
           : "level_2_check_in",
-        portalEscalationEligible,
-        repeatAtLocalTime: null,
-        repeatUntil: null,
-        screen: "/symptoms",
-        title: "More symptoms reported",
-      }),
-    );
+      portalEscalationEligible,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      screen: buildCheckInScreenPath(symptomsAlertId, "symptoms_worsening"),
+      title: "More symptoms reported",
+    });
   }
 
-  const nutritionEvaluation = evaluateNutritionWorsening({
-    entries: nutritionEntries,
+  if (nutritionEvaluation.triggered && nutritionAlertId) {
+    const portalEscalationEligible =
+      nutritionEvaluation.breachDaysFourteen >= 12;
+    candidateAlerts.push({
+      body: "Your meal pattern has been over target on most logged days this week. Review meals and your care-plan tasks.",
+      checkInResponseCode: null,
+      checkInResponseLabel: null,
+      checkInSubmittedAt: null,
+      detail: `Nutrition targets were exceeded on 4 of 5 tracked nutrients across ${nutritionEvaluation.breachDaysRecent} of the last 7 logged days.`,
+      detectedAt: new Date().toISOString(),
+      key: "nutrition_worsening",
+      level: portalEscalationEligible ? "level_3_escalate" : "level_1_nudge",
+      portalEscalationEligible,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      screen: "/nutrition-details",
+      title: "Nutrition worsening",
+    });
+  }
+
+  const nextStatesByKey = await syncWorseningTrendStates(
+    db,
+    input.patientId,
+    candidateAlerts,
+    activeStatesByKey,
     now,
-    targets: nutritionTargets,
-  });
+  );
 
-  if (nutritionEvaluation.triggered) {
-    const portalEscalationEligible = nutritionEvaluation.breachDaysFourteen >= 12;
-    alerts.push(
-      buildAlert({
-        id: `nutrition_worsening:${nutritionEvaluation.window.startDate}:${nutritionEvaluation.window.endDate}:${nutritionEvaluation.breachDaysRecent}`,
-        body: "Your meal pattern has been over target on most logged days this week. Review meals and your care-plan tasks.",
-        detail: `Nutrition targets were exceeded on 4 of 5 tracked nutrients across ${nutritionEvaluation.breachDaysRecent} of the last 7 logged days.`,
-        detectedAt: new Date().toISOString(),
-        key: "nutrition_worsening",
-        level: portalEscalationEligible
-          ? "level_3_escalate"
-          : "level_1_nudge",
-        portalEscalationEligible,
-        repeatAtLocalTime: null,
-        repeatUntil: null,
-        screen: "/nutrition-details",
-        title: "Nutrition worsening",
-      }),
-    );
-  }
+  return candidateAlerts
+    .map((alert) => {
+      const state = nextStatesByKey.get(alert.key);
+      if (!state) {
+        return null;
+      }
 
-  return alerts;
+      return buildAlert({
+        ...alert,
+        id: state.episodeId,
+        detectedAt: now.toISOString(),
+        firstDetectedAt: state.firstDetectedAt.toISOString(),
+        lastDetectedAt: state.lastDetectedAt.toISOString(),
+        viewedAt: state.viewedAt?.toISOString() ?? null,
+      });
+    })
+    .filter((alert): alert is PatientWorseningTrendAlert => Boolean(alert));
 }

@@ -8,7 +8,7 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   buildPortalPatientAccessMatch,
   buildPortalPatientStats,
-  mapPortalPatientListItem,
+  mapPortalPatientListItemsWithWorsening,
   matchesPortalPatientFilter,
   matchesPortalPatientQuery,
   sortPortalPatients,
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       .toArray();
 
     const allPatients = sortPortalPatients(
-      patients.map((patient) => mapPortalPatientListItem(patient)),
+      await mapPortalPatientListItemsWithWorsening(db, patients),
     );
     const stats = buildPortalPatientStats(allPatients);
     const filteredPatients = allPatients.filter(

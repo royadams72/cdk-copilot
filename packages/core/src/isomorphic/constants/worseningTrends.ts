@@ -137,17 +137,21 @@ export type WorseningTrendRule = z.infer<typeof WorseningTrendRule>;
 export const PatientWorseningTrendAlert = z.object({
   body: z.string(),
   checkInResponseCode: z.string().nullable().default(null),
+  checkInResponseLabel: z.string().nullable().default(null),
   checkInSubmittedAt: z.string().nullable().default(null),
   detail: z.string().nullable().default(null),
   detectedAt: z.string(),
+  firstDetectedAt: z.string(),
   id: z.string(),
   key: WorseningTrendKey,
+  lastDetectedAt: z.string(),
   level: WorseningEscalationLevel,
   portalEscalationEligible: z.boolean().default(false),
   repeatAtLocalTime: z.string().nullable().default(null),
   repeatUntil: z.string().nullable().default(null),
   screen: z.string(),
   title: z.string(),
+  viewedAt: z.string().nullable().default(null),
 });
 
 export type PatientWorseningTrendAlert = z.infer<
@@ -180,6 +184,15 @@ export const PatientWorseningTrendCheckIn = z.object({
 
 export type PatientWorseningTrendCheckIn = z.infer<
   typeof PatientWorseningTrendCheckIn
+>;
+
+export const PatientWorseningTrendViewedRequest = z.object({
+  alertId: z.string().min(1),
+  key: WorseningTrendKey,
+});
+
+export type PatientWorseningTrendViewedRequest = z.infer<
+  typeof PatientWorseningTrendViewedRequest
 >;
 
 export const PatientWorseningTrendAlertsResponse = z.object({

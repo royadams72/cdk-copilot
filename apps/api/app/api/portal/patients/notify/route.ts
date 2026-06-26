@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         sendPatientPushNotification(db, {
           body: "Your care team would like you to review your recent health information in CKD Copilot.",
           data: {
-            screen: "/(dashboard)/dashboard",
+            screen: "/dashboard",
             type: "clinician-notify",
           },
           patientId: patient._id.toHexString(),

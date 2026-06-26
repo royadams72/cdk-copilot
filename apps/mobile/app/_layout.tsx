@@ -9,6 +9,7 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 
 import {
+  markWorseningTrendViewed,
   syncCarePlanReminderNotifications,
   syncPushToken,
   syncSleepReminderNotification,
@@ -49,7 +50,17 @@ export default function RootLayout() {
     void ensureNativeHealthConnectBackgroundSyncScheduled();
 
     void Notifications.getLastNotificationResponseAsync().then((response) => {
+      const data = response?.notification.request.content.data;
       const screen = response?.notification.request.content.data?.screen;
+      if (
+        typeof data?.trendId === "string" &&
+        typeof data?.trendKey === "string"
+      ) {
+        void markWorseningTrendViewed({
+          alertId: data.trendId,
+          key: data.trendKey as never,
+        });
+      }
       if (typeof screen === "string" && screen.startsWith("/")) {
         router.push(screen as never);
       }
@@ -59,6 +70,15 @@ export default function RootLayout() {
       (response) => {
         const data = response.notification.request.content.data;
         const screen = data?.screen;
+        if (
+          typeof data?.trendId === "string" &&
+          typeof data?.trendKey === "string"
+        ) {
+          void markWorseningTrendViewed({
+            alertId: data.trendId,
+            key: data.trendKey as never,
+          });
+        }
         if (typeof screen === "string" && screen.startsWith("/")) {
           router.push(screen as never);
         }

@@ -26,6 +26,10 @@ export async function GET(req: NextRequest) {
 
     return ok({ items });
   } catch (error: any) {
+    console.error("[worsening-trends/active] failed", {
+      message: error?.message ?? "unknown error",
+      stack: error?.stack ?? null,
+    });
     return bad(
       error?.message || "Unable to load worsening trends",
       undefined,

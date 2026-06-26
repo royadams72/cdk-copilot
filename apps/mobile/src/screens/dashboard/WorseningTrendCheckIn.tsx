@@ -9,8 +9,8 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  WorseningTrendKey,
   WORSENING_TREND_RULES,
+  WorseningTrendKey,
   type WorseningTrendKey as WorseningTrendKeyType,
 } from "@ckd/core";
 
@@ -20,6 +20,7 @@ import { styles as dashboardStyles } from "@/screens/dashboard/styles";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useGetActiveWorseningTrendsQuery,
+  useMarkWorseningTrendViewedMutation,
   useSubmitWorseningTrendCheckInMutation,
 } from "@/store/services/worseningTrendApi";
 
@@ -45,7 +46,9 @@ export default function WorseningTrendCheckIn() {
   const alertId = typeof params.alertId === "string" ? params.alertId : "";
   const parsedKey = WorseningTrendKey.safeParse(params.key);
   const trendKey = parsedKey.success ? parsedKey.data : null;
-  const { data, error, isLoading, isFetching } = useGetActiveWorseningTrendsQuery();
+  const { data, error, isLoading, isFetching } =
+    useGetActiveWorseningTrendsQuery();
+  const [markViewed] = useMarkWorseningTrendViewedMutation();
   const [submitCheckIn, { isLoading: isSubmitting }] =
     useSubmitWorseningTrendCheckInMutation();
   const [selectedCode, setSelectedCode] = useState<string>("");
@@ -58,7 +61,9 @@ export default function WorseningTrendCheckIn() {
     [alertId, data, trendKey],
   );
 
-  const prompt = trendKey ? WORSENING_TREND_RULES[trendKey].checkInPrompt : null;
+  const prompt = trendKey
+    ? WORSENING_TREND_RULES[trendKey].checkInPrompt
+    : null;
   const reviewRoute = trendKey ? getReviewRoute(trendKey) : null;
   const errorMessage = toQueryErrorMessage(
     error,
@@ -68,6 +73,17 @@ export default function WorseningTrendCheckIn() {
   useEffect(() => {
     setSelectedCode(alert?.checkInResponseCode ?? "");
   }, [alert?.checkInResponseCode]);
+
+  useEffect(() => {
+    if (!alertId || !trendKey || !alert || alert.viewedAt) {
+      return;
+    }
+
+    void markViewed({
+      alertId,
+      key: trendKey,
+    });
+  }, [alert, alertId, markViewed, trendKey]);
 
   async function handleSubmit() {
     if (!alertId || !trendKey || !selectedCode) {
@@ -100,10 +116,7 @@ export default function WorseningTrendCheckIn() {
     } catch (submissionError) {
       Alert.alert(
         "Unable to save check-in",
-        toQueryErrorMessage(
-          submissionError,
-          "Please try again in a moment.",
-        ),
+        toQueryErrorMessage(submissionError, "Please try again in a moment."),
       );
     }
   }
@@ -160,7 +173,9 @@ export default function WorseningTrendCheckIn() {
 
           <Card>
             <ThemedText type="defaultSemiBold">Quick check-in</ThemedText>
-            <ThemedText style={screenStyles.question}>{prompt.question}</ThemedText>
+            <ThemedText style={screenStyles.question}>
+              {prompt.question}
+            </ThemedText>
             {alert.detail ? (
               <ThemedText style={dashboardStyles.helperText}>
                 {alert.detail}

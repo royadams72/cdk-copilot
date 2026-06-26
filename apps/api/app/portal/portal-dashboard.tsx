@@ -65,7 +65,9 @@ function matchesWorseningFilter(
 }
 
 function summarizeWorseningItems(items: PortalPatientWorseningItem[]) {
-  const labels = items.map((item) => item.label);
+  const labels = items.map((item) =>
+    item.daysActive > 1 ? `${item.label} (${item.daysActive}d)` : item.label,
+  );
   if (labels.length <= 2) {
     return labels.join(", ");
   }
@@ -475,6 +477,11 @@ function PortalDashboardContent() {
                       <span className={styles.worseningSignalSummary}>
                         {summarizeWorseningItems(patient.worseningItems)}
                       </span>
+                      <span className={styles.patientSubline}>
+                        {patient.worseningItems.some((item) => item.portalEscalationEligible)
+                          ? "Clinician review suggested"
+                          : "App-led follow-up active"}
+                      </span>
                     </div>
                     <input
                       aria-label={`Select ${patient.name}`}
@@ -551,6 +558,22 @@ function PortalDashboardContent() {
                 <div className={styles.worseningModalItem} key={`${detailsPatient.id}-${item.kind}-${item.label}`}>
                   <strong>{item.label}</strong>
                   <span>{item.detail}</span>
+                  <span>
+                    {item.daysActive > 1
+                      ? `Active for ${item.daysActive} days`
+                      : "Detected today"}
+                    {item.patientResponseLabel
+                      ? ` · Patient said: ${item.patientResponseLabel}`
+                      : ""}
+                    {item.portalEscalationEligible
+                      ? " · Needs clinician review"
+                      : " · App-managed"}
+                  </span>
+                  {item.href ? (
+                    <Link className={styles.tableLink} href={item.href}>
+                      Open related section
+                    </Link>
+                  ) : null}
                 </div>
               ))}
             </div>

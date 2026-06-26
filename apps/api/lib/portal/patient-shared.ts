@@ -51,10 +51,16 @@ export const PORTAL_WORSENING_KINDS = [
 export type PortalWorseningKind = (typeof PORTAL_WORSENING_KINDS)[number];
 
 export type PortalPatientWorseningItem = {
+  daysActive: number;
   detail: string;
+  firstDetectedAt: string | null;
   href: string | null;
   kind: Exclude<PortalWorseningKind, "all"> | "general";
   label: string;
+  level: "level_1_nudge" | "level_2_check_in" | "level_3_escalate" | "level_3_high_priority";
+  patientResponseLabel: string | null;
+  portalEscalationEligible: boolean;
+  viewedAt: string | null;
 };
 
 export type PortalPatientDetail = PortalPatientListItem & {
