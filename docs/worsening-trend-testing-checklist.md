@@ -76,7 +76,7 @@ Use this after rebuilding the mobile app and restarting the API.
 
 ## Nutrition worsening
 
-- Create logged nutrition days so 4 of 5 tracked nutrients are over target on at least 6 of the last 7 logged days.
+- Create logged nutrition days so 3 of 4 tracked nutrients are over target on at least 6 of the last 7 logged days.
 - Verify:
   - active alert appears
   - no check-in screen is shown

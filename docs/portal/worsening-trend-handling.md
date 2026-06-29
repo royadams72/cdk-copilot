@@ -135,7 +135,7 @@ High-priority context:
 
 App trigger:
 
-- 4 of 5 tracked nutrient targets are exceeded on `>= 6` of the last 7 logged
+- 3 of 4 tracked nutrient targets are exceeded on `>= 6` of the last 7 logged
   days
 
 App behaviour:
@@ -146,7 +146,7 @@ App behaviour:
 
 Portal escalation:
 
-- 4 of 5 tracked nutrient targets are exceeded on `>= 12` of the last 14
+- 3 of 4 tracked nutrient targets are exceeded on `>= 12` of the last 14
   logged days
 
 High-priority context:

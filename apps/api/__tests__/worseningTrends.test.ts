@@ -175,7 +175,6 @@ describe("worseningTrends", () => {
     const entries = Array.from({ length: 7 }, (_, index) => ({
       eatenAt: new Date(Date.UTC(2026, 5, 17 + index, 12)),
       totals: {
-        caloriesKcal: 2200,
         phosphorusMg: 1000,
         potassiumMg: 2500,
         proteinG: 1.1,
@@ -187,7 +186,6 @@ describe("worseningTrends", () => {
       entries,
       now: new Date("2026-06-23T12:00:00.000Z"),
       targets: {
-        caloriesKcal: 1800,
         phosphorusMg: 800,
         potassiumMg: 2000,
         proteinG: 0.8,

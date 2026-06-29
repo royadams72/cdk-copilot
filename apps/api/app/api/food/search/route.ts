@@ -12,6 +12,7 @@ import type {
 import { NextRequest } from "next/server";
 import { applyPhraseRules } from "./applyPhraseRules";
 import { BRAND_MARKERS } from "./brandMarkers";
+import { createEdamamProviderError, EdamamProviderError } from "../edamamError";
 import { buildIngredientCandidates } from "./ingredientCandidates";
 import { normaliseInput, rewriteForEdamam } from "./normaliseInput";
 
@@ -66,7 +67,16 @@ export async function GET(req: NextRequest) {
     // return NextResponse.json({ items: results, requestId });
   } catch (error: any) {
     const status = error?.status || 500;
-    return bad(error.message || "Server error", { requestId }, status);
+    const errors =
+      error instanceof EdamamProviderError
+        ? {
+            details: error.details,
+            provider: error.provider,
+            requestId,
+            upstreamStatus: error.upstreamStatus,
+          }
+        : { requestId };
+    return bad(error.message || "Server error", errors, status);
   }
 }
 
@@ -125,7 +135,7 @@ async function fetchEdamamHints(query: string): Promise<{
 
       const res = await fetch(`${foodURI}?${params.toString()}`);
       if (!res.ok) {
-        throw new Error(`Edamam error (${res.status})`);
+        throw await createEdamamProviderError(res, "food search");
       }
 
       const data = await res.json();

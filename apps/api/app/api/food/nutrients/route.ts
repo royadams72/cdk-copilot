@@ -14,6 +14,7 @@ import type {
   TIngredientCandidate,
   TNutrientEstimate,
 } from "@/packages/core/src/isomorphic/schemas/nutrient_estimation";
+import { createEdamamProviderError, EdamamProviderError } from "../edamamError";
 
 const foodAppKey = process.env.EDAMAM_API_KEY || "";
 const foodUri = process.env.EDAMAM_API_FOOD_URI || "";
@@ -114,10 +115,19 @@ export async function POST(req: NextRequest) {
     return ok(results);
   } catch (error) {
     console.log(error);
+    const status =
+      error instanceof EdamamProviderError ? error.status : 502;
     return bad(
       error instanceof Error ? error.message : "Failed to fetch nutrients",
-      { requestId },
-      502,
+      error instanceof EdamamProviderError
+        ? {
+            details: error.details,
+            provider: error.provider,
+            requestId,
+            upstreamStatus: error.upstreamStatus,
+          }
+        : { requestId },
+      status,
     );
   }
 }
@@ -222,7 +232,7 @@ async function fetchEdamamCandidates(
 
       const res = await fetch(`${foodUri}?${params.toString()}`);
       if (!res.ok) {
-        throw new Error(`Edamam error (${res.status})`);
+        throw await createEdamamProviderError(res, "food lookup");
       }
 
       const data = await res.json();

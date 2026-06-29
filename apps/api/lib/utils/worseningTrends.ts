@@ -507,10 +507,7 @@ export function evaluateNutritionWorsening(input: {
   entries: Array<Pick<NutritionEntryDoc, "eatenAt" | "totals">>;
   now?: Date;
   targets: Partial<
-    Record<
-      "caloriesKcal" | "phosphorusMg" | "potassiumMg" | "proteinG" | "sodiumMg",
-      number
-    >
+    Record<"phosphorusMg" | "potassiumMg" | "proteinG" | "sodiumMg", number>
   >;
 }): NutritionWorseningEvaluation {
   const now = startOfUtcDay(input.now ?? new Date());
@@ -518,12 +515,12 @@ export function evaluateNutritionWorsening(input: {
   const fourteenStart = addUtcDays(now, -14);
   const endExclusive = addUtcDays(now, 1);
   const trackedKeys = [
-    "caloriesKcal",
     "proteinG",
     "phosphorusMg",
     "potassiumMg",
     "sodiumMg",
   ] as const;
+  const breachThreshold = 3;
   const availableTargetKeys = trackedKeys.filter(
     (key) => typeof input.targets[key] === "number",
   );
@@ -582,7 +579,7 @@ export function evaluateNutritionWorsening(input: {
     return (
       pointMs >= recentStart.getTime() &&
       pointMs < endExclusive.getTime() &&
-      breaches >= 4
+      breaches >= breachThreshold
     );
   }).length;
   const breachDaysFourteen = breachDays.filter(({ breaches, token }) => {
@@ -590,7 +587,7 @@ export function evaluateNutritionWorsening(input: {
     return (
       pointMs >= fourteenStart.getTime() &&
       pointMs < endExclusive.getTime() &&
-      breaches >= 4
+      breaches >= breachThreshold
     );
   }).length;
 
@@ -1285,7 +1282,7 @@ export async function getActivePatientWorseningTrendAlerts(
       checkInResponseCode: null,
       checkInResponseLabel: null,
       checkInSubmittedAt: null,
-      detail: `Nutrition targets were exceeded on 4 of 5 tracked nutrients across ${nutritionEvaluation.breachDaysRecent} of the last 7 logged days.`,
+      detail: `Nutrition targets were exceeded on 3 of 4 tracked nutrients across ${nutritionEvaluation.breachDaysRecent} of the last 7 logged days.`,
       detectedAt: new Date().toISOString(),
       key: "nutrition_worsening",
       level: portalEscalationEligible ? "level_3_escalate" : "level_1_nudge",
