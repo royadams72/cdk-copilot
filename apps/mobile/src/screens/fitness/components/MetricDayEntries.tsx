@@ -15,6 +15,8 @@ import {
 
 type Props = {
   kind: MeasurementKind;
+  onDeleteEntry?: (entry: DayEntry) => void;
+  onEditEntry?: (entry: DayEntry) => void;
   selectedDateKey: string;
   selectedDayEntries: DayEntry[];
   weightUnit?: WeightUnit;
@@ -58,6 +60,8 @@ function exerciseEntryName(entry: DayEntry) {
 
 export function MetricDayEntries({
   kind,
+  onDeleteEntry,
+  onEditEntry,
   selectedDateKey,
   selectedDayEntries,
   weightUnit = "kg",
@@ -84,6 +88,27 @@ export function MetricDayEntries({
         ) : (
           selectedDayEntries.map((entry, idx) => {
             const time = formatTimeLabel(entry.measuredAt);
+            const showActions = entry.canEdit || entry.canDelete;
+            const actions = showActions ? (
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 6 }}>
+                {entry.canEdit && onEditEntry ? (
+                  <ThemedText
+                    onPress={() => onEditEntry(entry)}
+                    style={{ color: "#1D4ED8", fontSize: 12, fontWeight: "700" }}
+                  >
+                    Edit
+                  </ThemedText>
+                ) : null}
+                {entry.canDelete && onDeleteEntry ? (
+                  <ThemedText
+                    onPress={() => onDeleteEntry(entry)}
+                    style={{ color: "#B91C1C", fontSize: 12, fontWeight: "700" }}
+                  >
+                    Delete
+                  </ThemedText>
+                ) : null}
+              </View>
+            ) : null;
             if (kind === "blood_pressure") {
               const sys =
                 typeof entry.value === "number" ? Math.round(entry.value) : null;
@@ -91,7 +116,7 @@ export function MetricDayEntries({
                 typeof entry.value2 === "number" ? Math.round(entry.value2) : null;
               return (
                 <Card
-                  key={`${entry.measuredAt}-${idx}`}
+                  key={entry.entryId || `${entry.measuredAt}-${idx}`}
                   style={{ borderRadius: 10, gap: 3, padding: 10 }}
                 >
                   <ThemedText type="defaultSemiBold" style={{ fontSize: 18 }}>
@@ -100,6 +125,7 @@ export function MetricDayEntries({
                   <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
                     {time}
                   </ThemedText>
+                  {actions}
                 </Card>
               );
             }
@@ -109,7 +135,7 @@ export function MetricDayEntries({
                 typeof entry.value === "number" ? Math.round(entry.value) : null;
               return (
                 <Card
-                  key={`${entry.measuredAt}-${idx}`}
+                  key={entry.entryId || `${entry.measuredAt}-${idx}`}
                   style={{ borderRadius: 10, gap: 3, padding: 10 }}
                 >
                   <ThemedText type="defaultSemiBold" style={{ fontSize: 18 }}>
@@ -118,6 +144,7 @@ export function MetricDayEntries({
                   <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
                     {time}
                   </ThemedText>
+                  {actions}
                 </Card>
               );
             }
@@ -130,7 +157,7 @@ export function MetricDayEntries({
               const name = exerciseEntryName(entry);
               return (
                 <Card
-                  key={`${entry.measuredAt}-${idx}`}
+                  key={entry.entryId || `${entry.measuredAt}-${idx}`}
                   style={{ borderRadius: 10, gap: 3, padding: 10 }}
                 >
                   <ThemedText type="defaultSemiBold">{name}</ThemedText>
@@ -141,6 +168,7 @@ export function MetricDayEntries({
                     {mins !== null ? `${mins} min` : "-- min"}
                     {kcal !== null && kcal > 0 ? ` • ${kcal} kcal` : ""}
                   </ThemedText>
+                  {actions}
                 </Card>
               );
             }
@@ -156,7 +184,7 @@ export function MetricDayEntries({
                 : "--:--";
               return (
                 <Card
-                  key={`${entry.measuredAt}-${idx}`}
+                  key={entry.entryId || `${entry.measuredAt}-${idx}`}
                   style={{ borderRadius: 10, gap: 3, padding: 10 }}
                 >
                   <ThemedText type="defaultSemiBold">{time}</ThemedText>
@@ -167,6 +195,7 @@ export function MetricDayEntries({
                   <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
                     {formatSleepHours(mins)}
                   </ThemedText>
+                  {actions}
                 </Card>
               );
             }
@@ -174,7 +203,7 @@ export function MetricDayEntries({
             if (kind === "weight") {
               return (
                 <Card
-                  key={`${entry.measuredAt}-${idx}`}
+                  key={entry.entryId || `${entry.measuredAt}-${idx}`}
                   style={{ borderRadius: 10, gap: 3, padding: 10 }}
                 >
                   <ThemedText type="defaultSemiBold">
@@ -183,6 +212,7 @@ export function MetricDayEntries({
                   <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
                     {time}
                   </ThemedText>
+                  {actions}
                 </Card>
               );
             }

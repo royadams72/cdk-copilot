@@ -109,14 +109,18 @@ export type MeasurementTrendPoint = {
 
 export type MeasurementDayEntry = {
   averageSpeedKph?: number | null;
+  canDelete: boolean;
+  canEdit: boolean;
   caloriesKcal?: number | null;
   distanceMeters?: number | null;
+  entryId: string;
   exerciseId?: string;
   exerciseName?: string;
   exerciseTitle?: string;
   measuredAt: string;
   sleepFromAt?: string;
   sleepToAt?: string;
+  source?: MeasurementSource;
   sync?: MeasurementSyncMeta;
   value: number | null;
   value2: number | null;
@@ -187,6 +191,40 @@ export type CreateMeasurementArgs =
       kind: "heart_rate";
       measuredAt?: string;
     } & MeasurementProvenanceArgs);
+
+export type UpdateMeasurementArgs =
+  | {
+      bpm: number;
+      kind: "heart_rate";
+      measuredAt: string;
+      measurementId: string;
+    }
+  | {
+      diastolicMmHg: number;
+      kind: "blood_pressure";
+      measuredAt: string;
+      measurementId: string;
+      systolicMmHg: number;
+    }
+  | {
+      durationMin: number;
+      exerciseId: string;
+      kind: "exercise";
+      measuredAt: string;
+      measurementId: string;
+    }
+  | {
+      kind: "sleep";
+      measurementId: string;
+      sleepFromAt: string;
+      sleepToAt: string;
+    }
+  | {
+      kind: "weight";
+      measuredAt: string;
+      measurementId: string;
+      valueKg: number;
+    };
 
 export type TargetDomain = "renal" | "lifestyle";
 export type TargetDefinitionValue = {
