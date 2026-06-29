@@ -9,6 +9,7 @@ import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
+import PatientHeadlineContainer from "../../../components/PatientHeadlineContainer";
 
 type PortalCarePlanDetailResponse = {
   data: PortalPatientCarePlanDetailData;
@@ -212,27 +213,11 @@ export default function PortalPatientCarePlanDetailPage() {
 
   return (
     <section className={styles.subpageLayout}>
-      <div className={styles.patientHeadlineContainer}>
-        <Link className={styles.patientBackLink} href={carePlansHref}>
-          &larr; Back to care plans
-        </Link>
-        <div className={styles.patientHeadline}>
-          <span aria-hidden="true" className={styles.patientHeadlineIcon}>
-            <span className={styles.patientHeadlineAvatarHead} />
-            <span className={styles.patientHeadlineAvatarBody} />
-          </span>
-          <div className={styles.patientHeadlineContent}>
-            <div className={styles.patientHeadlineRow}>
-              <div className={styles.patientHeadlineText}>
-                {data.patient.name}
-              </div>
-            </div>
-          </div>
-        </div>
-        <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
-          Back to care plans
-        </span>
-      </div>
+      <PatientHeadlineContainer
+        backHref={carePlansHref}
+        backLabel="Back to care plans"
+        headline={data.patient.name}
+      />
 
       {error ? <p className={styles.dataScreenCaption}>{error}</p> : null}
 

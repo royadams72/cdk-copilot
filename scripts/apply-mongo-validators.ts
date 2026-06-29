@@ -163,12 +163,22 @@ async function run() {
         }
       } else if ("create" in cmdRaw) {
         // Direct create command JSON
-        const createCmd = cmdRaw as Document;
-        await db.command(createCmd);
-        console.log(`✓ ${file} — create command executed`);
+        const createCmd = { ...(cmdRaw as Document) };
+        delete (createCmd as any).indexes;
+        const name = (createCmd as any).create as string;
+        try {
+          await db.command(createCmd);
+          console.log(`✓ ${file} — create command executed`);
+        } catch (err: any) {
+          const msg = String(err?.message ?? "");
+          const exists =
+            ["already exists", "NamespaceExists"].some((s) => msg.includes(s)) ||
+            err?.code === 48;
+          if (!exists) throw err;
+          console.log(`• ${file} — collection "${name}" already exists; skipped create`);
+        }
 
         // If it also includes 'indexes' sibling key, try to infer collection name and apply
-        const name = (createCmd as any).create as string;
         const indexes = (cmdRaw as any).indexes as CollModLike["indexes"];
         if (name && Array.isArray(indexes) && indexes.length) {
           await ensureIndexes(db.collection(name), indexes);

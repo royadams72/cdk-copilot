@@ -5,6 +5,8 @@ import { COLLECTIONS } from "@ckd/core/server";
 import type { PatientWorseningTrendAlert } from "@ckd/core";
 import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
+  buildPortalWorseningHref,
+  mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
   type PortalPatientDetail,
   type PortalPatientFilter,
@@ -12,6 +14,10 @@ import {
   type PortalPatientStat,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
+import {
+  loadActivePortalWorseningItemsByPatientId,
+  syncPatientWorseningTrendSnapshots,
+} from "@/apps/api/lib/portal/worseningSnapshots";
 import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worseningTrends";
 
 type PortalPatientSummary = {
@@ -151,54 +157,9 @@ function normalizeName(pii: PortalPatientPii) {
   return fullName || "Patient record";
 }
 
-function flagIncludes(flag: string, terms: string[]) {
-  const normalized = flag.toLowerCase();
-  return terms.some((term) => normalized.includes(term));
-}
-
-function mapTrendKeyToPortalKind(
-  key: PatientWorseningTrendAlert["key"],
-): PortalPatientWorseningItem["kind"] {
-  switch (key) {
-    case "blood_pressure_up":
-      return "bloodPressure";
-    case "steps_decline":
-      return "activity";
-    case "symptoms_worsening":
-      return "symptoms";
-    case "nutrition_worsening":
-      return "nutrition";
-    case "weight_decrease":
-      return "weightDecrease";
-    case "weight_increase":
-      return "weightIncrease";
-  }
-}
-
-function buildPortalWorseningHref(
-  patientId: string,
-  key: PatientWorseningTrendAlert["key"],
-) {
-  switch (key) {
-    case "blood_pressure_up":
-      return `/portal/patients/${patientId}/health?metric=blood_pressure`;
-    case "weight_decrease":
-    case "weight_increase":
-      return `/portal/patients/${patientId}/health?metric=weight`;
-    case "symptoms_worsening":
-      return `/portal/patients/${patientId}/health?metric=symptoms`;
-    case "nutrition_worsening":
-      return `/portal/patients/${patientId}/nutrition`;
-    case "steps_decline":
-      return `/portal/patients/${patientId}`;
-  }
-}
-
 function buildPortalPatientWorseningItems(raw: {
   activeAlerts?: PatientWorseningTrendAlert[];
-  flags?: string[];
   patientId: string;
-  risk?: PortalPatientListItem["risk"];
 }): PortalPatientWorseningItem[] {
   if (raw.activeAlerts?.length) {
     return raw.activeAlerts.map((alert) => {
@@ -216,6 +177,7 @@ function buildPortalPatientWorseningItems(raw: {
       return {
         daysActive,
         detail: alert.detail ?? alert.body,
+        episodeId: alert.id,
         firstDetectedAt: alert.firstDetectedAt ?? null,
         href: buildPortalWorseningHref(raw.patientId, alert.key),
         kind: mapTrendKeyToPortalKind(alert.key),
@@ -223,98 +185,12 @@ function buildPortalPatientWorseningItems(raw: {
         level: alert.level,
         patientResponseLabel: alert.checkInResponseLabel ?? null,
         portalEscalationEligible: alert.portalEscalationEligible,
+        reviewedAt: null,
         viewedAt: alert.viewedAt ?? null,
       };
     });
   }
-
-  const flags = raw.flags ?? [];
-  const items: PortalPatientWorseningItem[] = [];
-
-  const definitions: Array<{
-    detail: string;
-    href: string;
-    kind: Exclude<PortalPatientWorseningItem["kind"], "general">;
-    label: string;
-    terms: string[];
-  }> = [
-    {
-      detail: "Recent blood pressure readings are above the patient's recent baseline.",
-      href: "/health?metric=blood_pressure",
-      kind: "bloodPressure",
-      label: "Blood pressure up",
-      terms: ["blood pressure", "blood-pressure", "blood_pressure", "bp", "hypertension"],
-    },
-    {
-      detail: "Weight has increased over the current review window.",
-      href: "/health?metric=weight",
-      kind: "weightIncrease",
-      label: "Weight increase",
-      terms: ["weight increase", "weight-increase", "weight_increase", "weight gain", "weight-gain", "weight_gain", "weight up"],
-    },
-    {
-      detail: "Weight has decreased over the current review window.",
-      href: "/health?metric=weight",
-      kind: "weightDecrease",
-      label: "Weight decrease",
-      terms: ["weight decrease", "weight-decrease", "weight_decrease", "weight loss", "weight-loss", "weight_loss", "weight down"],
-    },
-    {
-      detail: "Symptom reporting has increased compared with the prior review window.",
-      href: "/health?metric=symptoms",
-      kind: "symptoms",
-      label: "More symptoms reported",
-      terms: ["symptom", "symptoms"],
-    },
-    {
-      detail: "Activity levels have fallen compared with the prior review window.",
-      href: "/health?metric=symptoms",
-      kind: "activity",
-      label: "Activity down",
-      terms: ["activity", "inactive", "low activity", "low-activity", "activity-down"],
-    },
-    {
-      detail: "Nutrition logging suggests more target breaches this month.",
-      href: "/nutrition",
-      kind: "nutrition",
-      label: "Over nutrition targets",
-      terms: ["nutrition", "meal target", "meal-target", "phosphorus", "sodium", "potassium", "protein target", "target breach", "target-breach"],
-    },
-  ];
-
-  for (const definition of definitions) {
-    if (flags.some((flag) => flagIncludes(flag, definition.terms))) {
-      items.push({
-        daysActive: 1,
-        detail: definition.detail,
-        firstDetectedAt: null,
-        href: definition.href,
-        kind: definition.kind,
-        label: definition.label,
-        level: "level_1_nudge",
-        patientResponseLabel: null,
-        portalEscalationEligible: false,
-        viewedAt: null,
-      });
-    }
-  }
-
-  if (!items.length && raw.risk === "red") {
-    items.push({
-      daysActive: 1,
-      detail: "The patient's overall risk status has escalated and needs review.",
-      firstDetectedAt: null,
-      href: "/health?metric=blood_pressure",
-      kind: "general",
-      label: "Clinical risk escalated",
-      level: "level_3_escalate",
-      patientResponseLabel: null,
-      portalEscalationEligible: true,
-      viewedAt: null,
-    });
-  }
-
-  return items;
+  return [];
 }
 
 export function mapPortalPatientListItem(raw: {
@@ -343,9 +219,7 @@ export function mapPortalPatientListItem(raw: {
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
       activeAlerts: raw.activeAlerts ?? [],
-      flags: raw.flags ?? [],
       patientId: raw._id.toHexString(),
-      risk,
     }),
   };
 }
@@ -387,20 +261,36 @@ export async function mapPortalPatientListItemsWithWorsening(
   }>,
 ) {
   const activeAlertsByPatientId = new Map<string, PatientWorseningTrendAlert[]>();
+  const patientIds = raws.map((raw) => raw._id);
 
   await Promise.all(
     raws.map(async (raw) => {
       const alerts = await getActivePatientWorseningTrendAlerts(db, {
         patientId: raw._id,
       });
+      await syncPatientWorseningTrendSnapshots(db, {
+        alerts,
+        patientId: raw._id,
+      });
       activeAlertsByPatientId.set(raw._id.toHexString(), alerts);
     }),
   );
 
+  const activeItemsByPatientId = await loadActivePortalWorseningItemsByPatientId(
+    db,
+    patientIds,
+  );
+
   return raws.map((raw) =>
-    mapPortalPatientListItem({
-      ...raw,
-      activeAlerts: activeAlertsByPatientId.get(raw._id.toHexString()) ?? [],
+    ({
+      ...mapPortalPatientListItem({
+        ...raw,
+        activeAlerts: activeAlertsByPatientId
+          .get(raw._id.toHexString())
+          ?.filter((alert) => alert.portalEscalationEligible) ?? [],
+      }),
+      worseningItems:
+        activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
     }),
   );
 }

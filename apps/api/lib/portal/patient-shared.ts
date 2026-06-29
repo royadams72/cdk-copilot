@@ -2,6 +2,7 @@ import {
   CarePlanActivityType,
   CarePlanSource,
   CarePlanStatus,
+  type PatientWorseningTrendAlert,
   TaskFreq,
   TaskStatus,
 } from "@ckd/core";
@@ -24,13 +25,13 @@ export const PORTAL_PATIENT_FILTERS = [
 export type PortalPatientFilter = (typeof PORTAL_PATIENT_FILTERS)[number];
 
 export type PortalPatientListItem = {
+  id: string;
   accessEndsAt: string | null;
   careTeamId: string | null;
   dateOfBirth: string | null;
   email: string | null;
   facilityId: string | null;
   flags: string[];
-  id: string;
   lastContactAt: string | null;
   name: string;
   risk: "green" | "amber" | "red" | "unknown";
@@ -53,13 +54,22 @@ export type PortalWorseningKind = (typeof PORTAL_WORSENING_KINDS)[number];
 export type PortalPatientWorseningItem = {
   daysActive: number;
   detail: string;
+  episodeId: string;
   firstDetectedAt: string | null;
   href: string | null;
   kind: Exclude<PortalWorseningKind, "all"> | "general";
   label: string;
-  level: "level_1_nudge" | "level_2_check_in" | "level_3_escalate" | "level_3_high_priority";
+  level:
+    | "level_1_nudge"
+    | "level_2_check_in"
+    | "level_3_escalate"
+    | "level_3_high_priority";
   patientResponseLabel: string | null;
   portalEscalationEligible: boolean;
+  reviewedAt?: string | null;
+  reviewedByName?: string | null;
+  reviewedByPrincipalId?: string | null;
+  reviewedByRole?: string | null;
   viewedAt: string | null;
 };
 
@@ -74,7 +84,12 @@ export type PortalPatientDetail = PortalPatientListItem & {
     status: string | null;
   }>;
 };
-
+export type PortalPatientDetailResponse = {
+  data: {
+    dashboard: PortalPatientDashboardData;
+    patient: PortalPatientDetail;
+  };
+};
 export type PortalPatientOverviewRow = {
   href?: string | null;
   label: string;
@@ -90,9 +105,9 @@ export type PortalPatientAttentionItem = {
 };
 
 export type PortalPatientRecentActivityItem = {
+  id: string;
   at: string;
   detail: string | null;
-  id: string;
   label: string;
 };
 
@@ -149,13 +164,13 @@ export type PortalPatientNutritionMonth = {
 export type PortalPatientNutritionData = {
   foodRows: PortalPatientNutritionFoodRow[];
   headline: string;
+  monthlyStats: PortalPatientNutritionMonth[];
   patient: PortalPatientDetail;
   selectedFilter: PortalNutritionFilter;
   selectedMonth: string;
   selectedMonthLabel: string;
   summaryTitle: string;
   tableTitle: string;
-  monthlyStats: PortalPatientNutritionMonth[];
   window: {
     days: number;
     from: string;
@@ -171,6 +186,44 @@ export const PORTAL_HEALTH_METRICS = [
 
 export type PortalHealthMetric = (typeof PORTAL_HEALTH_METRICS)[number];
 
+export function mapTrendKeyToPortalKind(
+  key: PatientWorseningTrendAlert["key"],
+): PortalPatientWorseningItem["kind"] {
+  switch (key) {
+    case "blood_pressure_up":
+      return "bloodPressure";
+    case "steps_decline":
+      return "activity";
+    case "symptoms_worsening":
+      return "symptoms";
+    case "nutrition_worsening":
+      return "nutrition";
+    case "weight_decrease":
+      return "weightDecrease";
+    case "weight_increase":
+      return "weightIncrease";
+  }
+}
+
+export function buildPortalWorseningHref(
+  patientId: string,
+  key: PatientWorseningTrendAlert["key"],
+) {
+  switch (key) {
+    case "blood_pressure_up":
+      return `/portal/patients/${patientId}/health?metric=blood_pressure`;
+    case "weight_decrease":
+    case "weight_increase":
+      return `/portal/patients/${patientId}/health?metric=weight`;
+    case "symptoms_worsening":
+      return `/portal/patients/${patientId}/health?metric=symptoms`;
+    case "nutrition_worsening":
+      return `/portal/patients/${patientId}/nutrition`;
+    case "steps_decline":
+      return `/portal/patients/${patientId}`;
+  }
+}
+
 export type PortalPatientHealthMonth = {
   isSelected: boolean;
   label: string;
@@ -180,8 +233,8 @@ export type PortalPatientHealthMonth = {
 };
 
 export type PortalPatientHealthRow = {
-  detail: string | null;
   id: string;
+  detail: string | null;
   label: string;
   primaryValue: number;
   secondaryValue: number | null;
@@ -212,11 +265,11 @@ export type PortalPatientHealthData = {
 };
 
 export type PortalPatientMedicationRow = {
+  id: string;
   dose: string | null;
   endAt: string | null;
   form: string | null;
   frequency: string | null;
-  id: string;
   instructions: string | null;
   latestReason: string | null;
   name: string;
@@ -228,9 +281,9 @@ export type PortalPatientMedicationRow = {
 };
 
 export type PortalPatientMedicationEvent = {
+  id: string;
   at: string;
   by: string;
-  id: string;
   label: string;
   reason: string | null;
 };
@@ -249,10 +302,10 @@ export type PortalPatientMedicationData = {
 };
 
 export type PortalPatientCarePlanRow = {
+  id: string;
   activatedAt: string | null;
   completedAt: string | null;
   goalsCount: number;
-  id: string;
   notes: string | null;
   openTasksCount: number;
   sources: CarePlanSourceValue[];
@@ -282,50 +335,50 @@ export type PortalPatientCarePlanGoal = {
 };
 
 export type PortalPatientCarePlanDiagnosis = {
+  id: string;
   code: string | null;
   codeSystem?: "SNOMED_CT" | "CUSTOM" | null;
-  id: string;
   label: string;
 };
 
 export type PortalPatientCarePlanTask = {
-  freq: CarePlanTaskFreqValue;
   id: string;
+  freq: CarePlanTaskFreqValue;
   instructions: string | null;
   label: string;
   status: CarePlanTaskStatusValue;
 };
 
 export type PortalPatientCarePlanActivity = {
+  id: string;
+  type: CarePlanActivityTypeValue;
   at: string;
   by: string;
-  id: string;
   note: string | null;
-  type: CarePlanActivityTypeValue;
 };
 
 export type PortalPatientCarePlanDetailData = {
+  activity: PortalPatientCarePlanActivity[];
   headline: string;
   patient: PortalPatientDetail;
   plan: {
-      activatedAt: string | null;
-      completedAt: string | null;
-      createdAt: string;
-      createdBy: string;
-      diagnoses: PortalPatientCarePlanDiagnosis[];
-      goals: PortalPatientCarePlanGoal[];
-      id: string;
-      notes: string | null;
-      ownerLabels: string[];
-      reviewLabel: string | null;
-      sources: CarePlanSourceValue[];
-      status: CarePlanStatusValue;
-      tasks: PortalPatientCarePlanTask[];
-      title: string;
-      updatedAt: string;
-      updatedBy: string;
-    };
-  activity: PortalPatientCarePlanActivity[];
+    activatedAt: string | null;
+    completedAt: string | null;
+    createdAt: string;
+    createdBy: string;
+    diagnoses: PortalPatientCarePlanDiagnosis[];
+    goals: PortalPatientCarePlanGoal[];
+    id: string;
+    notes: string | null;
+    ownerLabels: string[];
+    reviewLabel: string | null;
+    sources: CarePlanSourceValue[];
+    status: CarePlanStatusValue;
+    tasks: PortalPatientCarePlanTask[];
+    title: string;
+    updatedAt: string;
+    updatedBy: string;
+  };
 };
 
 export type PortalPatientCarePlanOption = {

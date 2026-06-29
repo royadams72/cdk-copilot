@@ -10,6 +10,12 @@ export const WorseningTrendStatus = z.enum(["active", "resolved"]);
 
 export type WorseningTrendStatus = z.infer<typeof WorseningTrendStatus>;
 
+export const WorseningTrendSnapshotStatus = z.enum(["active", "resolved"]);
+
+export type WorseningTrendSnapshotStatus = z.infer<
+  typeof WorseningTrendSnapshotStatus
+>;
+
 export const WorseningTrendStateDocSchema = z.object({
   _id: z.any().optional(),
   body: z.string(),
@@ -33,6 +39,36 @@ export const WorseningTrendStateDocSchema = z.object({
 
 export type TWorseningTrendStateDoc = z.infer<
   typeof WorseningTrendStateDocSchema
+>;
+
+export const WorseningTrendSnapshotDocSchema = z.object({
+  _id: z.any().optional(),
+  body: z.string(),
+  checkInResponseCode: z.string().nullable().default(null),
+  checkInResponseLabel: z.string().nullable().default(null),
+  checkInSubmittedAt: z.date().nullable().default(null),
+  detail: z.string().nullable().default(null),
+  episodeId: z.string().min(1),
+  firstDetectedAt: z.date(),
+  href: z.string().nullable().default(null),
+  key: WorseningTrendKey,
+  lastDetectedAt: z.date(),
+  level: WorseningEscalationLevel,
+  patientId: z.any(),
+  portalEscalationEligible: z.boolean(),
+  resolvedAt: z.date().nullable().optional(),
+  reviewedAt: z.date().nullable().optional(),
+  reviewedByPrincipalId: z.string().nullable().default(null),
+  reviewedByRole: z.string().nullable().default(null),
+  screen: z.string().min(1),
+  status: WorseningTrendSnapshotStatus,
+  title: z.string(),
+  updatedAt: z.date(),
+  viewedAt: z.date().nullable().optional(),
+});
+
+export type TWorseningTrendSnapshotDoc = z.infer<
+  typeof WorseningTrendSnapshotDocSchema
 >;
 
 export const WorseningTrendCheckInDocSchema = PatientWorseningTrendCheckIn.omit(
