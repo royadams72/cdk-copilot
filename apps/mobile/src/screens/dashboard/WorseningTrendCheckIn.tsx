@@ -31,6 +31,8 @@ function getReviewRoute(key: WorseningTrendKeyType) {
       return "/metric-trend?kind=weight&label=Weight";
     case "blood_pressure_up":
       return "/metric-trend?kind=blood_pressure&label=Blood%20pressure";
+    case "labs_worsening":
+      return "/(dashboard)/meds-labs";
     case "symptoms_worsening":
       return "/symptoms";
     case "nutrition_worsening":

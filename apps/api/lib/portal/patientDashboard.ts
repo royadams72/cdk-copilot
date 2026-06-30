@@ -533,6 +533,7 @@ export function buildPortalPatientDashboard(input: {
     actionCards: [
       "Nutrition Data",
       "Health Data",
+      "Labs",
       "Care Plans",
       "Worsening Trends",
       "Patient targets",
@@ -622,7 +623,7 @@ export function buildPortalPatientDashboard(input: {
         value: formatWeight(latestWeight),
       },
       {
-        href: `/portal/patients/${input.patientId}/health`,
+        href: `/portal/patients/${input.patientId}/labs`,
         label: "eGFR",
         meta: "Latest clinical profile",
         value:

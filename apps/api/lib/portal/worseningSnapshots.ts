@@ -3,10 +3,10 @@ import { ObjectId, type Db } from "mongodb";
 import {
   buildPortalWorseningHref,
   mapTrendKeyToPortalKind,
+  type PortalWorseningSnapshotKey,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS, type TWorseningTrendSnapshotDoc } from "@ckd/core/server";
-import type { PatientWorseningTrendAlert } from "@ckd/core";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -27,6 +27,26 @@ type UserPiiActorDoc = {
 type UserAccountActorDoc = {
   email?: string;
   principalId: string;
+};
+
+export type PortalWorseningSnapshotAlert = {
+  body: string;
+  checkInResponseCode?: string | null;
+  checkInResponseLabel?: string | null;
+  checkInSubmittedAt?: string | null;
+  detail: string | null;
+  detectedAt: string;
+  firstDetectedAt: string;
+  id: string;
+  key: PortalWorseningSnapshotKey;
+  lastDetectedAt: string;
+  level: TWorseningTrendSnapshotDoc["level"];
+  portalEscalationEligible: boolean;
+  repeatAtLocalTime?: string | null;
+  repeatUntil?: string | null;
+  screen: string;
+  title: string;
+  viewedAt?: string | null;
 };
 
 function formatActorName(parts: Array<string | null | undefined>) {
@@ -94,8 +114,8 @@ function toPortalWorseningItem(
     firstDetectedAt: doc.firstDetectedAt?.toISOString() ?? null,
     href:
       doc.href ??
-      buildPortalWorseningHref(patientId, doc.key as PatientWorseningTrendAlert["key"]),
-    kind: mapTrendKeyToPortalKind(doc.key as PatientWorseningTrendAlert["key"]),
+      buildPortalWorseningHref(patientId, doc.key),
+    kind: mapTrendKeyToPortalKind(doc.key),
     label: doc.title,
     level: doc.level,
     patientResponseLabel: doc.checkInResponseLabel ?? null,
@@ -185,7 +205,7 @@ async function loadActorNames(
 export async function syncPatientWorseningTrendSnapshots(
   db: Db,
   input: {
-    alerts: PatientWorseningTrendAlert[];
+    alerts: PortalWorseningSnapshotAlert[];
     patientId: ObjectId;
   },
 ) {
@@ -196,48 +216,69 @@ export async function syncPatientWorseningTrendSnapshots(
   const activeAlerts = input.alerts.filter((alert) => alert.portalEscalationEligible);
   const activeEpisodeIds = new Set(activeAlerts.map((alert) => alert.id));
 
+  console.log("[worsening:snapshots] syncing", {
+    activeAlerts: activeAlerts.map((alert) => ({
+      id: alert.id,
+      key: alert.key,
+      level: alert.level,
+      title: alert.title,
+    })),
+    patientId: input.patientId.toHexString(),
+  });
+
   await Promise.all(
     activeAlerts.map((alert) =>
-      collection.updateOne(
-        { episodeId: alert.id, patientId: input.patientId },
-        {
-          $set: {
-            body: alert.body,
-            checkInResponseCode: alert.checkInResponseCode ?? null,
-            checkInResponseLabel: alert.checkInResponseLabel ?? null,
-            checkInSubmittedAt: alert.checkInSubmittedAt
-              ? new Date(alert.checkInSubmittedAt)
-              : null,
-            detail: alert.detail ?? null,
-            firstDetectedAt: new Date(alert.firstDetectedAt),
-            href: buildPortalWorseningHref(
-              input.patientId.toHexString(),
-              alert.key,
-            ),
+      collection
+        .updateOne(
+          { episodeId: alert.id, patientId: input.patientId },
+          {
+            $set: {
+              body: alert.body,
+              checkInResponseCode: alert.checkInResponseCode ?? null,
+              checkInResponseLabel: alert.checkInResponseLabel ?? null,
+              checkInSubmittedAt: alert.checkInSubmittedAt
+                ? new Date(alert.checkInSubmittedAt)
+                : null,
+              detail: alert.detail ?? null,
+              firstDetectedAt: new Date(alert.firstDetectedAt),
+              href: buildPortalWorseningHref(
+                input.patientId.toHexString(),
+                alert.key,
+              ),
+              key: alert.key,
+              lastDetectedAt: new Date(alert.lastDetectedAt),
+              level: alert.level,
+              portalEscalationEligible: alert.portalEscalationEligible,
+              resolvedAt: null,
+              screen: alert.screen,
+              status: "active",
+              title: alert.title,
+              updatedAt: now,
+              viewedAt: alert.viewedAt ? new Date(alert.viewedAt) : null,
+            },
+            $setOnInsert: {
+              patientId: input.patientId,
+              reviewedAt: null,
+              reviewedByPrincipalId: null,
+              reviewedByRole: null,
+            },
+          },
+          { upsert: true },
+        )
+        .then((result) => {
+          console.log("[worsening:snapshots] upsert result", {
+            id: alert.id,
             key: alert.key,
-            lastDetectedAt: new Date(alert.lastDetectedAt),
-            level: alert.level,
-            portalEscalationEligible: alert.portalEscalationEligible,
-            resolvedAt: null,
-            screen: alert.screen,
-            status: "active",
-            title: alert.title,
-            updatedAt: now,
-            viewedAt: alert.viewedAt ? new Date(alert.viewedAt) : null,
-          },
-          $setOnInsert: {
-            patientId: input.patientId,
-            reviewedAt: null,
-            reviewedByPrincipalId: null,
-            reviewedByRole: null,
-          },
-        },
-        { upsert: true },
-      ),
+            matchedCount: result.matchedCount,
+            modifiedCount: result.modifiedCount,
+            upsertedId: result.upsertedId ?? null,
+          });
+          return result;
+        }),
     ),
   );
 
-  await collection.updateMany(
+  const resolveResult = await collection.updateMany(
     {
       patientId: input.patientId,
       reviewedAt: null,
@@ -254,6 +295,13 @@ export async function syncPatientWorseningTrendSnapshots(
       },
     },
   );
+
+  console.log("[worsening:snapshots] resolve result", {
+    matchedCount: resolveResult.matchedCount,
+    modifiedCount: resolveResult.modifiedCount,
+    patientId: input.patientId.toHexString(),
+    retainedEpisodeIds: Array.from(activeEpisodeIds),
+  });
 }
 
 export async function loadActivePortalWorseningItemsByPatientId(

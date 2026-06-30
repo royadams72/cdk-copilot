@@ -5,6 +5,7 @@ import type { PortalPatientDashboardData } from "@/apps/api/lib/portal/patient-s
 const actionHrefByLabel: Record<string, string> = {
   "Care Plans": "/care-plans",
   "Health Data": "/health",
+  "Labs": "/labs",
   "Medication Profile": "/medication",
   "Nutrition Data": "/nutrition",
   "Reviewed Trends": "/worsening-reviewed",

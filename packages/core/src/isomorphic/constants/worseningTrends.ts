@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const WorseningTrendKey = z.enum([
   "blood_pressure_up",
+  "labs_worsening",
   "nutrition_worsening",
   "steps_decline",
   "symptoms_worsening",
@@ -276,6 +277,53 @@ export const WORSENING_TREND_RULES: Record<WorseningTrendKey, WorseningTrendRule
     ],
     principle:
       "Use the app first for early blood pressure drift, but escalate sustained or clearly above-target deterioration.",
+  },
+  labs_worsening: {
+    appNotification: {
+      initialPush: true,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      templateKey: "labs_worsening_review",
+    },
+    appTrigger: {
+      baselineWindowDays: null,
+      comparison: "absolute_change",
+      direction: "down",
+      metric: "labs_clinically_significant_change",
+      notes:
+        "Reserved for a future workflow. The initial hospital release keeps labs view-only rather than surfacing them as active worsening alerts.",
+      thresholdDays: null,
+      thresholdPct: null,
+      thresholdValue: null,
+      windowDays: 35,
+    },
+    checkInPrompt: null,
+    clinicianNotes:
+      "Not active in the initial hospital release. Hospital lab systems already own most of this escalation path, so CKD Copilot keeps labs view-only for now.",
+    key: "labs_worsening",
+    label: "Labs worsening",
+    portalEscalation: [
+      {
+        baselineWindowDays: null,
+        comparison: "absolute_change",
+        direction: "down",
+        metric: "labs_clinically_significant_change",
+        notes:
+          "Reserved for a future workflow if a specific operational gap is identified. The initial hospital release does not surface lab worsening alerts in the app or portal trend queue.",
+        thresholdDays: null,
+        thresholdPct: null,
+        thresholdValue: null,
+        windowDays: 35,
+      },
+    ],
+    portalHighPrioritySignals: [
+      "critical_lab_result",
+      "blood_pressure_up",
+      "weight_increase",
+      "symptoms_worsening",
+    ],
+    principle:
+      "Keep labs visible in the labs experience, but do not surface them as active worsening alerts in the initial hospital release because those results usually already have an owning clinical pathway.",
   },
   nutrition_worsening: {
     appNotification: {

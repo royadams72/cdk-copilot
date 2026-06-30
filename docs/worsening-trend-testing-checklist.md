@@ -9,6 +9,7 @@ Use this after rebuilding the mobile app and restarting the API.
   - Confirms:
     - `activeAlerts`
     - persisted `states`
+    - persisted `snapshots`
     - saved `checkIns`
 
 ## Weight increase
@@ -81,6 +82,20 @@ Use this after rebuilding the mobile app and restarting the API.
   - active alert appears
   - no check-in screen is shown
   - if the pattern reaches 12 of the last 14 logged days, it becomes clinician-eligible
+
+## Labs
+
+- In the initial hospital release, labs are view-only.
+- Do not expect eGFR, potassium, phosphate, or abnormal lab flags to appear in:
+  - `activeAlerts`
+  - worsening trend `states`
+  - worsening trend `snapshots`
+  - the portal worsening-trends queue
+
+- Verify instead:
+  - labs remain visible in the patient labs screens
+  - recent history and charts still load correctly
+  - no lab-only change creates a worsening-trends alert
 
 ## Viewed / dedupe lifecycle
 

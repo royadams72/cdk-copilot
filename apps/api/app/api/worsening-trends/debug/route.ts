@@ -26,10 +26,15 @@ export async function GET(req: NextRequest) {
 
     const patientId = new ObjectId(caller.patientId);
     const db = await getDb();
-    const [activeAlerts, states, checkIns] = await Promise.all([
+    const [activeAlerts, states, snapshots, checkIns] = await Promise.all([
       getActivePatientWorseningTrendAlerts(db, { patientId }),
       db
         .collection(COLLECTIONS.WorseningTrendStates)
+        .find({ patientId }, { projection: { _id: 0 } })
+        .sort({ updatedAt: -1 })
+        .toArray(),
+      db
+        .collection(COLLECTIONS.WorseningTrendSnapshots)
         .find({ patientId }, { projection: { _id: 0 } })
         .sort({ updatedAt: -1 })
         .toArray(),
@@ -44,6 +49,7 @@ export async function GET(req: NextRequest) {
     return ok({
       activeAlerts,
       checkIns,
+      snapshots,
       states,
     });
   } catch (error: any) {

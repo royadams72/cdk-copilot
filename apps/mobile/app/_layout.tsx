@@ -31,10 +31,55 @@ const LightNavigationTheme = {
   },
 };
 
+const handledNotificationResponseIds = new Set<string>();
+
 export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    function handleNotificationResponse(
+      response: Notifications.NotificationResponse | null,
+    ) {
+      if (!response) {
+        return;
+      }
+
+      const notificationId =
+        response.notification.request.identifier ||
+        response.notification.date?.toString() ||
+        null;
+
+      if (notificationId) {
+        if (handledNotificationResponseIds.has(notificationId)) {
+          return;
+        }
+        handledNotificationResponseIds.add(notificationId);
+      }
+
+      const data = response.notification.request.content.data;
+      const screen = data?.screen;
+      if (
+        typeof data?.trendId === "string" &&
+        typeof data?.trendKey === "string"
+      ) {
+        void markWorseningTrendViewed({
+          alertId: data.trendId,
+          key: data.trendKey as never,
+        });
+      }
+      if (typeof screen === "string" && screen.startsWith("/")) {
+        router.replace(screen as never);
+      }
+      if (
+        typeof data?.type === "string" &&
+        (data.type.startsWith("care-plan-") ||
+          data.type.startsWith("worsening-trend-"))
+      ) {
+        void syncCarePlanReminderNotifications();
+        void syncWorseningTrendNotifications();
+      }
+    }
+
     async function syncNotificationState() {
       await Promise.allSettled([
         syncPushToken(),
@@ -49,48 +94,12 @@ export default function RootLayout() {
     void syncNotificationState();
     void ensureNativeHealthConnectBackgroundSyncScheduled();
 
-    void Notifications.getLastNotificationResponseAsync().then((response) => {
-      const data = response?.notification.request.content.data;
-      const screen = response?.notification.request.content.data?.screen;
-      if (
-        typeof data?.trendId === "string" &&
-        typeof data?.trendKey === "string"
-      ) {
-        void markWorseningTrendViewed({
-          alertId: data.trendId,
-          key: data.trendKey as never,
-        });
-      }
-      if (typeof screen === "string" && screen.startsWith("/")) {
-        router.push(screen as never);
-      }
-    });
+    void Notifications.getLastNotificationResponseAsync().then(
+      handleNotificationResponse,
+    );
 
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data;
-        const screen = data?.screen;
-        if (
-          typeof data?.trendId === "string" &&
-          typeof data?.trendKey === "string"
-        ) {
-          void markWorseningTrendViewed({
-            alertId: data.trendId,
-            key: data.trendKey as never,
-          });
-        }
-        if (typeof screen === "string" && screen.startsWith("/")) {
-          router.push(screen as never);
-        }
-        if (
-          typeof data?.type === "string" &&
-          (data.type.startsWith("care-plan-") ||
-            data.type.startsWith("worsening-trend-"))
-        ) {
-          void syncCarePlanReminderNotifications();
-          void syncWorseningTrendNotifications();
-        }
-      },
+      handleNotificationResponse,
     );
 
     const receivedSubscription = Notifications.addNotificationReceivedListener(

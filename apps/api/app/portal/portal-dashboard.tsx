@@ -52,6 +52,7 @@ const worseningFilterOptions: Array<{
   value: PortalWorseningKind;
 }> = [
   { label: "All worsening", value: "all" },
+  { label: "Labs", value: "labs" },
   { label: "Blood pressure", value: "bloodPressure" },
   { label: "Weight increase", value: "weightIncrease" },
   { label: "Weight decrease", value: "weightDecrease" },
@@ -536,7 +537,7 @@ function PortalDashboardContent() {
           <>
             <div className={styles.listHeaderRow}>
               <span className={styles.listHeaderTitle}>
-                Worsening trends for this month
+                Worsening trends
               </span>
               <div className={styles.worseningToolbar}>
                 <select

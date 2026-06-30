@@ -113,7 +113,7 @@ export default function LabTrend() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace("/(labs)/labs-history")}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
         <ThemedText type="title">{name}</ThemedText>

@@ -297,7 +297,7 @@ export default function AddMedication() {
           snomedCode: selectedDrug?.snomedCode ?? undefined,
           startAt: toMobileUtcDateIso(startAt),
         };
-        createMedication(payload);
+        await createMedication(payload).unwrap();
         // const res = await authFetch(`${API}/api/medications/create`, {
         //   body: JSON.stringify(payload),
         //   method: "POST",
@@ -321,7 +321,7 @@ export default function AddMedication() {
           status,
         };
 
-        updateMedication({ id: medicationId, payload });
+        await updateMedication({ id: medicationId, payload }).unwrap();
 
         if (statusChanged || hasDetailsEdited) {
           setEditReason("");

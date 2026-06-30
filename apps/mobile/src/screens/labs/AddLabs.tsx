@@ -212,7 +212,13 @@ export default function AddLabs() {
       <ScrollView
         contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() =>
+            router.replace(
+              isEdit ? "/(labs)/labs-history?mode=edit" : "/(dashboard)/meds-labs",
+            )
+          }
+        >
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
         <ThemedText type="title">

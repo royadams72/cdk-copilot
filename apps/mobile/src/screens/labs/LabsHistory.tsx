@@ -77,7 +77,7 @@ export default function LabsHistory() {
       <ScrollView
         contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 24 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace("/(dashboard)/meds-labs")}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
         <ThemedText type="title">

@@ -43,6 +43,7 @@ export const PORTAL_WORSENING_KINDS = [
   "all",
   "activity",
   "bloodPressure",
+  "labs",
   "nutrition",
   "symptoms",
   "weightDecrease",
@@ -72,6 +73,8 @@ export type PortalPatientWorseningItem = {
   reviewedByRole?: string | null;
   viewedAt: string | null;
 };
+
+export type PortalWorseningSnapshotKey = PatientWorseningTrendAlert["key"];
 
 export type PortalPatientDetail = PortalPatientListItem & {
   assignments: Array<{
@@ -187,11 +190,13 @@ export const PORTAL_HEALTH_METRICS = [
 export type PortalHealthMetric = (typeof PORTAL_HEALTH_METRICS)[number];
 
 export function mapTrendKeyToPortalKind(
-  key: PatientWorseningTrendAlert["key"],
+  key: PortalWorseningSnapshotKey,
 ): PortalPatientWorseningItem["kind"] {
   switch (key) {
     case "blood_pressure_up":
       return "bloodPressure";
+    case "labs_worsening":
+      return "labs";
     case "steps_decline":
       return "activity";
     case "symptoms_worsening":
@@ -207,11 +212,13 @@ export function mapTrendKeyToPortalKind(
 
 export function buildPortalWorseningHref(
   patientId: string,
-  key: PatientWorseningTrendAlert["key"],
+  key: PortalWorseningSnapshotKey,
 ) {
   switch (key) {
     case "blood_pressure_up":
       return `/portal/patients/${patientId}/health?metric=blood_pressure`;
+    case "labs_worsening":
+      return `/portal/patients/${patientId}/labs`;
     case "weight_decrease":
     case "weight_increase":
       return `/portal/patients/${patientId}/health?metric=weight`;
@@ -261,6 +268,65 @@ export type PortalPatientHealthData = {
     days: number;
     from: string;
     to: string;
+  };
+};
+
+export type PortalPatientLabCurrentRow = {
+  abnormalFlag: "L" | "LL" | "H" | "HH" | "A" | "N" | null;
+  code: string;
+  id: string;
+  isTracked: boolean;
+  label: string;
+  rangeLabel: string | null;
+  takenAt: string | null;
+  unit: string | null;
+  value: string;
+};
+
+export type PortalPatientLabHistoryRow = {
+  abnormalFlag: "L" | "LL" | "H" | "HH" | "A" | "N" | null;
+  code: string;
+  id: string;
+  label: string;
+  reportedAt: string | null;
+  status: "final" | "corrected" | "preliminary" | "cancelled";
+  takenAt: string | null;
+  unit: string | null;
+  value: string;
+};
+
+export type PortalPatientLabChartPoint = {
+  abnormalFlag: "L" | "LL" | "H" | "HH" | "A" | "N" | null;
+  at: string;
+  id: string;
+  rangeHigh: number | null;
+  rangeLow: number | null;
+  status: "final" | "corrected" | "preliminary" | "cancelled";
+  value: number;
+};
+
+export type PortalPatientLabChartSeries = {
+  id: string;
+  isTracked: boolean;
+  label: string;
+  points: PortalPatientLabChartPoint[];
+  rangeLabel: string | null;
+  unit: string | null;
+};
+
+export type PortalPatientLabData = {
+  chartSeries: PortalPatientLabChartSeries[];
+  currentLabs: PortalPatientLabCurrentRow[];
+  headline: string;
+  historyRows: PortalPatientLabHistoryRow[];
+  patient: PortalPatientDetail;
+  summary: {
+    abnormalCount: number;
+    criticalCount: number;
+    historyShownCount: number;
+    lastReportedAt: string | null;
+    totalCurrent: number;
+    trackedCount: number;
   };
 };
 

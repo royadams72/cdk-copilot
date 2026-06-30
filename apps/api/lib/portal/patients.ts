@@ -53,7 +53,6 @@ export type RawPortalPatientDetailDoc = {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 export function buildPortalPatientAccessMatch(user: SessionUser) {
   const clauses: Record<string, unknown>[] = [];
 
@@ -391,9 +390,9 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       count: items.filter((item) => matchesPortalPatientFilter(item, "worsening"))
         .length,
       detail:
-        "Repeated decline in nutrition, activity, weight or blood pressure.",
+        "Repeated decline in nutrition, activity, weight, blood pressure, or labs.",
       icon: "/portal/icons/trend icon.png",
-      label: "Worsening trends this month",
+      label: "Worsening trends",
       tone: "warning",
     },
     review: {

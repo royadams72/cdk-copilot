@@ -214,6 +214,25 @@ High-priority context:
 - breathlessness
 - activity decline
 
+### Labs
+
+Initial hospital release:
+
+- labs remain visible in the labs section and charts
+- labs are not surfaced in the active app/portal worsening-trends workflow
+
+Reasoning:
+
+- hospital lab systems and existing referral pathways usually already own eGFR,
+  potassium, phosphate, and similar result escalation
+- duplicating that in CKD Copilot risks alert fatigue and unclear ownership
+
+Principle:
+
+- use worsening trends for areas where the app can support early self-management
+  and where deterioration may otherwise slip through
+- keep labs view-only unless a specific operational gap is identified later
+
 ## Design Principle
 
 Do not escalate every small change to the clinician portal.
