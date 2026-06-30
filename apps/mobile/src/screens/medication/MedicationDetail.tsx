@@ -22,7 +22,6 @@ export default function MedicationDetail() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const medicationId = typeof params.id === "string" ? params.id : "";
-  // const [medication, setMedication] = useState<MedicationDetail | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
 
   const { data, error, isFetching, isLoading, refetch } =

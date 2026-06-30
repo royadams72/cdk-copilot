@@ -69,7 +69,7 @@ export default function WorseningTrendCheckIn() {
   const reviewRoute = trendKey ? getReviewRoute(trendKey) : null;
   const errorMessage = toQueryErrorMessage(
     error,
-    "We couldn't load this worsening trend check-in.",
+    "We couldn't load this follow-up check-in.",
   );
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function WorseningTrendCheckIn() {
 
       Alert.alert(
         "Check-in saved",
-        "Thanks. We'll use this to guide whether the trend stays app-managed or needs clinician attention.",
+        "Thanks. We'll use this to guide whether this stays in app-led follow-up or needs care-team review.",
         [
           {
             onPress: () => {
@@ -147,21 +147,21 @@ export default function WorseningTrendCheckIn() {
         <Card>
           <ThemedText type="defaultSemiBold">Check-in unavailable</ThemedText>
           <ThemedText style={dashboardStyles.helperText}>
-            The worsening trend link is incomplete.
+            The follow-up link is incomplete.
           </ThemedText>
         </Card>
       ) : !prompt ? (
         <Card>
           <ThemedText type="defaultSemiBold">Check-in unavailable</ThemedText>
           <ThemedText style={dashboardStyles.helperText}>
-            This worsening trend does not currently need a patient check-in.
+            This follow-up item does not currently need a patient check-in.
           </ThemedText>
         </Card>
       ) : !alert ? (
         <Card>
-          <ThemedText type="defaultSemiBold">Trend not active</ThemedText>
+          <ThemedText type="defaultSemiBold">Follow-up not active</ThemedText>
           <ThemedText style={dashboardStyles.helperText}>
-            {error ? errorMessage : "This worsening trend is no longer active."}
+            {error ? errorMessage : "This follow-up item is no longer active."}
           </ThemedText>
         </Card>
       ) : (

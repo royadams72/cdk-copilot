@@ -85,29 +85,29 @@ export default function ReviewedWorseningTrendsPage() {
       <PatientHeadlineContainer
         backHref={`/portal/patients/${params.patientId}`}
         backLabel="Back to patient"
-        headline="Reviewed worsening trends"
-        subheadline="Hidden from the live worsening list after review"
+        headline="Reviewed follow-up items"
+        subheadline="Hidden from the live self-management follow-up list after review"
       />
 
       <section className={styles.panelSurface}>
         <div className={styles.listHeaderRow}>
-          <span className={styles.listHeaderTitle}>Reviewed worsening trends</span>
+          <span className={styles.listHeaderTitle}>Reviewed follow-up items</span>
           <span className={styles.listHeaderMeta}>
-            Hidden from the live worsening list after review
+            Hidden from the live self-management follow-up list after review
           </span>
         </div>
 
         {loading ? (
-          <div className={styles.emptyState}>Loading reviewed trends...</div>
+          <div className={styles.emptyState}>Loading reviewed follow-up items...</div>
         ) : error ? (
           <div className={styles.emptyState}>
-            <h2>Unable to load reviewed trends</h2>
+            <h2>Unable to load reviewed follow-up items</h2>
             <p>{error}</p>
           </div>
         ) : items.length === 0 ? (
           <div className={styles.emptyState}>
-            <h2>No reviewed worsening trends yet</h2>
-            <p>Reviewed items for this patient will appear here.</p>
+            <h2>No reviewed follow-up items yet</h2>
+            <p>Reviewed self-management follow-up items for this patient will appear here.</p>
           </div>
         ) : (
           <div className={styles.worseningModalList}>

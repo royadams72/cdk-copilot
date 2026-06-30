@@ -51,8 +51,7 @@ const worseningFilterOptions: Array<{
   label: string;
   value: PortalWorseningKind;
 }> = [
-  { label: "All worsening", value: "all" },
-  { label: "Labs", value: "labs" },
+  { label: "All follow-up", value: "all" },
   { label: "Blood pressure", value: "bloodPressure" },
   { label: "Weight increase", value: "weightIncrease" },
   { label: "Weight decrease", value: "weightDecrease" },
@@ -537,11 +536,11 @@ function PortalDashboardContent() {
           <>
             <div className={styles.listHeaderRow}>
               <span className={styles.listHeaderTitle}>
-                Worsening trends
+                Self-management follow-up
               </span>
               <div className={styles.worseningToolbar}>
                 <select
-                  aria-label="Filter worsening trends"
+                  aria-label="Filter self-management follow-up items"
                   className={styles.worseningSelect}
                   onChange={(event) =>
                     setSelectedWorseningFilter(
@@ -557,7 +556,7 @@ function PortalDashboardContent() {
                   ))}
                 </select>
                 <select
-                  aria-label="Worsening trend actions"
+                  aria-label="Self-management follow-up actions"
                   className={styles.worseningSelect}
                   disabled={actionPending}
                   onChange={(event) =>
@@ -605,8 +604,8 @@ function PortalDashboardContent() {
             ) : null}
             {worseningPatients.length === 0 ? (
               <div className={styles.emptyState}>
-                <h2>No patients match this worsening filter</h2>
-                <p>Try another worsening category or clear the search term.</p>
+                <h2>No patients match this follow-up filter</h2>
+                <p>Try another follow-up category or clear the search term.</p>
               </div>
             ) : (
               <div className={styles.patientList}>
@@ -710,7 +709,7 @@ function PortalDashboardContent() {
                   <span>{item.detail}</span>
                   <span>
                     {item.daysActive > 1
-                      ? `Active for ${item.daysActive} days`
+                      ? `Needs follow-up for ${item.daysActive} days`
                       : "Detected today"}
                     {item.patientResponseLabel
                       ? ` · Patient said: ${item.patientResponseLabel}`
@@ -769,7 +768,8 @@ function PortalDashboardContent() {
             <h3 className={styles.modalTitle}>Notify patient(s)</h3>
             <p className={styles.modalCopy}>
               Send a custom push notification to {selectedPatientIds.length} selected
-              {selectedPatientIds.length === 1 ? " patient" : " patients"}.
+              {selectedPatientIds.length === 1 ? " patient" : " patients"} to prompt
+              app follow-up.
             </p>
             <div className={styles.worseningModalList}>
               <label>

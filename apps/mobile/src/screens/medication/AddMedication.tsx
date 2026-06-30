@@ -105,7 +105,7 @@ export default function AddMedication() {
   const params = useLocalSearchParams<{ id?: string }>();
   const [
     searchMedication,
-    { isFetching: isSearchFetching, error: searchError },
+    { isFetching: isSearchFetching },
   ] = useLazySearchMedicationQuery();
   const medicationId = typeof params.id === "string" ? params.id : "";
   const isEditMode = !!medicationId;
@@ -298,14 +298,6 @@ export default function AddMedication() {
           startAt: toMobileUtcDateIso(startAt),
         };
         await createMedication(payload).unwrap();
-        // const res = await authFetch(`${API}/api/medications/create`, {
-        //   body: JSON.stringify(payload),
-        //   method: "POST",
-        // });
-        // const body: any = await res.json().catch(() => null);
-        // if (!res.ok || !body?.ok) {
-        //   throw new Error(body?.message ?? "Failed to save medication");
-        // }
       } else {
         const payload = {
           dmplusdCode: selectedDrug?.dmplusdCode ?? undefined,

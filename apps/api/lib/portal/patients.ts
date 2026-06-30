@@ -1,5 +1,5 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { ObjectId, type Document } from "mongodb";
+import { type Document, ObjectId } from "mongodb";
 import type { Db } from "mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
 import type { PatientWorseningTrendAlert } from "@ckd/core";
@@ -56,7 +56,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export function buildPortalPatientAccessMatch(user: SessionUser) {
   const clauses: Record<string, unknown>[] = [];
 
-  if (user.role === "admin" && !(user.allowedPatientIds?.length)) {
+  if (user.role === "admin" && !user.allowedPatientIds?.length) {
     return {};
   }
 
@@ -117,6 +117,7 @@ export function buildPortalPatientDetailPipeline(match: Document) {
         as: "pii",
         foreignField: "patientId",
         from: COLLECTIONS.UsersPII,
+        localField: "_id",
         pipeline: [
           {
             $project: {
@@ -128,7 +129,6 @@ export function buildPortalPatientDetailPipeline(match: Document) {
             },
           },
         ],
-        localField: "_id",
       },
     },
     {
@@ -152,7 +152,10 @@ function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
 }
 
 function normalizeName(pii: PortalPatientPii) {
-  const fullName = [pii.firstName, pii.lastName].filter(Boolean).join(" ").trim();
+  const fullName = [pii.firstName, pii.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   return fullName || "Patient record";
 }
 
@@ -169,7 +172,9 @@ function buildPortalPatientWorseningItems(raw: {
         firstDetectedAt && !Number.isNaN(firstDetectedAt.getTime())
           ? Math.max(
               1,
-              Math.floor((Date.now() - firstDetectedAt.getTime()) / MS_PER_DAY) + 1,
+              Math.floor(
+                (Date.now() - firstDetectedAt.getTime()) / MS_PER_DAY,
+              ) + 1,
             )
           : 1;
 
@@ -205,13 +210,13 @@ export function mapPortalPatientListItem(raw: {
   const risk = raw.summary?.risk ?? "unknown";
 
   return {
+    id: raw._id.toHexString(),
     accessEndsAt: toIsoDate(primaryAssignment?.endsAt),
     careTeamId: primaryAssignment?.careTeamId ?? null,
     dateOfBirth: formatDisplayDob(raw.pii?.dateOfBirth),
     email: raw.pii?.email ?? null,
     facilityId: primaryAssignment?.facilityId ?? null,
     flags: raw.flags ?? [],
-    id: raw._id.toHexString(),
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     name: normalizeName(raw.pii ?? {}),
     risk,
@@ -259,7 +264,10 @@ export async function mapPortalPatientListItemsWithWorsening(
     summary?: PortalPatientSummary | null;
   }>,
 ) {
-  const activeAlertsByPatientId = new Map<string, PatientWorseningTrendAlert[]>();
+  const activeAlertsByPatientId = new Map<
+    string,
+    PatientWorseningTrendAlert[]
+  >();
   const patientIds = raws.map((raw) => raw._id);
 
   await Promise.all(
@@ -275,23 +283,19 @@ export async function mapPortalPatientListItemsWithWorsening(
     }),
   );
 
-  const activeItemsByPatientId = await loadActivePortalWorseningItemsByPatientId(
-    db,
-    patientIds,
-  );
+  const activeItemsByPatientId =
+    await loadActivePortalWorseningItemsByPatientId(db, patientIds);
 
-  return raws.map((raw) =>
-    ({
-      ...mapPortalPatientListItem({
-        ...raw,
-        activeAlerts: activeAlertsByPatientId
+  return raws.map((raw) => ({
+    ...mapPortalPatientListItem({
+      ...raw,
+      activeAlerts:
+        activeAlertsByPatientId
           .get(raw._id.toHexString())
           ?.filter((alert) => alert.portalEscalationEligible) ?? [],
-      }),
-      worseningItems:
-        activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
     }),
-  );
+    worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
+  }));
 }
 
 function hasFlag(item: PortalPatientListItem, terms: string[]) {
@@ -365,9 +369,9 @@ export function matchesPortalPatientQuery(
 
 export function sortPortalPatients(items: PortalPatientListItem[]) {
   const riskWeight = {
-    red: 0,
     amber: 1,
     green: 2,
+    red: 0,
     unknown: 3,
   } as const;
 
@@ -386,14 +390,23 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
     Exclude<PortalPatientFilter, "all">,
     PortalPatientStat
   > = {
-    worsening: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "worsening"))
-        .length,
-      detail:
-        "Repeated decline in nutrition, activity, weight, blood pressure, or labs.",
-      icon: "/portal/icons/trend icon.png",
-      label: "Worsening trends",
+    disengaged: {
+      count: items.filter((item) =>
+        matchesPortalPatientFilter(item, "disengaged"),
+      ).length,
+      detail: "Not logging or syncing key data.",
+      icon: "/portal/icons/trend icon2.png",
+      label: "Missing data / disengaged",
       tone: "warning",
+    },
+    endingSoon: {
+      count: items.filter((item) =>
+        matchesPortalPatientFilter(item, "endingSoon"),
+      ).length,
+      detail: "Access will be ending in the next few weeks.",
+      icon: "/portal/icons/user icon.png",
+      label: "Access ending soon",
+      tone: "accent",
     },
     review: {
       count: items.filter((item) => matchesPortalPatientFilter(item, "review"))
@@ -403,21 +416,15 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       label: "Care plan review due",
       tone: "warning",
     },
-    disengaged: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "disengaged"))
-        .length,
-      detail: "Not logging or syncing key data.",
-      icon: "/portal/icons/trend icon2.png",
-      label: "Missing data / disengaged",
+    worsening: {
+      count: items.filter((item) =>
+        matchesPortalPatientFilter(item, "worsening"),
+      ).length,
+      detail:
+        "Repeated decline in nutrition, activity, weight or blood pressure.",
+      icon: "/portal/icons/trend icon.png",
+      label: "Worsening trends",
       tone: "warning",
-    },
-    endingSoon: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "endingSoon"))
-        .length,
-      detail: "Access will be ending in the next few weeks.",
-      icon: "/portal/icons/user icon.png",
-      label: "Access ending soon",
-      tone: "accent",
     },
   };
 
