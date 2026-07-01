@@ -87,7 +87,7 @@ export default function PortalHeaderBar() {
 
         <button
           className={styles.buttonSecondary}
-          onClick={() => window.alert("Advanced search is the next portal slice.")}
+          onClick={() => router.push("/portal/advanced-search")}
           type="button"
         >
           Advanced Search
@@ -101,7 +101,7 @@ export default function PortalHeaderBar() {
         <span className={styles.headerMeta}>Last logged in {lastLoggedIn}</span>
         <button
           className={styles.buttonSecondary}
-          onClick={() => window.alert("Patient intake flow is the next portal slice.")}
+          onClick={() => router.push("/portal/patients/add")}
           type="button"
         >
           Add Patient

@@ -1056,6 +1056,19 @@
   margin: 0 auto;
 }
 
+.portalFormShellWide {
+  width: min(100%, 760px);
+  display: grid;
+  gap: var(--portal-space-4);
+  margin: 0 auto;
+}
+
+.portalFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--portal-space-4);
+}
+
 .carePlanFormGroup {
   display: grid;
   gap: var(--portal-space-2);
@@ -1150,6 +1163,59 @@
 }
 
 .portalFormSectionItem span {
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.portalButtonRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+}
+
+.portalResultCard {
+  width: min(100%, 760px);
+  display: grid;
+  gap: var(--portal-space-3);
+  margin: 0 auto;
+  padding: var(--portal-space-4);
+  border: 1px solid var(--portal-line);
+  background: var(--portal-surface);
+}
+
+.portalResultHeader {
+  display: grid;
+  gap: var(--portal-space-1);
+}
+
+.portalResultRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--portal-space-3);
+  padding: 12px 0;
+  border-top: 1px solid var(--portal-line);
+}
+
+.portalResultRow:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.portalResultCopy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.portalResultCopy strong {
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.portalResultCopy span {
   color: var(--portal-text-soft);
   font-size: 14px;
   line-height: 20px;
@@ -1754,6 +1820,7 @@
   .detailGrid,
   .detailFacts,
   .assignmentRow,
+  .portalFormGrid,
   .patientSummaryGrid,
   .patientOverviewGrid {
     grid-template-columns: 1fr;

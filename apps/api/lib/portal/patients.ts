@@ -6,11 +6,14 @@ import type { PatientWorseningTrendAlert } from "@ckd/core";
 import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
   buildPortalWorseningHref,
+  normalizePortalPatientRiskFilter,
   mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
+  type PortalPatientAdvancedFilters,
   type PortalPatientDetail,
   type PortalPatientFilter,
   type PortalPatientListItem,
+  type PortalPatientRiskFilter,
   type PortalPatientStat,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
@@ -365,6 +368,57 @@ export function matchesPortalPatientQuery(
     .toLowerCase();
 
   return haystack.includes(normalized);
+}
+
+function matchesPortalPatientRisk(
+  item: PortalPatientListItem,
+  risk: PortalPatientRiskFilter,
+) {
+  return risk === "all" ? true : item.risk === risk;
+}
+
+function matchesPortalPatientStage(
+  item: PortalPatientListItem,
+  stage: string,
+) {
+  const normalizedStage = stage.trim().toLowerCase();
+  if (!normalizedStage) {
+    return true;
+  }
+
+  return (item.stage ?? "").trim().toLowerCase() === normalizedStage;
+}
+
+function matchesPortalPatientAssignmentValue(
+  actual: string | null,
+  expected: string,
+) {
+  const normalizedExpected = expected.trim().toLowerCase();
+  if (!normalizedExpected) {
+    return true;
+  }
+
+  return (actual ?? "").trim().toLowerCase() === normalizedExpected;
+}
+
+export function matchesPortalPatientAdvancedFilters(
+  item: PortalPatientListItem,
+  filters: PortalPatientAdvancedFilters,
+) {
+  return (
+    matchesPortalPatientQuery(item, filters.query) &&
+    matchesPortalPatientFilter(
+      item,
+      normalizePortalPatientFilter(filters.filter),
+    ) &&
+    matchesPortalPatientRisk(
+      item,
+      normalizePortalPatientRiskFilter(filters.risk),
+    ) &&
+    matchesPortalPatientStage(item, filters.stage) &&
+    matchesPortalPatientAssignmentValue(item.careTeamId, filters.careTeamId) &&
+    matchesPortalPatientAssignmentValue(item.facilityId, filters.facilityId)
+  );
 }
 
 export function sortPortalPatients(items: PortalPatientListItem[]) {
