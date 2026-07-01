@@ -68,6 +68,7 @@ export type PortalPatientWorseningItem = {
   patientResponseLabel: string | null;
   portalEscalationEligible: boolean;
   reviewedAt?: string | null;
+  reviewedNote?: string | null;
   reviewedByName?: string | null;
   reviewedByPrincipalId?: string | null;
   reviewedByRole?: string | null;

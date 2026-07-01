@@ -17,6 +17,7 @@ const CARE_PLAN_REMINDER_TYPE = "care-plan-reminder";
 const CARE_PLAN_ALERT_TYPE = "care-plan-alert";
 const CARE_PLAN_COMPLETED_TYPE = "care-plan-completed";
 const CARE_PLAN_REMINDER_CHANNEL_ID = "care-plan-reminders";
+const CARE_PLAN_REMINDER_HOUR = 9;
 const CARE_PLAN_ALERT_STATE_KEY = "ckd_care_plan_alert_state";
 const WORSENING_TREND_ALERT_TYPE = "worsening-trend-alert";
 const WORSENING_TREND_REMINDER_TYPE = "worsening-trend-reminder";
@@ -599,11 +600,17 @@ async function logWorseningTrendDebugSnapshot() {
 function nextMorningDate(baseIso: string | null) {
   const now = new Date();
   const next = baseIso ? new Date(baseIso) : new Date();
-  next.setHours(8, 0, 0, 0);
+  next.setHours(CARE_PLAN_REMINDER_HOUR, 0, 0, 0);
   if (next <= now) {
     next.setDate(next.getDate() + 1);
   }
   return next;
+}
+
+function getWeeklyReminderWeekday(baseIso: string | null) {
+  const date = baseIso ? new Date(baseIso) : new Date();
+  const utcDay = date.getUTCDay();
+  return utcDay === 0 ? 1 : utcDay + 1;
 }
 
 export async function syncCarePlanReminderNotifications() {
@@ -724,7 +731,7 @@ export async function syncCarePlanReminderNotifications() {
         await Notifications.scheduleNotificationAsync({
           content,
           trigger: {
-            hour: 8,
+            hour: CARE_PLAN_REMINDER_HOUR,
             minute: 0,
             type: Notifications.SchedulableTriggerInputTypes.DAILY,
           },
@@ -736,10 +743,10 @@ export async function syncCarePlanReminderNotifications() {
         await Notifications.scheduleNotificationAsync({
           content,
           trigger: {
-            hour: 8,
+            hour: CARE_PLAN_REMINDER_HOUR,
             minute: 0,
             type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday: 2,
+            weekday: getWeeklyReminderWeekday(item.activatedAt ?? null),
           },
         });
         continue;

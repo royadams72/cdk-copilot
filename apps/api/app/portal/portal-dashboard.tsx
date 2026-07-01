@@ -47,6 +47,14 @@ type PortalReviewWorseningResponse = {
   };
 };
 
+type ReviewComposerState =
+  | {
+      episodeIds?: string[];
+      patientIds?: string[];
+      title: string;
+    }
+  | null;
+
 const worseningFilterOptions: Array<{
   label: string;
   value: PortalWorseningKind;
@@ -119,6 +127,8 @@ function PortalDashboardContent() {
   const [notifyBody, setNotifyBody] = useState(
     "Your care team would like you to review your recent health information in CKD Copilot.",
   );
+  const [reviewComposer, setReviewComposer] = useState<ReviewComposerState>(null);
+  const [reviewNote, setReviewNote] = useState("");
   const [detailsPatient, setDetailsPatient] =
     useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
@@ -287,64 +297,34 @@ function PortalDashboardContent() {
     }
 
     if (value === "reviewed") {
-      setActionPending(true);
-      try {
-        const response = await fetch("/api/portal/worsening-trends/review", {
-          body: JSON.stringify({ patientIds: selectedPatientIds }),
-          headers: {
-            ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
-            "content-type": "application/json",
-          },
-          method: "POST",
-        });
-
-        const body = (await response.json().catch(() => null)) as
-          | PortalReviewWorseningResponse
-          | { error?: { message?: string } }
-          | null;
-
-        if (!response.ok || !body || !("data" in body)) {
-          throw new Error(
-            body && "error" in body
-              ? body.error?.message
-              : "Unable to mark trends as reviewed",
-          );
-        }
-
-        setPatients((current) =>
-          current.map((patient) =>
-            selectedPatientIds.includes(patient.id)
-              ? { ...patient, worseningItems: [] }
-              : patient,
-          ),
-        );
-        setSelectedPatientIds([]);
-        setActionMessage(
-          body.data.modifiedCount === 1
-            ? "Marked 1 worsening trend as reviewed."
-            : `Marked ${body.data.modifiedCount} worsening trends as reviewed.`,
-        );
-      } catch (error) {
-        setActionError(
-          error instanceof Error
-            ? error.message
-            : "Unable to mark trends as reviewed",
-        );
-      } finally {
-        setActionPending(false);
-        setSelectedAction("");
-      }
+      setReviewNote("");
+      setReviewComposer({
+        patientIds: selectedPatientIds,
+        title:
+          selectedPatientIds.length === 1
+            ? "Mark patient follow-up as reviewed"
+            : "Mark follow-up items as reviewed",
+      });
+      setSelectedAction("");
     }
   }
 
-  async function handleReviewItem(patientId: string, episodeId: string) {
+  async function submitReviewedNote(input: {
+    episodeIds?: string[];
+    patientIds?: string[];
+    patientIdForSingleEpisode?: string;
+  }) {
     setActionError(null);
     setActionMessage(null);
     setActionPending(true);
 
     try {
       const response = await fetch("/api/portal/worsening-trends/review", {
-        body: JSON.stringify({ episodeIds: [episodeId] }),
+        body: JSON.stringify({
+          ...(input.episodeIds?.length ? { episodeIds: input.episodeIds } : {}),
+          note: reviewNote.trim(),
+          ...(input.patientIds?.length ? { patientIds: input.patientIds } : {}),
+        }),
         headers: {
           ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
           "content-type": "application/json",
@@ -361,40 +341,71 @@ function PortalDashboardContent() {
         throw new Error(
           body && "error" in body
             ? body.error?.message
-            : "Unable to mark trend as reviewed",
+            : "Unable to mark follow-up items as reviewed",
         );
       }
 
-      setPatients((current) =>
-        current.map((patient) =>
-          patient.id === patientId
+      if (input.episodeIds?.length && input.patientIdForSingleEpisode) {
+        const episodeIds = new Set(input.episodeIds);
+        setPatients((current) =>
+          current.map((patient) =>
+            patient.id === input.patientIdForSingleEpisode
+              ? {
+                  ...patient,
+                  worseningItems: patient.worseningItems.filter(
+                    (item) => !episodeIds.has(item.episodeId),
+                  ),
+                }
+              : patient,
+          ),
+        );
+        setDetailsPatient((current) =>
+          current && current.id === input.patientIdForSingleEpisode
             ? {
-                ...patient,
-                worseningItems: patient.worseningItems.filter(
-                  (item) => item.episodeId !== episodeId,
+                ...current,
+                worseningItems: current.worseningItems.filter(
+                  (item) => !episodeIds.has(item.episodeId),
                 ),
               }
-            : patient,
-        ),
+            : current,
+        );
+      } else if (input.patientIds?.length) {
+        const patientIds = new Set(input.patientIds);
+        setPatients((current) =>
+          current.map((patient) =>
+            patientIds.has(patient.id)
+              ? { ...patient, worseningItems: [] }
+              : patient,
+          ),
+        );
+        setSelectedPatientIds([]);
+      }
+
+      setActionMessage(
+        body.data.modifiedCount === 1
+          ? "Marked 1 follow-up item as reviewed."
+          : `Marked ${body.data.modifiedCount} follow-up items as reviewed.`,
       );
-      setDetailsPatient((current) =>
-        current && current.id === patientId
-          ? {
-              ...current,
-              worseningItems: current.worseningItems.filter(
-                (item) => item.episodeId !== episodeId,
-              ),
-            }
-          : current,
-      );
-      setActionMessage("Marked trend as reviewed.");
+      setReviewComposer(null);
+      setReviewNote("");
     } catch (error) {
       setActionError(
-        error instanceof Error ? error.message : "Unable to mark trend as reviewed",
+        error instanceof Error
+          ? error.message
+          : "Unable to mark follow-up items as reviewed",
       );
     } finally {
       setActionPending(false);
     }
+  }
+
+  function handleReviewItem(patientId: string, episodeId: string) {
+    setReviewNote("");
+    setReviewComposer({
+      episodeIds: [episodeId],
+      patientIds: [patientId],
+      title: "Mark follow-up item as reviewed",
+    });
   }
 
   async function handleSendCustomNotification() {
@@ -566,7 +577,7 @@ function PortalDashboardContent() {
                 >
                   <option value="">Actions</option>
                   <option value="notify">Notify patient(s)</option>
-                  <option value="reviewed">Reviewed</option>
+                  <option value="reviewed">Mark as reviewed</option>
                   <option value="care-plan">Create Care Plan</option>
                 </select>
                 <input
@@ -723,7 +734,7 @@ function PortalDashboardContent() {
                       }
                       type="button"
                     >
-                      Reviewed
+                      Mark as reviewed
                     </button>
                     {item.href ? (
                       <Link className={styles.tableLink} href={item.href}>
@@ -750,6 +761,71 @@ function PortalDashboardContent() {
                 type="button"
               >
                 Open patient
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {reviewComposer ? (
+        <div
+          className={styles.warningModalBackdrop}
+          onClick={() => {
+            if (!actionPending) {
+              setReviewComposer(null);
+            }
+          }}
+        >
+          <div
+            className={styles.modalCard}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className={styles.modalTitle}>{reviewComposer.title}</h3>
+            <p className={styles.modalCopy}>
+              Add a short note so the reviewed history shows why this follow-up item
+              was cleared.
+            </p>
+            <div className={styles.worseningModalList}>
+              <label>
+                <span className={styles.listHeaderMeta}>Review note</span>
+                <textarea
+                  className={styles.inputField}
+                  maxLength={240}
+                  onChange={(event) => setReviewNote(event.target.value)}
+                  placeholder="Example: Patient contacted, self-managing, no further action today."
+                  rows={4}
+                  value={reviewNote}
+                />
+              </label>
+            </div>
+            <div className={styles.warningActions}>
+              <button
+                className={styles.buttonSecondarySmall}
+                disabled={actionPending}
+                onClick={() => setReviewComposer(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.buttonPrimarySmall}
+                disabled={actionPending || reviewNote.trim().length < 3}
+                onClick={() =>
+                  void submitReviewedNote({
+                    episodeIds: reviewComposer.episodeIds,
+                    patientIdForSingleEpisode:
+                      reviewComposer.patientIds?.length === 1
+                        ? reviewComposer.patientIds[0]
+                        : undefined,
+                    patientIds:
+                      reviewComposer.episodeIds?.length
+                        ? undefined
+                        : reviewComposer.patientIds,
+                  })
+                }
+                type="button"
+              >
+                {actionPending ? "Saving..." : "Mark as reviewed"}
               </button>
             </div>
           </div>

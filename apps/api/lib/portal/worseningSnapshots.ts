@@ -1,10 +1,10 @@
-import { ObjectId, type Db } from "mongodb";
+import { type Db, ObjectId } from "mongodb";
 
 import {
   buildPortalWorseningHref,
   mapTrendKeyToPortalKind,
-  type PortalWorseningSnapshotKey,
   type PortalPatientWorseningItem,
+  type PortalWorseningSnapshotKey,
 } from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS, type TWorseningTrendSnapshotDoc } from "@ckd/core/server";
 
@@ -30,6 +30,7 @@ type UserAccountActorDoc = {
 };
 
 export type PortalWorseningSnapshotAlert = {
+  id: string;
   body: string;
   checkInResponseCode?: string | null;
   checkInResponseLabel?: string | null;
@@ -37,7 +38,6 @@ export type PortalWorseningSnapshotAlert = {
   detail: string | null;
   detectedAt: string;
   firstDetectedAt: string;
-  id: string;
   key: PortalWorseningSnapshotKey;
   lastDetectedAt: string;
   level: TWorseningTrendSnapshotDoc["level"];
@@ -112,9 +112,7 @@ function toPortalWorseningItem(
     detail: doc.detail ?? doc.body,
     episodeId: doc.episodeId,
     firstDetectedAt: doc.firstDetectedAt?.toISOString() ?? null,
-    href:
-      doc.href ??
-      buildPortalWorseningHref(patientId, doc.key),
+    href: doc.href ?? buildPortalWorseningHref(patientId, doc.key),
     kind: mapTrendKeyToPortalKind(doc.key),
     label: doc.title,
     level: doc.level,
@@ -124,14 +122,12 @@ function toPortalWorseningItem(
     reviewedByName: reviewerName,
     reviewedByPrincipalId: doc.reviewedByPrincipalId ?? null,
     reviewedByRole: doc.reviewedByRole ?? null,
+    reviewedNote: doc.reviewedNote ?? null,
     viewedAt: doc.viewedAt?.toISOString() ?? null,
   };
 }
 
-async function loadActorNames(
-  db: Db,
-  actorPrincipalIds: string[],
-) {
+async function loadActorNames(db: Db, actorPrincipalIds: string[]) {
   if (!actorPrincipalIds.length) {
     return new Map<string, string>();
   }
@@ -213,18 +209,20 @@ export async function syncPatientWorseningTrendSnapshots(
     COLLECTIONS.WorseningTrendSnapshots,
   );
   const now = new Date();
-  const activeAlerts = input.alerts.filter((alert) => alert.portalEscalationEligible);
+  const activeAlerts = input.alerts.filter(
+    (alert) => alert.portalEscalationEligible,
+  );
   const activeEpisodeIds = new Set(activeAlerts.map((alert) => alert.id));
 
-  console.log("[worsening:snapshots] syncing", {
-    activeAlerts: activeAlerts.map((alert) => ({
-      id: alert.id,
-      key: alert.key,
-      level: alert.level,
-      title: alert.title,
-    })),
-    patientId: input.patientId.toHexString(),
-  });
+  // console.log("[worsening:snapshots] syncing", {
+  //   activeAlerts: activeAlerts.map((alert) => ({
+  //     id: alert.id,
+  //     key: alert.key,
+  //     level: alert.level,
+  //     title: alert.title,
+  //   })),
+  //   patientId: input.patientId.toHexString(),
+  // });
 
   await Promise.all(
     activeAlerts.map((alert) =>
@@ -259,6 +257,7 @@ export async function syncPatientWorseningTrendSnapshots(
             $setOnInsert: {
               patientId: input.patientId,
               reviewedAt: null,
+              reviewedNote: null,
               reviewedByPrincipalId: null,
               reviewedByRole: null,
             },
@@ -266,13 +265,13 @@ export async function syncPatientWorseningTrendSnapshots(
           { upsert: true },
         )
         .then((result) => {
-          console.log("[worsening:snapshots] upsert result", {
-            id: alert.id,
-            key: alert.key,
-            matchedCount: result.matchedCount,
-            modifiedCount: result.modifiedCount,
-            upsertedId: result.upsertedId ?? null,
-          });
+          // console.log("[worsening:snapshots] upsert result", {
+          //   id: alert.id,
+          //   key: alert.key,
+          //   matchedCount: result.matchedCount,
+          //   modifiedCount: result.modifiedCount,
+          //   upsertedId: result.upsertedId ?? null,
+          // });
           return result;
         }),
     ),
@@ -296,12 +295,12 @@ export async function syncPatientWorseningTrendSnapshots(
     },
   );
 
-  console.log("[worsening:snapshots] resolve result", {
-    matchedCount: resolveResult.matchedCount,
-    modifiedCount: resolveResult.modifiedCount,
-    patientId: input.patientId.toHexString(),
-    retainedEpisodeIds: Array.from(activeEpisodeIds),
-  });
+  // console.log("[worsening:snapshots] resolve result", {
+  //   matchedCount: resolveResult.matchedCount,
+  //   modifiedCount: resolveResult.modifiedCount,
+  //   patientId: input.patientId.toHexString(),
+  //   retainedEpisodeIds: Array.from(activeEpisodeIds),
+  // });
 }
 
 export async function loadActivePortalWorseningItemsByPatientId(
@@ -362,7 +361,9 @@ export async function loadReviewedPortalWorseningItems(
     toPortalWorseningItem(
       patientId.toHexString(),
       doc,
-      doc.reviewedByPrincipalId ? actorNames.get(doc.reviewedByPrincipalId) ?? null : null,
+      doc.reviewedByPrincipalId
+        ? (actorNames.get(doc.reviewedByPrincipalId) ?? null)
+        : null,
     ),
   );
 }
@@ -374,6 +375,7 @@ export async function markPortalWorseningSnapshotsReviewed(
     patientIds?: ObjectId[];
     reviewedByPrincipalId: string;
     reviewedByRole: string;
+    reviewedNote: string;
   },
 ) {
   const filter: Record<string, unknown> = {
@@ -400,6 +402,7 @@ export async function markPortalWorseningSnapshotsReviewed(
         reviewedAt: new Date(),
         reviewedByPrincipalId: input.reviewedByPrincipalId,
         reviewedByRole: input.reviewedByRole,
+        reviewedNote: input.reviewedNote,
       },
     });
 

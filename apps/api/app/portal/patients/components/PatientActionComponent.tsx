@@ -4,10 +4,13 @@ import type { PortalPatientDashboardData } from "@/apps/api/lib/portal/patient-s
 
 const actionHrefByLabel: Record<string, string> = {
   "Care Plans": "/care-plans",
+  Diagnoses: "/diagnoses",
   "Health Data": "/health",
-  "Labs": "/labs",
+  Labs: "/labs",
   "Medication Profile": "/medication",
+  Messaging: "/messages",
   "Nutrition Data": "/nutrition",
+  "Patient targets": "/targets",
   "Reviewed Trends": "/worsening-reviewed",
   "Worsening Trends": "#attention-needed",
 };
@@ -25,6 +28,7 @@ const PatientActionComponent = ({
         const href = actionHrefByLabel[label];
 
         if (href) {
+          console.log("actionHrefByLabel:", href);
           return (
             <Link
               className={styles.patientActionInlineLink}

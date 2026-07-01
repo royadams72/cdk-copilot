@@ -17,6 +17,8 @@ export default function PatientHeadlineContainer({
   headline,
   subheadline,
 }: PatientHeadlineContainerProps) {
+  console.log("PatientHeadlineContainer: fired");
+
   return (
     <div className={styles.patientHeadlineContainer}>
       <Link className={styles.patientBackLink} href={backHref} prefetch={false}>

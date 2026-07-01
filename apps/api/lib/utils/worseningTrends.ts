@@ -109,18 +109,6 @@ type NutritionWorseningEvaluation = {
   window: { endDate: string; startDate: string };
 };
 
-type LabsWorseningEvaluation = {
-  detail: string | null;
-  highPriority: boolean;
-  signalCount: number;
-  triggered: boolean;
-};
-
-type DatedNumericLabPoint = {
-  takenAt: Date;
-  value: number;
-};
-
 type RawWorseningTrendAlert = Omit<
   PatientWorseningTrendAlert,
   "firstDetectedAt" | "id" | "lastDetectedAt" | "viewedAt"
@@ -182,29 +170,6 @@ function average(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function median(values: number[]) {
-  if (!values.length) {
-    return null;
-  }
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[middle - 1] + sorted[middle]) / 2;
-  }
-  return sorted[middle];
-}
-
-function toNumericValue(value: number | string | null | undefined) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const numeric = Number(value.trim());
-    return Number.isFinite(numeric) ? numeric : null;
-  }
-  return null;
-}
-
 function round(value: number, decimals = 1) {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
@@ -219,28 +184,6 @@ function buildCheckInScreenPath(
   key: PatientWorseningTrendAlert["key"],
 ) {
   return `/worsening-check-in?alertId=${encodeURIComponent(alertId)}&key=${encodeURIComponent(key)}`;
-}
-
-function normaliseLabLabel(doc: {
-  code?: string | null;
-  name?: string | null;
-}) {
-  return doc.name?.trim() || doc.code?.trim() || "Lab";
-}
-
-function normaliseLabUnit(unit: string | null | undefined) {
-  return (unit ?? "").trim().toLowerCase();
-}
-
-function buildLabSeriesKey(doc: {
-  code?: string | null;
-  unit?: string | null;
-}) {
-  return `${doc.code?.trim() ?? "lab"}::${normaliseLabUnit(doc.unit)}`;
-}
-
-function formatLabNumber(value: number) {
-  return value.toLocaleString("en-GB", { maximumFractionDigits: 2 });
 }
 
 function getConcerningWeightIncreaseResponses() {

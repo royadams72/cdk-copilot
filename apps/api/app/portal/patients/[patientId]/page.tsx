@@ -46,7 +46,9 @@ function renderOverviewRows(rows: PortalPatientOverviewRow[]) {
 function renderCarePlanSnapshot(snapshot: PortalPatientCarePlanSnapshot) {
   if (!snapshot) {
     return (
-      <div className={styles.patientPanelEmpty}>No care plans recorded yet.</div>
+      <div className={styles.patientPanelEmpty}>
+        No care plans recorded yet.
+      </div>
     );
   }
 
@@ -264,7 +266,9 @@ export default function PortalPatientDetailPage() {
                 <div>
                   <strong>{item.label}</strong>
                   {item.detail ? (
-                    <p className={styles.patientActivityDetail}>{item.detail}</p>
+                    <p className={styles.patientActivityDetail}>
+                      {item.detail}
+                    </p>
                   ) : null}
                 </div>
                 <span className={styles.patientActivityAt}>

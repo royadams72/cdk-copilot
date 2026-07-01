@@ -58,6 +58,7 @@ export const WorseningTrendSnapshotDocSchema = z.object({
   portalEscalationEligible: z.boolean(),
   resolvedAt: z.date().nullable().optional(),
   reviewedAt: z.date().nullable().optional(),
+  reviewedNote: z.string().nullable().default(null),
   reviewedByPrincipalId: z.string().nullable().default(null),
   reviewedByRole: z.string().nullable().default(null),
   screen: z.string().min(1),

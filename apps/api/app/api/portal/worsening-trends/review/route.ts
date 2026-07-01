@@ -14,6 +14,7 @@ import { COLLECTIONS } from "@ckd/core/server";
 const ReviewWorseningTrendsBody = z
   .object({
     episodeIds: z.array(z.string().min(1)).max(50).optional(),
+    note: z.string().trim().min(3).max(240),
     patientIds: z.array(z.string().min(1)).max(50).optional(),
   })
   .refine(
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
     const result = await markPortalWorseningSnapshotsReviewed(db, {
       episodeIds: payload.episodeIds,
       patientIds: matchedPatientIds,
+      reviewedNote: payload.note,
       reviewedByPrincipalId: caller.principalId,
       reviewedByRole: caller.role,
     });

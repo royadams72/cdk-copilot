@@ -134,6 +134,7 @@ export default function ReviewedWorseningTrendsPage() {
                     Reviewer: {item.reviewedByName ?? item.reviewedByPrincipalId}
                   </span>
                 ) : null}
+                {item.reviewedNote ? <span>Note: {item.reviewedNote}</span> : null}
                 {item.href ? (
                   <Link className={styles.tableLink} href={item.href} prefetch={false}>
                     Open related section
