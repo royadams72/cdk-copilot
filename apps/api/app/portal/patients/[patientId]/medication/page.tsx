@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientMedicationData } from "@/apps/api/lib/portal/patient-shared";
@@ -17,7 +17,7 @@ type PortalMedicationResponse = {
 
 export default function PortalPatientMedicationPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<PortalPatientMedicationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

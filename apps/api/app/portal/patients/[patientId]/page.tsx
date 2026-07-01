@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type {
@@ -85,7 +85,7 @@ function renderCarePlanSnapshot(snapshot: PortalPatientCarePlanSnapshot) {
 
 export default function PortalPatientDetailPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [patient, setPatient] = useState<PortalPatientDetail | null>(null);
   const [dashboard, setDashboard] = useState<PortalPatientDashboardData | null>(
     null,

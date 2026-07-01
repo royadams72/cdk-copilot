@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
@@ -69,7 +69,7 @@ function formatDefinition(definition: TargetDefinitionValue, unit: string) {
 
 export default function PortalPatientTargetsPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<TargetsResponse["data"] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftState>>({});
   const [loading, setLoading] = useState(true);

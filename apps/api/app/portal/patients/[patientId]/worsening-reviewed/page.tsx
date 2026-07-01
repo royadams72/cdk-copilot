@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientWorseningItem } from "@/apps/api/lib/portal/patient-shared";
@@ -20,7 +20,7 @@ type ReviewedWorseningResponse = {
 
 export default function ReviewedWorseningTrendsPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const jwt = session?.jwt;
   const [items, setItems] = useState<PortalPatientWorseningItem[]>([]);
   const [loading, setLoading] = useState(true);

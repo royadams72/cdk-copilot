@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
@@ -16,7 +16,7 @@ type PatientResponse = {
 
 export default function PortalPatientMessagesPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [patientName, setPatientName] = useState("Patient");
   const [title, setTitle] = useState("Check-in requested");
   const [body, setBody] = useState(

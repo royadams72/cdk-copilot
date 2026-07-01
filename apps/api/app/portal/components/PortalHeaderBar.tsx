@@ -3,7 +3,10 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import {
+  usePortalAuthSession,
+  usePortalSessionActions,
+} from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 
 function formatLastLoggedIn(jwt: string) {
@@ -26,7 +29,8 @@ function formatLastLoggedIn(jwt: string) {
 export default function PortalHeaderBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { logout, session, status } = usePortalSession();
+  const { logout } = usePortalSessionActions();
+  const { session, status } = usePortalAuthSession();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
   useEffect(() => {

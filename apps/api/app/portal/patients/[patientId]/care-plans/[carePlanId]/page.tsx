@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
@@ -65,7 +65,7 @@ function formatActivityLabel(
 export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<PortalPatientCarePlanDetailData | null>(
     null,
   );
