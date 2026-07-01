@@ -42,6 +42,7 @@ export default function PortalHeaderBar() {
   }
 
   const lastLoggedIn = formatLastLoggedIn(session.jwt);
+  const userLabel = session.user.displayName?.trim() || session.user.principalId;
 
   function pushPortalQuery(nextQuery: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -95,7 +96,7 @@ export default function PortalHeaderBar() {
 
       <div className={styles.actionCluster}>
         <span className={styles.headerMeta}>
-          Logged in as <strong>{session.user.principalId}</strong>
+          Logged in as <strong>{userLabel}</strong>
         </span>
         <span className={styles.headerMeta}>Last logged in {lastLoggedIn}</span>
         <button

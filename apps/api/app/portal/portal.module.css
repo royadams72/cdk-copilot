@@ -542,7 +542,7 @@
 .detailLayout {
   display: grid;
   gap: var(--portal-space-4);
-  padding: var(--portal-space-1) var(--portal-space-2) var(--portal-space-6);
+  padding: var(--portal-space-1) var(--portal-space-3) var(--portal-space-6);
 }
 
 .patientBackLink {
@@ -1124,6 +1124,35 @@
   line-height: 22px;
   text-align: left;
   cursor: pointer;
+}
+
+.portalFormSectionList {
+  display: grid;
+  gap: var(--portal-space-3);
+}
+
+.portalFormSectionItem {
+  display: grid;
+  gap: var(--portal-space-2);
+  padding: 12px 0;
+  border-top: 1px solid var(--portal-line);
+}
+
+.portalFormSectionItem:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.portalFormSectionItem strong {
+  color: var(--portal-text);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.portalFormSectionItem span {
+  color: var(--portal-text-soft);
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .carePlanSearchResult:hover {

@@ -1,6 +1,7 @@
 export type PortalSessionUser = {
   allowedPatientIds: string[];
   careTeamIds: string[];
+  displayName: string | null;
   facilityIds: string[];
   orgId: string | null;
   principalId: string;

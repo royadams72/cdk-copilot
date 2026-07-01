@@ -47,28 +47,97 @@ type DraftState = {
   value: string;
 };
 
-function toInputValue(value: number | null | undefined) {
-  return typeof value === "number" ? String(value) : "";
+function isSleepDurationMetric(metric: string) {
+  return metric === "sleep_duration_min_day";
 }
 
-function parseNumberInput(value: string) {
+function formatNumber(value: number) {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+  return value.toFixed(1).replace(/\.0$/, "");
+}
+
+function toInputValue(
+  metric: string,
+  value: number | null | undefined,
+) {
+  if (typeof value !== "number") return "";
+  if (isSleepDurationMetric(metric)) {
+    return formatNumber(value / 60);
+  }
+  return formatNumber(value);
+}
+
+function parseNumberInput(metric: string, value: string) {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const numeric = Number(trimmed);
-  return Number.isFinite(numeric) ? numeric : null;
+  if (!Number.isFinite(numeric)) return null;
+  if (isSleepDurationMetric(metric)) {
+    return Math.round(numeric * 60);
+  }
+  return numeric;
 }
 
-function formatDefinition(definition: TargetDefinitionValue, unit: string) {
-  if (definition.type === "range") {
-    return `${definition.low ?? "?"} to ${definition.high ?? "?"} ${unit}`;
+function formatUnit(metric: string, definition: TargetDefinitionValue, unit: string) {
+  if (isSleepDurationMetric(metric)) {
+    return "hours/day";
   }
-  const value =
-    definition.value ?? definition.high ?? definition.low ?? null;
-  return `${value ?? "?"} ${unit}`;
+
+  if (definition.basis === "perKgPerDay") {
+    return unit.replace("/day", "/kg/day");
+  }
+
+  return unit;
+}
+
+function formatDefinition(
+  metric: string,
+  definition: TargetDefinitionValue,
+  unit: string,
+) {
+  const displayUnit = formatUnit(metric, definition, unit);
+  const toDisplay = (value: number | null | undefined) =>
+    typeof value === "number"
+      ? isSleepDurationMetric(metric)
+        ? formatNumber(value / 60)
+        : formatNumber(value)
+      : "?";
+
+  if (definition.type === "range") {
+    return `${toDisplay(definition.low)} to ${toDisplay(definition.high)} ${displayUnit}`;
+  }
+  const value = definition.value ?? definition.high ?? definition.low ?? null;
+  return `${toDisplay(value)} ${displayUnit}`;
+}
+
+function buildDraftState(
+  item: TargetItem,
+  source: TargetDefinitionValue | null,
+  reason: string | null | undefined,
+): DraftState {
+  return {
+    high: toInputValue(item.metric, source?.high ?? null),
+    low: toInputValue(item.metric, source?.low ?? null),
+    reason: reason ?? "",
+    value: toInputValue(item.metric, source?.value ?? null),
+  };
+}
+
+function draftsMatch(left: DraftState | undefined, right: DraftState) {
+  if (!left) return false;
+  return (
+    left.high.trim() === right.high.trim() &&
+    left.low.trim() === right.low.trim() &&
+    left.reason.trim() === right.reason.trim() &&
+    left.value.trim() === right.value.trim()
+  );
 }
 
 export default function PortalPatientTargetsPage() {
   const params = useParams<{ patientId: string }>();
+  const patientId = params["patientId"];
   const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<TargetsResponse["data"] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftState>>({});
@@ -78,7 +147,7 @@ export default function PortalPatientTargetsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status !== "authenticated" || !session || !params.patientId) return;
+    if (status !== "authenticated" || !session || !patientId) return;
 
     const controller = new AbortController();
 
@@ -87,7 +156,7 @@ export default function PortalPatientTargetsPage() {
       setError(null);
       try {
         const response = await fetch(
-          `/api/portal/patients/${params.patientId}/targets`,
+          `/api/portal/patients/${patientId}/targets`,
           {
             headers: getPortalSessionAuthHeaders(session!.jwt),
             signal: controller.signal,
@@ -109,12 +178,11 @@ export default function PortalPatientTargetsPage() {
           Object.fromEntries(
             body.data.items.map((item) => [
               item.metric,
-              {
-                high: toInputValue(item.state.override?.high ?? item.state.effective.high),
-                low: toInputValue(item.state.override?.low ?? item.state.effective.low),
-                reason: item.state.overrideMeta?.reason ?? "",
-                value: toInputValue(item.state.override?.value ?? item.state.effective.value),
-              },
+              buildDraftState(
+                item,
+                item.state.override ?? item.state.effective,
+                item.state.overrideMeta?.reason,
+              ),
             ]),
           ),
         );
@@ -132,7 +200,7 @@ export default function PortalPatientTargetsPage() {
 
     void load();
     return () => controller.abort();
-  }, [params.patientId, session, status]);
+  }, [patientId, session, status]);
 
   const groupedItems = useMemo(() => {
     const items = data?.items ?? [];
@@ -149,10 +217,13 @@ export default function PortalPatientTargetsPage() {
 
     const override: TargetDefinitionValue = {
       basis: item.state.effective.basis ?? null,
-      high: parseNumberInput(draft.high),
-      low: parseNumberInput(draft.low),
+      high: parseNumberInput(item.metric, draft.high),
+      low: parseNumberInput(item.metric, draft.low),
       type: item.state.effective.type,
-      value: parseNumberInput(draft.value),
+      value:
+        item.state.effective.type === "range"
+          ? null
+          : parseNumberInput(item.metric, draft.value),
     };
 
     setSavingMetric(item.metric);
@@ -161,7 +232,7 @@ export default function PortalPatientTargetsPage() {
 
     try {
       const response = await fetch(
-        `/api/portal/patients/${params.patientId}/targets`,
+        `/api/portal/patients/${patientId}/targets`,
         {
           body: JSON.stringify({
             metric: item.metric,
@@ -230,7 +301,7 @@ export default function PortalPatientTargetsPage() {
     setMessage(null);
     try {
       const response = await fetch(
-        `/api/portal/patients/${params.patientId}/targets`,
+        `/api/portal/patients/${patientId}/targets`,
         {
           body: JSON.stringify({
             clearOverride: true,
@@ -253,12 +324,7 @@ export default function PortalPatientTargetsPage() {
       }
       setDrafts((current) => ({
         ...current,
-        [item.metric]: {
-          high: toInputValue(item.state.recommended.high),
-          low: toInputValue(item.state.recommended.low),
-          reason: "",
-          value: toInputValue(item.state.recommended.value),
-        },
+        [item.metric]: buildDraftState(item, item.state.recommended, ""),
       }));
       setData((current) =>
         current
@@ -294,46 +360,53 @@ export default function PortalPatientTargetsPage() {
 
   function renderItems(title: string, items: TargetItem[]) {
     return (
-      <section className={styles.panelSurface}>
-        <div className={styles.listHeaderRow}>
-          <span className={styles.listHeaderTitle}>{title}</span>
-        </div>
-        <div className={styles.worseningModalList}>
+      <div className={styles.carePlanFormGroup}>
+        <label className={styles.carePlanFieldLabel}>{title}</label>
+        <div className={styles.portalFormSectionList}>
           {items.map((item) => {
             const draft = drafts[item.metric];
+            const persistedDraft = buildDraftState(
+              item,
+              item.state.override ?? item.state.effective,
+              item.state.overrideMeta?.reason,
+            );
+            const hasDraftChanges = draftsMatch(draft, persistedDraft)
+              ? false
+              : Boolean(draft);
             return (
-              <div className={styles.worseningModalItem} key={item.metric}>
+              <div className={styles.portalFormSectionItem} key={item.metric}>
                 <strong>{item.label}</strong>
                 <span>
-                  Recommended: {formatDefinition(item.state.recommended, item.state.unit)}
+                  Recommended: {formatDefinition(item.metric, item.state.recommended, item.state.unit)}
                 </span>
                 <span>
-                  Current: {formatDefinition(item.state.effective, item.state.unit)}
-                  {item.state.effective.basis === "perKgPerDay" ? " per kg/day" : ""}
+                  Current: {formatDefinition(item.metric, item.state.effective, item.state.unit)}
                 </span>
-                <div className={styles.worseningModalList}>
-                  <label>
-                    <span className={styles.listHeaderMeta}>Value</span>
-                    <input
-                      className={styles.inputField}
-                      onChange={(event) =>
-                        setDrafts((current) => ({
-                          ...current,
-                          [item.metric]: {
-                            ...current[item.metric],
-                            value: event.target.value,
-                          },
-                        }))
-                      }
-                      value={draft?.value ?? ""}
-                    />
-                  </label>
+                <div className={styles.carePlanFormGroup}>
+                  {item.state.effective.type !== "range" ? (
+                    <label>
+                      <span className={styles.dataScreenCaption}>Value</span>
+                      <input
+                        className={styles.carePlanInput}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [item.metric]: {
+                              ...current[item.metric],
+                              value: event.target.value,
+                            },
+                          }))
+                        }
+                        value={draft?.value ?? ""}
+                      />
+                    </label>
+                  ) : null}
                   {item.state.effective.type === "range" ? (
-                    <>
+                    <div className={styles.carePlanInlineRow}>
                       <label>
-                        <span className={styles.listHeaderMeta}>Low</span>
+                        <span className={styles.dataScreenCaption}>Low</span>
                         <input
-                          className={styles.inputField}
+                          className={styles.carePlanInput}
                           onChange={(event) =>
                             setDrafts((current) => ({
                               ...current,
@@ -347,9 +420,9 @@ export default function PortalPatientTargetsPage() {
                         />
                       </label>
                       <label>
-                        <span className={styles.listHeaderMeta}>High</span>
+                        <span className={styles.dataScreenCaption}>High</span>
                         <input
-                          className={styles.inputField}
+                          className={styles.carePlanInput}
                           onChange={(event) =>
                             setDrafts((current) => ({
                               ...current,
@@ -362,12 +435,12 @@ export default function PortalPatientTargetsPage() {
                           value={draft?.high ?? ""}
                         />
                       </label>
-                    </>
+                    </div>
                   ) : null}
                   <label>
-                    <span className={styles.listHeaderMeta}>Reason</span>
+                    <span className={styles.dataScreenCaption}>Reason</span>
                     <input
-                      className={styles.inputField}
+                      className={styles.carePlanInput}
                       onChange={(event) =>
                         setDrafts((current) => ({
                           ...current,
@@ -393,7 +466,7 @@ export default function PortalPatientTargetsPage() {
                   </button>
                   <button
                     className={styles.buttonPrimarySmall}
-                    disabled={savingMetric === item.metric}
+                    disabled={savingMetric === item.metric || !hasDraftChanges}
                     onClick={() => void saveMetric(item)}
                     type="button"
                   >
@@ -404,7 +477,7 @@ export default function PortalPatientTargetsPage() {
             );
           })}
         </div>
-      </section>
+      </div>
     );
   }
 
@@ -424,7 +497,7 @@ export default function PortalPatientTargetsPage() {
   return (
     <section className={styles.detailLayout}>
       <PortalPatientSubpageHeader
-        backHref={`/portal/patients/${params.patientId}`}
+        backHref={`/portal/patients/${patientId}`}
         backLabel="Back to patient"
         headline={`${data.patient.name} targets`}
       />
@@ -434,8 +507,16 @@ export default function PortalPatientTargetsPage() {
           <p>{error}</p>
         </section>
       ) : null}
-      {renderItems("Lifestyle targets", groupedItems.lifestyle)}
-      {renderItems("Renal targets", groupedItems.renal)}
+      <div className={styles.carePlanFormIntro}>
+        <h2 className={styles.carePlanFormTitle}>Patient targets</h2>
+        <p className={styles.carePlanFormLead}>
+          Review the current targets and set clinician overrides where needed.
+        </p>
+      </div>
+      <section className={styles.carePlanFormShell}>
+        {renderItems("Lifestyle targets", groupedItems.lifestyle)}
+        {renderItems("Renal targets", groupedItems.renal)}
+      </section>
     </section>
   );
 }

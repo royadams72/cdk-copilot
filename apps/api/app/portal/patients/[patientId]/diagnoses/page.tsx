@@ -31,6 +31,7 @@ type SearchResult = {
 
 export default function PortalPatientDiagnosesPage() {
   const params = useParams<{ patientId: string }>();
+  const patientId = params["patientId"];
   const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<DiagnosisResponse["data"] | null>(null);
   const [query, setQuery] = useState("");
@@ -42,7 +43,7 @@ export default function PortalPatientDiagnosesPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status !== "authenticated" || !session || !params.patientId) return;
+    if (status !== "authenticated" || !session || !patientId) return;
 
     const controller = new AbortController();
 
@@ -51,7 +52,7 @@ export default function PortalPatientDiagnosesPage() {
       setError(null);
       try {
         const response = await fetch(
-          `/api/portal/patients/${params.patientId}/diagnoses`,
+          `/api/portal/patients/${patientId}/diagnoses`,
           {
             headers: getPortalSessionAuthHeaders(session!.jwt),
             signal: controller.signal,
@@ -83,7 +84,7 @@ export default function PortalPatientDiagnosesPage() {
 
     void load();
     return () => controller.abort();
-  }, [params.patientId, session, status]);
+  }, [patientId, session, status]);
 
   useEffect(() => {
     if (!session || query.trim().length < 2) {
@@ -139,7 +140,7 @@ export default function PortalPatientDiagnosesPage() {
     setMessage(null);
     try {
       const response = await fetch(
-        `/api/portal/patients/${params.patientId}/diagnoses`,
+        `/api/portal/patients/${patientId}/diagnoses`,
         {
           body: JSON.stringify(input),
           headers: {
@@ -176,7 +177,7 @@ export default function PortalPatientDiagnosesPage() {
     setMessage(null);
     try {
       const response = await fetch(
-        `/api/portal/patients/${params.patientId}/diagnoses`,
+        `/api/portal/patients/${patientId}/diagnoses`,
         {
           body: JSON.stringify({ entryId }),
           headers: {
@@ -207,7 +208,7 @@ export default function PortalPatientDiagnosesPage() {
 
   async function reload() {
     if (!session) return;
-    const response = await fetch(`/api/portal/patients/${params.patientId}/diagnoses`, {
+    const response = await fetch(`/api/portal/patients/${patientId}/diagnoses`, {
       headers: getPortalSessionAuthHeaders(session!.jwt),
     });
     const body = (await response.json().catch(() => null)) as DiagnosisResponse | null;
@@ -232,7 +233,7 @@ export default function PortalPatientDiagnosesPage() {
   return (
     <section className={styles.detailLayout}>
       <PortalPatientSubpageHeader
-        backHref={`/portal/patients/${params.patientId}`}
+        backHref={`/portal/patients/${patientId}`}
         backLabel="Back to patient"
         headline={`${data.patient.name} diagnoses`}
       />
@@ -242,26 +243,42 @@ export default function PortalPatientDiagnosesPage() {
           <p>{error}</p>
         </section>
       ) : null}
-      <section className={styles.panelSurface}>
-        <div className={styles.listHeaderRow}>
-          <span className={styles.listHeaderTitle}>Add diagnosis</span>
-        </div>
-        <div className={styles.worseningModalList}>
-          <label>
-            <span className={styles.listHeaderMeta}>Search SNOMED or enter custom diagnosis</span>
-            <input
-              className={styles.inputField}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Start typing a diagnosis"
-              value={query}
-            />
-          </label>
-          {searching ? <div className={styles.metaStrip}>Searching conditions...</div> : null}
+      <div className={styles.carePlanFormIntro}>
+        <h2 className={styles.carePlanFormTitle}>Diagnoses</h2>
+        <p className={styles.carePlanFormLead}>
+          Add or remove diagnoses already recorded for this patient.
+        </p>
+      </div>
+      <section className={styles.carePlanFormShell}>
+        <div className={styles.carePlanFormGroup}>
+          <label className={styles.carePlanFieldLabel}>Add diagnosis</label>
+          <p className={styles.dataScreenCaption}>
+            Search SNOMED and add a result, or enter a custom diagnosis.
+          </p>
+          <input
+            className={styles.carePlanInput}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              if (query.trim().length >= 2) {
+                void addDiagnosis({ label: query.trim() });
+              }
+            }}
+            placeholder="Search condition or enter custom diagnosis"
+            value={query}
+          />
+          <p className={styles.dataScreenCaption}>
+            Select a search result to add it, or press Enter to save custom text.
+          </p>
+          {searching ? (
+            <p className={styles.dataScreenCaption}>Searching conditions...</p>
+          ) : null}
           {results.length ? (
-            <div className={styles.worseningModalList}>
+            <div className={styles.carePlanSearchResults}>
               {results.map((result) => (
                 <button
-                  className={styles.patientActionInlineButton}
+                  className={styles.carePlanSearchResult}
                   key={result.code}
                   onClick={() =>
                     void addDiagnosis({
@@ -288,37 +305,36 @@ export default function PortalPatientDiagnosesPage() {
             </button>
           </div>
         </div>
-      </section>
-      <section className={styles.panelSurface}>
-        <div className={styles.listHeaderRow}>
-          <span className={styles.listHeaderTitle}>Current diagnoses</span>
-        </div>
-        {!data.items.length ? (
-          <div className={styles.emptyState}>No diagnoses recorded yet.</div>
-        ) : (
-          <div className={styles.worseningModalList}>
-            {data.items.map((item) => (
-              <div className={styles.worseningModalItem} key={item.entryId}>
-                <strong>{item.label}</strong>
-                <span>
-                  {item.codeSystem}
-                  {item.code ? ` · ${item.code}` : ""}
-                </span>
-                {item.notes ? <span>{item.notes}</span> : null}
-                <div className={styles.warningActions}>
-                  <button
-                    className={styles.buttonSecondarySmall}
-                    disabled={saving}
-                    onClick={() => void removeDiagnosis(item.entryId, item.label)}
-                    type="button"
-                  >
-                    Delete
-                  </button>
+
+        <div className={styles.carePlanFormGroup}>
+          <label className={styles.carePlanFieldLabel}>Current diagnoses</label>
+          {!data.items.length ? (
+            <div className={styles.emptyState}>No diagnoses recorded yet.</div>
+          ) : (
+            <div className={styles.portalFormSectionList}>
+              {data.items.map((item) => (
+                <div className={styles.portalFormSectionItem} key={item.entryId}>
+                  <strong>{item.label}</strong>
+                  <span>
+                    {item.codeSystem}
+                    {item.code ? ` · ${item.code}` : ""}
+                  </span>
+                  {item.notes ? <span>{item.notes}</span> : null}
+                  <div className={styles.warningActions}>
+                    <button
+                      className={styles.buttonSecondarySmall}
+                      disabled={saving}
+                      onClick={() => void removeDiagnosis(item.entryId, item.label)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </section>
     </section>
   );
