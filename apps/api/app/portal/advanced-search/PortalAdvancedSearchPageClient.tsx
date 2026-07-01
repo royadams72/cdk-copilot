@@ -346,10 +346,13 @@ export default function PortalAdvancedSearchPageClient() {
                 <strong>{patient.name}</strong>
                 <span>
                   {patient.email || "No email"} · {patient.dateOfBirth || "No DOB"} ·
-                  {patient.stageLabel}
+                  {patient.stage ? `Stage ${patient.stage}` : "Stage not set"}
                 </span>
                 <span>
-                  Risk {patient.riskLabel} · Last active {patient.lastActiveLabel}
+                  Risk {patient.risk} · Last contact{" "}
+                  {patient.lastContactAt
+                    ? new Date(patient.lastContactAt).toLocaleDateString("en-GB")
+                    : "not recorded"}
                 </span>
               </Link>
             ))}
