@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { syncPatientWorseningTrendSnapshots } from "@/apps/api/lib/portal/worseningSnapshots";
 import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worseningTrends";
 
 export async function GET(req: NextRequest) {
@@ -23,9 +24,17 @@ export async function GET(req: NextRequest) {
     const items = await getActivePatientWorseningTrendAlerts(db, {
       patientId: new ObjectId(caller.patientId),
     });
+    await syncPatientWorseningTrendSnapshots(db, {
+      alerts: items,
+      patientId: new ObjectId(caller.patientId),
+    });
 
     return ok({ items });
   } catch (error: any) {
+    console.error("[worsening-trends/active] failed", {
+      message: error?.message ?? "unknown error",
+      stack: error?.stack ?? null,
+    });
     return bad(
       error?.message || "Unable to load worsening trends",
       undefined,

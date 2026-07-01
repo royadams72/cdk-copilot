@@ -7,6 +7,10 @@ import {
   awardMealLoggingEngagement,
   awardMealTargetsEngagement,
 } from "@/apps/api/lib/utils/patientEngagement";
+import {
+  roundNutrient,
+  withDerivedPhosphorusProteinRatio,
+} from "@/apps/api/lib/utils/nutritionMath";
 import { recomputeNutritionMonthlySummary } from "@/apps/api/lib/utils/nutritionMonthlySummary";
 import { attachFoodTaxonomies } from "@/apps/api/lib/utils/foodTaxonomy";
 import {
@@ -215,21 +219,23 @@ const nutrientKeys: TNutrientKey[] = [
 
 const getTotals = (entries: TFoodItemEntry[]) =>
   sanitiseNutrients(
-    entries.reduce(
-      (acc, entry) => {
-        for (const key of nutrientKeys) {
-          acc[key] += entry.nutrients[key] ?? 0;
-        }
-        return acc;
-      },
-      {
-        caloriesKcal: 0,
-        phosphorus_protein_ratio: 0,
-        phosphorusMg: 0,
-        potassiumMg: 0,
-        proteinG: 0,
-        sodiumMg: 0,
-      },
+    withDerivedPhosphorusProteinRatio(
+      entries.reduce(
+        (acc, entry) => {
+          for (const key of nutrientKeys) {
+            if (key === "phosphorus_protein_ratio") continue;
+            acc[key] += entry.nutrients[key] ?? 0;
+          }
+          return acc;
+        },
+        {
+          caloriesKcal: 0,
+          phosphorusMg: 0,
+          potassiumMg: 0,
+          proteinG: 0,
+          sodiumMg: 0,
+        },
+      ),
     ),
   );
 
@@ -240,10 +246,6 @@ function normaliseNutrient(key: string, value: unknown): number | undefined {
   const max = nutrientMax[key];
   const bounded = typeof max === "number" ? Math.min(value, max) : value;
   return roundNutrient(bounded);
-}
-
-function roundNutrient(value: number): number {
-  return Math.round(value * 1000) / 1000;
 }
 
 function sanitiseQuantity(value: unknown): number {

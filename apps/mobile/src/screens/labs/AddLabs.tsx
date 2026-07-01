@@ -16,7 +16,6 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { useAppDispatch } from "@/store/hooks";
-// import { fetchDashboard } from "@/store/slices/dashboardSlice";
 import { LAB_DEFINITIONS } from "./labDefs";
 
 type LabFormItem = {
@@ -212,7 +211,13 @@ export default function AddLabs() {
       <ScrollView
         contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() =>
+            router.replace(
+              isEdit ? "/(labs)/labs-history?mode=edit" : "/(dashboard)/meds-labs",
+            )
+          }
+        >
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
         <ThemedText type="title">

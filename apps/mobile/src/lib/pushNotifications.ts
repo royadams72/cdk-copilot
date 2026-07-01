@@ -9,6 +9,7 @@ import type {
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import { secureStorage } from "@/lib/secureStorage";
 
 const SLEEP_REMINDER_NOTIFICATION_ID_KEY = "ckd_sleep_morning_reminder_id";
@@ -16,6 +17,7 @@ const CARE_PLAN_REMINDER_TYPE = "care-plan-reminder";
 const CARE_PLAN_ALERT_TYPE = "care-plan-alert";
 const CARE_PLAN_COMPLETED_TYPE = "care-plan-completed";
 const CARE_PLAN_REMINDER_CHANNEL_ID = "care-plan-reminders";
+const CARE_PLAN_REMINDER_HOUR = 9;
 const CARE_PLAN_ALERT_STATE_KEY = "ckd_care_plan_alert_state";
 const WORSENING_TREND_ALERT_TYPE = "worsening-trend-alert";
 const WORSENING_TREND_REMINDER_TYPE = "worsening-trend-reminder";
@@ -38,6 +40,30 @@ type SyncWorseningTrendNotificationsOptions = {
 type ApiEnvelope<T> = {
   data?: T;
   ok?: boolean;
+};
+
+type WorseningTrendDebugResponse = {
+  activeAlerts?: PatientWorseningTrendAlert[];
+  checkIns?: Array<{
+    alertId?: string;
+    key?: string;
+    responseCode?: string;
+    responseLabel?: string;
+    submittedAt?: string;
+  }>;
+  states?: Array<{
+    episodeId?: string;
+    firstDetectedAt?: string;
+    key?: string;
+    lastDetectedAt?: string;
+    status?: string;
+    viewedAt?: string | null;
+  }>;
+};
+
+type WorseningTrendViewedArgs = {
+  alertId: string;
+  key: PatientWorseningTrendAlert["key"];
 };
 
 Notifications.setNotificationHandler({
@@ -442,6 +468,10 @@ async function presentImmediateWorseningNotification(
     {
       onPress: () => {
         if (typeof item.screen === "string" && item.screen.startsWith("/")) {
+          void markWorseningTrendViewed({
+            alertId: item.id,
+            key: item.key,
+          });
           router.push(item.screen as never);
         }
       },
@@ -460,6 +490,13 @@ async function presentImmediateWorseningNotification(
       id: item.id,
       key: item.key,
     });
+    void logHealthConnectEvent({
+      event: "worsening-alert-presented",
+      payload: { alertId: item.id, key: item.key, mode: "direct" },
+      source: "worsening-trends",
+      status: "info",
+      trigger: "active",
+    });
     return;
   }
 
@@ -471,6 +508,35 @@ async function presentImmediateWorseningNotification(
     id: item.id,
     key: item.key,
   });
+  void logHealthConnectEvent({
+    event: "worsening-alert-presented",
+    payload: { alertId: item.id, key: item.key, mode: "scheduled" },
+    source: "worsening-trends",
+    status: "info",
+    trigger: "active",
+  });
+}
+
+export async function markWorseningTrendViewed(
+  args: WorseningTrendViewedArgs,
+) {
+  try {
+    await authFetch(`${API}/api/worsening-trends/viewed`, {
+      body: JSON.stringify(args),
+      method: "POST",
+    });
+    void logHealthConnectEvent({
+      event: "worsening-alert-viewed",
+      payload: args,
+      source: "worsening-trends",
+      status: "info",
+      trigger: "active",
+    });
+    return true;
+  } catch (error) {
+    console.log("markWorseningTrendViewed failed", error);
+    return false;
+  }
 }
 
 function unwrapApiData<T>(raw: unknown, fallback: T): T {
@@ -486,14 +552,65 @@ function unwrapApiData<T>(raw: unknown, fallback: T): T {
   return raw as T;
 }
 
+async function logWorseningTrendDebugSnapshot() {
+  if (!__DEV__) {
+    return;
+  }
+
+  try {
+    const res = await authFetch(`${API}/api/worsening-trends/debug`);
+    if (!res.ok) {
+      console.log("[worsening][debug] request failed", { status: res.status });
+      return;
+    }
+
+    const raw =
+      (await res.json().catch(() => null)) as
+        | ApiEnvelope<WorseningTrendDebugResponse>
+        | WorseningTrendDebugResponse
+        | null;
+    const data = unwrapApiData<WorseningTrendDebugResponse>(raw, {});
+    console.log("[worsening][debug] snapshot", {
+      activeAlerts: (data.activeAlerts ?? []).map((item) => ({
+        detectedAt: item.detectedAt,
+        id: item.id,
+        key: item.key,
+        viewedAt: item.viewedAt ?? null,
+      })),
+      checkIns: (data.checkIns ?? []).map((item) => ({
+        alertId: item.alertId,
+        key: item.key,
+        responseCode: item.responseCode,
+        submittedAt: item.submittedAt,
+      })),
+      states: (data.states ?? []).map((item) => ({
+        episodeId: item.episodeId,
+        firstDetectedAt: item.firstDetectedAt,
+        key: item.key,
+        lastDetectedAt: item.lastDetectedAt,
+        status: item.status,
+        viewedAt: item.viewedAt ?? null,
+      })),
+    });
+  } catch (error) {
+    console.log("[worsening][debug] snapshot failed", error);
+  }
+}
+
 function nextMorningDate(baseIso: string | null) {
   const now = new Date();
   const next = baseIso ? new Date(baseIso) : new Date();
-  next.setHours(8, 0, 0, 0);
+  next.setHours(CARE_PLAN_REMINDER_HOUR, 0, 0, 0);
   if (next <= now) {
     next.setDate(next.getDate() + 1);
   }
   return next;
+}
+
+function getWeeklyReminderWeekday(baseIso: string | null) {
+  const date = baseIso ? new Date(baseIso) : new Date();
+  const utcDay = date.getUTCDay();
+  return utcDay === 0 ? 1 : utcDay + 1;
 }
 
 export async function syncCarePlanReminderNotifications() {
@@ -614,7 +731,7 @@ export async function syncCarePlanReminderNotifications() {
         await Notifications.scheduleNotificationAsync({
           content,
           trigger: {
-            hour: 8,
+            hour: CARE_PLAN_REMINDER_HOUR,
             minute: 0,
             type: Notifications.SchedulableTriggerInputTypes.DAILY,
           },
@@ -626,10 +743,10 @@ export async function syncCarePlanReminderNotifications() {
         await Notifications.scheduleNotificationAsync({
           content,
           trigger: {
-            hour: 8,
+            hour: CARE_PLAN_REMINDER_HOUR,
             minute: 0,
             type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday: 2,
+            weekday: getWeeklyReminderWeekday(item.activatedAt ?? null),
           },
         });
         continue;
@@ -688,6 +805,7 @@ export async function syncWorseningTrendNotifications(
     const data = unwrapApiData<PatientWorseningTrendAlertsResponse>(raw, {
       items: [],
     });
+    await logWorseningTrendDebugSnapshot();
     console.log("[worsening] active response", {
       itemCount: data.items?.length ?? 0,
       items: (data.items ?? []).map((item) => ({
@@ -731,7 +849,8 @@ export async function syncWorseningTrendNotifications(
       const deliveredInSessionAt =
         deliveredWorseningAlertIdsInSession.get(item.id) ?? null;
       const suppressImmediateAlert =
-        Boolean(options?.suppressImmediateAlerts) && !item.repeatAtLocalTime;
+        (Boolean(options?.suppressImmediateAlerts) && !item.repeatAtLocalTime) ||
+        Boolean(item.viewedAt);
       console.log("[worsening] evaluate item", {
         deliveredInSessionAt,
         id: item.id,
@@ -769,6 +888,17 @@ export async function syncWorseningTrendNotifications(
         console.log("[worsening] suppress immediate item", {
           id: item.id,
           key: item.key,
+        });
+        void logHealthConnectEvent({
+          event: "worsening-alert-suppressed",
+          payload: {
+            alertId: item.id,
+            key: item.key,
+            reason: item.viewedAt ? "already-viewed" : "sync-option",
+          },
+          source: "worsening-trends",
+          status: "info",
+          trigger: "active",
         });
         continue;
       }
@@ -818,6 +948,18 @@ export async function syncWorseningTrendNotifications(
         id: item.id,
         key: item.key,
         minute: time.minute,
+      });
+      void logHealthConnectEvent({
+        event: "worsening-reminder-scheduled",
+        payload: {
+          alertId: item.id,
+          hour: time.hour,
+          key: item.key,
+          minute: time.minute,
+        },
+        source: "worsening-trends",
+        status: "info",
+        trigger: "active",
       });
     }
 

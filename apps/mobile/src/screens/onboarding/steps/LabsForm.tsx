@@ -116,19 +116,6 @@ export default function LabsForm({
       };
     });
     router.push("/(auth)/onboarding/clinical-form");
-    // try {
-    //   const res = await authFetch(`${API}/api/users/labs/create`, {
-    //     method: "POST",
-    //     body: JSON.stringify({ labs: payload }),
-    //   });
-    //   if (!res.ok) {
-    //     const err = await res.json().catch(() => ({}));
-    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
-    //   }
-    //   Alert.alert("Labs saved");
-    // } catch (err: any) {
-    //   Alert.alert("Error", err?.message ?? "Failed to save labs");
-    // }
   }
 
   return (

@@ -65,35 +65,7 @@ export default function MedicationsForm({
   });
 
   async function onSubmit(values: TMedicationFormValues) {
-    // const payload = values.medications.map((med) => ({
-    //   name: med.name.trim(),
-    //   form: med.form?.trim() || undefined,
-    //   strength: med.strength?.trim() || undefined,
-    //   route: med.route?.trim() || undefined,
-    //   dose: med.dose.trim(),
-    //   frequency: med.frequency.trim(),
-    //   instructions: med.instructions?.trim() || undefined,
-    //   startAt: med.startAt ?? undefined,
-    //   endAt: med.endAt ?? undefined,
-    //   status: med.status,
-    //   dmplusdCode: med.dmplusdCode?.trim() || undefined,
-    //   snomedCode: med.snomedCode?.trim() || undefined,
-    // }));
-
     router.push("/(auth)/onboarding/labs-form");
-    // try {
-    //   const res = await authFetch(`${API}/api/users/medications/create`, {
-    //     method: "POST",
-    //     body: JSON.stringify({ medications: payload }),
-    //   });
-    //   if (!res.ok) {
-    //     const err = await res.json().catch(() => ({}));
-    //     throw new Error(`${res.status} ${JSON.stringify(err)}`);
-    //   }
-    //   Alert.alert("Medications saved");
-    // } catch (err: any) {
-    //   Alert.alert("Error", err?.message ?? "Failed to save medications");
-    // }
   }
 
   return (

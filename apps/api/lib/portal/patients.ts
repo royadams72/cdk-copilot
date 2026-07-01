@@ -1,15 +1,27 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { ObjectId, type Document } from "mongodb";
+import { type Document, ObjectId } from "mongodb";
+import type { Db } from "mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
+import type { PatientWorseningTrendAlert } from "@ckd/core";
 import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
+  buildPortalWorseningHref,
+  normalizePortalPatientRiskFilter,
+  mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
+  type PortalPatientAdvancedFilters,
   type PortalPatientDetail,
   type PortalPatientFilter,
   type PortalPatientListItem,
+  type PortalPatientRiskFilter,
   type PortalPatientStat,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
+import {
+  loadActivePortalWorseningItemsByPatientId,
+  syncPatientWorseningTrendSnapshots,
+} from "@/apps/api/lib/portal/worseningSnapshots";
+import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worseningTrends";
 
 type PortalPatientSummary = {
   dietitianAssigned?: boolean;
@@ -44,11 +56,10 @@ export type RawPortalPatientDetailDoc = {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 export function buildPortalPatientAccessMatch(user: SessionUser) {
   const clauses: Record<string, unknown>[] = [];
 
-  if (user.role === "admin" && !(user.allowedPatientIds?.length)) {
+  if (user.role === "admin" && !user.allowedPatientIds?.length) {
     return {};
   }
 
@@ -109,6 +120,7 @@ export function buildPortalPatientDetailPipeline(match: Document) {
         as: "pii",
         foreignField: "patientId",
         from: COLLECTIONS.UsersPII,
+        localField: "_id",
         pipeline: [
           {
             $project: {
@@ -120,7 +132,6 @@ export function buildPortalPatientDetailPipeline(match: Document) {
             },
           },
         ],
-        localField: "_id",
       },
     },
     {
@@ -144,98 +155,54 @@ function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
 }
 
 function normalizeName(pii: PortalPatientPii) {
-  const fullName = [pii.firstName, pii.lastName].filter(Boolean).join(" ").trim();
+  const fullName = [pii.firstName, pii.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   return fullName || "Patient record";
 }
 
-function flagIncludes(flag: string, terms: string[]) {
-  const normalized = flag.toLowerCase();
-  return terms.some((term) => normalized.includes(term));
-}
-
 function buildPortalPatientWorseningItems(raw: {
-  flags?: string[];
-  risk?: PortalPatientListItem["risk"];
+  activeAlerts?: PatientWorseningTrendAlert[];
+  patientId: string;
 }): PortalPatientWorseningItem[] {
-  const flags = raw.flags ?? [];
-  const items: PortalPatientWorseningItem[] = [];
+  if (raw.activeAlerts?.length) {
+    return raw.activeAlerts.map((alert) => {
+      const firstDetectedAt = alert.firstDetectedAt
+        ? new Date(alert.firstDetectedAt)
+        : null;
+      const daysActive =
+        firstDetectedAt && !Number.isNaN(firstDetectedAt.getTime())
+          ? Math.max(
+              1,
+              Math.floor(
+                (Date.now() - firstDetectedAt.getTime()) / MS_PER_DAY,
+              ) + 1,
+            )
+          : 1;
 
-  const definitions: Array<{
-    detail: string;
-    href: string;
-    kind: Exclude<PortalPatientWorseningItem["kind"], "general">;
-    label: string;
-    terms: string[];
-  }> = [
-    {
-      detail: "Recent blood pressure readings are above the patient's recent baseline.",
-      href: "/health?metric=blood_pressure",
-      kind: "bloodPressure",
-      label: "Blood pressure up",
-      terms: ["blood pressure", "blood-pressure", "blood_pressure", "bp", "hypertension"],
-    },
-    {
-      detail: "Weight has increased over the current review window.",
-      href: "/health?metric=weight",
-      kind: "weightIncrease",
-      label: "Weight increase",
-      terms: ["weight increase", "weight-increase", "weight_increase", "weight gain", "weight-gain", "weight_gain", "weight up"],
-    },
-    {
-      detail: "Weight has decreased over the current review window.",
-      href: "/health?metric=weight",
-      kind: "weightDecrease",
-      label: "Weight decrease",
-      terms: ["weight decrease", "weight-decrease", "weight_decrease", "weight loss", "weight-loss", "weight_loss", "weight down"],
-    },
-    {
-      detail: "Symptom reporting has increased compared with the prior review window.",
-      href: "/health?metric=symptoms",
-      kind: "symptoms",
-      label: "More symptoms reported",
-      terms: ["symptom", "symptoms"],
-    },
-    {
-      detail: "Activity levels have fallen compared with the prior review window.",
-      href: "/health?metric=symptoms",
-      kind: "activity",
-      label: "Activity down",
-      terms: ["activity", "inactive", "low activity", "low-activity", "activity-down"],
-    },
-    {
-      detail: "Nutrition logging suggests more target breaches this month.",
-      href: "/nutrition",
-      kind: "nutrition",
-      label: "Over nutrition targets",
-      terms: ["nutrition", "meal target", "meal-target", "phosphorus", "sodium", "potassium", "protein target", "target breach", "target-breach"],
-    },
-  ];
-
-  for (const definition of definitions) {
-    if (flags.some((flag) => flagIncludes(flag, definition.terms))) {
-      items.push({
-        detail: definition.detail,
-        href: definition.href,
-        kind: definition.kind,
-        label: definition.label,
-      });
-    }
-  }
-
-  if (!items.length && raw.risk === "red") {
-    items.push({
-      detail: "The patient's overall risk status has escalated and needs review.",
-      href: "/health?metric=blood_pressure",
-      kind: "general",
-      label: "Clinical risk escalated",
+      return {
+        daysActive,
+        detail: alert.detail ?? alert.body,
+        episodeId: alert.id,
+        firstDetectedAt: alert.firstDetectedAt ?? null,
+        href: buildPortalWorseningHref(raw.patientId, alert.key),
+        kind: mapTrendKeyToPortalKind(alert.key),
+        label: alert.title,
+        level: alert.level,
+        patientResponseLabel: alert.checkInResponseLabel ?? null,
+        portalEscalationEligible: alert.portalEscalationEligible,
+        reviewedAt: null,
+        viewedAt: alert.viewedAt ?? null,
+      };
     });
   }
-
-  return items;
+  return [];
 }
 
 export function mapPortalPatientListItem(raw: {
   _id: ObjectId;
+  activeAlerts?: PatientWorseningTrendAlert[];
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
@@ -246,26 +213,27 @@ export function mapPortalPatientListItem(raw: {
   const risk = raw.summary?.risk ?? "unknown";
 
   return {
+    id: raw._id.toHexString(),
     accessEndsAt: toIsoDate(primaryAssignment?.endsAt),
     careTeamId: primaryAssignment?.careTeamId ?? null,
     dateOfBirth: formatDisplayDob(raw.pii?.dateOfBirth),
     email: raw.pii?.email ?? null,
     facilityId: primaryAssignment?.facilityId ?? null,
     flags: raw.flags ?? [],
-    id: raw._id.toHexString(),
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     name: normalizeName(raw.pii ?? {}),
     risk,
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
-      flags: raw.flags ?? [],
-      risk,
+      activeAlerts: raw.activeAlerts ?? [],
+      patientId: raw._id.toHexString(),
     }),
   };
 }
 
 export function mapPortalPatientDetail(raw: {
   _id: ObjectId;
+  activeAlerts?: PatientWorseningTrendAlert[];
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
@@ -286,6 +254,51 @@ export function mapPortalPatientDetail(raw: {
       status: assignment.status ?? null,
     })),
   };
+}
+
+export async function mapPortalPatientListItemsWithWorsening(
+  db: Db,
+  raws: Array<{
+    _id: ObjectId;
+    assignments?: PortalPatientAssignment[];
+    flags?: string[];
+    pii?: PortalPatientPii | null;
+    stage?: string | null;
+    summary?: PortalPatientSummary | null;
+  }>,
+) {
+  const activeAlertsByPatientId = new Map<
+    string,
+    PatientWorseningTrendAlert[]
+  >();
+  const patientIds = raws.map((raw) => raw._id);
+
+  await Promise.all(
+    raws.map(async (raw) => {
+      const alerts = await getActivePatientWorseningTrendAlerts(db, {
+        patientId: raw._id,
+      });
+      await syncPatientWorseningTrendSnapshots(db, {
+        alerts,
+        patientId: raw._id,
+      });
+      activeAlertsByPatientId.set(raw._id.toHexString(), alerts);
+    }),
+  );
+
+  const activeItemsByPatientId =
+    await loadActivePortalWorseningItemsByPatientId(db, patientIds);
+
+  return raws.map((raw) => ({
+    ...mapPortalPatientListItem({
+      ...raw,
+      activeAlerts:
+        activeAlertsByPatientId
+          .get(raw._id.toHexString())
+          ?.filter((alert) => alert.portalEscalationEligible) ?? [],
+    }),
+    worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
+  }));
 }
 
 function hasFlag(item: PortalPatientListItem, terms: string[]) {
@@ -323,7 +336,7 @@ export function matchesPortalPatientFilter(
 ) {
   switch (filter) {
     case "worsening":
-      return item.risk === "red" || hasFlag(item, ["worsening", "trend"]);
+      return item.worseningItems.length > 0;
     case "review":
       return hasFlag(item, ["care-plan-review", "review-due"]);
     case "disengaged":
@@ -357,11 +370,62 @@ export function matchesPortalPatientQuery(
   return haystack.includes(normalized);
 }
 
+function matchesPortalPatientRisk(
+  item: PortalPatientListItem,
+  risk: PortalPatientRiskFilter,
+) {
+  return risk === "all" ? true : item.risk === risk;
+}
+
+function matchesPortalPatientStage(
+  item: PortalPatientListItem,
+  stage: string,
+) {
+  const normalizedStage = stage.trim().toLowerCase();
+  if (!normalizedStage) {
+    return true;
+  }
+
+  return (item.stage ?? "").trim().toLowerCase() === normalizedStage;
+}
+
+function matchesPortalPatientAssignmentValue(
+  actual: string | null,
+  expected: string,
+) {
+  const normalizedExpected = expected.trim().toLowerCase();
+  if (!normalizedExpected) {
+    return true;
+  }
+
+  return (actual ?? "").trim().toLowerCase() === normalizedExpected;
+}
+
+export function matchesPortalPatientAdvancedFilters(
+  item: PortalPatientListItem,
+  filters: PortalPatientAdvancedFilters,
+) {
+  return (
+    matchesPortalPatientQuery(item, filters.query) &&
+    matchesPortalPatientFilter(
+      item,
+      normalizePortalPatientFilter(filters.filter),
+    ) &&
+    matchesPortalPatientRisk(
+      item,
+      normalizePortalPatientRiskFilter(filters.risk),
+    ) &&
+    matchesPortalPatientStage(item, filters.stage) &&
+    matchesPortalPatientAssignmentValue(item.careTeamId, filters.careTeamId) &&
+    matchesPortalPatientAssignmentValue(item.facilityId, filters.facilityId)
+  );
+}
+
 export function sortPortalPatients(items: PortalPatientListItem[]) {
   const riskWeight = {
-    red: 0,
     amber: 1,
     green: 2,
+    red: 0,
     unknown: 3,
   } as const;
 
@@ -380,14 +444,23 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
     Exclude<PortalPatientFilter, "all">,
     PortalPatientStat
   > = {
-    worsening: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "worsening"))
-        .length,
-      detail:
-        "Repeated decline in nutrition, activity, weight or blood pressure.",
-      icon: "/portal/icons/trend icon.png",
-      label: "Worsening trends this month",
+    disengaged: {
+      count: items.filter((item) =>
+        matchesPortalPatientFilter(item, "disengaged"),
+      ).length,
+      detail: "Not logging or syncing key data.",
+      icon: "/portal/icons/trend icon2.png",
+      label: "Missing data / disengaged",
       tone: "warning",
+    },
+    endingSoon: {
+      count: items.filter((item) =>
+        matchesPortalPatientFilter(item, "endingSoon"),
+      ).length,
+      detail: "Access will be ending in the next few weeks.",
+      icon: "/portal/icons/user icon.png",
+      label: "Access ending soon",
+      tone: "accent",
     },
     review: {
       count: items.filter((item) => matchesPortalPatientFilter(item, "review"))
@@ -397,21 +470,15 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       label: "Care plan review due",
       tone: "warning",
     },
-    disengaged: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "disengaged"))
-        .length,
-      detail: "Not logging or syncing key data.",
-      icon: "/portal/icons/trend icon2.png",
-      label: "Missing data / disengaged",
+    worsening: {
+      count: items.filter((item) =>
+        matchesPortalPatientFilter(item, "worsening"),
+      ).length,
+      detail:
+        "Repeated decline in nutrition, activity, weight or blood pressure.",
+      icon: "/portal/icons/trend icon.png",
+      label: "Worsening trends",
       tone: "warning",
-    },
-    endingSoon: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "endingSoon"))
-        .length,
-      detail: "Access will be ending in the next few weeks.",
-      icon: "/portal/icons/user icon.png",
-      label: "Access ending soon",
-      tone: "accent",
     },
   };
 

@@ -8,6 +8,7 @@ import {
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
+import { withDerivedPhosphorusProteinRatio } from "./nutritionMath";
 
 type NutritionFavouriteDoc = {
   _id?: ObjectId;
@@ -326,31 +327,30 @@ function buildMealLabel(items: TFoodItemEntry[]) {
 }
 
 function getTotals(items: TFoodItemEntry[]) {
-  return items.reduce(
-    (acc, entry) => {
-      acc.caloriesKcal += entry.nutrients.caloriesKcal ?? 0;
-      acc.carbsG += entry.nutrients.carbsG ?? 0;
-      acc.fatG += entry.nutrients.fatG ?? 0;
-      acc.fiberG += entry.nutrients.fiberG ?? 0;
-      acc.phosphorusMg += entry.nutrients.phosphorusMg ?? 0;
-      acc.phosphorus_protein_ratio +=
-        entry.nutrients.phosphorus_protein_ratio ?? 0;
-      acc.potassiumMg += entry.nutrients.potassiumMg ?? 0;
-      acc.proteinG += entry.nutrients.proteinG ?? 0;
-      acc.sodiumMg += entry.nutrients.sodiumMg ?? 0;
-      return acc;
-    },
-    {
-      caloriesKcal: 0,
-      carbsG: 0,
-      fatG: 0,
-      fiberG: 0,
-      phosphorus_protein_ratio: 0,
-      phosphorusMg: 0,
-      potassiumMg: 0,
-      proteinG: 0,
-      sodiumMg: 0,
-    },
+  return withDerivedPhosphorusProteinRatio(
+    items.reduce(
+      (acc, entry) => {
+        acc.caloriesKcal += entry.nutrients.caloriesKcal ?? 0;
+        acc.carbsG += entry.nutrients.carbsG ?? 0;
+        acc.fatG += entry.nutrients.fatG ?? 0;
+        acc.fiberG += entry.nutrients.fiberG ?? 0;
+        acc.phosphorusMg += entry.nutrients.phosphorusMg ?? 0;
+        acc.potassiumMg += entry.nutrients.potassiumMg ?? 0;
+        acc.proteinG += entry.nutrients.proteinG ?? 0;
+        acc.sodiumMg += entry.nutrients.sodiumMg ?? 0;
+        return acc;
+      },
+      {
+        caloriesKcal: 0,
+        carbsG: 0,
+        fatG: 0,
+        fiberG: 0,
+        phosphorusMg: 0,
+        potassiumMg: 0,
+        proteinG: 0,
+        sodiumMg: 0,
+      },
+    ),
   );
 }
 

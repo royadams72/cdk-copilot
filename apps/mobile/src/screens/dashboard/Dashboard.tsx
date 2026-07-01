@@ -11,6 +11,7 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { getLastViewedCarePlanAt } from "@/lib/carePlans";
 import {
   toQueryErrorMessage,
@@ -85,6 +86,13 @@ export default function Dashboard() {
     refetch();
     void refetchCarePlans();
   }, [refetch, refetchCarePlans]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      void refetchCarePlans();
+    }, [refetch, refetchCarePlans]),
+  );
 
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {

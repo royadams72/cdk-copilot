@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import type {
   PortalPatientCarePlanCreateData,
@@ -35,7 +35,7 @@ type ConditionSearchItem = {
 export default function PortalPatientEditCarePlanPage() {
   const params = useParams<{ patientId: string; carePlanId: string }>();
   const router = useRouter();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [formData, setFormData] = useState<PortalPatientCarePlanCreateData | null>(null);
   const [planData, setPlanData] = useState<PortalPatientCarePlanDetailData | null>(null);
   const [loading, setLoading] = useState(true);

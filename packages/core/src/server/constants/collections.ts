@@ -42,6 +42,8 @@ export const COLLECTIONS = {
   NutritionLedger: "nutrition_ledger",
   WeeklyNutritionInsights: "weekly_nutrition_insights",
   WorseningTrendCheckIns: "worsening_trend_check_ins",
+  WorseningTrendSnapshots: "worsening_trend_snapshots",
+  WorseningTrendStates: "worsening_trend_states",
   TargetsCurrent: "targets_current",
   TargetsLedger: "targets_ledger",
   SymptomsCurrent: "symptoms_current",
@@ -52,6 +54,7 @@ export const COLLECTIONS = {
   PatientGoalsLedger: "patient_goals_ledger",
   PatientEngagementLedger: "patient_engagement_ledger",
   PatientConsents: "patient_consents",
+  PatientInvites: "patient_invites",
   Patients: "patients",
 
   UsersAccounts: "users_accounts",

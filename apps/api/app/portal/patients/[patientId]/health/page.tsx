@@ -22,7 +22,7 @@ import {
 } from "recharts";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import {
   PORTAL_HEALTH_METRICS,
@@ -49,7 +49,7 @@ function formatValue(value: number, unit: string) {
 
 export default function PortalPatientHealthPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [metric, setMetric] = useState<PortalHealthMetric>("blood_pressure");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [data, setData] = useState<PortalPatientHealthData | null>(null);

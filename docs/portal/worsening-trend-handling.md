@@ -135,7 +135,7 @@ High-priority context:
 
 App trigger:
 
-- 4 of 5 tracked nutrient targets are exceeded on `>= 6` of the last 7 logged
+- 3 of 4 tracked nutrient targets are exceeded on `>= 6` of the last 7 logged
   days
 
 App behaviour:
@@ -146,7 +146,7 @@ App behaviour:
 
 Portal escalation:
 
-- 4 of 5 tracked nutrient targets are exceeded on `>= 12` of the last 14
+- 3 of 4 tracked nutrient targets are exceeded on `>= 12` of the last 14
   logged days
 
 High-priority context:
@@ -213,6 +213,25 @@ High-priority context:
 - swelling
 - breathlessness
 - activity decline
+
+### Labs
+
+Initial hospital release:
+
+- labs remain visible in the labs section and charts
+- labs are not surfaced in the active app/portal worsening-trends workflow
+
+Reasoning:
+
+- hospital lab systems and existing referral pathways usually already own eGFR,
+  potassium, phosphate, and similar result escalation
+- duplicating that in CKD Copilot risks alert fatigue and unclear ownership
+
+Principle:
+
+- use worsening trends for areas where the app can support early self-management
+  and where deterioration may otherwise slip through
+- keep labs view-only unless a specific operational gap is identified later
 
 ## Design Principle
 

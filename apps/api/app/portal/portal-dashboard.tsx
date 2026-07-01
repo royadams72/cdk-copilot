@@ -40,11 +40,26 @@ type PortalNotifyPatientsResponse = {
   };
 };
 
+type PortalReviewWorseningResponse = {
+  data: {
+    modifiedCount: number;
+    reviewedPatientIds: string[];
+  };
+};
+
+type ReviewComposerState =
+  | {
+      episodeIds?: string[];
+      patientIds?: string[];
+      title: string;
+    }
+  | null;
+
 const worseningFilterOptions: Array<{
   label: string;
   value: PortalWorseningKind;
 }> = [
-  { label: "All worsening", value: "all" },
+  { label: "All follow-up", value: "all" },
   { label: "Blood pressure", value: "bloodPressure" },
   { label: "Weight increase", value: "weightIncrease" },
   { label: "Weight decrease", value: "weightDecrease" },
@@ -65,7 +80,9 @@ function matchesWorseningFilter(
 }
 
 function summarizeWorseningItems(items: PortalPatientWorseningItem[]) {
-  const labels = items.map((item) => item.label);
+  const labels = items.map((item) =>
+    item.daysActive > 1 ? `${item.label} (${item.daysActive}d)` : item.label,
+  );
   if (labels.length <= 2) {
     return labels.join(", ");
   }
@@ -105,7 +122,15 @@ function PortalDashboardContent() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
-  const [detailsPatient, setDetailsPatient] = useState<PortalPatientListItem | null>(null);
+  const [notifyComposerOpen, setNotifyComposerOpen] = useState(false);
+  const [notifyTitle, setNotifyTitle] = useState("Check-in requested");
+  const [notifyBody, setNotifyBody] = useState(
+    "Your care team would like you to review your recent health information in CKD Copilot.",
+  );
+  const [reviewComposer, setReviewComposer] = useState<ReviewComposerState>(null);
+  const [reviewNote, setReviewNote] = useState("");
+  const [detailsPatient, setDetailsPatient] =
+    useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
   const submittedQuery = searchParams.get("q")?.trim() ?? "";
 
@@ -200,7 +225,9 @@ function PortalDashboardContent() {
 
   const allVisibleWorseningSelected =
     worseningPatients.length > 0 &&
-    worseningPatients.every((patient) => selectedPatientIds.includes(patient.id));
+    worseningPatients.every((patient) =>
+      selectedPatientIds.includes(patient.id),
+    );
 
   useEffect(() => {
     setSelectedPatientIds((current) =>
@@ -252,7 +279,9 @@ function PortalDashboardContent() {
 
     if (value === "care-plan") {
       if (selectedPatientIds.length !== 1) {
-        setActionError("Create care plan is available for one patient at a time.");
+        setActionError(
+          "Create care plan is available for one patient at a time.",
+        );
         setSelectedAction("");
         return;
       }
@@ -262,43 +291,173 @@ function PortalDashboardContent() {
     }
 
     if (value === "notify") {
-      setActionPending(true);
-      try {
-        const response = await fetch("/api/portal/patients/notify", {
-          body: JSON.stringify({ patientIds: selectedPatientIds }),
-          headers: {
-            ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
-            "content-type": "application/json",
-          },
-          method: "POST",
-        });
+      setNotifyComposerOpen(true);
+      setSelectedAction("");
+      return;
+    }
 
-        const body = (await response.json().catch(() => null)) as
-          | PortalNotifyPatientsResponse
-          | { error?: { message?: string } }
-          | null;
+    if (value === "reviewed") {
+      setReviewNote("");
+      setReviewComposer({
+        patientIds: selectedPatientIds,
+        title:
+          selectedPatientIds.length === 1
+            ? "Mark patient follow-up as reviewed"
+            : "Mark follow-up items as reviewed",
+      });
+      setSelectedAction("");
+    }
+  }
 
-        if (!response.ok || !body || !("data" in body)) {
-          throw new Error(
-            body && "error" in body
-              ? body.error?.message
-              : "Unable to notify patients",
-          );
-        }
+  async function submitReviewedNote(input: {
+    episodeIds?: string[];
+    patientIds?: string[];
+    patientIdForSingleEpisode?: string;
+  }) {
+    setActionError(null);
+    setActionMessage(null);
+    setActionPending(true);
 
-        setActionMessage(
-          body.data.failed
-            ? `Notified ${body.data.delivered} patient(s); ${body.data.failed} could not be delivered.`
-            : `Notified ${body.data.delivered} patient(s).`,
+    try {
+      const response = await fetch("/api/portal/worsening-trends/review", {
+        body: JSON.stringify({
+          ...(input.episodeIds?.length ? { episodeIds: input.episodeIds } : {}),
+          note: reviewNote.trim(),
+          ...(input.patientIds?.length ? { patientIds: input.patientIds } : {}),
+        }),
+        headers: {
+          ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+
+      const body = (await response.json().catch(() => null)) as
+        | PortalReviewWorseningResponse
+        | { error?: { message?: string } }
+        | null;
+
+      if (!response.ok || !body || !("data" in body)) {
+        throw new Error(
+          body && "error" in body
+            ? body.error?.message
+            : "Unable to mark follow-up items as reviewed",
         );
-      } catch (error) {
-        setActionError(
-          error instanceof Error ? error.message : "Unable to notify patients",
-        );
-      } finally {
-        setActionPending(false);
-        setSelectedAction("");
       }
+
+      if (input.episodeIds?.length && input.patientIdForSingleEpisode) {
+        const episodeIds = new Set(input.episodeIds);
+        setPatients((current) =>
+          current.map((patient) =>
+            patient.id === input.patientIdForSingleEpisode
+              ? {
+                  ...patient,
+                  worseningItems: patient.worseningItems.filter(
+                    (item) => !episodeIds.has(item.episodeId),
+                  ),
+                }
+              : patient,
+          ),
+        );
+        setDetailsPatient((current) =>
+          current && current.id === input.patientIdForSingleEpisode
+            ? {
+                ...current,
+                worseningItems: current.worseningItems.filter(
+                  (item) => !episodeIds.has(item.episodeId),
+                ),
+              }
+            : current,
+        );
+      } else if (input.patientIds?.length) {
+        const patientIds = new Set(input.patientIds);
+        setPatients((current) =>
+          current.map((patient) =>
+            patientIds.has(patient.id)
+              ? { ...patient, worseningItems: [] }
+              : patient,
+          ),
+        );
+        setSelectedPatientIds([]);
+      }
+
+      setActionMessage(
+        body.data.modifiedCount === 1
+          ? "Marked 1 follow-up item as reviewed."
+          : `Marked ${body.data.modifiedCount} follow-up items as reviewed.`,
+      );
+      setReviewComposer(null);
+      setReviewNote("");
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to mark follow-up items as reviewed",
+      );
+    } finally {
+      setActionPending(false);
+    }
+  }
+
+  function handleReviewItem(patientId: string, episodeId: string) {
+    setReviewNote("");
+    setReviewComposer({
+      episodeIds: [episodeId],
+      patientIds: [patientId],
+      title: "Mark follow-up item as reviewed",
+    });
+  }
+
+  async function handleSendCustomNotification() {
+    if (!selectedPatientIds.length) {
+      setActionError("Select one or more patients first.");
+      setNotifyComposerOpen(false);
+      return;
+    }
+
+    setActionPending(true);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const response = await fetch("/api/portal/patients/notify", {
+        body: JSON.stringify({
+          body: notifyBody.trim() || undefined,
+          patientIds: selectedPatientIds,
+          title: notifyTitle.trim() || undefined,
+        }),
+        headers: {
+          ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+
+      const body = (await response.json().catch(() => null)) as
+        | PortalNotifyPatientsResponse
+        | { error?: { message?: string } }
+        | null;
+
+      if (!response.ok || !body || !("data" in body)) {
+        throw new Error(
+          body && "error" in body
+            ? body.error?.message
+            : "Unable to notify patients",
+        );
+      }
+
+      setActionMessage(
+        body.data.failed
+          ? `Notified ${body.data.delivered} patient(s); ${body.data.failed} could not be delivered.`
+          : `Notified ${body.data.delivered} patient(s).`,
+      );
+      setNotifyComposerOpen(false);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to notify patients",
+      );
+    } finally {
+      setActionPending(false);
     }
   }
 
@@ -388,11 +547,11 @@ function PortalDashboardContent() {
           <>
             <div className={styles.listHeaderRow}>
               <span className={styles.listHeaderTitle}>
-                Worsening trends for this month
+                Self-management follow-up
               </span>
               <div className={styles.worseningToolbar}>
                 <select
-                  aria-label="Filter worsening trends"
+                  aria-label="Filter self-management follow-up items"
                   className={styles.worseningSelect}
                   onChange={(event) =>
                     setSelectedWorseningFilter(
@@ -408,14 +567,17 @@ function PortalDashboardContent() {
                   ))}
                 </select>
                 <select
-                  aria-label="Worsening trend actions"
+                  aria-label="Self-management follow-up actions"
                   className={styles.worseningSelect}
                   disabled={actionPending}
-                  onChange={(event) => void handleWorseningAction(event.target.value)}
+                  onChange={(event) =>
+                    void handleWorseningAction(event.target.value)
+                  }
                   value={selectedAction}
                 >
                   <option value="">Actions</option>
                   <option value="notify">Notify patient(s)</option>
+                  <option value="reviewed">Mark as reviewed</option>
                   <option value="care-plan">Create Care Plan</option>
                 </select>
                 <input
@@ -427,7 +589,9 @@ function PortalDashboardContent() {
                       allVisibleWorseningSelected
                         ? current.filter(
                             (id) =>
-                              !worseningPatients.some((patient) => patient.id === id),
+                              !worseningPatients.some(
+                                (patient) => patient.id === id,
+                              ),
                           )
                         : Array.from(
                             new Set([
@@ -451,8 +615,8 @@ function PortalDashboardContent() {
             ) : null}
             {worseningPatients.length === 0 ? (
               <div className={styles.emptyState}>
-                <h2>No patients match this worsening filter</h2>
-                <p>Try another worsening category or clear the search term.</p>
+                <h2>No patients match this follow-up filter</h2>
+                <p>Try another follow-up category or clear the search term.</p>
               </div>
             ) : (
               <div className={styles.patientList}>
@@ -548,9 +712,36 @@ function PortalDashboardContent() {
             </p>
             <div className={styles.worseningModalList}>
               {detailsPatient.worseningItems.map((item) => (
-                <div className={styles.worseningModalItem} key={`${detailsPatient.id}-${item.kind}-${item.label}`}>
+                <div
+                  className={styles.worseningModalItem}
+                  key={`${detailsPatient.id}-${item.kind}-${item.label}`}
+                >
                   <strong>{item.label}</strong>
                   <span>{item.detail}</span>
+                  <span>
+                    {item.daysActive > 1
+                      ? `Needs follow-up for ${item.daysActive} days`
+                      : "Detected today"}
+                    {item.patientResponseLabel
+                      ? ` · Patient said: ${item.patientResponseLabel}`
+                      : ""}
+                  </span>
+                  <div className={styles.warningActions}>
+                    <button
+                      className={styles.buttonSecondarySmall}
+                      onClick={() =>
+                        void handleReviewItem(detailsPatient.id, item.episodeId)
+                      }
+                      type="button"
+                    >
+                      Mark as reviewed
+                    </button>
+                    {item.href ? (
+                      <Link className={styles.tableLink} href={item.href}>
+                        Open related section
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -564,10 +755,134 @@ function PortalDashboardContent() {
               </button>
               <button
                 className={styles.buttonPrimarySmall}
-                onClick={() => router.push(`/portal/patients/${detailsPatient.id}`)}
+                onClick={() =>
+                  router.push(`/portal/patients/${detailsPatient.id}`)
+                }
                 type="button"
               >
                 Open patient
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {reviewComposer ? (
+        <div
+          className={styles.warningModalBackdrop}
+          onClick={() => {
+            if (!actionPending) {
+              setReviewComposer(null);
+            }
+          }}
+        >
+          <div
+            className={styles.modalCard}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className={styles.modalTitle}>{reviewComposer.title}</h3>
+            <p className={styles.modalCopy}>
+              Add a short note so the reviewed history shows why this follow-up item
+              was cleared.
+            </p>
+            <div className={styles.worseningModalList}>
+              <label>
+                <span className={styles.listHeaderMeta}>Review note</span>
+                <textarea
+                  className={styles.inputField}
+                  maxLength={240}
+                  onChange={(event) => setReviewNote(event.target.value)}
+                  placeholder="Example: Patient contacted, self-managing, no further action today."
+                  rows={4}
+                  value={reviewNote}
+                />
+              </label>
+            </div>
+            <div className={styles.warningActions}>
+              <button
+                className={styles.buttonSecondarySmall}
+                disabled={actionPending}
+                onClick={() => setReviewComposer(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.buttonPrimarySmall}
+                disabled={actionPending || reviewNote.trim().length < 3}
+                onClick={() =>
+                  void submitReviewedNote({
+                    episodeIds: reviewComposer.episodeIds,
+                    patientIdForSingleEpisode:
+                      reviewComposer.patientIds?.length === 1
+                        ? reviewComposer.patientIds[0]
+                        : undefined,
+                    patientIds:
+                      reviewComposer.episodeIds?.length
+                        ? undefined
+                        : reviewComposer.patientIds,
+                  })
+                }
+                type="button"
+              >
+                {actionPending ? "Saving..." : "Mark as reviewed"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {notifyComposerOpen ? (
+        <div
+          className={styles.warningModalBackdrop}
+          onClick={() => setNotifyComposerOpen(false)}
+        >
+          <div
+            className={styles.modalCard}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className={styles.modalTitle}>Notify patient(s)</h3>
+            <p className={styles.modalCopy}>
+              Send a custom push notification to {selectedPatientIds.length} selected
+              {selectedPatientIds.length === 1 ? " patient" : " patients"} to prompt
+              app follow-up.
+            </p>
+            <div className={styles.worseningModalList}>
+              <label>
+                <span className={styles.listHeaderMeta}>Title</span>
+                <input
+                  className={styles.inputField}
+                  maxLength={80}
+                  onChange={(event) => setNotifyTitle(event.target.value)}
+                  value={notifyTitle}
+                />
+              </label>
+              <label>
+                <span className={styles.listHeaderMeta}>Message</span>
+                <textarea
+                  className={styles.inputField}
+                  maxLength={240}
+                  onChange={(event) => setNotifyBody(event.target.value)}
+                  rows={4}
+                  value={notifyBody}
+                />
+              </label>
+            </div>
+            <div className={styles.warningActions}>
+              <button
+                className={styles.buttonSecondarySmall}
+                onClick={() => setNotifyComposerOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.buttonPrimarySmall}
+                disabled={actionPending || !notifyBody.trim()}
+                onClick={() => void handleSendCustomNotification()}
+                type="button"
+              >
+                Send
               </button>
             </div>
           </div>

@@ -11,17 +11,10 @@ import {
   PatientWorseningTrendCheckInRequest,
   WORSENING_TREND_RULES,
 } from "@ckd/core";
-import { COLLECTIONS } from "@ckd/core/server";
-
-type WorseningTrendCheckInDoc = Omit<
-  PatientWorseningTrendCheckIn,
-  "createdAt" | "patientId" | "submittedAt" | "updatedAt"
-> & {
-  createdAt: Date;
-  patientId: ObjectId;
-  submittedAt: Date;
-  updatedAt: Date;
-};
+import {
+  COLLECTIONS,
+  type TWorseningTrendCheckInDoc,
+} from "@ckd/core/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,20 +25,32 @@ export async function POST(req: NextRequest) {
       !caller.principalId ||
       !ObjectId.isValid(caller.patientId)
     ) {
-      return bad("Patient session required", { code: "patient_session_required" }, 403);
+      return bad(
+        "Patient session required",
+        { code: "patient_session_required" },
+        403,
+      );
     }
 
     const body = (await req.json().catch(() => ({}))) as unknown;
     const parsed = PatientWorseningTrendCheckInRequest.safeParse(body);
     if (!parsed.success) {
-      return bad("Invalid worsening trend check-in", parsed.error.flatten(), 400);
+      return bad(
+        "Invalid worsening trend check-in",
+        parsed.error.flatten(),
+        400,
+      );
     }
 
     const { alertId, key, responseCode } = parsed.data;
     const rule = WORSENING_TREND_RULES[key];
     const prompt = rule.checkInPrompt;
     if (!prompt) {
-      return bad("This worsening trend does not accept a patient check-in", undefined, 400);
+      return bad(
+        "This worsening trend does not accept a patient check-in",
+        undefined,
+        400,
+      );
     }
 
     const option = prompt.options.find((entry) => entry.code === responseCode);
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
 
     const result = await db
-      .collection<WorseningTrendCheckInDoc>(COLLECTIONS.WorseningTrendCheckIns)
+      .collection<TWorseningTrendCheckInDoc>(COLLECTIONS.WorseningTrendCheckIns)
       .findOneAndUpdate(
         {
           alertId,
@@ -82,6 +87,19 @@ export async function POST(req: NextRequest) {
         },
         { returnDocument: "after", upsert: true },
       );
+
+    await db.collection(COLLECTIONS.WorseningTrendStates).updateOne(
+      {
+        episodeId: alertId,
+        patientId,
+      },
+      {
+        $set: {
+          updatedAt: now,
+          viewedAt: now,
+        },
+      },
+    );
 
     if (!result) {
       return bad("Unable to save worsening trend check-in", undefined, 500);

@@ -10,7 +10,7 @@ import { COLLECTIONS } from "@ckd/core/server";
 
 import { COLLECTION_TYPE } from "@/apps/api/lib/auth/collectionType";
 import { AuthTokenDoc } from "@/apps/api/lib/auth/auth_token";
-import { getClientIp, enforceRateLimit } from "@/apps/api/lib/auth/rateLimit";
+import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
@@ -25,7 +25,28 @@ const Body = z.object({
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || null;
-const IS_LOCAL_DEV = process.env.APP_ORIGIN?.includes("localhost") || process.env.NODE_ENV !== "production";
+const IS_LOCAL_DEV =
+  process.env.APP_ORIGIN?.includes("localhost") ||
+  process.env.NODE_ENV !== "production";
+
+function serializeError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return { message: String(error) };
+  }
+
+  const value = error as Record<string, unknown>;
+
+  return {
+    code: typeof value.code === "string" ? value.code : null,
+    message:
+      typeof value.message === "string" ? value.message : String(error),
+    name: typeof value.name === "string" ? value.name : null,
+    response:
+      value.response && typeof value.response === "object" ? value.response : null,
+    statusCode:
+      typeof value.statusCode === "number" ? value.statusCode : null,
+  };
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -108,26 +129,30 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
-    await invalidatePortalLoginCodes(authTokens, email, account.principalId, now);
+    await invalidatePortalLoginCodes(
+      authTokens,
+      email,
+      account.principalId,
+      now,
+    );
 
     const loginCode = createPortalLoginCode();
     const expiresAt = new Date(Date.now() + 1000 * 60 * 10);
 
     await authTokens.insertOne({
+      id: loginCode.id,
       _id: new ObjectId(),
+      type: COLLECTION_TYPE.PortalLoginCode,
       createdAt: now,
       credentialId,
       email,
       expiresAt,
-      id: loginCode.id,
       orgId: account.orgId ?? null,
-      patientId:
-        account._id instanceof ObjectId ? account._id : new ObjectId(),
+      patientId: account._id instanceof ObjectId ? account._id : new ObjectId(),
       principalId: account.principalId,
       role: account.role as Role,
       scopes: account.scopes ?? [],
       secretHash: loginCode.secretHash,
-      type: COLLECTION_TYPE.PortalLoginCode,
       usedAt: null,
     });
 
@@ -154,13 +179,31 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (error) {
+        console.error("portal request-code: resend send failed", {
+          email,
+          emailFrom: EMAIL_FROM,
+          isLocalDev: IS_LOCAL_DEV,
+          resendKeyPrefix: RESEND_KEY ? RESEND_KEY.slice(0, 8) : null,
+          resendConfigured: Boolean(resend),
+          error: serializeError(error),
+        });
         if (!IS_LOCAL_DEV) {
           throw error;
         }
-        console.warn("portal request-code: resend failed, falling back to dev code", error);
+        console.warn(
+          "portal request-code: resend failed, falling back to dev code",
+          error,
+        );
         devCode = loginCode.code;
       }
     } else {
+      console.log("portal request-code: resend disabled or sender missing", {
+        email,
+        emailFrom: EMAIL_FROM,
+        isLocalDev: IS_LOCAL_DEV,
+        resendConfigured: Boolean(resend),
+        resendKeyPresent: Boolean(RESEND_KEY),
+      });
       devCode = loginCode.code;
     }
 

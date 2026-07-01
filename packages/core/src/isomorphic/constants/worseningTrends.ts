@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const WorseningTrendKey = z.enum([
   "blood_pressure_up",
+  "labs_worsening",
   "nutrition_worsening",
   "steps_decline",
   "symptoms_worsening",
@@ -137,17 +138,21 @@ export type WorseningTrendRule = z.infer<typeof WorseningTrendRule>;
 export const PatientWorseningTrendAlert = z.object({
   body: z.string(),
   checkInResponseCode: z.string().nullable().default(null),
+  checkInResponseLabel: z.string().nullable().default(null),
   checkInSubmittedAt: z.string().nullable().default(null),
   detail: z.string().nullable().default(null),
   detectedAt: z.string(),
+  firstDetectedAt: z.string(),
   id: z.string(),
   key: WorseningTrendKey,
+  lastDetectedAt: z.string(),
   level: WorseningEscalationLevel,
   portalEscalationEligible: z.boolean().default(false),
   repeatAtLocalTime: z.string().nullable().default(null),
   repeatUntil: z.string().nullable().default(null),
   screen: z.string(),
   title: z.string(),
+  viewedAt: z.string().nullable().default(null),
 });
 
 export type PatientWorseningTrendAlert = z.infer<
@@ -180,6 +185,15 @@ export const PatientWorseningTrendCheckIn = z.object({
 
 export type PatientWorseningTrendCheckIn = z.infer<
   typeof PatientWorseningTrendCheckIn
+>;
+
+export const PatientWorseningTrendViewedRequest = z.object({
+  alertId: z.string().min(1),
+  key: WorseningTrendKey,
+});
+
+export type PatientWorseningTrendViewedRequest = z.infer<
+  typeof PatientWorseningTrendViewedRequest
 >;
 
 export const PatientWorseningTrendAlertsResponse = z.object({
@@ -264,6 +278,53 @@ export const WORSENING_TREND_RULES: Record<WorseningTrendKey, WorseningTrendRule
     principle:
       "Use the app first for early blood pressure drift, but escalate sustained or clearly above-target deterioration.",
   },
+  labs_worsening: {
+    appNotification: {
+      initialPush: true,
+      repeatAtLocalTime: null,
+      repeatUntil: null,
+      templateKey: "labs_worsening_review",
+    },
+    appTrigger: {
+      baselineWindowDays: null,
+      comparison: "absolute_change",
+      direction: "down",
+      metric: "labs_clinically_significant_change",
+      notes:
+        "Reserved for a future workflow. The initial hospital release keeps labs view-only rather than surfacing them as active worsening alerts.",
+      thresholdDays: null,
+      thresholdPct: null,
+      thresholdValue: null,
+      windowDays: 35,
+    },
+    checkInPrompt: null,
+    clinicianNotes:
+      "Not active in the initial hospital release. Hospital lab systems already own most of this escalation path, so CKD Copilot keeps labs view-only for now.",
+    key: "labs_worsening",
+    label: "Labs worsening",
+    portalEscalation: [
+      {
+        baselineWindowDays: null,
+        comparison: "absolute_change",
+        direction: "down",
+        metric: "labs_clinically_significant_change",
+        notes:
+          "Reserved for a future workflow if a specific operational gap is identified. The initial hospital release does not surface lab worsening alerts in the app or portal trend queue.",
+        thresholdDays: null,
+        thresholdPct: null,
+        thresholdValue: null,
+        windowDays: 35,
+      },
+    ],
+    portalHighPrioritySignals: [
+      "critical_lab_result",
+      "blood_pressure_up",
+      "weight_increase",
+      "symptoms_worsening",
+    ],
+    principle:
+      "Keep labs visible in the labs experience, but do not surface them as active worsening alerts in the initial hospital release because those results usually already have an owning clinical pathway.",
+  },
   nutrition_worsening: {
     appNotification: {
       initialPush: true,
@@ -275,12 +336,12 @@ export const WORSENING_TREND_RULES: Record<WorseningTrendKey, WorseningTrendRule
       baselineWindowDays: null,
       comparison: "target_breach_days",
       direction: "up",
-      metric: "nutrition_targets_4_of_5",
+      metric: "nutrition_targets_3_of_4",
       notes:
-        "Trigger when 4 of 5 tracked nutrient targets are exceeded on at least 6 of the last 7 logged days.",
+        "Trigger when 3 of 4 tracked nutrient targets are exceeded on at least 6 of the last 7 logged days.",
       thresholdDays: 6,
       thresholdPct: null,
-      thresholdValue: 4,
+      thresholdValue: 3,
       windowDays: 7,
     },
     checkInPrompt: null,
@@ -293,12 +354,12 @@ export const WORSENING_TREND_RULES: Record<WorseningTrendKey, WorseningTrendRule
         baselineWindowDays: null,
         comparison: "target_breach_days",
         direction: "up",
-        metric: "nutrition_targets_4_of_5",
+        metric: "nutrition_targets_3_of_4",
         notes:
-          "Escalate when 4 of 5 tracked nutrient targets are exceeded on at least 12 of the last 14 logged days.",
+          "Escalate when 3 of 4 tracked nutrient targets are exceeded on at least 12 of the last 14 logged days.",
         thresholdDays: 12,
         thresholdPct: null,
-        thresholdValue: 4,
+        thresholdValue: 3,
         windowDays: 14,
       },
     ],

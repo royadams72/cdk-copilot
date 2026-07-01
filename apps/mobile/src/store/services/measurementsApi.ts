@@ -1,6 +1,7 @@
 import { appApi } from "./appApi";
 import type {
   CreateMeasurementArgs,
+  UpdateMeasurementArgs,
   ExerciseReferenceResponse,
   MeasurementHistoryResponse,
   MeasurementKind,
@@ -69,6 +70,34 @@ export const measurementsApi = appApi.injectEndpoints({
         }
       },
     }),
+    updateMeasurement: builder.mutation<unknown, UpdateMeasurementArgs>({
+      invalidatesTags: (_result, _error, arg) => [
+        { id: "latest", type: "Fitness" as const },
+        { id: "history", type: "Fitness" as const },
+        { id: `history:${arg.kind}`, type: "Fitness" as const },
+        { id: "today", type: "Dashboard" as const },
+      ],
+      query: ({ measurementId, ...body }) => ({
+        body,
+        method: "PATCH",
+        url: `/api/measurements/${encodeURIComponent(measurementId)}`,
+      }),
+    }),
+    deleteMeasurement: builder.mutation<
+      unknown,
+      { kind: MeasurementKind; measurementId: string }
+    >({
+      invalidatesTags: (_result, _error, arg) => [
+        { id: "latest", type: "Fitness" as const },
+        { id: "history", type: "Fitness" as const },
+        { id: `history:${arg.kind}`, type: "Fitness" as const },
+        { id: "today", type: "Dashboard" as const },
+      ],
+      query: ({ measurementId }) => ({
+        method: "DELETE",
+        url: `/api/measurements/${encodeURIComponent(measurementId)}`,
+      }),
+    }),
   }),
   // Expo/Metro can re-evaluate injected endpoint modules during Fast Refresh
   // or after switching branches with a stale bundle graph.
@@ -77,9 +106,11 @@ export const measurementsApi = appApi.injectEndpoints({
 
 export const {
   useCreateMeasurementMutation,
+  useDeleteMeasurementMutation,
   useGetExerciseReferenceQuery,
   useGetLatestMeasurementsQuery,
   useGetMeasurementHistoryQuery,
   useGetWeeklySleepSummaryQuery,
   useLazyGetWeeklySleepSummaryQuery,
+  useUpdateMeasurementMutation,
 } = measurementsApi;

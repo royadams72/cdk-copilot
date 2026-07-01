@@ -136,6 +136,8 @@ export const dashboardApi = appApi.injectEndpoints({
         { id: "today", type: "Dashboard" as const },
         { id: "all", type: "Dashboard" as const },
         { id: "latest", type: "Fitness" as const },
+        { id: "trend", type: "Dashboard" as const },
+        { id: "monthly-summary", type: "Dashboard" as const },
         { id: "all", type: "Targets" as const },
         { id: arg.metric, type: "Targets" as const },
         { id: "renal", type: "Targets" as const },

@@ -12,7 +12,9 @@ import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
 const NotifyPortalPatientsBody = z.object({
+  body: z.string().trim().min(1).max(240).optional(),
   patientIds: z.array(z.string().min(1)).min(1).max(25),
+  title: z.string().trim().min(1).max(80).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -53,13 +55,15 @@ export async function POST(req: NextRequest) {
     const results = await Promise.all(
       patients.map((patient) =>
         sendPatientPushNotification(db, {
-          body: "Your care team would like you to review your recent health information in CKD Copilot.",
+          body:
+            payload.body ??
+            "Your care team would like you to review your recent health information in CKD Copilot.",
           data: {
-            screen: "/(dashboard)/dashboard",
+            screen: "/dashboard",
             type: "clinician-notify",
           },
           patientId: patient._id.toHexString(),
-          title: "Check-in requested",
+          title: payload.title ?? "Check-in requested",
         }),
       ),
     );

@@ -23,10 +23,12 @@ import { useStepCount } from "@/hooks/useStepCount";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateMeasurementMutation,
+  useDeleteMeasurementMutation,
   useGetExerciseReferenceQuery,
   useGetMeasurementHistoryQuery,
   useGetWeeklySleepSummaryQuery,
   useLazyGetWeeklySleepSummaryQuery,
+  useUpdateMeasurementMutation,
 } from "@/store/services/measurementsApi";
 import { useGetCurrentUserSettingsQuery } from "@/store/services/userApi";
 import type {
@@ -84,7 +86,10 @@ type TrendChart = {
 function buildHeartRateHourlyValues(
   entries: { measuredAt: string; value: number | null }[],
 ) {
-  const buckets = Array.from({ length: 24 }, () => [] as number[]);
+  const buckets = Array.from({ length: 24 }, () => [] as {
+    measuredAtMs: number;
+    value: number;
+  }[]);
 
   for (const entry of entries) {
     if (typeof entry.value !== "number" || !Number.isFinite(entry.value)) {
@@ -94,15 +99,22 @@ function buildHeartRateHourlyValues(
     if (Number.isNaN(time.getTime())) {
       continue;
     }
-    buckets[time.getHours()].push(entry.value);
+    buckets[time.getHours()].push({
+      measuredAtMs: time.getTime(),
+      value: entry.value,
+    });
   }
 
   return buckets.map((bucket) => {
     if (!bucket.length) {
       return null;
     }
-    const total = bucket.reduce((sum, value) => sum + value, 0);
-    return Math.round(total / bucket.length);
+    const latest = bucket.reduce((currentLatest, candidate) =>
+      candidate.measuredAtMs > currentLatest.measuredAtMs
+        ? candidate
+        : currentLatest,
+    );
+    return Math.round(latest.value);
   });
 }
 
@@ -124,6 +136,28 @@ function sameDayEntries(
   });
 }
 
+function mergeHeartRateEntries(
+  historyEntries: MeasurementDayEntry[],
+  liveEntries: MeasurementDayEntry[],
+) {
+  const merged = [...historyEntries, ...liveEntries];
+  const seen = new Set<string>();
+
+  return merged.filter((entry) => {
+    const key = [
+      entry.measuredAt,
+      entry.value ?? "null",
+      entry.value2 ?? "null",
+      entry.source ?? "unknown",
+    ].join(":");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 export default function FitnessMetricTrend() {
   const router = useRouter();
   const params = useLocalSearchParams<{ kind?: string; label?: string }>();
@@ -133,6 +167,7 @@ export default function FitnessMetricTrend() {
   const [saving, setSaving] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<MeasurementDayEntry | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSleepFromPicker, setShowSleepFromPicker] = useState(false);
   const [showSleepToPicker, setShowSleepToPicker] = useState(false);
@@ -200,6 +235,8 @@ export default function FitnessMetricTrend() {
     skip: kind !== "exercise",
   });
   const [createMeasurement] = useCreateMeasurementMutation();
+  const [updateMeasurement] = useUpdateMeasurementMutation();
+  const [deleteMeasurement] = useDeleteMeasurementMutation();
   const [loadWeeklySleepSummary] = useLazyGetWeeklySleepSummaryQuery();
   const { data: weeklySleepSummary } = useGetWeeklySleepSummaryQuery(
     undefined,
@@ -236,7 +273,7 @@ export default function FitnessMetricTrend() {
 
     return nextPoints.sort((a, b) => (a.date < b.date ? -1 : 1));
   }, [historyPoints, kind, liveStepStatus, stepsToday]);
-  const entriesByDate = useMemo(() => {
+  const entriesByDate = useMemo<Record<string, MeasurementDayEntry[]>>(() => {
     if (
       kind !== "steps" ||
       liveStepStatus !== "ready" ||
@@ -247,18 +284,21 @@ export default function FitnessMetricTrend() {
 
     const today = new Date();
     const todayKey = dateKey(today);
+    const liveStepEntry: MeasurementDayEntry = {
+      averageSpeedKph: liveStepSummary?.averageSpeedKph ?? null,
+      canDelete: false,
+      canEdit: false,
+      caloriesKcal: liveStepSummary?.caloriesKcal ?? null,
+      distanceMeters: liveStepSummary?.distanceMeters ?? null,
+      entryId: `live-steps-${todayKey}`,
+      measuredAt: today.toISOString(),
+      source: "device",
+      value: Math.max(0, Math.round(stepsToday)),
+      value2: null,
+    };
     return {
       ...historyEntriesByDate,
-      [todayKey]: [
-        {
-          averageSpeedKph: liveStepSummary?.averageSpeedKph ?? null,
-          caloriesKcal: liveStepSummary?.caloriesKcal ?? null,
-          distanceMeters: liveStepSummary?.distanceMeters ?? null,
-          measuredAt: today.toISOString(),
-          value: Math.max(0, Math.round(stepsToday)),
-          value2: null,
-        },
-      ],
+      [todayKey]: [liveStepEntry],
     };
   }, [
     historyEntriesByDate,
@@ -305,6 +345,101 @@ export default function FitnessMetricTrend() {
       setSelectedExerciseId((prev) => prev || firstExercise.exerciseId);
     }
   }, [exerciseCatalog]);
+
+  const resetEditorState = useCallback(() => {
+    setEditingEntry(null);
+    setMeasuredDate(new Date());
+    setExerciseMinutes("30");
+    setBpSystolic(BP_TARGET_SYSTOLIC);
+    setBpDiastolic(BP_TARGET_DIASTOLIC);
+    setHeartRateBpm(72);
+    setSleepFromTime(() => {
+      const value = new Date();
+      value.setHours(23, 0, 0, 0);
+      return value;
+    });
+    setSleepToTime(() => {
+      const value = new Date();
+      value.setHours(7, 0, 0, 0);
+      return value;
+    });
+  }, []);
+
+  const openCreateModal = useCallback(() => {
+    resetEditorState();
+    setModalOpen(true);
+  }, [resetEditorState]);
+
+  const handleEditEntry = useCallback(
+    (entry: MeasurementDayEntry) => {
+      const measuredAt = new Date(entry.measuredAt);
+      setEditingEntry(entry);
+      setMeasuredDate(measuredAt);
+
+      if (kind === "exercise") {
+        setSelectedExerciseId(entry.exerciseId ?? "");
+        setExerciseMinutes(
+          typeof entry.value2 === "number" ? String(Math.round(entry.value2)) : "30",
+        );
+      } else if (kind === "sleep") {
+        setSleepFromTime(entry.sleepFromAt ? new Date(entry.sleepFromAt) : measuredAt);
+        setSleepToTime(entry.sleepToAt ? new Date(entry.sleepToAt) : measuredAt);
+      } else if (kind === "blood_pressure") {
+        setBpSystolic(
+          typeof entry.value === "number" ? Math.round(entry.value) : BP_TARGET_SYSTOLIC,
+        );
+        setBpDiastolic(
+          typeof entry.value2 === "number" ? Math.round(entry.value2) : BP_TARGET_DIASTOLIC,
+        );
+      } else if (kind === "heart_rate") {
+        setHeartRateBpm(typeof entry.value === "number" ? Math.round(entry.value) : 72);
+      } else if (kind === "weight" && typeof entry.value === "number") {
+        const displayValue =
+          preferredWeightUnit === "lb"
+            ? Math.round((entry.value * 2.2046226218) * 10) / 10
+            : Math.round(entry.value * 10) / 10;
+        const whole = Math.max(0, Math.floor(displayValue));
+        const decimal = Math.min(
+          9,
+          Math.max(0, Math.round((displayValue - whole) * 10)),
+        );
+        setWeightValue(whole);
+        setWeightDecimal(decimal);
+      }
+
+      setModalOpen(true);
+    },
+    [kind],
+  );
+
+  const handleDeleteEntry = useCallback(
+    (entry: MeasurementDayEntry) => {
+      Alert.alert("Delete reading?", "This manual reading will be removed.", [
+        { style: "cancel", text: "Cancel" },
+        {
+          style: "destructive",
+          text: "Delete",
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteMeasurement({
+                  kind,
+                  measurementId: entry.entryId,
+                }).unwrap();
+                await refetchHistory();
+              } catch (err: unknown) {
+                Alert.alert(
+                  "Delete failed",
+                  err instanceof Error ? err.message : "Could not delete reading",
+                );
+              }
+            })();
+          },
+        },
+      ]);
+    },
+    [deleteMeasurement, kind, refetchHistory],
+  );
 
   const chart = useMemo<TrendChart>(() => {
     const numeric = points.filter(
@@ -492,21 +627,9 @@ export default function FitnessMetricTrend() {
       healthConnectHeartRateDateKey === selectedDateKey
         ? healthConnectHeartRateEntries
         : [];
-    if (scopedHealthConnectEntries.length > 0) {
-      return sortEntriesForTrendDay(kind, scopedHealthConnectEntries);
-    }
-    const merged = [...selectedDayEntries, ...scopedHealthConnectEntries];
-    const seen = new Set<string>();
     return sortEntriesForTrendDay(
       kind,
-      merged.filter((entry) => {
-        const key = `${entry.measuredAt}:${entry.value ?? "null"}`;
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      }),
+      mergeHeartRateEntries(selectedDayEntries, scopedHealthConnectEntries),
     );
   }, [
     healthConnectHeartRateDateKey,
@@ -515,6 +638,16 @@ export default function FitnessMetricTrend() {
     selectedDateKey,
     selectedDayEntries,
   ]);
+
+  const editableHeartRateEntries = useMemo(() => {
+    if (kind !== "heart_rate") {
+      return selectedDayEntries;
+    }
+
+    return selectedDayEntries.filter(
+      (entry) => entry.canEdit || entry.canDelete || entry.source === "patient",
+    );
+  }, [kind, selectedDayEntries]);
 
   const selectedStepSummary = useMemo(() => {
     if (kind !== "steps") return null;
@@ -961,7 +1094,64 @@ export default function FitnessMetricTrend() {
         return;
       }
 
-      await createMeasurement(payload).unwrap();
+      if (editingEntry) {
+        if (kind === "exercise") {
+          if (payload.kind !== "exercise") {
+            throw new Error("Invalid exercise update payload");
+          }
+          await updateMeasurement({
+            durationMin: payload.durationMin,
+            exerciseId: payload.exerciseId,
+            kind: "exercise",
+            measuredAt: payload.measuredAt ?? dateToMeasuredAtIso(measuredDate),
+            measurementId: editingEntry.entryId,
+          }).unwrap();
+        } else if (kind === "sleep") {
+          if (payload.kind !== "sleep") {
+            throw new Error("Invalid sleep update payload");
+          }
+          await updateMeasurement({
+            kind: "sleep",
+            measurementId: editingEntry.entryId,
+            sleepFromAt: payload.sleepFromAt,
+            sleepToAt: payload.sleepToAt,
+          }).unwrap();
+        } else if (kind === "blood_pressure") {
+          if (payload.kind !== "blood_pressure") {
+            throw new Error("Invalid blood pressure update payload");
+          }
+          await updateMeasurement({
+            diastolicMmHg: payload.diastolicMmHg,
+            kind: "blood_pressure",
+            measuredAt: payload.measuredAt ?? dateToMeasuredAtIso(measuredDate),
+            measurementId: editingEntry.entryId,
+            systolicMmHg: payload.systolicMmHg,
+          }).unwrap();
+        } else if (kind === "heart_rate") {
+          if (payload.kind !== "heart_rate") {
+            throw new Error("Invalid heart rate update payload");
+          }
+          await updateMeasurement({
+            bpm: payload.bpm,
+            kind: "heart_rate",
+            measuredAt: payload.measuredAt ?? dateToMeasuredAtIso(measuredDate),
+            measurementId: editingEntry.entryId,
+          }).unwrap();
+        } else if (kind === "weight") {
+          if (payload.kind !== "weight") {
+            throw new Error("Invalid weight update payload");
+          }
+          await updateMeasurement({
+            kind: "weight",
+            measuredAt: payload.measuredAt ?? dateToMeasuredAtIso(measuredDate),
+            measurementId: editingEntry.entryId,
+            valueKg: payload.valueKg,
+          }).unwrap();
+        }
+      } else {
+        await createMeasurement(payload).unwrap();
+      }
+      resetEditorState();
       setExerciseMinutes("30");
       setModalOpen(false);
       await refetchHistory();
@@ -986,7 +1176,10 @@ export default function FitnessMetricTrend() {
     weightDecimal,
     preferredWeightUnit,
     createMeasurement,
+    editingEntry,
     refetchHistory,
+    resetEditorState,
+    updateMeasurement,
   ]);
 
   const handleDevSleepReminderTest = useCallback(async () => {
@@ -1080,7 +1273,7 @@ export default function FitnessMetricTrend() {
 
         {showAdd ? (
           <TouchableOpacity
-            onPress={() => setModalOpen(true)}
+            onPress={openCreateModal}
             style={{
               alignSelf: "flex-start",
               backgroundColor: "rgba(59,130,246,0.16)",
@@ -1258,13 +1451,17 @@ export default function FitnessMetricTrend() {
                   </ThemedText>
                 ) : null}
 
-                {selectedDateKey &&
-                kind !== "steps" &&
-                kind !== "heart_rate" ? (
+                {selectedDateKey && kind !== "steps" ? (
                   <MetricDayEntries
                     kind={kind}
+                    onDeleteEntry={handleDeleteEntry}
+                    onEditEntry={handleEditEntry}
                     selectedDateKey={selectedDateKey}
-                    selectedDayEntries={selectedDayEntries}
+                    selectedDayEntries={
+                      kind === "heart_rate"
+                        ? editableHeartRateEntries
+                        : selectedDayEntries
+                    }
                     weightUnit={preferredWeightUnit}
                   />
                 ) : null}
@@ -1303,6 +1500,7 @@ export default function FitnessMetricTrend() {
       <AddMeasurementModal
         bpDiastolic={bpDiastolic}
         bpSystolic={bpSystolic}
+        confirmLabel={editingEntry ? "Save changes" : "Save"}
         diastolicOptions={diastolicOptions}
         exerciseCatalog={exerciseCatalog}
         exerciseCatalogError={exerciseCatalogError}
@@ -1339,6 +1537,7 @@ export default function FitnessMetricTrend() {
         sleepFromTime={sleepFromTime}
         sleepToTime={sleepToTime}
         systolicOptions={systolicOptions}
+        title={editingEntry ? `Edit ${label}` : undefined}
         exerciseDurationOptions={exerciseDurationOptions}
         weightDecimalOptions={weightDecimalOptions}
         weightOptions={weightOptions}

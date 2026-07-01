@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanData } from "@/apps/api/lib/portal/patient-shared";
@@ -51,7 +51,7 @@ function statusColour(
 
 export default function PortalPatientCarePlansPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<PortalPatientCarePlanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

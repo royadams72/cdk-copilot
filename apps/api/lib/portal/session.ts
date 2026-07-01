@@ -1,7 +1,15 @@
+export type PortalSessionOption = {
+  id: string;
+  label: string;
+};
+
 export type PortalSessionUser = {
   allowedPatientIds: string[];
   careTeamIds: string[];
+  careTeams: PortalSessionOption[];
+  displayName: string | null;
   facilityIds: string[];
+  facilities: PortalSessionOption[];
   orgId: string | null;
   principalId: string;
   role: "patient" | "clinician" | "dietitian" | "admin";

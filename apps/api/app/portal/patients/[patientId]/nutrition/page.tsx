@@ -23,7 +23,7 @@ import {
 } from "recharts";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import {
   PORTAL_NUTRITION_FILTERS,
@@ -68,7 +68,7 @@ function formatTrend(value: PortalPatientNutritionFoodRow["trend"]) {
 
 export default function PortalPatientNutritionPage() {
   const params = useParams<{ patientId: string }>();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [filter, setFilter] = useState<PortalNutritionFilter>("phosphorusMg");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [data, setData] = useState<PortalPatientNutritionData | null>(null);

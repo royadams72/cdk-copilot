@@ -110,6 +110,13 @@ type ResolvedRange = {
   refRange: LabRefRange | null;
 };
 
+type LabReferenceRangeReadable = {
+  code?: string;
+  orgId?: string;
+  refRange?: LabRefRange | null;
+  unit?: string | null;
+};
+
 function toNumberValue(value: number | string): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -217,6 +224,42 @@ async function resolveReferenceRangeSnapshot(
   const refRange = low !== null || high !== null ? { low, high, text: null } : null;
 
   return { criticalHigh, criticalLow, rangeId, rangeVersion, refRange };
+}
+
+function hasReferenceRange(doc: LabReferenceRangeReadable) {
+  return (
+    typeof doc.refRange?.low === "number" ||
+    typeof doc.refRange?.high === "number" ||
+    Boolean(doc.refRange?.text)
+  );
+}
+
+export async function hydrateLabReferenceRanges<T extends LabReferenceRangeReadable>(
+  db: Db,
+  docs: T[],
+) {
+  return Promise.all(
+    docs.map(async (doc) => {
+      if (hasReferenceRange(doc) || !doc.code) {
+        return doc;
+      }
+
+      const resolved = await resolveReferenceRangeSnapshot(db, {
+        code: doc.code,
+        orgId: doc.orgId ?? null,
+        unit: doc.unit ?? null,
+      });
+
+      if (!resolved?.refRange) {
+        return doc;
+      }
+
+      return {
+        ...doc,
+        refRange: resolved.refRange,
+      };
+    }),
+  );
 }
 
 export function deriveAbnormalFlag(

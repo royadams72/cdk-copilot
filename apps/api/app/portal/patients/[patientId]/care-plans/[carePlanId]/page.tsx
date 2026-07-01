@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
+import PatientHeadlineContainer from "../../../components/PatientHeadlineContainer";
 
 type PortalCarePlanDetailResponse = {
   data: PortalPatientCarePlanDetailData;
@@ -64,7 +65,7 @@ function formatActivityLabel(
 export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
-  const { session, status } = usePortalSession();
+  const { session, status } = usePortalAuthSession();
   const [data, setData] = useState<PortalPatientCarePlanDetailData | null>(
     null,
   );
@@ -212,27 +213,11 @@ export default function PortalPatientCarePlanDetailPage() {
 
   return (
     <section className={styles.subpageLayout}>
-      <div className={styles.patientHeadlineContainer}>
-        <Link className={styles.patientBackLink} href={carePlansHref}>
-          &larr; Back to care plans
-        </Link>
-        <div className={styles.patientHeadline}>
-          <span aria-hidden="true" className={styles.patientHeadlineIcon}>
-            <span className={styles.patientHeadlineAvatarHead} />
-            <span className={styles.patientHeadlineAvatarBody} />
-          </span>
-          <div className={styles.patientHeadlineContent}>
-            <div className={styles.patientHeadlineRow}>
-              <div className={styles.patientHeadlineText}>
-                {data.patient.name}
-              </div>
-            </div>
-          </div>
-        </div>
-        <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
-          Back to care plans
-        </span>
-      </div>
+      <PatientHeadlineContainer
+        backHref={carePlansHref}
+        backLabel="Back to care plans"
+        headline={data.patient.name}
+      />
 
       {error ? <p className={styles.dataScreenCaption}>{error}</p> : null}
 

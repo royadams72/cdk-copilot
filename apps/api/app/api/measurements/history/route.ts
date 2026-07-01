@@ -11,9 +11,14 @@ import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
 type MeasurementDoc = {
+  _id: ObjectId;
   averageSpeedKph?: number;
   caloriesKcal?: number;
+  device?: {
+    externalId?: string;
+  };
   distanceMeters?: number;
+  externalRecordId?: string;
   kind:
     | "weight"
     | "blood_pressure"
@@ -22,6 +27,10 @@ type MeasurementDoc = {
     | "exercise"
     | "sleep";
   measuredAt: Date;
+  provider?: {
+    packageName?: string;
+  };
+  source?: "patient" | "device" | "api" | "provider";
   valueKg?: number;
   systolicMmHg?: number;
   diastolicMmHg?: number;
@@ -95,6 +104,20 @@ function firstNumber(...values: unknown[]) {
   return null;
 }
 
+function canMutateMeasurement(doc: MeasurementDoc) {
+  return (
+    (doc.kind === "exercise" ||
+      doc.kind === "sleep" ||
+      doc.kind === "blood_pressure" ||
+      doc.kind === "heart_rate" ||
+      doc.kind === "weight") &&
+    doc.source === "patient" &&
+    !doc.externalRecordId &&
+    !doc.provider?.packageName &&
+    !doc.device?.externalId
+  );
+}
+
 export async function GET(req: NextRequest) {
   try {
     const caller = await requireUser(req);
@@ -132,19 +155,23 @@ export async function GET(req: NextRequest) {
         { patientId, kind },
         {
           projection: {
-            _id: 0,
+            _id: 1,
             averageSpeedKph: 1,
             bpm: 1,
             caloriesKcal: 1,
             count: 1,
+            device: 1,
             diastolicMmHg: 1,
             distanceMeters: 1,
             durationMin: 1,
             exercise: 1,
+            externalRecordId: 1,
             kind: 1,
             measuredAt: 1,
+            provider: 1,
             sleepFromAt: 1,
             sleepToAt: 1,
+            source: 1,
             sync: 1,
             steps: 1,
             systolicMmHg: 1,
@@ -159,7 +186,11 @@ export async function GET(req: NextRequest) {
     const entriesByDay = new Map<
       string,
       Array<{
+        canDelete: boolean;
+        canEdit: boolean;
+        entryId: string;
         measuredAt: string;
+        source?: "patient" | "device" | "api" | "provider";
         value: number | null;
         value2: number | null;
         averageSpeedKph?: number | null;
@@ -216,6 +247,8 @@ export async function GET(req: NextRequest) {
           kind === "steps"
             ? firstNumber(doc.averageSpeedKph, doc.steps?.averageSpeedKph)
             : undefined,
+        canDelete: canMutateMeasurement(doc),
+        canEdit: canMutateMeasurement(doc),
         caloriesKcal:
           kind === "steps"
             ? firstNumber(doc.caloriesKcal, doc.steps?.caloriesKcal)
@@ -224,7 +257,9 @@ export async function GET(req: NextRequest) {
           kind === "steps"
             ? firstNumber(doc.distanceMeters, doc.steps?.distanceMeters)
             : undefined,
+        entryId: doc._id.toHexString(),
         measuredAt: doc.measuredAt.toISOString(),
+        source: doc.source,
         value,
         value2,
         sleepFromAt:
@@ -270,7 +305,11 @@ export async function GET(req: NextRequest) {
       Record<
         string,
         Array<{
+          canDelete: boolean;
+          canEdit: boolean;
+          entryId: string;
           measuredAt: string;
+          source?: "patient" | "device" | "api" | "provider";
           value: number | null;
           value2: number | null;
           averageSpeedKph?: number | null;

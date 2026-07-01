@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { ThemedText } from "@/components/themed-text";
 
@@ -38,6 +39,12 @@ export default function MedsLabsDashboard() {
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   if (loading) {
     return (

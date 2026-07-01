@@ -1,7 +1,7 @@
 import path from "node:path";
 import * as dotenv from "dotenv";
 
-import { MongoClient, ObjectId, type Filter, type Document } from "mongodb";
+import { type Document, type Filter, MongoClient, ObjectId } from "mongodb";
 
 import { COLLECTIONS } from "../packages/core/src/server/constants/collections";
 
@@ -28,9 +28,9 @@ type PatientDoc = {
 };
 
 type PiiDoc = {
+  email?: string;
   patientId: ObjectId;
   principalId?: string;
-  email?: string;
 };
 
 const OBJECT_ID_PATIENT_COLLECTIONS = [
@@ -53,9 +53,14 @@ const OBJECT_ID_PATIENT_COLLECTIONS = [
   COLLECTIONS.TargetsLedger,
   COLLECTIONS.UsersClinical,
   COLLECTIONS.UsersPII,
+  COLLECTIONS.WeeklyNutritionInsights,
+  COLLECTIONS.WorseningTrendCheckIns,
+  COLLECTIONS.WorseningTrendStates,
 ] as const;
 
-const STRING_PATIENT_COLLECTIONS = [COLLECTIONS.WeeklyNutritionInsights] as const;
+const STRING_PATIENT_COLLECTIONS = [
+  COLLECTIONS.WeeklyNutritionInsights,
+] as const;
 
 function printHelp() {
   console.log(`Delete a patient and linked records by patientId.
@@ -149,7 +154,7 @@ async function buildDeletePlan(
   );
   const piiDoc = await usersPii.findOne(
     { patientId: patientObjectId },
-    { projection: { patientId: 1, principalId: 1, email: 1 } },
+    { projection: { email: 1, patientId: 1, principalId: 1 } },
   );
 
   const principalId =
@@ -161,18 +166,20 @@ async function buildDeletePlan(
         patientId: patientObjectId,
         principalId: { $type: "string" },
       })
-      .then((values) => values.find((value): value is string => typeof value === "string") ?? null));
+      .then(
+        (values) =>
+          values.find((value): value is string => typeof value === "string") ??
+          null,
+      ));
 
-  const credentialIds =
-    principalId
-      ? (await db
-          .collection(COLLECTIONS.AuthLinks)
-          .distinct("credentialId", {
-            principalId,
-            credentialId: { $type: "string" },
-          }))
-          .filter((value): value is string => typeof value === "string")
-      : [];
+  const credentialIds = principalId
+    ? (
+        await db.collection(COLLECTIONS.AuthLinks).distinct("credentialId", {
+          credentialId: { $type: "string" },
+          principalId,
+        })
+      ).filter((value): value is string => typeof value === "string")
+    : [];
 
   const plans: DeletePlan[] = [];
 
@@ -217,7 +224,12 @@ async function buildDeletePlan(
     const principalFilter = { principalId };
     plans.push({
       collection: COLLECTIONS.AuthLinks,
-      count: await countDocuments(client, args.dbName, COLLECTIONS.AuthLinks, principalFilter),
+      count: await countDocuments(
+        client,
+        args.dbName,
+        COLLECTIONS.AuthLinks,
+        principalFilter,
+      ),
       filter: principalFilter,
       kind: "deleteMany",
     });
@@ -257,7 +269,12 @@ async function buildDeletePlan(
   const patientDeleteFilter = { _id: patientObjectId };
   plans.push({
     collection: COLLECTIONS.Patients,
-    count: await countDocuments(client, args.dbName, COLLECTIONS.Patients, patientDeleteFilter),
+    count: await countDocuments(
+      client,
+      args.dbName,
+      COLLECTIONS.Patients,
+      patientDeleteFilter,
+    ),
     filter: patientDeleteFilter,
     kind: "deleteOne",
   });
@@ -270,9 +287,17 @@ async function buildDeletePlan(
   };
 }
 
-async function applyPlan(client: MongoClient, dbName: string, plans: DeletePlan[]) {
+async function applyPlan(
+  client: MongoClient,
+  dbName: string,
+  plans: DeletePlan[],
+) {
   const db = client.db(dbName);
-  const results: Array<{ collection: string; affected: number; kind: DeletePlan["kind"] }> = [];
+  const results: Array<{
+    affected: number;
+    collection: string;
+    kind: DeletePlan["kind"];
+  }> = [];
 
   for (const plan of plans) {
     const collection = db.collection(plan.collection);

@@ -24,6 +24,7 @@ import {
 } from "./metricTrendUtils";
 
 type Props = {
+  confirmLabel?: string;
   bpDiastolic: number;
   bpSystolic: number;
   diastolicOptions: number[];
@@ -65,6 +66,7 @@ type Props = {
   sleepFromTime: Date;
   sleepToTime: Date;
   systolicOptions: number[];
+  title?: string;
   weightDecimal: number;
   weightDecimalOptions: number[];
   weightOptions: number[];
@@ -73,6 +75,7 @@ type Props = {
 };
 
 export function AddMeasurementModal({
+  confirmLabel = "Save",
   bpDiastolic,
   bpSystolic,
   diastolicOptions,
@@ -112,6 +115,7 @@ export function AddMeasurementModal({
   sleepFromTime,
   sleepToTime,
   systolicOptions,
+  title,
   weightDecimal,
   weightDecimalOptions,
   weightOptions,
@@ -156,7 +160,9 @@ export function AddMeasurementModal({
               width: "100%",
             }}
           >
-            <ThemedText type="defaultSemiBold">{addLabel(kind)}</ThemedText>
+            <ThemedText type="defaultSemiBold">
+              {title ?? addLabel(kind)}
+            </ThemedText>
 
             {kind === "exercise" ? (
               <>
@@ -511,7 +517,7 @@ export function AddMeasurementModal({
                 }}
               >
                 <ThemedText style={{ color: "white", fontWeight: "700" }}>
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? "Saving..." : confirmLabel}
                 </ThemedText>
               </TouchableOpacity>
             </View>

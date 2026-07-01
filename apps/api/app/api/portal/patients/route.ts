@@ -8,12 +8,14 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   buildPortalPatientAccessMatch,
   buildPortalPatientStats,
-  mapPortalPatientListItem,
-  matchesPortalPatientFilter,
-  matchesPortalPatientQuery,
+  matchesPortalPatientAdvancedFilters,
+  mapPortalPatientListItemsWithWorsening,
   sortPortalPatients,
 } from "@/apps/api/lib/portal/patients";
-import { normalizePortalPatientFilter } from "@/apps/api/lib/portal/patient-shared";
+import {
+  normalizePortalPatientFilter,
+  normalizePortalPatientRiskFilter,
+} from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
@@ -54,6 +56,13 @@ export async function GET(req: NextRequest) {
     const filter = normalizePortalPatientFilter(
       req.nextUrl.searchParams.get("filter"),
     );
+    const risk = normalizePortalPatientRiskFilter(
+      req.nextUrl.searchParams.get("risk"),
+    );
+    const stage = req.nextUrl.searchParams.get("stage")?.trim() ?? "";
+    const careTeamId = req.nextUrl.searchParams.get("careTeamId")?.trim() ?? "";
+    const facilityId =
+      req.nextUrl.searchParams.get("facilityId")?.trim() ?? "";
 
     const db = await getDb();
     const patients = await db
@@ -92,20 +101,29 @@ export async function GET(req: NextRequest) {
       .toArray();
 
     const allPatients = sortPortalPatients(
-      patients.map((patient) => mapPortalPatientListItem(patient)),
+      await mapPortalPatientListItemsWithWorsening(db, patients),
     );
     const stats = buildPortalPatientStats(allPatients);
-    const filteredPatients = allPatients.filter(
-      (patient) =>
-        matchesPortalPatientQuery(patient, query) &&
-        matchesPortalPatientFilter(patient, filter),
+    const filteredPatients = allPatients.filter((patient) =>
+      matchesPortalPatientAdvancedFilters(patient, {
+        careTeamId,
+        facilityId,
+        filter,
+        query,
+        risk,
+        stage,
+      }),
     );
 
     return ok({
+      careTeamId,
       filter,
+      facilityId,
       matchedPatients: filteredPatients.length,
       patients: filteredPatients,
       query,
+      risk,
+      stage,
       stats,
       totalPatients: allPatients.length,
     });

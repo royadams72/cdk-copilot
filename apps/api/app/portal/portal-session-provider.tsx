@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -27,14 +28,20 @@ type PortalSessionState =
 
 type LogoutReason = "idle" | "manual" | "expired";
 
-type PortalSessionContextValue = {
-  clearWarning: () => void;
-  isLeaderTab: boolean;
-  lastActivityAt: number;
-  logout: (reason: LogoutReason) => void;
+type PortalAuthSessionContextValue = {
   session: (PortalSessionSnapshot & { user: PortalSessionUser }) | null;
   status: PortalSessionState["status"];
+};
+
+type PortalSessionUiContextValue = {
+  isLeaderTab: boolean;
+  lastActivityAt: number;
   warningOpen: boolean;
+};
+
+type PortalSessionActionsContextValue = {
+  clearWarning: () => void;
+  logout: (reason: LogoutReason) => void;
 };
 
 const WARNING_AT_MS = 18 * 60 * 1000;
@@ -50,7 +57,12 @@ const STORAGE_KEYS = {
   warning: "ckd_portal_warning",
 } as const;
 
-const PortalSessionContext = createContext<PortalSessionContextValue | null>(null);
+const PortalAuthSessionContext =
+  createContext<PortalAuthSessionContextValue | null>(null);
+const PortalSessionUiContext =
+  createContext<PortalSessionUiContextValue | null>(null);
+const PortalSessionActionsContext =
+  createContext<PortalSessionActionsContextValue | null>(null);
 
 function portalSessionMatches(
   currentState: PortalSessionState,
@@ -380,23 +392,80 @@ export function PortalSessionProvider({ children }: PropsWithChildren) {
     return () => window.clearInterval(interval);
   }, [isLeaderTab, keepAlive, state.status]);
 
-  const value: PortalSessionContextValue = {
-    clearWarning: noteActivity,
-    isLeaderTab,
-    lastActivityAt,
-    logout,
-    session: state.status === "authenticated" ? state.session : null,
-    status: state.status,
-    warningOpen,
-  };
+  const authValue = useMemo<PortalAuthSessionContextValue>(
+    () => ({
+      session: state.status === "authenticated" ? state.session : null,
+      status: state.status,
+    }),
+    [state],
+  );
 
-  return <PortalSessionContext.Provider value={value}>{children}</PortalSessionContext.Provider>;
+  const uiValue = useMemo<PortalSessionUiContextValue>(
+    () => ({
+      isLeaderTab,
+      lastActivityAt,
+      warningOpen,
+    }),
+    [isLeaderTab, lastActivityAt, warningOpen],
+  );
+
+  const actionsValue = useMemo<PortalSessionActionsContextValue>(
+    () => ({
+      clearWarning: noteActivity,
+      logout,
+    }),
+    [logout, noteActivity],
+  );
+
+  return (
+    <PortalSessionActionsContext.Provider value={actionsValue}>
+      <PortalAuthSessionContext.Provider value={authValue}>
+        <PortalSessionUiContext.Provider value={uiValue}>
+          {children}
+        </PortalSessionUiContext.Provider>
+      </PortalAuthSessionContext.Provider>
+    </PortalSessionActionsContext.Provider>
+  );
+}
+
+export function usePortalAuthSession() {
+  const value = useContext(PortalAuthSessionContext);
+  if (!value) {
+    throw new Error(
+      "usePortalAuthSession must be used within PortalSessionProvider",
+    );
+  }
+  return value;
+}
+
+export function usePortalSessionUi() {
+  const value = useContext(PortalSessionUiContext);
+  if (!value) {
+    throw new Error(
+      "usePortalSessionUi must be used within PortalSessionProvider",
+    );
+  }
+  return value;
+}
+
+export function usePortalSessionActions() {
+  const value = useContext(PortalSessionActionsContext);
+  if (!value) {
+    throw new Error(
+      "usePortalSessionActions must be used within PortalSessionProvider",
+    );
+  }
+  return value;
 }
 
 export function usePortalSession() {
-  const value = useContext(PortalSessionContext);
-  if (!value) {
-    throw new Error("usePortalSession must be used within PortalSessionProvider");
-  }
-  return value;
+  const auth = usePortalAuthSession();
+  const ui = usePortalSessionUi();
+  const actions = usePortalSessionActions();
+
+  return {
+    ...actions,
+    ...auth,
+    ...ui,
+  };
 }

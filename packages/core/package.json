@@ -16,24 +16,24 @@
     ".": {
       "react-native": {
         "types": "./dist/isomorphic/index.d.ts",
-        "default": "./dist/isomorphic/index.js"
+        "default": "./dist/isomorphic/index.mjs"
       },
       "import": {
         "types": "./dist/isomorphic/index.d.ts",
-        "default": "./dist/isomorphic/index.js"
+        "default": "./dist/isomorphic/index.mjs"
       },
-      "require": "./dist/isomorphic/index.cjs"
+      "require": "./dist/isomorphic/index.js"
     },
     "./server": {
       "import": {
         "types": "./dist/server/index.d.ts",
-        "default": "./dist/server/index.js"
+        "default": "./dist/server/index.mjs"
       },
-      "require": "./dist/server/index.cjs"
+      "require": "./dist/server/index.js"
     }
   },
-  "main": "./dist/isomorphic/index.cjs",
-  "module": "./dist/isomorphic/index.js",
+  "main": "./dist/isomorphic/index.js",
+  "module": "./dist/isomorphic/index.mjs",
   "name": "@ckd/core",
   "packageManager": "pnpm@10.16.1",
   "private": true,
