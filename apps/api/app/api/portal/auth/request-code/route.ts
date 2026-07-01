@@ -38,13 +38,13 @@ function serializeError(error: unknown) {
 
   return {
     code: typeof value.code === "string" ? value.code : null,
-    message:
-      typeof value.message === "string" ? value.message : String(error),
+    message: typeof value.message === "string" ? value.message : String(error),
     name: typeof value.name === "string" ? value.name : null,
     response:
-      value.response && typeof value.response === "object" ? value.response : null,
-    statusCode:
-      typeof value.statusCode === "number" ? value.statusCode : null,
+      value.response && typeof value.response === "object"
+        ? value.response
+        : null,
+    statusCode: typeof value.statusCode === "number" ? value.statusCode : null,
   };
 }
 
@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (!account?.principalId) {
+      console.log("Portal login email accepted by Resend");
       return ok({
         message: "If the account exists, a login code has been sent.",
       });
@@ -182,10 +183,10 @@ export async function POST(req: NextRequest) {
         console.error("portal request-code: resend send failed", {
           email,
           emailFrom: EMAIL_FROM,
-          isLocalDev: IS_LOCAL_DEV,
-          resendKeyPrefix: RESEND_KEY ? RESEND_KEY.slice(0, 8) : null,
-          resendConfigured: Boolean(resend),
           error: serializeError(error),
+          isLocalDev: IS_LOCAL_DEV,
+          resendConfigured: Boolean(resend),
+          resendKeyPrefix: RESEND_KEY ? RESEND_KEY.slice(0, 8) : null,
         });
         if (!IS_LOCAL_DEV) {
           throw error;
