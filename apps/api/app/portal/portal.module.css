@@ -1175,7 +1175,7 @@
 }
 
 .portalResultCard {
-  width: min(100%, 760px);
+  width: 100%;
   display: grid;
   gap: var(--portal-space-3);
   margin: 0 auto;
@@ -1219,6 +1219,51 @@
   color: var(--portal-text-soft);
   font-size: 14px;
   line-height: 20px;
+}
+
+.portalIntakeRows {
+  display: grid;
+  gap: var(--portal-space-3);
+}
+
+.portalIntakeRow {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1.2fr)
+    minmax(0, 1fr)
+    minmax(120px, 140px)
+    minmax(0, 1fr)
+    auto;
+  gap: var(--portal-space-2);
+  align-items: center;
+}
+
+.portalIntakeRowNumber {
+  grid-column: 1 / -1;
+  color: var(--portal-text-soft);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.portalValidationIssueList {
+  display: grid;
+  gap: 6px;
+}
+
+.portalValidationIssue {
+  color: var(--portal-danger);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.portalValidationSuccess {
+  color: var(--portal-success);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
 }
 
 .carePlanSearchResult:hover {
@@ -1820,6 +1865,7 @@
   .detailGrid,
   .detailFacts,
   .assignmentRow,
+  .portalIntakeRow,
   .portalFormGrid,
   .patientSummaryGrid,
   .patientOverviewGrid {

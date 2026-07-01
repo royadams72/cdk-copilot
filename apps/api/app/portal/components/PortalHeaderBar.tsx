@@ -17,9 +17,9 @@ function formatLastLoggedIn(jwt: string) {
     }
     return new Date(payload.iat * 1000).toLocaleString("en-GB", {
       day: "2-digit",
-      month: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      month: "2-digit",
     });
   } catch {
     return "Unknown";
@@ -42,7 +42,8 @@ export default function PortalHeaderBar() {
   }
 
   const lastLoggedIn = formatLastLoggedIn(session.jwt);
-  const userLabel = session.user.displayName?.trim() || session.user.principalId;
+  const userLabel =
+    session.user.displayName?.trim() || session.user.principalId;
 
   function pushPortalQuery(nextQuery: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -72,7 +73,7 @@ export default function PortalHeaderBar() {
                 pushPortalQuery(query);
               }
             }}
-            placeholder="Text field"
+            placeholder="Search patients"
             type="search"
             value={query}
           />
