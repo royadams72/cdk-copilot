@@ -593,6 +593,9 @@ export default function PortalAddPatientPage() {
         <p className={styles.carePlanFormLead}>
           Add a small batch, validate the rows, then review before invite creation.
         </p>
+        <Link className={styles.inlineLink} href="/portal/patients/invites">
+          View invites
+        </Link>
       </div>
 
       <section className={styles.portalFormShellWide}>
@@ -888,6 +891,9 @@ export default function PortalAddPatientPage() {
               ))}
             </div>
             <div className={styles.warningActions}>
+              <Link className={styles.buttonSecondarySmall} href="/portal/patients/invites">
+                View invites
+              </Link>
               <button
                 className={styles.buttonSecondarySmall}
                 onClick={() => setModalState(null)}

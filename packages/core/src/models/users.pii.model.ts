@@ -41,6 +41,7 @@ const UserPIISchema = new Schema(
     firstName: String,
     lastName: String,
     dateOfBirth: Date,
+    nhsNumber: String,
     sexAtBirth: {
       type: String,
       enum: ["female", "male", "intersex", "unknown"],

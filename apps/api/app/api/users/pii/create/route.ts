@@ -20,6 +20,7 @@ import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
 export const runtime = "nodejs";
 
 type UserPiiDoc = Omit<TUserPII, "patientId"> & {
+  nhsNumber?: string | null;
   patientId: ObjectId;
 };
 
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       ...formData,
       firstName: formData.firstName?.trim(),
       lastName: formData.lastName?.trim(),
+      nhsNumber: formData.nhsNumber?.trim() || null,
       ...(user.orgId ? { orgId: user.orgId } : {}),
       updatedAt: now,
     };

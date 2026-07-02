@@ -185,6 +185,7 @@ function normalizePiiFormValues(value: Partial<TPiiInput>): Partial<TPiiInput> {
   return {
     ...value,
     dateOfBirth: normalizedDob as TPiiInput["dateOfBirth"],
+    nhsNumber: value.nhsNumber?.replace(/\s+/g, "") ?? null,
   };
 }
 
@@ -218,6 +219,7 @@ export default function OnboardingPiiForm({
       phoneE164: null,
       firstName: "",
       lastName: "",
+      nhsNumber: null,
       dateOfBirth: null,
       sexAtBirth: "" as TPiiInput["sexAtBirth"],
       genderIdentity: null,
@@ -236,11 +238,35 @@ export default function OnboardingPiiForm({
     let active = true;
 
     (async () => {
-      const draft = await onboardingDrafts.loadPiiDraft<TPiiInput>();
-      if (active && draft) {
+      const [draft, currentRes] = await Promise.all([
+        onboardingDrafts.loadPiiDraft<TPiiInput>(),
+        authFetch(`${API}/api/users/pii/current`).catch(() => null),
+      ]);
+
+      const currentBody =
+        currentRes && currentRes.ok
+          ? ((await currentRes.json().catch(() => null)) as
+              | {
+                  data?: {
+                    dateOfBirth?: string | null;
+                    firstName?: string | null;
+                    lastName?: string | null;
+                    nhsNumber?: string | null;
+                    units?: Units;
+                  };
+                }
+              | null)
+          : null;
+
+      if (active) {
         const nextValues = normalizePiiFormValues({
           ...getValues(),
-          ...draft,
+          dateOfBirth: currentBody?.data?.dateOfBirth ?? defaults?.dateOfBirth ?? null,
+          firstName: currentBody?.data?.firstName ?? defaults?.firstName ?? "",
+          lastName: currentBody?.data?.lastName ?? defaults?.lastName ?? "",
+          nhsNumber: currentBody?.data?.nhsNumber ?? defaults?.nhsNumber ?? null,
+          units: currentBody?.data?.units ?? defaults?.units ?? "metric",
+          ...(draft ?? {}),
         });
         reset(nextValues);
         setGenderIdentitySameAsBirth(
@@ -349,6 +375,36 @@ export default function OnboardingPiiForm({
               {!!errors.lastName && (
                 <Text style={styles.errorText}>
                   {String(errors.lastName.message)}
+                </Text>
+              )}
+            </View>
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="nhsNumber"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldBlock}>
+              <Text style={styles.label}>NHS number</Text>
+              <TextInput
+                value={value ?? ""}
+                onChangeText={(text) => onChange(text.replace(/\s+/g, ""))}
+                onBlur={() => {
+                  onBlur();
+                  void persistIfValid("nhsNumber");
+                }}
+                onFocus={() => {
+                  void persistIfValid("lastName");
+                }}
+                placeholder="10 digit NHS number"
+                keyboardType="number-pad"
+                placeholderTextColor="#64748B"
+                style={styles.input}
+              />
+              {!!errors.nhsNumber && (
+                <Text style={styles.errorText}>
+                  {String(errors.nhsNumber.message)}
                 </Text>
               )}
             </View>

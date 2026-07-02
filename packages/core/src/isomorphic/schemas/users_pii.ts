@@ -39,6 +39,7 @@ export const UserPII_Public = UserPII_Base.pick({
   integrations: true,
   language: true,
   lastName: true,
+  nhsNumber: true,
   notificationPrefs: true,
   onboardingCompleted: true,
   onboardingSteps: true,
@@ -65,6 +66,13 @@ export const PiiForm = z.object({
   firstName: z.string().min(2, "Please enter your firstName"),
   genderIdentity: z.string().nullable(),
   lastName: z.string().min(2, "Please enter your lastName"),
+  nhsNumber: z
+    .string()
+    .transform((value) => value.replace(/\s+/g, ""))
+    .nullable()
+    .refine((value) => value === null || /^\d{10}$/.test(value), {
+      message: "Use a 10 digit NHS number",
+    }),
   notificationPrefs: z.object({
     email: z.boolean(),
     push: z.boolean(),

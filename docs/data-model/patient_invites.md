@@ -9,7 +9,7 @@
 - `patientId` · ObjectId string reserved for the eventual patient record
 - `principalId` · principal reserved for the eventual patient account
 - `orgId` / `facilityId` / `careTeamId` · assignment context to apply on activation
-- `firstName` / `lastName` / `email` / `dateOfBirth`
+- `firstName` / `lastName` / `email` / `dateOfBirth` / `nhsNumber?`
 - `durationMonths` · enum `3 | 6 | 12`
 - `status` · `pending_review | invited | activated | expired | revoked | cancelled`
 - `activationCodeHash` · SHA-256 hash of the activation code
@@ -25,6 +25,7 @@
 - Membership starts when the patient redeems the activation code in the app.
 - On activation the backend:
   - provisions `patients`, `users_pii`, and `users_accounts` if missing
+  - copies invite PII such as `firstName`, `lastName`, `dateOfBirth`, and `nhsNumber` into `users_pii`
   - creates or updates the initial patient assignment
   - sets assignment `startsAt` to activation time
   - sets assignment `endsAt` from `durationMonths`
