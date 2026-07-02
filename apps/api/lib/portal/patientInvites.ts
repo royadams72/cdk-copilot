@@ -88,6 +88,55 @@ export type PortalInviteBatchValidationResult = {
   rows: ValidatedInviteRow[];
 };
 
+export type PortalPatientInviteStatus =
+  | "pending_review"
+  | "invited"
+  | "activated"
+  | "expired"
+  | "revoked"
+  | "cancelled";
+
+export type PortalPatientInviteDoc = {
+  _id: ObjectId;
+  activatedAt?: Date | null;
+  activationCodeMasked: string;
+  activationExpiresAt: Date;
+  careTeamId: string;
+  createdAt: Date;
+  createdBy: string;
+  dateOfBirth: Date;
+  durationMonths: "3" | "6" | "12";
+  email: string;
+  facilityId: string;
+  firstName: string;
+  invitedAt?: Date | null;
+  lastName: string;
+  nhsNumber?: string | null;
+  orgId: string;
+  patientId: ObjectId;
+  principalId: string;
+  status: PortalPatientInviteStatus;
+  updatedAt: Date;
+  updatedBy: string;
+ };
+
+export async function syncExpiredPatientInvites(db: Db) {
+  const now = new Date();
+
+  await db.collection<PortalPatientInviteDoc>(COLLECTIONS.PatientInvites).updateMany(
+    {
+      activationExpiresAt: { $lte: now },
+      status: { $in: ["pending_review", "invited"] },
+    },
+    {
+      $set: {
+        status: "expired",
+        updatedAt: now,
+      },
+    },
+  );
+}
+
 export function normalizeInviteEmail(value: string) {
   return value.trim().toLowerCase();
 }

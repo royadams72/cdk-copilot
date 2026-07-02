@@ -1,13 +1,15 @@
 export const runtime = "nodejs";
 
-import { randomBytes, createHash } from "node:crypto";
-
 import { NextRequest } from "next/server";
-import { Resend } from "resend";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  hashActivationCode,
+  makeActivationCode,
+  sendPatientInviteEmail,
+} from "@/apps/api/lib/portal/patientInviteDelivery";
 import {
   PortalInviteBatchBody,
   validatePortalInviteBatch,
@@ -16,24 +18,8 @@ import { TPatientInviteCreate } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
-const RESEND_KEY = process.env.RESEND_API_KEY || "";
-const EMAIL_FROM = process.env.EMAIL_FROM || null;
-const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
-
 function makePrincipalId() {
   return `pr_${new ObjectId().toHexString()}`;
-}
-
-function makeActivationCode() {
-  return randomBytes(5).toString("hex").toUpperCase();
-}
-
-function hashActivationCode(code: string) {
-  return createHash("sha256").update(code).digest("hex");
-}
-
-function isLocalDev() {
-  return process.env.NODE_ENV !== "production";
 }
 
 export async function POST(req: NextRequest) {
@@ -127,56 +113,26 @@ export async function POST(req: NextRequest) {
     const sentInviteIds: string[] = [];
     const failedDeliveries: Array<{ email: string; message: string }> = [];
     const devInvites: Array<{ email: string; activationCode: string }> = [];
-    const includeDevInvites = isLocalDev();
-
     for (const { activationCode, doc } of inviteRows) {
-      if (includeDevInvites) {
-        devInvites.push({ activationCode, email: doc.email });
-      }
+      const delivery = await sendPatientInviteEmail({
+        activationCode,
+        email: doc.email,
+        expiresAt,
+      });
 
-      const emailHtml = `
-        <p>You have been invited to join CKD Copilot.</p>
-        <p>Download CKD Copilot from the App Store or Google Play.</p>
-        <p>Your activation code is:</p>
-        <p style="font-size:24px;font-weight:700;letter-spacing:0.08em;">${activationCode}</p>
-        <p>This code expires on ${expiresAt.toISOString().slice(0, 10)}.</p>
-      `;
-
-      if (resend && EMAIL_FROM) {
-        try {
-          await resend.emails.send({
-            from: EMAIL_FROM,
-            html: emailHtml,
-            subject: "Your CKD Copilot activation code",
-            to: doc.email,
+      if (delivery.ok) {
+        sentInviteIds.push(doc.patientId);
+        if (delivery.activationCode) {
+          devInvites.push({
+            activationCode,
+            email: doc.email,
           });
-          sentInviteIds.push(doc.patientId);
-          if (includeDevInvites) {
-            console.log("[DEV] Patient invite activation code", {
-              activationCode,
-              email: doc.email,
-            });
-          }
-        } catch (error: any) {
-          if (isLocalDev()) {
-            console.log("[DEV] Patient invite activation code", {
-              activationCode,
-              email: doc.email,
-            });
-            sentInviteIds.push(doc.patientId);
-          } else {
-            failedDeliveries.push({
-              email: doc.email,
-              message: error?.message || "Email send failed",
-            });
-          }
         }
       } else {
-        console.log("[DEV] Patient invite activation code", {
-          activationCode,
+        failedDeliveries.push({
           email: doc.email,
+          message: delivery.errorMessage || "Email send failed",
         });
-        sentInviteIds.push(doc.patientId);
       }
     }
 

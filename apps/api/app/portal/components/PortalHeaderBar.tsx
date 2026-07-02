@@ -102,6 +102,13 @@ export default function PortalHeaderBar() {
         <span className={styles.headerMeta}>Last logged in {lastLoggedIn}</span>
         <button
           className={styles.buttonSecondary}
+          onClick={() => router.push("/portal/patients/invites")}
+          type="button"
+        >
+          Invites
+        </button>
+        <button
+          className={styles.buttonSecondary}
           onClick={() => router.push("/portal/patients/add")}
           type="button"
         >

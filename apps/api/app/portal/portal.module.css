@@ -1565,8 +1565,67 @@
   line-height: 18px;
 }
 
+.portalStatusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--portal-line);
+  color: var(--portal-text);
+  background: var(--portal-surface);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.portalStatusPill_pending_review,
+.portalStatusPill_expired {
+  border-color: var(--portal-warn);
+  color: var(--portal-warn);
+  background: color-mix(in srgb, var(--portal-warn) 10%, white);
+}
+
+.portalStatusPill_invited {
+  border-color: var(--portal-accent-bright);
+  color: var(--portal-accent-dark);
+  background: color-mix(in srgb, var(--portal-accent) 8%, white);
+}
+
+.portalStatusPill_activated {
+  border-color: #2f7d32;
+  color: #2f7d32;
+  background: #eef8ef;
+}
+
+.portalStatusPill_revoked,
+.portalStatusPill_cancelled {
+  border-color: #8f2d2d;
+  color: #8f2d2d;
+  background: #fbefef;
+}
+
 .dataTable tbody tr:nth-child(even) {
   background: var(--portal-surface-alt);
+}
+
+.portalInviteToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--portal-space-2);
+  flex-wrap: wrap;
+}
+
+.portalInviteToolbar .carePlanInput:first-child {
+  min-width: 320px;
+}
+
+.portalInviteActionGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-space-2);
+  flex-wrap: wrap;
 }
 
 .foodNamesCell {
