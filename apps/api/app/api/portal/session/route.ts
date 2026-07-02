@@ -3,9 +3,8 @@ import { NextRequest } from "next/server";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { loadPortalStaffScope } from "@/apps/api/lib/portal/staffScope";
 import { COLLECTIONS } from "@ckd/core/server";
-import type { Db } from "mongodb";
-import { ObjectId } from "mongodb";
 
 type UserStaffDoc = {
   displayName?: string;
@@ -13,14 +12,6 @@ type UserStaffDoc = {
   lastName?: string;
   principalId: string;
   title?: string;
-};
-
-type PortalReferenceDoc = {
-  _id?: ObjectId;
-  code?: string;
-  facilityId?: string;
-  name?: string;
-  slug?: string;
 };
 
 function formatActorName(parts: Array<string | null | undefined>) {
@@ -38,71 +29,6 @@ function formatStaffDisplayName(doc: UserStaffDoc) {
     formatActorName([doc.firstName, doc.lastName]) ||
     null
   );
-}
-
-function candidateReferenceKeys(doc: PortalReferenceDoc) {
-  return [
-    doc._id?.toHexString(),
-    doc.code,
-    doc.slug,
-    doc.facilityId,
-  ].filter((value): value is string => Boolean(value?.trim()));
-}
-
-async function resolvePortalOptions(args: {
-  collectionName: string;
-  db: Db;
-  ids: string[];
-  orgId: string | null | undefined;
-}) {
-  const ids = args.ids.filter((value) => value.trim());
-  if (!args.orgId) {
-    return ids.map((id) => ({ id, label: id }));
-  }
-
-  const docs = await args.db
-    .collection<PortalReferenceDoc>(args.collectionName)
-    .find(
-      { orgId: args.orgId },
-      {
-        projection: {
-          _id: 1,
-          code: 1,
-          facilityId: 1,
-          name: 1,
-          slug: 1,
-        },
-      },
-    )
-    .toArray();
-
-  if (!ids.length) {
-    return docs
-      .map((doc) => ({
-        id:
-          doc.code?.trim() ||
-          doc.slug?.trim() ||
-          doc.facilityId?.trim() ||
-          doc._id?.toHexString() ||
-          "",
-        label: doc.name?.trim() || "",
-      }))
-      .filter((item) => item.id && item.label);
-  }
-
-  const labelById = new Map<string, string>();
-  for (const doc of docs) {
-    const label = doc.name?.trim();
-    if (!label) continue;
-    for (const key of candidateReferenceKeys(doc)) {
-      labelById.set(key, label);
-    }
-  }
-
-  return ids.map((id) => ({
-    id,
-    label: labelById.get(id) ?? id,
-  }));
 }
 
 export async function GET(req: NextRequest) {
@@ -123,29 +49,16 @@ export async function GET(req: NextRequest) {
       },
     );
     const displayName = staffDoc ? formatStaffDisplayName(staffDoc) : null;
-    const [careTeams, facilities] = await Promise.all([
-      resolvePortalOptions({
-        collectionName: COLLECTIONS.CareTeams,
-        db,
-        ids: user.careTeamIds ?? [],
-        orgId: user.orgId,
-      }),
-      resolvePortalOptions({
-        collectionName: COLLECTIONS.Facilities,
-        db,
-        ids: user.facilityIds ?? [],
-        orgId: user.orgId,
-      }),
-    ]);
+    const scope = await loadPortalStaffScope(db, user);
 
     return ok({
       user: {
         allowedPatientIds: user.allowedPatientIds ?? [],
-        careTeamIds: user.careTeamIds ?? [],
-        careTeams,
+        careTeamIds: scope.careTeamIds,
+        careTeams: scope.careTeams,
         displayName,
-        facilities,
-        facilityIds: user.facilityIds ?? [],
+        facilities: scope.facilities,
+        facilityIds: scope.facilityIds,
         orgId: user.orgId ?? null,
         principalId: user.principalId,
         role: user.role,

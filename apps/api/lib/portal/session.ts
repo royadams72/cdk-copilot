@@ -3,10 +3,14 @@ export type PortalSessionOption = {
   label: string;
 };
 
+export type PortalSessionCareTeamOption = PortalSessionOption & {
+  facilityId: string | null;
+};
+
 export type PortalSessionUser = {
   allowedPatientIds: string[];
   careTeamIds: string[];
-  careTeams: PortalSessionOption[];
+  careTeams: PortalSessionCareTeamOption[];
   displayName: string | null;
   facilityIds: string[];
   facilities: PortalSessionOption[];

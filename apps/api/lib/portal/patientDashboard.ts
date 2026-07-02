@@ -149,19 +149,6 @@ function getThresholdCopy(
   return `${overTargetDays} days above target`;
 }
 
-function getRiskLabel(risk: "green" | "amber" | "red" | "unknown") {
-  switch (risk) {
-    case "green":
-      return "Green";
-    case "amber":
-      return "Amber";
-    case "red":
-      return "Red";
-    default:
-      return "Unknown";
-  }
-}
-
 function formatBloodPressure(doc: MeasurementDoc | null) {
   if (!doc) return "No reading";
   if (
@@ -580,7 +567,6 @@ export function buildPortalPatientDashboard(input: {
     ],
     currentStatus: [
       { label: "CKD stage", value: input.patient.stage ?? "Not recorded" },
-      { label: "Risk", value: getRiskLabel(input.patient.risk) },
       {
         href: `/portal/patients/${input.patientId}/care-plans`,
         label: "Active care plans",

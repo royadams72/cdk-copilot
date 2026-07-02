@@ -18,7 +18,6 @@
     ],
     "scopes": ["patients.read", "patients.flags.write"],
     "summary": {
-      "risk": "amber",
       "dietitianAssigned": true,
       "lastContactAt": { "$date": "2024-11-15T10:30:00Z" }
     },

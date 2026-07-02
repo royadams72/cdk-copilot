@@ -35,6 +35,7 @@ Static assets should live in `apps/api/public/portal`.
 - bulk upload with preflight validation
 - invite creation with 7-day activation expiry
 - access duration choices: `3`, `6`, `12` months
+- app activation-code entry that starts membership on first use
 - audit log for create/import/invite actions
 
 ### 3. Main clinician dashboard

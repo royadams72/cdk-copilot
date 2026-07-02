@@ -1,11 +1,8 @@
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { API } from "@/constants/api";
-import { syncNativeAuthSessionMirror } from "@/lib/authSession";
-import { secureStorage } from "@/lib/secureStorage";
+import { completeAuthExchange } from "@/lib/completeAuthExchange";
 import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
-import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 
 export default function VerifyScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
@@ -15,25 +12,11 @@ export default function VerifyScreen() {
   useEffect(() => {
     (async () => {
       if (!token) return; // fallback could be router.replace('/')
-      // exchange for JWT
-      const deviceId = await getOrCreateAuthDeviceId();
-      const res = await fetch(`${API}/api/auth/exchange`, {
-        body: JSON.stringify({ deviceId, token }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const { jwt, refreshToken } = data;
-        await secureStorage.setItem("ckd_jwt", jwt);
-        if (refreshToken) {
-          await secureStorage.setItem("ckd_refresh", refreshToken);
-        }
-        await syncNativeAuthSessionMirror(jwt, refreshToken ?? null);
+      try {
+        const data = await completeAuthExchange(token);
         logPostAuthRouteDecision("verify", data);
         router.replace(resolvePostAuthRoute(data) as never);
-      } else {
+      } catch {
         router.replace("./check-email");
       }
     })();

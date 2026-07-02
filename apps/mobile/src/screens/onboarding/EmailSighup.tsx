@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Alert } from "react-native";
+import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { API } from "@/constants/api";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { LabeledInput } from "./components/FormFields";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
-import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
+import { PrimaryButton, SecondaryButton } from "@/screens/onboarding/components/Buttons";
 
 export default function EmailSignup() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -49,8 +51,8 @@ export default function EmailSignup() {
 
   return (
     <OnboardingFormScreen
-      title="Email signup / login"
-      subtitle="Enter your email to signup/login"
+      title="Sign in to CKD Copilot"
+      subtitle="Continue with your email, or use an activation code from your invitation."
     >
       <LabeledInput
         label="Email"
@@ -65,6 +67,13 @@ export default function EmailSignup() {
         disabled={submitting}
         onPress={() => {
           void submit();
+        }}
+      />
+      <SecondaryButton
+        disabled={submitting}
+        label="Use activation code"
+        onPress={() => {
+          router.push("/(auth)/activate" as never);
         }}
       />
     </OnboardingFormScreen>

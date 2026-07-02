@@ -6,14 +6,12 @@ import type { PatientWorseningTrendAlert } from "@ckd/core";
 import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
   buildPortalWorseningHref,
-  normalizePortalPatientRiskFilter,
   mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
   type PortalPatientAdvancedFilters,
   type PortalPatientDetail,
   type PortalPatientFilter,
   type PortalPatientListItem,
-  type PortalPatientRiskFilter,
   type PortalPatientStat,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
@@ -26,7 +24,6 @@ import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worse
 type PortalPatientSummary = {
   dietitianAssigned?: boolean;
   lastContactAt?: Date | string | null;
-  risk?: "green" | "amber" | "red" | null;
 };
 
 type PortalPatientAssignment = {
@@ -210,19 +207,18 @@ export function mapPortalPatientListItem(raw: {
   summary?: PortalPatientSummary | null;
 }): PortalPatientListItem {
   const primaryAssignment = getPrimaryAssignment(raw.assignments);
-  const risk = raw.summary?.risk ?? "unknown";
 
   return {
     id: raw._id.toHexString(),
     accessEndsAt: toIsoDate(primaryAssignment?.endsAt),
     careTeamId: primaryAssignment?.careTeamId ?? null,
     dateOfBirth: formatDisplayDob(raw.pii?.dateOfBirth),
+    dateOfBirthIso: toIsoDate(raw.pii?.dateOfBirth),
     email: raw.pii?.email ?? null,
     facilityId: primaryAssignment?.facilityId ?? null,
     flags: raw.flags ?? [],
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     name: normalizeName(raw.pii ?? {}),
-    risk,
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
       activeAlerts: raw.activeAlerts ?? [],
@@ -361,8 +357,6 @@ export function matchesPortalPatientQuery(
   const haystack = [
     item.name,
     item.email ?? "",
-    item.dateOfBirth ?? "",
-    item.stage ?? "",
   ]
     .join(" ")
     .toLowerCase();
@@ -370,11 +364,20 @@ export function matchesPortalPatientQuery(
   return haystack.includes(normalized);
 }
 
-function matchesPortalPatientRisk(
+function matchesPortalPatientDateOfBirth(
   item: PortalPatientListItem,
-  risk: PortalPatientRiskFilter,
+  dateOfBirth: string,
 ) {
-  return risk === "all" ? true : item.risk === risk;
+  const normalizedDateOfBirth = dateOfBirth.trim();
+  if (!normalizedDateOfBirth) {
+    return true;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDateOfBirth)) {
+    return false;
+  }
+
+  return item.dateOfBirthIso?.slice(0, 10) === normalizedDateOfBirth;
 }
 
 function matchesPortalPatientStage(
@@ -407,13 +410,10 @@ export function matchesPortalPatientAdvancedFilters(
 ) {
   return (
     matchesPortalPatientQuery(item, filters.query) &&
+    matchesPortalPatientDateOfBirth(item, filters.dateOfBirth) &&
     matchesPortalPatientFilter(
       item,
       normalizePortalPatientFilter(filters.filter),
-    ) &&
-    matchesPortalPatientRisk(
-      item,
-      normalizePortalPatientRiskFilter(filters.risk),
     ) &&
     matchesPortalPatientStage(item, filters.stage) &&
     matchesPortalPatientAssignmentValue(item.careTeamId, filters.careTeamId) &&
@@ -422,19 +422,7 @@ export function matchesPortalPatientAdvancedFilters(
 }
 
 export function sortPortalPatients(items: PortalPatientListItem[]) {
-  const riskWeight = {
-    amber: 1,
-    green: 2,
-    red: 0,
-    unknown: 3,
-  } as const;
-
   return [...items].sort((a, b) => {
-    const riskCompare = riskWeight[a.risk] - riskWeight[b.risk];
-    if (riskCompare !== 0) {
-      return riskCompare;
-    }
-
     return a.name.localeCompare(b.name, "en-GB");
   });
 }

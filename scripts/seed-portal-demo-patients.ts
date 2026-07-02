@@ -35,7 +35,6 @@ type DemoPatientConfig = {
   phoneE164: string;
   preferences: string[];
   reviewDue: boolean;
-  risk: "green" | "amber" | "red";
   sexAtBirth: "female" | "male";
   startingWeightKg: number;
   systolicBase: number;
@@ -68,7 +67,6 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     phoneE164: "+447700900101",
     preferences: ["low sodium", "renal friendly"],
     reviewDue: true,
-    risk: "red",
     sexAtBirth: "female",
     startingWeightKg: 82.4,
     systolicBase: 148,
@@ -96,7 +94,6 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     phoneE164: "+447700900102",
     preferences: ["lower potassium"],
     reviewDue: false,
-    risk: "amber",
     sexAtBirth: "male",
     startingWeightKg: 91.2,
     systolicBase: 136,
@@ -124,7 +121,6 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     phoneE164: "+447700900103",
     preferences: ["diabetes support"],
     reviewDue: false,
-    risk: "green",
     sexAtBirth: "female",
     startingWeightKg: 74.8,
     systolicBase: 124,
@@ -155,7 +151,6 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     phoneE164: "+447700900104",
     preferences: ["high protein", "fluid guidance"],
     reviewDue: true,
-    risk: "red",
     sexAtBirth: "male",
     startingWeightKg: 86.1,
     systolicBase: 152,
@@ -186,7 +181,6 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     phoneE164: "+447700900105",
     preferences: ["balanced protein", "post transplant"],
     reviewDue: false,
-    risk: "amber",
     sexAtBirth: "female",
     startingWeightKg: 67.5,
     systolicBase: 130,
@@ -713,7 +707,6 @@ async function run() {
         summary: {
           dietitianAssigned: true,
           lastContactAt,
-          risk: config.risk,
         },
         updatedAt: NOW,
       });

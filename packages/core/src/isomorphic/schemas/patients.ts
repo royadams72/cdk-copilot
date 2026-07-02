@@ -11,7 +11,6 @@ import {
 export const PatientSummary = z
   .object({
     lastContactAt: dateAsISOString.optional(),
-    risk: z.enum(["green", "amber", "red"]).optional(),
     dietitianAssigned: z.boolean().optional(),
   })
   .loose(); // allow future summary keys
