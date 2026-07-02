@@ -111,7 +111,6 @@ async function main() {
         {
           $set: {
             careTeamIds: [CARE_TEAM_ID],
-            email: staff.email,
             facilityIds: [FACILITY_ID],
             isActive: true,
             orgId: ORG_ID,
@@ -122,6 +121,7 @@ async function main() {
           $setOnInsert: {
             createdAt: NOW,
             createdBy: ACCOUNT_ACTOR_ID,
+            email: staff.email,
             grants: [],
             principalId: staff.principalId,
             scopes: [],

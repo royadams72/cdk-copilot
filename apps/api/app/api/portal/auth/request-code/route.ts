@@ -29,25 +29,6 @@ const IS_LOCAL_DEV =
   process.env.APP_ORIGIN?.includes("localhost") ||
   process.env.NODE_ENV !== "production";
 
-function serializeError(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return { message: String(error) };
-  }
-
-  const value = error as Record<string, unknown>;
-
-  return {
-    code: typeof value.code === "string" ? value.code : null,
-    message: typeof value.message === "string" ? value.message : String(error),
-    name: typeof value.name === "string" ? value.name : null,
-    response:
-      value.response && typeof value.response === "object"
-        ? value.response
-        : null,
-    statusCode: typeof value.statusCode === "number" ? value.statusCode : null,
-  };
-}
-
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = Body.safeParse(body);
@@ -99,7 +80,6 @@ export async function POST(req: NextRequest) {
     );
 
     if (!account?.principalId) {
-      console.log("Portal login email accepted by Resend");
       return ok({
         message: "If the account exists, a login code has been sent.",
       });
@@ -180,14 +160,6 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (error) {
-        console.error("portal request-code: resend send failed", {
-          email,
-          emailFrom: EMAIL_FROM,
-          error: serializeError(error),
-          isLocalDev: IS_LOCAL_DEV,
-          resendConfigured: Boolean(resend),
-          resendKeyPrefix: RESEND_KEY ? RESEND_KEY.slice(0, 8) : null,
-        });
         if (!IS_LOCAL_DEV) {
           throw error;
         }
@@ -198,13 +170,6 @@ export async function POST(req: NextRequest) {
         devCode = loginCode.code;
       }
     } else {
-      console.log("portal request-code: resend disabled or sender missing", {
-        email,
-        emailFrom: EMAIL_FROM,
-        isLocalDev: IS_LOCAL_DEV,
-        resendConfigured: Boolean(resend),
-        resendKeyPresent: Boolean(RESEND_KEY),
-      });
       devCode = loginCode.code;
     }
 

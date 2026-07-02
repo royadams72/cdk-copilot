@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
@@ -23,6 +23,10 @@ type ValidationIssue = {
   code: string;
   message: string;
 };
+
+type IntakeFieldKey = keyof Omit<IntakeRow, "id">;
+
+type RowFieldErrors = Partial<Record<IntakeFieldKey, string>>;
 
 type ValidatedRow = {
   rowIndex: number;
@@ -89,6 +93,22 @@ type CreateBatchResponse = {
   };
 };
 
+function readResponseErrorMessage(
+  body: unknown,
+  fallback: string,
+) {
+  if (!body || typeof body !== "object") {
+    return fallback;
+  }
+
+  const value = body as {
+    error?: { message?: string };
+    message?: string;
+  };
+
+  return value.message || value.error?.message || fallback;
+}
+
 const DEFAULT_ROW_COUNT = 5;
 const DURATION_OPTIONS: IntakeDuration[] = ["3", "6", "12"];
 
@@ -104,6 +124,42 @@ function createEmptyRow(index: number): IntakeRow {
   };
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function isValidIsoDate(value: string) {
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+}
+
+function isValidNhsNumber(value: string) {
+  const digits = value.replace(/\s+/g, "");
+  if (!/^\d{10}$/.test(digits)) {
+    return false;
+  }
+
+  const numbers = digits.split("").map(Number);
+  const checksum =
+    numbers
+      .slice(0, 9)
+      .reduce((sum, digit, index) => sum + digit * (10 - index), 0) % 11;
+  const checkDigit = 11 - checksum;
+  const expected = checkDigit === 11 ? 0 : checkDigit;
+
+  return checkDigit !== 10 && expected === numbers[9];
+}
+
+function isRowEmpty(row: IntakeRow) {
+  return !(
+    row.firstName.trim() ||
+    row.lastName.trim() ||
+    row.email.trim() ||
+    row.dateOfBirth.trim() ||
+    row.nhsNumber.trim()
+  );
+}
+
 export default function PortalAddPatientPage() {
   const { session, status } = usePortalAuthSession();
   const [careTeamId, setCareTeamId] = useState("");
@@ -117,6 +173,10 @@ export default function PortalAddPatientPage() {
   const [creatingBatch, setCreatingBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ValidationModalState | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, RowFieldErrors>>({});
+  const [careTeamError, setCareTeamError] = useState<string | null>(null);
+  const [facilityError, setFacilityError] = useState<string | null>(null);
+  const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
 
   const careTeamOptions = useMemo(
     () =>
@@ -145,23 +205,161 @@ export default function PortalAddPatientPage() {
     }
   }, [facilityId, facilityOptions]);
 
-  const nonEmptyRows = rows.filter(
-    (row) =>
-      row.firstName.trim() ||
-      row.lastName.trim() ||
-      row.email.trim() ||
-      row.dateOfBirth.trim() ||
-      row.nhsNumber.trim(),
-  );
+  const nonEmptyRows = rows.filter((row) => !isRowEmpty(row));
 
   const canValidate = Boolean(
     careTeamId.trim() && facilityId.trim() && nonEmptyRows.length > 0,
-    );
+  );
+
+  function getFieldRefKey(rowId: string, field: IntakeFieldKey) {
+    return `${rowId}:${field}`;
+  }
+
+  function setFieldRef(
+    rowId: string,
+    field: IntakeFieldKey,
+    element: HTMLInputElement | HTMLSelectElement | null,
+  ) {
+    fieldRefs.current[getFieldRefKey(rowId, field)] = element;
+  }
+
+  function getClientValidationErrors(currentRows: IntakeRow[]) {
+    const nextErrors: Record<string, RowFieldErrors> = {};
+    const emailCounts = new Map<string, number>();
+
+    for (const row of currentRows) {
+      if (isRowEmpty(row)) continue;
+      const email = row.email.trim().toLowerCase();
+      if (email) {
+        emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
+      }
+    }
+
+    for (const row of currentRows) {
+      if (isRowEmpty(row)) continue;
+
+      const errors: RowFieldErrors = {};
+      const firstName = row.firstName.trim();
+      const lastName = row.lastName.trim();
+      const email = row.email.trim().toLowerCase();
+      const dateOfBirth = row.dateOfBirth.trim();
+      const nhsNumber = row.nhsNumber.trim();
+
+      if (!firstName) errors.firstName = "Enter first name";
+      if (!lastName) errors.lastName = "Enter last name";
+      if (!email) {
+        errors.email = "Enter email";
+      } else if (!isValidEmail(email)) {
+        errors.email = "Enter a valid email";
+      } else if ((emailCounts.get(email) ?? 0) > 1) {
+        errors.email = "This email appears more than once in the batch";
+      }
+      if (!dateOfBirth) {
+        errors.dateOfBirth = "Enter date of birth";
+      } else if (!isValidIsoDate(dateOfBirth)) {
+        errors.dateOfBirth = "Enter a valid date of birth";
+      }
+      if (!row.durationMonths) {
+        errors.durationMonths = "Select access duration";
+      }
+      if (nhsNumber && !isValidNhsNumber(nhsNumber)) {
+        errors.nhsNumber = "Enter a valid NHS number";
+      }
+
+      if (Object.keys(errors).length > 0) {
+        nextErrors[row.id] = errors;
+      }
+    }
+
+    return nextErrors;
+  }
+
+  function focusFirstInvalidField(args: {
+    nextCareTeamError: string | null;
+    nextFacilityError: string | null;
+    nextRowErrors: Record<string, RowFieldErrors>;
+    currentRows: IntakeRow[];
+  }) {
+    if (args.nextCareTeamError) {
+      document.getElementById("patient-care-team")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      document.getElementById("patient-care-team")?.focus();
+      return;
+    }
+
+    if (args.nextFacilityError) {
+      document.getElementById("patient-facility")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      document.getElementById("patient-facility")?.focus();
+      return;
+    }
+
+    const fieldOrder: IntakeFieldKey[] = [
+      "firstName",
+      "lastName",
+      "email",
+      "dateOfBirth",
+      "durationMonths",
+      "nhsNumber",
+    ];
+
+    for (const row of args.currentRows) {
+      const errors = args.nextRowErrors[row.id];
+      if (!errors) continue;
+      for (const field of fieldOrder) {
+        if (!errors[field]) continue;
+        const element = fieldRefs.current[getFieldRefKey(row.id, field)];
+        element?.scrollIntoView({ behavior: "smooth", block: "center" });
+        element?.focus();
+        return;
+      }
+    }
+  }
+
+  function validateClient(currentRows: IntakeRow[]) {
+    const nextCareTeamError = careTeamId.trim() ? null : "Select care team";
+    const nextFacilityError = facilityId.trim() ? null : "Select facility";
+    const nextRowErrors = getClientValidationErrors(currentRows);
+
+    setCareTeamError(nextCareTeamError);
+    setFacilityError(nextFacilityError);
+    setRowErrors(nextRowErrors);
+
+    const hasErrors =
+      Boolean(nextCareTeamError) ||
+      Boolean(nextFacilityError) ||
+      Object.keys(nextRowErrors).length > 0;
+
+    if (hasErrors) {
+      focusFirstInvalidField({
+        currentRows,
+        nextCareTeamError,
+        nextFacilityError,
+        nextRowErrors,
+      });
+    }
+
+    return !hasErrors;
+  }
 
   function updateRow(id: string, key: keyof Omit<IntakeRow, "id">, value: string) {
     setRows((current) =>
       current.map((row) => (row.id === id ? { ...row, [key]: value } : row)),
     );
+    setRowErrors((current) => {
+      if (!current[id]?.[key]) return current;
+      return {
+        ...current,
+        [id]: {
+          ...current[id],
+          [key]: undefined,
+        },
+      };
+    });
     setModalState(null);
   }
 
@@ -181,12 +379,23 @@ export default function PortalAddPatientPage() {
     setRows(
       Array.from({ length: DEFAULT_ROW_COUNT }, (_, index) => createEmptyRow(index)),
     );
+    setRowErrors({});
+    setCareTeamError(null);
+    setFacilityError(null);
     setError(null);
     setModalState(null);
   }
 
+  function handleRowBlur() {
+    setRowErrors(getClientValidationErrors(rows));
+  }
+
   async function validateBatch() {
-    if (!session || !canValidate || submitting) {
+    if (!session || submitting) {
+      return;
+    }
+
+    if (!validateClient(rows)) {
       return;
     }
 
@@ -221,14 +430,45 @@ export default function PortalAddPatientPage() {
         | null;
 
       if (!response.ok || !body || !("data" in body)) {
-        throw new Error(
-          body && "error" in body
-            ? body.error?.message
-            : "Unable to validate patient batch",
-        );
+        throw new Error(readResponseErrorMessage(body, "Unable to validate patient batch"));
       }
 
       if (body.data.batch.invalidRows > 0) {
+        const nextRowErrors: Record<string, RowFieldErrors> = {};
+        for (const invalidRow of body.data.rows.filter((row) => row.issues.length > 0)) {
+          const currentRow = nonEmptyRows[invalidRow.rowIndex];
+          if (!currentRow) continue;
+          const mapped: RowFieldErrors = {};
+          for (const issue of invalidRow.issues) {
+            if (
+              issue.code === "missing_first_name" &&
+              !mapped.firstName
+            ) mapped.firstName = issue.message;
+            if (
+              issue.code === "missing_last_name" &&
+              !mapped.lastName
+            ) mapped.lastName = issue.message;
+            if (
+              ["missing_email", "invalid_email", "duplicate_email_in_batch", "patient_record_exists", "patient_already_active", "pending_invite_exists"].includes(issue.code) &&
+              !mapped.email
+            ) mapped.email = issue.message;
+            if (
+              ["missing_date_of_birth", "invalid_date_of_birth"].includes(issue.code) &&
+              !mapped.dateOfBirth
+            ) mapped.dateOfBirth = issue.message;
+            if (
+              ["missing_duration", "invalid_duration"].includes(issue.code) &&
+              !mapped.durationMonths
+            ) mapped.durationMonths = issue.message;
+            if (issue.code === "invalid_nhs_number" && !mapped.nhsNumber) {
+              mapped.nhsNumber = issue.message;
+            }
+          }
+          if (Object.keys(mapped).length > 0) {
+            nextRowErrors[currentRow.id] = mapped;
+          }
+        }
+        setRowErrors((current) => ({ ...current, ...nextRowErrors }));
         setModalState({
           invalidRows: body.data.rows.filter((row) => row.issues.length > 0),
           kind: "invalid",
@@ -254,7 +494,11 @@ export default function PortalAddPatientPage() {
   }
 
   async function createInviteBatch() {
-    if (!session || !canValidate || creatingBatch) {
+    if (!session || creatingBatch) {
+      return;
+    }
+
+    if (!validateClient(rows)) {
       return;
     }
 
@@ -288,11 +532,7 @@ export default function PortalAddPatientPage() {
         | null;
 
       if (!response.ok || !body || !("data" in body)) {
-        throw new Error(
-          body && "error" in body
-            ? body.error?.message
-            : "Unable to create invite batch",
-        );
+        throw new Error(readResponseErrorMessage(body, "Unable to create invite batch"));
       }
 
       setModalState({
@@ -340,7 +580,7 @@ export default function PortalAddPatientPage() {
             </label>
             {careTeamOptions.length ? (
               <select
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${careTeamError ? styles.portalFieldInputError : ""}`}
                 id="patient-care-team"
                 onChange={(event) => setCareTeamId(event.target.value)}
                 value={careTeamId}
@@ -361,6 +601,9 @@ export default function PortalAddPatientPage() {
                 value={careTeamId}
               />
             )}
+            {careTeamError ? (
+              <span className={styles.portalFieldError}>{careTeamError}</span>
+            ) : null}
           </div>
 
           <div className={styles.carePlanFormGroup}>
@@ -369,7 +612,7 @@ export default function PortalAddPatientPage() {
             </label>
             {facilityOptions.length ? (
               <select
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${facilityError ? styles.portalFieldInputError : ""}`}
                 id="patient-facility"
                 onChange={(event) => setFacilityId(event.target.value)}
                 value={facilityId}
@@ -390,6 +633,9 @@ export default function PortalAddPatientPage() {
                 value={facilityId}
               />
             )}
+            {facilityError ? (
+              <span className={styles.portalFieldError}>{facilityError}</span>
+            ) : null}
           </div>
         </div>
       </section>
@@ -406,35 +652,45 @@ export default function PortalAddPatientPage() {
           {rows.map((row, index) => (
             <div className={styles.portalIntakeRow} key={row.id}>
               <input
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${rowErrors[row.id]?.firstName ? styles.portalFieldInputError : ""}`}
+                onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "firstName", event.target.value)}
                 placeholder="First name"
+                ref={(element) => setFieldRef(row.id, "firstName", element)}
                 value={row.firstName}
               />
               <input
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${rowErrors[row.id]?.lastName ? styles.portalFieldInputError : ""}`}
+                onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "lastName", event.target.value)}
                 placeholder="Last name"
+                ref={(element) => setFieldRef(row.id, "lastName", element)}
                 value={row.lastName}
               />
               <input
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${rowErrors[row.id]?.email ? styles.portalFieldInputError : ""}`}
+                onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "email", event.target.value)}
                 placeholder="Email"
+                ref={(element) => setFieldRef(row.id, "email", element)}
                 type="email"
                 value={row.email}
               />
               <input
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${rowErrors[row.id]?.dateOfBirth ? styles.portalFieldInputError : ""}`}
+                onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "dateOfBirth", event.target.value)}
+                ref={(element) => setFieldRef(row.id, "dateOfBirth", element)}
                 type="date"
                 value={row.dateOfBirth}
               />
               <select
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${rowErrors[row.id]?.durationMonths ? styles.portalFieldInputError : ""}`}
+                onBlur={handleRowBlur}
                 onChange={(event) =>
                   updateRow(row.id, "durationMonths", event.target.value)
                 }
+                ref={(element) => setFieldRef(row.id, "durationMonths", element)}
                 value={row.durationMonths}
               >
                 {DURATION_OPTIONS.map((value) => (
@@ -444,9 +700,11 @@ export default function PortalAddPatientPage() {
                 ))}
               </select>
               <input
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${rowErrors[row.id]?.nhsNumber ? styles.portalFieldInputError : ""}`}
+                onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "nhsNumber", event.target.value)}
                 placeholder="NHS number (optional)"
+                ref={(element) => setFieldRef(row.id, "nhsNumber", element)}
                 value={row.nhsNumber}
               />
               <button
@@ -456,6 +714,17 @@ export default function PortalAddPatientPage() {
               >
                 Remove
               </button>
+              {Object.keys(rowErrors[row.id] ?? {}).length ? (
+                <div className={styles.portalValidationIssueList}>
+                  {Object.entries(rowErrors[row.id] ?? {}).map(([field, message]) =>
+                    message ? (
+                      <span className={styles.portalValidationIssue} key={`${row.id}-${field}`}>
+                        {message}
+                      </span>
+                    ) : null,
+                  )}
+                </div>
+              ) : null}
               <span className={styles.portalIntakeRowNumber}>Row {index + 1}</span>
             </div>
           ))}
