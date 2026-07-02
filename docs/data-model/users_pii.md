@@ -11,6 +11,7 @@
 - `email` · string · unique · example: `roy@example.com`
 - `emailVerifiedAt` · Date|null
 - `phoneE164` · string|null · E.164 format
+- `nhsNumber` · string|null · 10 digit NHS number
 - `firstName` / `lastName` · string
 - `dateOfBirth` · Date|null
 - `sexAtBirth` · enum (`female|male|intersex|unknown`)

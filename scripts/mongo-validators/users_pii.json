@@ -9,6 +9,7 @@
         "orgId": { "bsonType": "string" },
         "firstName": { "bsonType": "string" },
         "lastName": { "bsonType": "string" },
+        "nhsNumber": { "bsonType": ["string", "null"] },
         "dateOfBirth": { "bsonType": ["date", "null"] },
         "sexAtBirth": {
           "bsonType": "string",

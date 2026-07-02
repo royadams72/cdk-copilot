@@ -385,6 +385,10 @@ export type SymptomListResponse = TSymptomListResponse;
 export type CreateSymptomArgs = TSymptomCreateRequest;
 export type UpdateSymptomArgs = TSymptomUpdateRequest;
 export type CurrentUserSettingsResponse = {
+  dateOfBirth?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  nhsNumber?: string | null;
   units: UserUnits;
 };
 export type RunWeeklyNutritionInsightArgs = {

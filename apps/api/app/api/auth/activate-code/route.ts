@@ -72,6 +72,7 @@ type UserPiiDoc = {
   firstName?: string;
   lastActiveAt?: Date;
   lastName?: string;
+  nhsNumber?: string | null;
   notificationPrefs?: { email: boolean; push: boolean; sms: boolean };
   onboardingCompleted?: boolean;
   onboardingSteps?: string[];
@@ -344,6 +345,7 @@ export async function POST(req: NextRequest) {
           firstName: invite.firstName,
           lastActiveAt: now,
           lastName: invite.lastName,
+          nhsNumber: invite.nhsNumber ?? null,
           notificationPrefs: { email: true, push: true, sms: false },
           onboardingCompleted: false,
           onboardingSteps: [],

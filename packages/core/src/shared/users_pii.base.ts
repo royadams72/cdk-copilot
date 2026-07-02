@@ -13,6 +13,7 @@ export const Platform = z.enum(["ios", "android", "web"]);
 export const UserStatus = z.enum(["active", "suspended", "deleted"]);
 
 const E164 = z.string().regex(/^\+?[1-9]\d{1,14}$/, "Use E.164 format");
+const NhsNumber = z.string().regex(/^\d{10}$/, "Use a 10 digit NHS number");
 const IsoCountry2 = z
   .string()
   .length(2)
@@ -63,6 +64,7 @@ export const UserPII_Common = z.object({
   lastActiveAt: z.coerce.date().nullable().optional(),
 
   lastName: z.string().optional(),
+  nhsNumber: NhsNumber.nullable().optional(),
 
   notificationPrefs: z
     .object({
