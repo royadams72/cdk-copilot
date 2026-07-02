@@ -127,8 +127,13 @@ export async function POST(req: NextRequest) {
     const sentInviteIds: string[] = [];
     const failedDeliveries: Array<{ email: string; message: string }> = [];
     const devInvites: Array<{ email: string; activationCode: string }> = [];
+    const includeDevInvites = isLocalDev();
 
     for (const { activationCode, doc } of inviteRows) {
+      if (includeDevInvites) {
+        devInvites.push({ activationCode, email: doc.email });
+      }
+
       const emailHtml = `
         <p>You have been invited to join CKD Copilot.</p>
         <p>Download CKD Copilot from the App Store or Google Play.</p>
@@ -146,9 +151,14 @@ export async function POST(req: NextRequest) {
             to: doc.email,
           });
           sentInviteIds.push(doc.patientId);
+          if (includeDevInvites) {
+            console.log("[DEV] Patient invite activation code", {
+              activationCode,
+              email: doc.email,
+            });
+          }
         } catch (error: any) {
           if (isLocalDev()) {
-            devInvites.push({ activationCode, email: doc.email });
             console.log("[DEV] Patient invite activation code", {
               activationCode,
               email: doc.email,
@@ -162,7 +172,6 @@ export async function POST(req: NextRequest) {
           }
         }
       } else {
-        devInvites.push({ activationCode, email: doc.email });
         console.log("[DEV] Patient invite activation code", {
           activationCode,
           email: doc.email,

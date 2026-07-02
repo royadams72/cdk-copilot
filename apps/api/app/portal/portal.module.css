@@ -1248,9 +1248,29 @@
   font-weight: 700;
 }
 
+.portalFieldInputError {
+  border-color: var(--portal-danger);
+  box-shadow: inset 0 0 0 1px var(--portal-danger);
+}
+
+.portalFieldInputError:focus {
+  outline: none;
+  border-color: var(--portal-danger);
+  box-shadow:
+    inset 0 0 0 1px var(--portal-danger),
+    0 0 0 2px color-mix(in srgb, var(--portal-danger) 20%, transparent);
+}
+
+.portalFieldError {
+  color: var(--portal-danger);
+  font-size: 13px;
+  line-height: 18px;
+}
+
 .portalValidationIssueList {
   display: grid;
   gap: 6px;
+  grid-column: 1 / -1;
 }
 
 .portalValidationIssue {
