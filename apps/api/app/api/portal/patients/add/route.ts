@@ -8,6 +8,7 @@ import { z } from "zod";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { assertPortalCareTeamFacilityAccess } from "@/apps/api/lib/portal/staffScope";
 import { queueCareTeamConsent } from "@/apps/api/lib/utils/patientConsents";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -77,19 +78,17 @@ export async function POST(req: NextRequest) {
     const { careTeamId, dateOfBirth, email, facilityId, firstName, lastName, stage } =
       parsed.data;
 
-    if (caller.careTeamIds?.length && !caller.careTeamIds.includes(careTeamId)) {
-      return bad("Selected care team is not available to this staff account", undefined, 403);
-    }
-
-    if (caller.facilityIds?.length && !caller.facilityIds.includes(facilityId)) {
-      return bad("Selected facility is not available to this staff account", undefined, 403);
-    }
-
     if (!caller.orgId) {
       return bad("Staff organisation context missing", undefined, 400);
     }
 
     const db = await getDb();
+    await assertPortalCareTeamFacilityAccess({
+      careTeamId,
+      caller,
+      db,
+      facilityId,
+    });
     const usersPii = db.collection<UserPiiDoc>(COLLECTIONS.UsersPII);
     const patients = db.collection<PatientDoc>(COLLECTIONS.Patients);
 

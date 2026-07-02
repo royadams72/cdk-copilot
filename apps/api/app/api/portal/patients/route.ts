@@ -12,10 +12,7 @@ import {
   mapPortalPatientListItemsWithWorsening,
   sortPortalPatients,
 } from "@/apps/api/lib/portal/patients";
-import {
-  normalizePortalPatientFilter,
-  normalizePortalPatientRiskFilter,
-} from "@/apps/api/lib/portal/patient-shared";
+import { normalizePortalPatientFilter } from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
@@ -40,7 +37,6 @@ type RawPortalPatientDoc = {
   stage?: string | null;
   summary?: {
     lastContactAt?: Date | string | null;
-    risk?: "green" | "amber" | "red" | null;
   } | null;
 };
 
@@ -53,11 +49,9 @@ export async function GET(req: NextRequest) {
     }
 
     const query = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+    const dateOfBirth = req.nextUrl.searchParams.get("dob")?.trim() ?? "";
     const filter = normalizePortalPatientFilter(
       req.nextUrl.searchParams.get("filter"),
-    );
-    const risk = normalizePortalPatientRiskFilter(
-      req.nextUrl.searchParams.get("risk"),
     );
     const stage = req.nextUrl.searchParams.get("stage")?.trim() ?? "";
     const careTeamId = req.nextUrl.searchParams.get("careTeamId")?.trim() ?? "";
@@ -107,22 +101,22 @@ export async function GET(req: NextRequest) {
     const filteredPatients = allPatients.filter((patient) =>
       matchesPortalPatientAdvancedFilters(patient, {
         careTeamId,
+        dateOfBirth,
         facilityId,
         filter,
         query,
-        risk,
         stage,
       }),
     );
 
     return ok({
       careTeamId,
+      dateOfBirth,
       filter,
       facilityId,
       matchedPatients: filteredPatients.length,
       patients: filteredPatients,
       query,
-      risk,
       stage,
       stats,
       totalPatients: allPatients.length,

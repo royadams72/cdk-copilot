@@ -24,23 +24,12 @@ export const PORTAL_PATIENT_FILTERS = [
 
 export type PortalPatientFilter = (typeof PORTAL_PATIENT_FILTERS)[number];
 
-export const PORTAL_PATIENT_RISK_FILTERS = [
-  "all",
-  "green",
-  "amber",
-  "red",
-  "unknown",
-] as const;
-
-export type PortalPatientRiskFilter =
-  (typeof PORTAL_PATIENT_RISK_FILTERS)[number];
-
 export type PortalPatientAdvancedFilters = {
   careTeamId: string;
+  dateOfBirth: string;
   facilityId: string;
   filter: PortalPatientFilter;
   query: string;
-  risk: PortalPatientRiskFilter;
   stage: string;
 };
 
@@ -49,12 +38,12 @@ export type PortalPatientListItem = {
   accessEndsAt: string | null;
   careTeamId: string | null;
   dateOfBirth: string | null;
+  dateOfBirthIso: string | null;
   email: string | null;
   facilityId: string | null;
   flags: string[];
   lastContactAt: string | null;
   name: string;
-  risk: "green" | "amber" | "red" | "unknown";
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];
 };
@@ -496,14 +485,6 @@ export function normalizePortalPatientFilter(
 ): PortalPatientFilter {
   return PORTAL_PATIENT_FILTERS.includes(value as PortalPatientFilter)
     ? (value as PortalPatientFilter)
-    : "all";
-}
-
-export function normalizePortalPatientRiskFilter(
-  value: string | null | undefined,
-): PortalPatientRiskFilter {
-  return PORTAL_PATIENT_RISK_FILTERS.includes(value as PortalPatientRiskFilter)
-    ? (value as PortalPatientRiskFilter)
     : "all";
 }
 

@@ -21,7 +21,6 @@
   - `createdAt` / `updatedAt` · Date
 - `summary` · object · lightweight UI summary (safe fields only)
   - `lastContactAt` · Date · optional
-  - `risk` · enum (`green|amber|red`) · optional
   - `dietitianAssigned` · boolean · optional
   - _(may include additional future keys)_
 - `flags` · string[] · optional · tags like `["diet-support","exercise-plan"]`
@@ -49,7 +48,6 @@
   ],
   "summary": {
     "lastContactAt": "2025-10-03T09:20:00.000Z",
-    "risk": "amber",
     "dietitianAssigned": true
   },
   "stage": "3b",

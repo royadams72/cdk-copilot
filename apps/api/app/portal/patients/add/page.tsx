@@ -182,15 +182,28 @@ export default function PortalAddPatientPage() {
     () =>
       session?.user.careTeams?.length
         ? session.user.careTeams
-        : (session?.user.careTeamIds ?? []).map((id) => ({ id, label: id })),
+        : (session?.user.careTeamIds ?? []).map((id) => ({
+            facilityId: null,
+            id,
+            label: id,
+          })),
     [session?.user.careTeamIds, session?.user.careTeams],
   );
   const facilityOptions = useMemo(
-    () =>
-      session?.user.facilities?.length
-        ? session.user.facilities
-        : (session?.user.facilityIds ?? []).map((id) => ({ id, label: id })),
-    [session?.user.facilities, session?.user.facilityIds],
+    () => {
+      const scopedFacilities =
+        session?.user.facilities?.length
+          ? session.user.facilities
+          : (session?.user.facilityIds ?? []).map((id) => ({ id, label: id }));
+
+      const selectedCareTeam = careTeamOptions.find((item) => item.id === careTeamId);
+      if (!selectedCareTeam?.facilityId) {
+        return scopedFacilities;
+      }
+
+      return scopedFacilities.filter((item) => item.id === selectedCareTeam.facilityId);
+    },
+    [careTeamId, careTeamOptions, session?.user.facilities, session?.user.facilityIds],
   );
 
   useEffect(() => {
@@ -202,6 +215,16 @@ export default function PortalAddPatientPage() {
   useEffect(() => {
     if (!facilityId && facilityOptions.length === 1) {
       setFacilityId(facilityOptions[0].id);
+    }
+  }, [facilityId, facilityOptions]);
+
+  useEffect(() => {
+    if (!facilityId) {
+      return;
+    }
+
+    if (!facilityOptions.some((item) => item.id === facilityId)) {
+      setFacilityId("");
     }
   }, [facilityId, facilityOptions]);
 
@@ -582,7 +605,11 @@ export default function PortalAddPatientPage() {
               <select
                 className={`${styles.carePlanInput} ${careTeamError ? styles.portalFieldInputError : ""}`}
                 id="patient-care-team"
-                onChange={(event) => setCareTeamId(event.target.value)}
+                onChange={(event) => {
+                  setCareTeamId(event.target.value);
+                  setCareTeamError(null);
+                  setFacilityError(null);
+                }}
                 value={careTeamId}
               >
                 <option value="">Select care team</option>
@@ -614,7 +641,10 @@ export default function PortalAddPatientPage() {
               <select
                 className={`${styles.carePlanInput} ${facilityError ? styles.portalFieldInputError : ""}`}
                 id="patient-facility"
-                onChange={(event) => setFacilityId(event.target.value)}
+                onChange={(event) => {
+                  setFacilityId(event.target.value);
+                  setFacilityError(null);
+                }}
                 value={facilityId}
               >
                 <option value="">Select facility</option>

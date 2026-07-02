@@ -10,12 +10,8 @@ import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 import type {
   PortalPatientFilter,
   PortalPatientListItem,
-  PortalPatientRiskFilter,
 } from "@/apps/api/lib/portal/patient-shared";
-import {
-  normalizePortalPatientFilter,
-  normalizePortalPatientRiskFilter,
-} from "@/apps/api/lib/portal/patient-shared";
+import { normalizePortalPatientFilter } from "@/apps/api/lib/portal/patient-shared";
 import { CKD_STAGE_VALUES } from "@ckd/core";
 
 type PortalPatientsResponse = {
@@ -25,14 +21,6 @@ type PortalPatientsResponse = {
     totalPatients: number;
   };
 };
-
-const riskOptions: Array<{ label: string; value: PortalPatientRiskFilter }> = [
-  { label: "Any risk", value: "all" },
-  { label: "Red", value: "red" },
-  { label: "Amber", value: "amber" },
-  { label: "Green", value: "green" },
-  { label: "Unknown", value: "unknown" },
-];
 
 const filterOptions: Array<{ label: string; value: PortalPatientFilter }> = [
   { label: "All patients", value: "all" },
@@ -53,27 +41,27 @@ export default function PortalAdvancedSearchPageClient() {
   const [totalPatients, setTotalPatients] = useState(0);
 
   const query = searchParams.get("q")?.trim() ?? "";
+  const dateOfBirth = searchParams.get("dob")?.trim() ?? "";
   const filter = normalizePortalPatientFilter(searchParams.get("filter"));
-  const risk = normalizePortalPatientRiskFilter(searchParams.get("risk"));
   const stage = searchParams.get("stage")?.trim() ?? "";
   const careTeamId = searchParams.get("careTeamId")?.trim() ?? "";
   const facilityId = searchParams.get("facilityId")?.trim() ?? "";
 
   const [draftQuery, setDraftQuery] = useState(query);
+  const [draftDateOfBirth, setDraftDateOfBirth] = useState(dateOfBirth);
   const [draftFilter, setDraftFilter] = useState<PortalPatientFilter>(filter);
-  const [draftRisk, setDraftRisk] = useState<PortalPatientRiskFilter>(risk);
   const [draftStage, setDraftStage] = useState(stage);
   const [draftCareTeamId, setDraftCareTeamId] = useState(careTeamId);
   const [draftFacilityId, setDraftFacilityId] = useState(facilityId);
 
   useEffect(() => {
     setDraftQuery(query);
+    setDraftDateOfBirth(dateOfBirth);
     setDraftFilter(filter);
-    setDraftRisk(risk);
     setDraftStage(stage);
     setDraftCareTeamId(careTeamId);
     setDraftFacilityId(facilityId);
-  }, [careTeamId, facilityId, filter, query, risk, stage]);
+  }, [careTeamId, dateOfBirth, facilityId, filter, query, stage]);
 
   useEffect(() => {
     if (status !== "authenticated" || !session) {
@@ -83,8 +71,8 @@ export default function PortalAdvancedSearchPageClient() {
 
     const params = new URLSearchParams();
     if (query) params.set("q", query);
+    if (dateOfBirth) params.set("dob", dateOfBirth);
     if (filter !== "all") params.set("filter", filter);
-    if (risk !== "all") params.set("risk", risk);
     if (stage) params.set("stage", stage);
     if (careTeamId) params.set("careTeamId", careTeamId);
     if (facilityId) params.set("facilityId", facilityId);
@@ -136,22 +124,56 @@ export default function PortalAdvancedSearchPageClient() {
 
     void loadPatients();
     return () => controller.abort();
-  }, [careTeamId, facilityId, filter, query, risk, session, stage, status]);
+  }, [careTeamId, dateOfBirth, facilityId, filter, query, session, stage, status]);
 
   const careTeamOptions = useMemo(
-    () => session?.user.careTeamIds ?? [],
-    [session?.user.careTeamIds],
+    () =>
+      session?.user.careTeams?.length
+        ? session.user.careTeams
+        : (session?.user.careTeamIds ?? []).map((id) => ({
+            facilityId: null,
+            id,
+            label: id,
+          })),
+    [session?.user.careTeamIds, session?.user.careTeams],
   );
   const facilityOptions = useMemo(
-    () => session?.user.facilityIds ?? [],
-    [session?.user.facilityIds],
+    () => {
+      const scopedFacilities =
+        session?.user.facilities?.length
+          ? session.user.facilities
+          : (session?.user.facilityIds ?? []).map((id) => ({ id, label: id }));
+      const selectedCareTeam = careTeamOptions.find((item) => item.id === draftCareTeamId);
+
+      if (!selectedCareTeam?.facilityId) {
+        return scopedFacilities;
+      }
+
+      return scopedFacilities.filter((item) => item.id === selectedCareTeam.facilityId);
+    },
+    [
+      careTeamOptions,
+      draftCareTeamId,
+      session?.user.facilities,
+      session?.user.facilityIds,
+    ],
   );
+
+  useEffect(() => {
+    if (!draftFacilityId) {
+      return;
+    }
+
+    if (!facilityOptions.some((item) => item.id === draftFacilityId)) {
+      setDraftFacilityId("");
+    }
+  }, [draftFacilityId, facilityOptions]);
 
   function submitSearch() {
     const params = new URLSearchParams();
     if (draftQuery.trim()) params.set("q", draftQuery.trim());
+    if (draftDateOfBirth.trim()) params.set("dob", draftDateOfBirth.trim());
     if (draftFilter !== "all") params.set("filter", draftFilter);
-    if (draftRisk !== "all") params.set("risk", draftRisk);
     if (draftStage.trim()) params.set("stage", draftStage.trim());
     if (draftCareTeamId.trim()) params.set("careTeamId", draftCareTeamId.trim());
     if (draftFacilityId.trim()) params.set("facilityId", draftFacilityId.trim());
@@ -162,8 +184,8 @@ export default function PortalAdvancedSearchPageClient() {
 
   function clearSearch() {
     setDraftQuery("");
+    setDraftDateOfBirth("");
     setDraftFilter("all");
-    setDraftRisk("all");
     setDraftStage("");
     setDraftCareTeamId("");
     setDraftFacilityId("");
@@ -182,7 +204,7 @@ export default function PortalAdvancedSearchPageClient() {
         </Link>
         <h2 className={styles.carePlanFormTitle}>Advanced Search</h2>
         <p className={styles.carePlanFormLead}>
-          Search by patient details, stage, risk, team, facility, or current follow-up state.
+          Search by patient name, email, date of birth, stage, team, facility, or current follow-up state.
         </p>
       </div>
 
@@ -202,8 +224,21 @@ export default function PortalAdvancedSearchPageClient() {
                   submitSearch();
                 }
               }}
-              placeholder="Name, email, date of birth or CKD stage"
+              placeholder="Patient name or email"
               value={draftQuery}
+            />
+          </div>
+
+          <div className={styles.carePlanFormGroup}>
+            <label className={styles.carePlanFieldLabel} htmlFor="advanced-dob">
+              Date of birth
+            </label>
+            <input
+              className={styles.carePlanInput}
+              id="advanced-dob"
+              onChange={(event) => setDraftDateOfBirth(event.target.value)}
+              type="date"
+              value={draftDateOfBirth}
             />
           </div>
 
@@ -220,26 +255,6 @@ export default function PortalAdvancedSearchPageClient() {
               value={draftFilter}
             >
               {filterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.carePlanFormGroup}>
-            <label className={styles.carePlanFieldLabel} htmlFor="advanced-risk">
-              Risk
-            </label>
-            <select
-              className={styles.carePlanInput}
-              id="advanced-risk"
-              onChange={(event) =>
-                setDraftRisk(normalizePortalPatientRiskFilter(event.target.value))
-              }
-              value={draftRisk}
-            >
-              {riskOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -278,8 +293,8 @@ export default function PortalAdvancedSearchPageClient() {
             >
               <option value="">Any care team</option>
               {careTeamOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
+                <option key={value.id} value={value.id}>
+                  {value.label}
                 </option>
               ))}
             </select>
@@ -297,8 +312,8 @@ export default function PortalAdvancedSearchPageClient() {
             >
               <option value="">Any facility</option>
               {facilityOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
+                <option key={value.id} value={value.id}>
+                  {value.label}
                 </option>
               ))}
             </select>
@@ -349,7 +364,7 @@ export default function PortalAdvancedSearchPageClient() {
                   {patient.stage ? `Stage ${patient.stage}` : "Stage not set"}
                 </span>
                 <span>
-                  Risk {patient.risk} · Last contact{" "}
+                  Last contact{" "}
                   {patient.lastContactAt
                     ? new Date(patient.lastContactAt).toLocaleDateString("en-GB")
                     : "not recorded"}

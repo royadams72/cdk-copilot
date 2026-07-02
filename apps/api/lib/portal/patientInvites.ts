@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Db, ObjectId } from "mongodb";
 
 import { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { assertPortalCareTeamFacilityAccess } from "@/apps/api/lib/portal/staffScope";
 import { COLLECTIONS } from "@ckd/core/server";
 import {
   PatientInviteDurationMonths,
@@ -146,19 +147,12 @@ export async function validatePortalInviteBatch(args: {
   const { body, caller, db } = args;
   const { careTeamId, facilityId, rows } = body;
 
-  if (caller.careTeamIds?.length && !caller.careTeamIds.includes(careTeamId)) {
-    throw Object.assign(
-      new Error("Selected care team is not available to this staff account"),
-      { status: 403 },
-    );
-  }
-
-  if (caller.facilityIds?.length && !caller.facilityIds.includes(facilityId)) {
-    throw Object.assign(
-      new Error("Selected facility is not available to this staff account"),
-      { status: 403 },
-    );
-  }
+  await assertPortalCareTeamFacilityAccess({
+    careTeamId,
+    caller,
+    db,
+    facilityId,
+  });
 
   const validatedRows: ValidatedInviteRow[] = rows.map((row, rowIndex) => {
     const issues: ValidationIssue[] = [];
