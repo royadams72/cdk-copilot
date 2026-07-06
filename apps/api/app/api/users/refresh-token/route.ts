@@ -16,6 +16,7 @@ import {
 } from "@/apps/api/lib/auth/auth_token";
 import { Collection, ObjectId } from "mongodb";
 import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
+import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 
 export const runtime = "nodejs";
 
@@ -136,6 +137,37 @@ export async function POST(req: NextRequest) {
     if (!account) {
       console.warn("refresh-token: inactive account", { principalId });
       return bad("Account is inactive", { requestId, code: "account_inactive" }, 401);
+    }
+
+    if (account.role === "patient") {
+      const patient = await db.collection(COLLECTIONS.Patients).findOne<{
+        assignments?: Array<{
+          endsAt?: Date | string | null;
+          status?: string | null;
+        }>;
+      }>(
+        {
+          _id:
+            tokenDoc.patientId instanceof ObjectId
+              ? tokenDoc.patientId
+              : new ObjectId(String(tokenDoc.patientId)),
+        },
+        { projection: { assignments: 1 } },
+      );
+      const assignmentState = summarizeAssignmentState(
+        (patient?.assignments ?? []) as any,
+      );
+      if (!assignmentState.hasActiveAssignments) {
+        console.warn("refresh-token: patient membership inactive", {
+          patientId: String(tokenDoc.patientId),
+          principalId,
+        });
+        return bad(
+          "Your membership is no longer active.",
+          { requestId, code: "membership_inactive" },
+          403,
+        );
+      }
     }
 
     const session = await issueSessionTokens({

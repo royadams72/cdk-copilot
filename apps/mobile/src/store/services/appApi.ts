@@ -7,16 +7,36 @@ import type { SerializedError } from "@reduxjs/toolkit";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import { API } from "@/constants/api";
+import {
+  handleMembershipInactiveSession,
+  refreshSessionTokenOnce,
+} from "@/lib/authSession";
 import { formatApiError } from "@/lib/formatApiError";
-import { refreshSessionTokenOnce } from "@/lib/authSession";
 import { secureStorage } from "@/lib/secureStorage";
 
 type ApiEnvelope<T> = {
+  code?: string;
   data?: T;
   errors?: unknown;
   message?: string;
   ok?: boolean;
 };
+
+function hasMembershipInactiveCode(data: unknown) {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const candidate = data as {
+    code?: string;
+    errors?: { code?: string };
+  };
+
+  return (
+    candidate.code === "membership_inactive" ||
+    candidate.errors?.code === "membership_inactive"
+  );
+}
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API,
@@ -41,6 +61,13 @@ const baseQueryWithEnvelope: BaseQueryFn<
     if (refreshed) {
       result = await rawBaseQuery(args, api, extraOptions);
     }
+  }
+
+  if (
+    result.error?.status === 403 &&
+    hasMembershipInactiveCode(result.error.data)
+  ) {
+    await handleMembershipInactiveSession();
   }
 
   if (result.error) return result;

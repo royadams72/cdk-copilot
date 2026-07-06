@@ -3,6 +3,7 @@ import { ONBOARDING_STEPS } from "@ckd/core";
 import { secureStorage } from "./secureStorage";
 
 export const ONBOARDING_ROUTES = {
+  accessEnded: "/(auth)/access-ended",
   consent: "/(auth)/consent",
   clinical: "/(auth)/onboarding/clinical-form",
   dashboard: "/(dashboard)/dashboard",
@@ -18,6 +19,7 @@ type PostAuthRouteArgs = {
 };
 
 export type PostAuthRouteDecisionReason =
+  | "membership-inactive"
   | "pending-consents"
   | "onboarding-complete"
   | "onboarding-incomplete";
@@ -61,6 +63,13 @@ export function getPostAuthRouteDecision(args: PostAuthRouteArgs) {
     return {
       reason: "pending-consents" as const,
       route: ONBOARDING_ROUTES.consent,
+    };
+  }
+
+  if (args.hasActiveAssignments === false) {
+    return {
+      reason: "membership-inactive" as const,
+      route: ONBOARDING_ROUTES.accessEnded,
     };
   }
 

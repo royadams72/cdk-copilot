@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { authFetch } from "@/lib/authFetch";
-import { loadSessionToken, refreshSessionTokenOnce } from "@/lib/authSession";
+import {
+  clearSessionToken,
+  loadSessionToken,
+  refreshSessionTokenOnce,
+} from "@/lib/authSession";
 import { API } from "@/constants/api";
 import { ThemedText } from "@/components/themed-text";
 import { ActivityIndicator, View } from "react-native";
@@ -14,6 +18,22 @@ async function restoreUserSession() {
   const data = await res.json().catch(() => ({ ok: false }));
 
   return { data, res };
+}
+
+function hasMembershipInactiveCode(data: unknown) {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const candidate = data as {
+    errors?: { code?: string };
+    code?: string;
+  };
+
+  return (
+    candidate.code === "membership_inactive" ||
+    candidate.errors?.code === "membership_inactive"
+  );
 }
 
 const Bootstrap = () => {
@@ -61,6 +81,9 @@ const Bootstrap = () => {
         if (data.ok) {
           logPostAuthRouteDecision("bootstrap", data ?? {});
           router.replace(resolvePostAuthRoute(data ?? {}) as never);
+        } else if (res.status === 403 && hasMembershipInactiveCode(data)) {
+          await clearSessionToken();
+          router.replace("/(auth)/access-ended");
         } else if (res.status === 401) {
           const refreshed = await refreshSessionTokenOnce();
           if (refreshed) {
@@ -69,6 +92,15 @@ const Bootstrap = () => {
             if (retried.data?.ok) {
               logPostAuthRouteDecision("bootstrap:retry", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
+              return;
+            }
+
+            if (
+              retried.res.status === 403 &&
+              hasMembershipInactiveCode(retried.data)
+            ) {
+              await clearSessionToken();
+              router.replace("/(auth)/access-ended");
               return;
             }
 

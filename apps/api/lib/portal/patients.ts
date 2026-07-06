@@ -73,7 +73,6 @@ export function getPortalPatientMembershipStatus(
 
 export function buildPortalPatientAccessMatch(user: SessionUser) {
   const clauses: Record<string, unknown>[] = [];
-  const nowIso = new Date().toISOString();
 
   if (user.role === "admin" && !user.allowedPatientIds?.length) {
     return {};
@@ -96,23 +95,7 @@ export function buildPortalPatientAccessMatch(user: SessionUser) {
   if (allowedPatientIds.length > 0) {
     clauses.push({ _id: { $in: allowedPatientIds } });
   } else {
-    const assignmentMatch: Record<string, unknown> = {
-      $or: [
-        { status: "pending" },
-        {
-          $and: [
-            { status: "active" },
-            {
-              $or: [
-                { endsAt: null },
-                { endsAt: { $exists: false } },
-                { endsAt: { $gt: nowIso } },
-              ],
-            },
-          ],
-        },
-      ],
-    };
+    const assignmentMatch: Record<string, unknown> = {};
 
     if (user.orgId) {
       assignmentMatch.orgId = user.orgId;
