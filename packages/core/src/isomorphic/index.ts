@@ -13,6 +13,7 @@ export * from "./schemas/nutrition";
 export * from "./schemas/nutrient_estimation";
 export * from "./schemas/nutrition_favourites";
 export * from "./schemas/patient_goals";
+export * from "./schemas/patient_membership_events";
 export * from "./schemas/patient_consents";
 export * from "./schemas/patient_invites";
 export * from "./schemas/patients";

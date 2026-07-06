@@ -1,4 +1,9 @@
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
+import {
+  derivePatientLifecycleStatus,
+  formatPatientLifecycleStatusLabel,
+  getPrimaryAssignment,
+} from "@/apps/api/lib/portal/patientLifecycle";
 import type {
   PortalPatientAttentionItem,
   PortalPatientDashboardData,
@@ -220,7 +225,6 @@ function buildAttentionItems(input: {
   mealLoggingDays: number;
   patientId: string;
   weightLoggingDays: number;
-  daysSinceLastContact: number | null;
   reviewDueCount: number;
 }): PortalPatientAttentionItem[] {
   const items: PortalPatientAttentionItem[] = [];
@@ -263,15 +267,6 @@ function buildAttentionItems(input: {
       detail: "No weight reading has been logged in the last 14 days.",
       href: `/portal/patients/${input.patientId}/health`,
       title: "Missing recent weight data",
-      tone: "warning",
-    });
-  }
-
-  if (input.daysSinceLastContact !== null && input.daysSinceLastContact >= 14) {
-    items.push({
-      detail: `Last contact was ${input.daysSinceLastContact} day${input.daysSinceLastContact === 1 ? "" : "s"} ago.`,
-      href: `/portal/patients/${input.patientId}/nutrition`,
-      title: "Patient may be disengaged",
       tone: "warning",
     });
   }
@@ -404,6 +399,20 @@ function buildCarePlanSnapshot(input: {
   };
 }
 
+function formatMembershipStatus(patient: PortalPatientDetail) {
+  return formatPatientLifecycleStatusLabel(
+    derivePatientLifecycleStatus({ assignments: patient.assignments }),
+  );
+}
+
+function isAccessEndingSoon(patient: PortalPatientDetail) {
+  return (
+    derivePatientLifecycleStatus({
+      assignment: getPrimaryAssignment(patient.assignments),
+    }) === "endingSoon"
+  );
+}
+
 export async function loadPortalPatientDashboardQueryResult(
   db: Db,
   patientObjectId: ObjectId,
@@ -510,14 +519,10 @@ export function buildPortalPatientDashboard(input: {
     (plan) => plan.status === "active",
   ).length;
   const reviewDueCount = carePlans.filter(isReviewDue).length;
-  const daysSinceLastContact = input.patient.lastContactAt
-    ? Math.floor(
-        (Date.now() - new Date(input.patient.lastContactAt).getTime()) / DAY_MS,
-      )
-    : null;
 
   return {
     actionCards: [
+      "Membership",
       "Nutrition Data",
       "Health Data",
       "Labs",
@@ -534,7 +539,6 @@ export function buildPortalPatientDashboard(input: {
       activeCarePlan,
       activeCarePlanCount,
       bloodPressureLoggingDays,
-      daysSinceLastContact,
       latestBloodPressure,
       latestWeight,
       mealLoggingDays,
@@ -567,6 +571,20 @@ export function buildPortalPatientDashboard(input: {
     ],
     currentStatus: [
       { label: "CKD stage", value: input.patient.stage ?? "Not recorded" },
+      {
+        href: `/portal/patients/${input.patientId}/membership`,
+        label: "Membership",
+        value: formatMembershipStatus(input.patient),
+      },
+      {
+        href: `/portal/patients/${input.patientId}/membership`,
+        label: "Access ends",
+        value:
+          formatDisplayDate(input.patient.accessEndsAt, {
+            fallback: "Not set",
+          }) ?? "Not set",
+        meta: isAccessEndingSoon(input.patient) ? "Ending soon" : null,
+      },
       {
         href: `/portal/patients/${input.patientId}/care-plans`,
         label: "Active care plans",
@@ -636,10 +654,6 @@ export function buildPortalPatientDashboard(input: {
       typeof clinical?.egfrCurrent === "number"
         ? `eGFR ${clinical.egfrCurrent}`
         : "eGFR not recorded"
-    } • ${
-      input.patient.lastContactAt
-        ? `last contact ${formatDisplayDate(input.patient.lastContactAt)}`
-        : "no last-contact date"
-    }`,
+    } • ${formatMembershipStatus(input.patient)}`,
   };
 }

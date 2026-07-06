@@ -29,9 +29,34 @@ export type PortalPatientAdvancedFilters = {
   dateOfBirth: string;
   facilityId: string;
   filter: PortalPatientFilter;
+  membershipStatus: PortalPatientMembershipStatusFilter;
   query: string;
   stage: string;
 };
+
+export const PORTAL_PATIENT_MEMBERSHIP_STATUSES = [
+  "active",
+  "inactive",
+  "expired",
+  "ended",
+  "pending",
+  "unassigned",
+] as const;
+
+export type PortalPatientMembershipStatus =
+  (typeof PORTAL_PATIENT_MEMBERSHIP_STATUSES)[number];
+
+export const PORTAL_PATIENT_MEMBERSHIP_STATUS_FILTERS = [
+  "active",
+  "inactive",
+  "expired",
+  "ended",
+  "pending",
+  "all",
+] as const;
+
+export type PortalPatientMembershipStatusFilter =
+  (typeof PORTAL_PATIENT_MEMBERSHIP_STATUS_FILTERS)[number];
 
 export type PortalPatientListItem = {
   id: string;
@@ -43,6 +68,7 @@ export type PortalPatientListItem = {
   facilityId: string | null;
   flags: string[];
   lastContactAt: string | null;
+  membershipStatus: PortalPatientMembershipStatus;
   name: string;
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];
@@ -486,6 +512,16 @@ export function normalizePortalPatientFilter(
   return PORTAL_PATIENT_FILTERS.includes(value as PortalPatientFilter)
     ? (value as PortalPatientFilter)
     : "all";
+}
+
+export function normalizePortalPatientMembershipStatusFilter(
+  value: string | null | undefined,
+): PortalPatientMembershipStatusFilter {
+  return PORTAL_PATIENT_MEMBERSHIP_STATUS_FILTERS.includes(
+    value as PortalPatientMembershipStatusFilter,
+  )
+    ? (value as PortalPatientMembershipStatusFilter)
+    : "active";
 }
 
 export function normalizePortalWorseningKind(

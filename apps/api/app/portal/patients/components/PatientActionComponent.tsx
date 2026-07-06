@@ -7,6 +7,7 @@ const actionHrefByLabel: Record<string, string> = {
   Diagnoses: "/diagnoses",
   "Health Data": "/health",
   Labs: "/labs",
+  Membership: "/membership",
   "Medication Profile": "/medication",
   Messaging: "/messages",
   "Nutrition Data": "/nutrition",
@@ -28,7 +29,6 @@ const PatientActionComponent = ({
         const href = actionHrefByLabel[label];
 
         if (href) {
-          console.log("actionHrefByLabel:", href);
           return (
             <Link
               className={styles.patientActionInlineLink}

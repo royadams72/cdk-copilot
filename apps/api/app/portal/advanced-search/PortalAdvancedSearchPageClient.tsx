@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { formatPatientLifecycleStatusLabel } from "@/apps/api/lib/portal/patientLifecycle";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 import type {
   PortalPatientFilter,
@@ -364,10 +365,10 @@ export default function PortalAdvancedSearchPageClient() {
                   {patient.stage ? `Stage ${patient.stage}` : "Stage not set"}
                 </span>
                 <span>
-                  Last contact{" "}
-                  {patient.lastContactAt
-                    ? new Date(patient.lastContactAt).toLocaleDateString("en-GB")
-                    : "not recorded"}
+                  {formatPatientLifecycleStatusLabel(patient.membershipStatus)} ·{" "}
+                  {patient.accessEndsAt
+                    ? `Access ends ${new Date(patient.accessEndsAt).toLocaleDateString("en-GB")}`
+                    : "No access end date"}
                 </span>
               </Link>
             ))}

@@ -8,13 +8,21 @@ import {
   buildPortalWorseningHref,
   mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
+  normalizePortalPatientMembershipStatusFilter,
   type PortalPatientAdvancedFilters,
   type PortalPatientDetail,
   type PortalPatientFilter,
   type PortalPatientListItem,
+  type PortalPatientMembershipStatus,
+  type PortalPatientMembershipStatusFilter,
   type PortalPatientStat,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
+import {
+  derivePatientLifecycleStatus,
+  getPrimaryAssignment,
+  normalizeLifecycleStatusToMembershipStatus,
+} from "@/apps/api/lib/portal/patientLifecycle";
 import {
   loadActivePortalWorseningItemsByPatientId,
   syncPatientWorseningTrendSnapshots,
@@ -26,7 +34,8 @@ type PortalPatientSummary = {
   lastContactAt?: Date | string | null;
 };
 
-type PortalPatientAssignment = {
+export type PortalPatientAssignment = {
+  assignmentId?: string;
   careTeamId?: string;
   consentStatus?: string;
   endsAt?: Date | string | null;
@@ -53,8 +62,18 @@ export type RawPortalPatientDetailDoc = {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function getPortalPatientMembershipStatus(
+  assignments: PortalPatientAssignment[] = [],
+): PortalPatientMembershipStatus {
+  return normalizeLifecycleStatusToMembershipStatus(
+    derivePatientLifecycleStatus({ assignments }),
+  );
+}
+
 export function buildPortalPatientAccessMatch(user: SessionUser) {
   const clauses: Record<string, unknown>[] = [];
+  const nowIso = new Date().toISOString();
 
   if (user.role === "admin" && !user.allowedPatientIds?.length) {
     return {};
@@ -78,7 +97,21 @@ export function buildPortalPatientAccessMatch(user: SessionUser) {
     clauses.push({ _id: { $in: allowedPatientIds } });
   } else {
     const assignmentMatch: Record<string, unknown> = {
-      status: { $in: ["active", "pending"] },
+      $or: [
+        { status: "pending" },
+        {
+          $and: [
+            { status: "active" },
+            {
+              $or: [
+                { endsAt: null },
+                { endsAt: { $exists: false } },
+                { endsAt: { $gt: nowIso } },
+              ],
+            },
+          ],
+        },
+      ],
     };
 
     if (user.orgId) {
@@ -141,14 +174,6 @@ export function buildPortalPatientDetailPipeline(match: Document) {
       },
     },
   ];
-}
-
-function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
-  return (
-    assignments.find((assignment) => assignment.status === "active") ??
-    assignments[0] ??
-    null
-  );
 }
 
 function normalizeName(pii: PortalPatientPii) {
@@ -218,6 +243,7 @@ export function mapPortalPatientListItem(raw: {
     facilityId: primaryAssignment?.facilityId ?? null,
     flags: raw.flags ?? [],
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
+    membershipStatus: getPortalPatientMembershipStatus(raw.assignments ?? []),
     name: normalizeName(raw.pii ?? {}),
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
@@ -303,6 +329,10 @@ function hasFlag(item: PortalPatientListItem, terms: string[]) {
 }
 
 function isEndingSoon(item: PortalPatientListItem) {
+  if (item.membershipStatus !== "active") {
+    return false;
+  }
+
   if (!item.accessEndsAt) {
     return false;
   }
@@ -417,7 +447,11 @@ export function matchesPortalPatientAdvancedFilters(
     ) &&
     matchesPortalPatientStage(item, filters.stage) &&
     matchesPortalPatientAssignmentValue(item.careTeamId, filters.careTeamId) &&
-    matchesPortalPatientAssignmentValue(item.facilityId, filters.facilityId)
+    matchesPortalPatientAssignmentValue(item.facilityId, filters.facilityId) &&
+    (normalizePortalPatientMembershipStatusFilter(filters.membershipStatus) ===
+      "all" ||
+      item.membershipStatus ===
+        normalizePortalPatientMembershipStatusFilter(filters.membershipStatus))
   );
 }
 

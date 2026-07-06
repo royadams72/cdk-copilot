@@ -442,6 +442,19 @@
   background: var(--portal-surface);
 }
 
+.compactSelect {
+  min-width: 120px;
+  min-height: 30px;
+  margin: 0 4px;
+  padding: 0 10px;
+  border: 1px solid var(--portal-line);
+  border-radius: 10px;
+  color: var(--portal-text);
+  font-size: 14px;
+  line-height: 20px;
+  background: var(--portal-surface);
+}
+
 .worseningCheckbox {
   width: 20px;
   height: 20px;
@@ -632,6 +645,11 @@
   color: var(--portal-text-soft);
   font-size: 15px;
   line-height: 22px;
+}
+
+.patientHeadlineWarning {
+  color: var(--portal-danger);
+  font-weight: 700;
 }
 
 .patientOverviewGrid {

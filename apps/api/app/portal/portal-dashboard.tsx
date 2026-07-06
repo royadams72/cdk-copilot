@@ -11,18 +11,21 @@ import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 import type {
   PortalPatientFilter,
   PortalPatientListItem,
+  PortalPatientMembershipStatusFilter,
   PortalPatientStat,
   PortalPatientWorseningItem,
   PortalWorseningKind,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
   normalizePortalPatientFilter,
+  normalizePortalPatientMembershipStatusFilter,
   normalizePortalWorseningKind,
 } from "@/apps/api/lib/portal/patient-shared";
 
 type PortalPatientsResponse = {
   data: {
     filter: PortalPatientFilter;
+    membershipStatus: PortalPatientMembershipStatusFilter;
     matchedPatients: number;
     patients: PortalPatientListItem[];
     query: string;
@@ -132,6 +135,10 @@ function PortalDashboardContent() {
   const [detailsPatient, setDetailsPatient] =
     useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
+  const activeMembershipStatus =
+    normalizePortalPatientMembershipStatusFilter(
+      searchParams.get("membershipStatus"),
+    );
   const submittedQuery = searchParams.get("q")?.trim() ?? "";
 
   useEffect(() => {
@@ -152,6 +159,9 @@ function PortalDashboardContent() {
       }
       if (activeFilter !== "all") {
         params.set("filter", activeFilter);
+      }
+      if (activeMembershipStatus !== "active") {
+        params.set("membershipStatus", activeMembershipStatus);
       }
 
       try {
@@ -197,7 +207,7 @@ function PortalDashboardContent() {
 
     loadPatients();
     return () => controller.abort();
-  }, [activeFilter, session, status, submittedQuery]);
+  }, [activeFilter, activeMembershipStatus, session, status, submittedQuery]);
 
   const statCards = useMemo(() => {
     if (!stats) {
@@ -511,7 +521,31 @@ function PortalDashboardContent() {
       </section>
       <section className={styles.metaStrip}>
         <span>
-          Showing <strong>{matchedPatients}</strong> of{" "}
+          Showing{" "}
+          <select
+            className={styles.compactSelect}
+            onChange={(event) => {
+              const params = new URLSearchParams(searchParams.toString());
+              const nextValue = normalizePortalPatientMembershipStatusFilter(
+                event.target.value,
+              );
+              if (nextValue === "active") {
+                params.delete("membershipStatus");
+              } else {
+                params.set("membershipStatus", nextValue);
+              }
+              router.push(`/portal${params.size ? `?${params.toString()}` : ""}`);
+            }}
+            value={activeMembershipStatus}
+          >
+            <option value="active">active</option>
+            <option value="inactive">suspended</option>
+            <option value="expired">expired</option>
+            <option value="ended">ended</option>
+            <option value="pending">pending</option>
+            <option value="all">all</option>
+          </select>{" "}
+          patients. <strong>{matchedPatients}</strong> of{" "}
           <strong>{totalPatients}</strong> accessible patients
         </span>
         {submittedQuery ? (

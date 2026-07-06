@@ -1,10 +1,15 @@
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
+import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import {
+  derivePatientLifecycleStatus,
+  formatPatientLifecycleStatusLabel,
+} from "@/apps/api/lib/portal/patientLifecycle";
 import {
   PortalPatientInviteDoc,
   syncExpiredPatientInvites,
@@ -18,6 +23,14 @@ type UserStaffDoc = {
   lastName?: string;
   principalId: string;
   title?: string;
+};
+
+type PatientMembershipDoc = {
+  _id: ObjectId;
+  assignments?: Array<{
+    endsAt?: Date | string | null;
+    status?: string | null;
+  }>;
 };
 
 function formatActorName(parts: Array<string | null | undefined>) {
@@ -121,10 +134,30 @@ export async function GET(req: NextRequest) {
     );
     const careTeamLabelById = new Map(scope.careTeams.map((item) => [item.id, item.label]));
     const facilityLabelById = new Map(scope.facilities.map((item) => [item.id, item.label]));
+    const patientIds = invites.map((invite) => invite.patientId);
+    const patientDocs = patientIds.length
+      ? await db
+          .collection<PatientMembershipDoc>(COLLECTIONS.Patients)
+          .find(
+            { _id: { $in: patientIds } },
+            { projection: { _id: 1, assignments: 1 } },
+          )
+          .toArray()
+      : [];
+    const patientById = new Map(
+      patientDocs.map((doc) => [doc._id.toHexString(), doc] as const),
+    );
 
     return ok({
       items: invites.map((invite) => {
         const canMutate = invite.status !== "activated" && invite.status !== "revoked";
+        const patientDoc = patientById.get(invite.patientId.toHexString());
+        const membershipLifecycleStatus =
+          invite.status === "activated"
+            ? derivePatientLifecycleStatus({
+                assignments: patientDoc?.assignments,
+              })
+            : null;
         return {
           activatedAt: invite.activatedAt?.toISOString() ?? null,
           activationCodeMasked: invite.activationCodeMasked,
@@ -149,6 +182,29 @@ export async function GET(req: NextRequest) {
           id: invite._id.toHexString(),
           invitedAt: invite.invitedAt?.toISOString() ?? null,
           lastName: invite.lastName,
+          membershipAccessEndsAt:
+            membershipLifecycleStatus && patientDoc?.assignments?.length
+              ? (() => {
+                  const activeLike =
+                    patientDoc.assignments.find(
+                      (assignment) =>
+                        assignment.status === "active" && assignment.endsAt,
+                    ) ??
+                    patientDoc.assignments[0] ??
+                    null;
+                  if (!activeLike?.endsAt) {
+                    return null;
+                  }
+                  const value =
+                    activeLike.endsAt instanceof Date
+                      ? activeLike.endsAt
+                      : new Date(activeLike.endsAt);
+                  return Number.isNaN(value.getTime()) ? null : value.toISOString();
+                })()
+              : null,
+          membershipStatus:
+            membershipLifecycleStatus &&
+            formatPatientLifecycleStatusLabel(membershipLifecycleStatus),
           nhsNumber: invite.nhsNumber ?? null,
           patientId: invite.patientId.toHexString(),
           principalId: invite.principalId,

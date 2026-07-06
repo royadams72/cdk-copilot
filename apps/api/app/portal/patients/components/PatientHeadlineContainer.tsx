@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import styles from "@/apps/api/app/portal/portal.module.css";
 
@@ -9,6 +10,7 @@ type PatientHeadlineContainerProps = {
   backLabel: string;
   headline: string;
   subheadline?: string | null;
+  warningLabel?: ReactNode;
 };
 
 export default function PatientHeadlineContainer({
@@ -16,9 +18,8 @@ export default function PatientHeadlineContainer({
   backLabel,
   headline,
   subheadline,
+  warningLabel,
 }: PatientHeadlineContainerProps) {
-  console.log("PatientHeadlineContainer: fired");
-
   return (
     <div className={styles.patientHeadlineContainer}>
       <Link className={styles.patientBackLink} href={backHref} prefetch={false}>
@@ -34,7 +35,17 @@ export default function PatientHeadlineContainer({
             <div className={styles.patientHeadlineText}>{headline}</div>
           </div>
           {subheadline ? (
-            <p className={styles.patientHeadlineMeta}>{subheadline}</p>
+            <p className={styles.patientHeadlineMeta}>
+              {subheadline}
+              {warningLabel ? (
+                <>
+                  {" "}
+                  <span className={styles.patientHeadlineWarning}>
+                    {warningLabel}
+                  </span>
+                </>
+              ) : null}
+            </p>
           ) : null}
         </div>
       </div>

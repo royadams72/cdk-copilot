@@ -36,6 +36,8 @@ type InviteItem = {
   id: string;
   invitedAt: string | null;
   lastName: string;
+  membershipAccessEndsAt: string | null;
+  membershipStatus: string | null;
   nhsNumber: string | null;
   patientId: string;
   principalId: string;
@@ -135,7 +137,7 @@ export default function PortalPatientInvitesPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "open" | InviteStatus
-  >("open");
+  >("all");
   const [query, setQuery] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
@@ -335,7 +337,7 @@ export default function PortalPatientInvitesPage() {
             <h3 className={styles.dataScreenTitle}>Invite queue</h3>
             <p className={styles.dataScreenCaption}>
               Showing {filteredItems.length} of {items.length} invite
-              {items.length === 1 ? "" : "s"}.
+              {items.length === 1 ? "" : "s"} across all statuses.
             </p>
           </div>
 
@@ -356,8 +358,8 @@ export default function PortalPatientInvitesPage() {
               }
               value={statusFilter}
             >
-              <option value="open">Open invites</option>
               <option value="all">All statuses</option>
+              <option value="open">Open invites</option>
               <option value="pending_review">Pending send</option>
               <option value="invited">Invited</option>
               <option value="expired">Expired</option>
@@ -429,6 +431,11 @@ export default function PortalPatientInvitesPage() {
                             ? `Sent ${formatDateTime(item.invitedAt)}`
                             : "Not sent yet"}
                       </div>
+                      {item.membershipStatus ? (
+                        <div className={styles.tableSubtleText}>
+                          Membership {item.membershipStatus}
+                        </div>
+                      ) : null}
                       <div className={styles.tableSubtleText}>
                         Updated {formatDateTime(item.updatedAt)}
                       </div>
@@ -452,7 +459,9 @@ export default function PortalPatientInvitesPage() {
                     <td>
                       <strong>{item.durationMonths} months</strong>
                       <div className={styles.tableSubtleText}>
-                        Patient {item.patientId.slice(-6)}
+                        {item.membershipAccessEndsAt
+                          ? `Access ends ${formatDateTime(item.membershipAccessEndsAt)}`
+                          : `Patient ${item.patientId.slice(-6)}`}
                       </div>
                     </td>
                     <td>
