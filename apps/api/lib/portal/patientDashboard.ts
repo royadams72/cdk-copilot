@@ -439,6 +439,19 @@ function formatMembershipStatus(
   return "Active";
 }
 
+function isAccessEndingSoon(patient: PortalPatientDetail) {
+  const activeAssignment =
+    patient.assignments.find((assignment) => assignment.status === "active") ??
+    null;
+
+  if (!activeAssignment?.endsAt) {
+    return false;
+  }
+
+  const diffMs = new Date(activeAssignment.endsAt).getTime() - Date.now();
+  return diffMs >= 0 && diffMs <= 30 * DAY_MS;
+}
+
 export async function loadPortalPatientDashboardQueryResult(
   db: Db,
   patientObjectId: ObjectId,
@@ -615,6 +628,7 @@ export function buildPortalPatientDashboard(input: {
           formatDisplayDate(input.patient.accessEndsAt, {
             fallback: "Not set",
           }) ?? "Not set",
+        meta: isAccessEndingSoon(input.patient) ? "Ending soon" : null,
       },
       {
         href: `/portal/patients/${input.patientId}/care-plans`,

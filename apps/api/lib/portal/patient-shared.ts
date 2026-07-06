@@ -34,13 +34,24 @@ export type PortalPatientAdvancedFilters = {
   stage: string;
 };
 
-export const PORTAL_PATIENT_MEMBERSHIP_STATUS_FILTERS = [
+export const PORTAL_PATIENT_MEMBERSHIP_STATUSES = [
   "active",
   "inactive",
   "expired",
   "ended",
   "pending",
   "unassigned",
+] as const;
+
+export type PortalPatientMembershipStatus =
+  (typeof PORTAL_PATIENT_MEMBERSHIP_STATUSES)[number];
+
+export const PORTAL_PATIENT_MEMBERSHIP_STATUS_FILTERS = [
+  "active",
+  "inactive",
+  "expired",
+  "ended",
+  "pending",
   "all",
 ] as const;
 
@@ -57,7 +68,7 @@ export type PortalPatientListItem = {
   facilityId: string | null;
   flags: string[];
   lastContactAt: string | null;
-  membershipStatus: PortalPatientMembershipStatusFilter;
+  membershipStatus: PortalPatientMembershipStatus;
   name: string;
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];

@@ -66,6 +66,51 @@ function actionToEvent(action: z.infer<typeof Body>["action"]): TPatientMembersh
   }
 }
 
+function getBlockedActionMessage(
+  currentStatus: ReturnType<typeof mapMembershipSnapshot>["computedStatus"],
+  action: z.infer<typeof Body>["action"],
+) {
+  switch (action) {
+    case "extend":
+      if (currentStatus === "inactive") {
+        return "This membership is suspended. Reactivate it instead of extending it.";
+      }
+      if (
+        currentStatus === "ended" ||
+        currentStatus === "expired" ||
+        currentStatus === "pending" ||
+        currentStatus === "unassigned"
+      ) {
+        return "Only an active membership can be extended.";
+      }
+      return null;
+    case "suspend":
+      if (
+        currentStatus === "inactive" ||
+        currentStatus === "ended" ||
+        currentStatus === "expired" ||
+        currentStatus === "pending" ||
+        currentStatus === "unassigned"
+      ) {
+        return "Only an active membership can be suspended.";
+      }
+      return null;
+    case "end":
+      if (currentStatus === "ended" || currentStatus === "unassigned") {
+        return "There is no live membership to end.";
+      }
+      return null;
+    case "reactivate":
+      if (currentStatus === "active" || currentStatus === "endingSoon") {
+        return "This membership is already active. Extend it if you need more time.";
+      }
+      if (currentStatus === "pending" || currentStatus === "unassigned") {
+        return "This membership cannot be reactivated from its current state.";
+      }
+      return null;
+  }
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ patientId: string }> },
@@ -133,9 +178,18 @@ export async function POST(
       user: caller,
     });
     const assignment = membershipContext.primaryAssignment;
+    const currentSnapshot = mapMembershipSnapshot(assignment);
 
     if (!assignment?.assignmentId) {
       return bad("No assignment found for this patient", { code: "assignment_not_found" }, 404);
+    }
+
+    const blockedActionMessage = getBlockedActionMessage(
+      currentSnapshot.computedStatus,
+      parsed.data.action,
+    );
+    if (blockedActionMessage) {
+      return bad(blockedActionMessage, { code: "membership_action_blocked" }, 400);
     }
 
     const now = new Date();

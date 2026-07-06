@@ -13,6 +13,7 @@ import {
   type PortalPatientDetail,
   type PortalPatientFilter,
   type PortalPatientListItem,
+  type PortalPatientMembershipStatus,
   type PortalPatientMembershipStatusFilter,
   type PortalPatientStat,
   type PortalPatientWorseningItem,
@@ -76,7 +77,7 @@ function isAssignmentWithinAccessWindow(
 
 export function getPortalPatientMembershipStatus(
   assignments: PortalPatientAssignment[] = [],
-): Exclude<PortalPatientMembershipStatusFilter, "all"> {
+): PortalPatientMembershipStatus {
   if (!assignments.length) {
     return "unassigned";
   }
@@ -373,6 +374,10 @@ function hasFlag(item: PortalPatientListItem, terms: string[]) {
 }
 
 function isEndingSoon(item: PortalPatientListItem) {
+  if (item.membershipStatus !== "active") {
+    return false;
+  }
+
   if (!item.accessEndsAt) {
     return false;
   }

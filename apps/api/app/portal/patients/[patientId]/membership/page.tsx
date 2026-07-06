@@ -52,6 +52,11 @@ type MembershipResponse = {
 };
 
 type ActionType = "extend" | "suspend" | "end" | "reactivate";
+type ActionGuardState = {
+  action: ActionType;
+  message: string;
+  title: string;
+} | null;
 
 function formatStatusLabel(status: MembershipStatus) {
   switch (status) {
@@ -105,10 +110,56 @@ export default function PortalPatientMembershipPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [action, setAction] = useState<ActionType>("extend");
+  const [actionGuard, setActionGuard] = useState<ActionGuardState>(null);
   const [months, setMonths] = useState<"3" | "6" | "12">("3");
   const [note, setNote] = useState("");
 
   const requiresMonths = action === "extend" || action === "reactivate";
+
+  function getInvalidActionMessage(
+    currentStatus: MembershipStatus,
+    nextAction: ActionType,
+  ) {
+    switch (nextAction) {
+      case "extend":
+        if (currentStatus === "inactive") {
+          return "This membership is suspended. Use Reactivate membership instead of Extend membership.";
+        }
+        if (
+          currentStatus === "ended" ||
+          currentStatus === "expired" ||
+          currentStatus === "pending" ||
+          currentStatus === "unassigned"
+        ) {
+          return "Extend membership only makes sense for an active membership that is still running.";
+        }
+        return null;
+      case "suspend":
+        if (
+          currentStatus === "inactive" ||
+          currentStatus === "ended" ||
+          currentStatus === "expired" ||
+          currentStatus === "pending" ||
+          currentStatus === "unassigned"
+        ) {
+          return "Only an active membership can be suspended.";
+        }
+        return null;
+      case "end":
+        if (currentStatus === "ended" || currentStatus === "unassigned") {
+          return "There is no live membership here to end.";
+        }
+        return null;
+      case "reactivate":
+        if (currentStatus === "active" || currentStatus === "endingSoon") {
+          return "This membership is already active. Use Extend membership if you want to add more time.";
+        }
+        if (currentStatus === "pending" || currentStatus === "unassigned") {
+          return "This membership cannot be reactivated from its current state.";
+        }
+        return null;
+    }
+  }
 
   useEffect(() => {
     if (status !== "authenticated" || !session || !params.patientId) {
@@ -320,7 +371,24 @@ export default function PortalPatientMembershipPage() {
               <span className={styles.carePlanFieldLabel}>Action</span>
               <select
                 className={styles.carePlanInput}
-                onChange={(event) => setAction(event.target.value as ActionType)}
+                onChange={(event) => {
+                  const nextAction = event.target.value as ActionType;
+                  const invalidMessage = getInvalidActionMessage(
+                    membership.computedStatus,
+                    nextAction,
+                  );
+
+                  if (invalidMessage) {
+                    setActionGuard({
+                      action: nextAction,
+                      message: invalidMessage,
+                      title: "This membership action is blocked",
+                    });
+                    return;
+                  }
+
+                  setAction(nextAction);
+                }}
                 value={action}
               >
                 <option value="extend">Extend membership</option>
@@ -408,6 +476,30 @@ export default function PortalPatientMembershipPage() {
           </div>
         )}
       </section>
+
+      {actionGuard ? (
+        <div
+          className={styles.warningModalBackdrop}
+          onClick={() => setActionGuard(null)}
+        >
+          <div
+            className={`${styles.modalCard} ${styles.modalWarning}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className={styles.modalTitle}>{actionGuard.title}</h3>
+            <p className={styles.modalCopy}>{actionGuard.message}</p>
+            <div className={styles.warningActions}>
+              <button
+                className={styles.buttonSecondarySmall}
+                onClick={() => setActionGuard(null)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

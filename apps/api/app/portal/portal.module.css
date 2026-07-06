@@ -647,6 +647,11 @@
   line-height: 22px;
 }
 
+.patientHeadlineWarning {
+  color: var(--portal-danger);
+  font-weight: 700;
+}
+
 .patientOverviewGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

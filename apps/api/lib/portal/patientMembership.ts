@@ -33,7 +33,14 @@ export type PortalPatientMembershipEventRow = {
 export type PortalPatientMembershipSnapshot = {
   assignmentId: string | null;
   careTeamId: string | null;
-  computedStatus: "active" | "endingSoon" | "expired" | "inactive" | "ended" | "pending";
+  computedStatus:
+    | "active"
+    | "endingSoon"
+    | "expired"
+    | "inactive"
+    | "ended"
+    | "pending"
+    | "unassigned";
   consentStatus: string | null;
   daysRemaining: number | null;
   endsAt: string | null;
@@ -53,7 +60,7 @@ export function computeMembershipStatus(
   assignment: PortalPatientAssignment | null | undefined,
 ): PortalPatientMembershipSnapshot["computedStatus"] {
   if (!assignment?.status) {
-    return "ended";
+    return "unassigned";
   }
 
   if (assignment.status === "pending") return "pending";

@@ -176,6 +176,15 @@ export default function PortalPatientDetailPage() {
         backLabel="Back to patient list"
         headline={dashboard?.headline ?? `Viewing ${patient.name}`}
         subheadline={dashboard?.subheadline}
+        warningLabel={
+          patient.membershipStatus === "active" &&
+          patient.accessEndsAt &&
+          new Date(patient.accessEndsAt).getTime() > Date.now() &&
+          new Date(patient.accessEndsAt).getTime() - Date.now() <=
+            30 * 24 * 60 * 60 * 1000
+            ? "Access ending soon"
+            : null
+        }
       />
 
       <PatientActionComponent dashboard={dashboard} patientId={patient.id} />

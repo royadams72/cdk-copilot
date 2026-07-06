@@ -543,7 +543,6 @@ function PortalDashboardContent() {
             <option value="expired">expired</option>
             <option value="ended">ended</option>
             <option value="pending">pending</option>
-            <option value="unassigned">unassigned</option>
             <option value="all">all</option>
           </select>{" "}
           patients. <strong>{matchedPatients}</strong> of{" "}
