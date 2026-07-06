@@ -404,6 +404,41 @@ function buildCarePlanSnapshot(input: {
   };
 }
 
+function formatMembershipStatus(
+  patient: PortalPatientDetail,
+) {
+  const activeAssignment =
+    patient.assignments.find((assignment) => assignment.status === "active") ??
+    patient.assignments[0] ??
+    null;
+
+  if (!activeAssignment) {
+    return "Unassigned";
+  }
+
+  if (activeAssignment.status === "ended") {
+    return "Ended";
+  }
+  if (activeAssignment.status === "inactive") {
+    return "Suspended";
+  }
+  if (activeAssignment.status === "pending") {
+    return "Pending";
+  }
+
+  if (activeAssignment.endsAt) {
+    const diffMs = new Date(activeAssignment.endsAt).getTime() - Date.now();
+    if (diffMs <= 0) {
+      return "Expired";
+    }
+    if (diffMs <= 30 * DAY_MS) {
+      return "Ending soon";
+    }
+  }
+
+  return "Active";
+}
+
 export async function loadPortalPatientDashboardQueryResult(
   db: Db,
   patientObjectId: ObjectId,
@@ -518,6 +553,7 @@ export function buildPortalPatientDashboard(input: {
 
   return {
     actionCards: [
+      "Membership",
       "Nutrition Data",
       "Health Data",
       "Labs",
@@ -567,6 +603,19 @@ export function buildPortalPatientDashboard(input: {
     ],
     currentStatus: [
       { label: "CKD stage", value: input.patient.stage ?? "Not recorded" },
+      {
+        href: `/portal/patients/${input.patientId}/membership`,
+        label: "Membership",
+        value: formatMembershipStatus(input.patient),
+      },
+      {
+        href: `/portal/patients/${input.patientId}/membership`,
+        label: "Access ends",
+        value:
+          formatDisplayDate(input.patient.accessEndsAt, {
+            fallback: "Not set",
+          }) ?? "Not set",
+      },
       {
         href: `/portal/patients/${input.patientId}/care-plans`,
         label: "Active care plans",

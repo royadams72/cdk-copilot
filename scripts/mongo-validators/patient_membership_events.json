@@ -1,0 +1,62 @@
+{
+  "collMod": "patient_membership_events",
+  "validator": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": [
+        "action",
+        "actorPrincipalId",
+        "actorRole",
+        "assignmentId",
+        "careTeamId",
+        "createdAt",
+        "facilityId",
+        "nextStatus",
+        "note",
+        "orgId",
+        "patientId",
+        "previousStatus"
+      ],
+      "properties": {
+        "_id": { "bsonType": "objectId" },
+        "action": {
+          "enum": ["extended", "suspended", "ended", "reactivated"]
+        },
+        "actorPrincipalId": { "bsonType": "string", "minLength": 1 },
+        "actorRole": { "bsonType": "string", "minLength": 1 },
+        "assignmentId": { "bsonType": "string", "minLength": 1 },
+        "careTeamId": { "bsonType": "string", "minLength": 1 },
+        "createdAt": { "bsonType": "date" },
+        "facilityId": { "bsonType": "string", "minLength": 1 },
+        "nextEndsAt": { "bsonType": ["date", "null"] },
+        "nextStatus": {
+          "enum": ["pending", "active", "inactive", "ended"]
+        },
+        "note": { "bsonType": "string", "minLength": 1 },
+        "orgId": { "bsonType": "string", "minLength": 1 },
+        "patientId": { "bsonType": "objectId" },
+        "previousEndsAt": { "bsonType": ["date", "null"] },
+        "previousStatus": {
+          "enum": ["pending", "active", "inactive", "ended"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "validationLevel": "moderate",
+  "validationAction": "error",
+  "indexes": [
+    {
+      "key": { "patientId": 1, "createdAt": -1 },
+      "options": { "name": "byPatientCreatedAt" }
+    },
+    {
+      "key": { "orgId": 1, "createdAt": -1 },
+      "options": { "name": "byOrgCreatedAt" }
+    },
+    {
+      "key": { "patientId": 1, "assignmentId": 1, "createdAt": -1 },
+      "options": { "name": "byPatientAssignmentCreatedAt" }
+    }
+  ]
+}

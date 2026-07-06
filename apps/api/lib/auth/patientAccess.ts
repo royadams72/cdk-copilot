@@ -21,6 +21,7 @@ export function buildPatientAccessFilter(
   user: AssignmentAccessUser,
 ): Filter<PatientAssignmentFilterDoc> {
   const ors: Filter<PatientAssignmentFilterDoc>[] = [];
+  const nowIso = new Date().toISOString();
 
   const allowedPatientIds = (user.allowedPatientIds ?? [])
     .filter((id) => ObjectId.isValid(id))
@@ -49,6 +50,11 @@ export function buildPatientAccessFilter(
     ors.push({
       assignments: {
         $elemMatch: {
+          $and: [
+            {
+              $or: [{ endsAt: null }, { endsAt: { $exists: false } }, { endsAt: { $gt: nowIso } }],
+            },
+          ],
           orgId: user.orgId,
           status: "active",
           $or: assignmentOrs,

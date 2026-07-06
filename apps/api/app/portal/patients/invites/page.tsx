@@ -135,7 +135,7 @@ export default function PortalPatientInvitesPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "open" | InviteStatus
-  >("open");
+  >("all");
   const [query, setQuery] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
@@ -335,7 +335,7 @@ export default function PortalPatientInvitesPage() {
             <h3 className={styles.dataScreenTitle}>Invite queue</h3>
             <p className={styles.dataScreenCaption}>
               Showing {filteredItems.length} of {items.length} invite
-              {items.length === 1 ? "" : "s"}.
+              {items.length === 1 ? "" : "s"} across all statuses.
             </p>
           </div>
 
@@ -356,8 +356,8 @@ export default function PortalPatientInvitesPage() {
               }
               value={statusFilter}
             >
-              <option value="open">Open invites</option>
               <option value="all">All statuses</option>
+              <option value="open">Open invites</option>
               <option value="pending_review">Pending send</option>
               <option value="invited">Invited</option>
               <option value="expired">Expired</option>

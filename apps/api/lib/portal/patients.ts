@@ -8,10 +8,12 @@ import {
   buildPortalWorseningHref,
   mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
+  normalizePortalPatientMembershipStatusFilter,
   type PortalPatientAdvancedFilters,
   type PortalPatientDetail,
   type PortalPatientFilter,
   type PortalPatientListItem,
+  type PortalPatientMembershipStatusFilter,
   type PortalPatientStat,
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
@@ -26,7 +28,8 @@ type PortalPatientSummary = {
   lastContactAt?: Date | string | null;
 };
 
-type PortalPatientAssignment = {
+export type PortalPatientAssignment = {
+  assignmentId?: string;
   careTeamId?: string;
   consentStatus?: string;
   endsAt?: Date | string | null;
@@ -53,8 +56,59 @@ export type RawPortalPatientDetailDoc = {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+function isAssignmentWithinAccessWindow(
+  assignment: PortalPatientAssignment | null | undefined,
+) {
+  if (!assignment) {
+    return false;
+  }
+
+  if (assignment.status !== "active") {
+    return false;
+  }
+
+  if (!assignment.endsAt) {
+    return true;
+  }
+
+  return new Date(assignment.endsAt).getTime() > Date.now();
+}
+
+export function getPortalPatientMembershipStatus(
+  assignments: PortalPatientAssignment[] = [],
+): Exclude<PortalPatientMembershipStatusFilter, "all"> {
+  if (!assignments.length) {
+    return "unassigned";
+  }
+
+  const primaryAssignment = getPrimaryAssignment(assignments);
+
+  if (!primaryAssignment?.status) {
+    return "unassigned";
+  }
+
+  switch (primaryAssignment.status) {
+    case "pending":
+      return "pending";
+    case "inactive":
+      return "inactive";
+    case "ended":
+      return "ended";
+    case "active":
+    default:
+      if (primaryAssignment.endsAt) {
+        const endsAt = new Date(primaryAssignment.endsAt);
+        if (!Number.isNaN(endsAt.getTime()) && endsAt.getTime() <= Date.now()) {
+          return "expired";
+        }
+      }
+      return "active";
+  }
+}
+
 export function buildPortalPatientAccessMatch(user: SessionUser) {
   const clauses: Record<string, unknown>[] = [];
+  const nowIso = new Date().toISOString();
 
   if (user.role === "admin" && !user.allowedPatientIds?.length) {
     return {};
@@ -78,7 +132,21 @@ export function buildPortalPatientAccessMatch(user: SessionUser) {
     clauses.push({ _id: { $in: allowedPatientIds } });
   } else {
     const assignmentMatch: Record<string, unknown> = {
-      status: { $in: ["active", "pending"] },
+      $or: [
+        { status: "pending" },
+        {
+          $and: [
+            { status: "active" },
+            {
+              $or: [
+                { endsAt: null },
+                { endsAt: { $exists: false } },
+                { endsAt: { $gt: nowIso } },
+              ],
+            },
+          ],
+        },
+      ],
     };
 
     if (user.orgId) {
@@ -143,8 +211,9 @@ export function buildPortalPatientDetailPipeline(match: Document) {
   ];
 }
 
-function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
+export function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
   return (
+    assignments.find((assignment) => isAssignmentWithinAccessWindow(assignment)) ??
     assignments.find((assignment) => assignment.status === "active") ??
     assignments[0] ??
     null
@@ -218,6 +287,7 @@ export function mapPortalPatientListItem(raw: {
     facilityId: primaryAssignment?.facilityId ?? null,
     flags: raw.flags ?? [],
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
+    membershipStatus: getPortalPatientMembershipStatus(raw.assignments ?? []),
     name: normalizeName(raw.pii ?? {}),
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
@@ -417,7 +487,11 @@ export function matchesPortalPatientAdvancedFilters(
     ) &&
     matchesPortalPatientStage(item, filters.stage) &&
     matchesPortalPatientAssignmentValue(item.careTeamId, filters.careTeamId) &&
-    matchesPortalPatientAssignmentValue(item.facilityId, filters.facilityId)
+    matchesPortalPatientAssignmentValue(item.facilityId, filters.facilityId) &&
+    (normalizePortalPatientMembershipStatusFilter(filters.membershipStatus) ===
+      "all" ||
+      item.membershipStatus ===
+        normalizePortalPatientMembershipStatusFilter(filters.membershipStatus))
   );
 }
 

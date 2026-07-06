@@ -12,7 +12,10 @@ import {
   mapPortalPatientListItemsWithWorsening,
   sortPortalPatients,
 } from "@/apps/api/lib/portal/patients";
-import { normalizePortalPatientFilter } from "@/apps/api/lib/portal/patient-shared";
+import {
+  normalizePortalPatientFilter,
+  normalizePortalPatientMembershipStatusFilter,
+} from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
@@ -52,6 +55,9 @@ export async function GET(req: NextRequest) {
     const dateOfBirth = req.nextUrl.searchParams.get("dob")?.trim() ?? "";
     const filter = normalizePortalPatientFilter(
       req.nextUrl.searchParams.get("filter"),
+    );
+    const membershipStatus = normalizePortalPatientMembershipStatusFilter(
+      req.nextUrl.searchParams.get("membershipStatus"),
     );
     const stage = req.nextUrl.searchParams.get("stage")?.trim() ?? "";
     const careTeamId = req.nextUrl.searchParams.get("careTeamId")?.trim() ?? "";
@@ -104,6 +110,7 @@ export async function GET(req: NextRequest) {
         dateOfBirth,
         facilityId,
         filter,
+        membershipStatus,
         query,
         stage,
       }),
@@ -114,6 +121,7 @@ export async function GET(req: NextRequest) {
       dateOfBirth,
       filter,
       facilityId,
+      membershipStatus,
       matchedPatients: filteredPatients.length,
       patients: filteredPatients,
       query,
