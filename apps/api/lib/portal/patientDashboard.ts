@@ -1,4 +1,9 @@
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
+import {
+  derivePatientLifecycleStatus,
+  formatPatientLifecycleStatusLabel,
+  getPrimaryAssignment,
+} from "@/apps/api/lib/portal/patientLifecycle";
 import type {
   PortalPatientAttentionItem,
   PortalPatientDashboardData,
@@ -220,7 +225,6 @@ function buildAttentionItems(input: {
   mealLoggingDays: number;
   patientId: string;
   weightLoggingDays: number;
-  daysSinceLastContact: number | null;
   reviewDueCount: number;
 }): PortalPatientAttentionItem[] {
   const items: PortalPatientAttentionItem[] = [];
@@ -263,15 +267,6 @@ function buildAttentionItems(input: {
       detail: "No weight reading has been logged in the last 14 days.",
       href: `/portal/patients/${input.patientId}/health`,
       title: "Missing recent weight data",
-      tone: "warning",
-    });
-  }
-
-  if (input.daysSinceLastContact !== null && input.daysSinceLastContact >= 14) {
-    items.push({
-      detail: `Last contact was ${input.daysSinceLastContact} day${input.daysSinceLastContact === 1 ? "" : "s"} ago.`,
-      href: `/portal/patients/${input.patientId}/nutrition`,
-      title: "Patient may be disengaged",
       tone: "warning",
     });
   }
@@ -404,52 +399,18 @@ function buildCarePlanSnapshot(input: {
   };
 }
 
-function formatMembershipStatus(
-  patient: PortalPatientDetail,
-) {
-  const activeAssignment =
-    patient.assignments.find((assignment) => assignment.status === "active") ??
-    patient.assignments[0] ??
-    null;
-
-  if (!activeAssignment) {
-    return "Unassigned";
-  }
-
-  if (activeAssignment.status === "ended") {
-    return "Ended";
-  }
-  if (activeAssignment.status === "inactive") {
-    return "Suspended";
-  }
-  if (activeAssignment.status === "pending") {
-    return "Pending";
-  }
-
-  if (activeAssignment.endsAt) {
-    const diffMs = new Date(activeAssignment.endsAt).getTime() - Date.now();
-    if (diffMs <= 0) {
-      return "Expired";
-    }
-    if (diffMs <= 30 * DAY_MS) {
-      return "Ending soon";
-    }
-  }
-
-  return "Active";
+function formatMembershipStatus(patient: PortalPatientDetail) {
+  return formatPatientLifecycleStatusLabel(
+    derivePatientLifecycleStatus({ assignments: patient.assignments }),
+  );
 }
 
 function isAccessEndingSoon(patient: PortalPatientDetail) {
-  const activeAssignment =
-    patient.assignments.find((assignment) => assignment.status === "active") ??
-    null;
-
-  if (!activeAssignment?.endsAt) {
-    return false;
-  }
-
-  const diffMs = new Date(activeAssignment.endsAt).getTime() - Date.now();
-  return diffMs >= 0 && diffMs <= 30 * DAY_MS;
+  return (
+    derivePatientLifecycleStatus({
+      assignment: getPrimaryAssignment(patient.assignments),
+    }) === "endingSoon"
+  );
 }
 
 export async function loadPortalPatientDashboardQueryResult(
@@ -558,11 +519,6 @@ export function buildPortalPatientDashboard(input: {
     (plan) => plan.status === "active",
   ).length;
   const reviewDueCount = carePlans.filter(isReviewDue).length;
-  const daysSinceLastContact = input.patient.lastContactAt
-    ? Math.floor(
-        (Date.now() - new Date(input.patient.lastContactAt).getTime()) / DAY_MS,
-      )
-    : null;
 
   return {
     actionCards: [
@@ -583,7 +539,6 @@ export function buildPortalPatientDashboard(input: {
       activeCarePlan,
       activeCarePlanCount,
       bloodPressureLoggingDays,
-      daysSinceLastContact,
       latestBloodPressure,
       latestWeight,
       mealLoggingDays,
@@ -699,10 +654,6 @@ export function buildPortalPatientDashboard(input: {
       typeof clinical?.egfrCurrent === "number"
         ? `eGFR ${clinical.egfrCurrent}`
         : "eGFR not recorded"
-    } • ${
-      input.patient.lastContactAt
-        ? `last contact ${formatDisplayDate(input.patient.lastContactAt)}`
-        : "no last-contact date"
-    }`,
+    } • ${formatMembershipStatus(input.patient)}`,
   };
 }

@@ -19,6 +19,11 @@ import {
   type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
+  derivePatientLifecycleStatus,
+  getPrimaryAssignment,
+  normalizeLifecycleStatusToMembershipStatus,
+} from "@/apps/api/lib/portal/patientLifecycle";
+import {
   loadActivePortalWorseningItemsByPatientId,
   syncPatientWorseningTrendSnapshots,
 } from "@/apps/api/lib/portal/worseningSnapshots";
@@ -57,54 +62,13 @@ export type RawPortalPatientDetailDoc = {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-function isAssignmentWithinAccessWindow(
-  assignment: PortalPatientAssignment | null | undefined,
-) {
-  if (!assignment) {
-    return false;
-  }
-
-  if (assignment.status !== "active") {
-    return false;
-  }
-
-  if (!assignment.endsAt) {
-    return true;
-  }
-
-  return new Date(assignment.endsAt).getTime() > Date.now();
-}
 
 export function getPortalPatientMembershipStatus(
   assignments: PortalPatientAssignment[] = [],
 ): PortalPatientMembershipStatus {
-  if (!assignments.length) {
-    return "unassigned";
-  }
-
-  const primaryAssignment = getPrimaryAssignment(assignments);
-
-  if (!primaryAssignment?.status) {
-    return "unassigned";
-  }
-
-  switch (primaryAssignment.status) {
-    case "pending":
-      return "pending";
-    case "inactive":
-      return "inactive";
-    case "ended":
-      return "ended";
-    case "active":
-    default:
-      if (primaryAssignment.endsAt) {
-        const endsAt = new Date(primaryAssignment.endsAt);
-        if (!Number.isNaN(endsAt.getTime()) && endsAt.getTime() <= Date.now()) {
-          return "expired";
-        }
-      }
-      return "active";
-  }
+  return normalizeLifecycleStatusToMembershipStatus(
+    derivePatientLifecycleStatus({ assignments }),
+  );
 }
 
 export function buildPortalPatientAccessMatch(user: SessionUser) {
@@ -210,15 +174,6 @@ export function buildPortalPatientDetailPipeline(match: Document) {
       },
     },
   ];
-}
-
-export function getPrimaryAssignment(assignments: PortalPatientAssignment[] = []) {
-  return (
-    assignments.find((assignment) => isAssignmentWithinAccessWindow(assignment)) ??
-    assignments.find((assignment) => assignment.status === "active") ??
-    assignments[0] ??
-    null
-  );
 }
 
 function normalizeName(pii: PortalPatientPii) {

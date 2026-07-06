@@ -7,6 +7,7 @@ import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/Por
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
+import { formatPatientLifecycleStatusLabel } from "@/apps/api/lib/portal/patientLifecycle";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type MembershipStatus =
@@ -33,6 +34,7 @@ type MembershipSnapshot = {
 
 type MembershipEvent = {
   action: "extended" | "suspended" | "ended" | "reactivated";
+  actorName: string | null;
   actorPrincipalId: string;
   actorRole: string;
   createdAt: string;
@@ -52,30 +54,21 @@ type MembershipResponse = {
 };
 
 type ActionType = "extend" | "suspend" | "end" | "reactivate";
+type ActionSelectValue = "" | ActionType;
+type DurationSelectValue = "" | "3" | "6" | "12";
 type ActionGuardState = {
   action: ActionType;
   message: string;
   title: string;
 } | null;
+type FormErrors = {
+  action?: string;
+  months?: string;
+  note?: string;
+};
 
 function formatStatusLabel(status: MembershipStatus) {
-  switch (status) {
-    case "endingSoon":
-      return "Ending soon";
-    case "inactive":
-      return "Suspended";
-    case "ended":
-      return "Ended";
-    case "expired":
-      return "Expired";
-    case "pending":
-      return "Pending";
-    case "unassigned":
-      return "Unassigned";
-    case "active":
-    default:
-      return "Active";
-  }
+  return formatPatientLifecycleStatusLabel(status);
 }
 
 function formatActionLabel(action: MembershipEvent["action"]) {
@@ -92,11 +85,16 @@ function formatActionLabel(action: MembershipEvent["action"]) {
 }
 
 function formatTransitionLabel(event: MembershipEvent) {
+  const previous = formatPatientLifecycleStatusLabel(
+    event.previousStatus as MembershipStatus,
+  );
+  const next = formatPatientLifecycleStatusLabel(event.nextStatus as MembershipStatus);
+
   if (event.action === "extended" && event.previousStatus === event.nextStatus) {
-    return `${event.previousStatus} membership extended`;
+    return `${previous} membership extended`;
   }
 
-  return `${event.previousStatus} to ${event.nextStatus}`;
+  return `${previous} to ${next}`;
 }
 
 export default function PortalPatientMembershipPage() {
@@ -109,10 +107,11 @@ export default function PortalPatientMembershipPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [action, setAction] = useState<ActionType>("extend");
+  const [action, setAction] = useState<ActionSelectValue>("");
   const [actionGuard, setActionGuard] = useState<ActionGuardState>(null);
-  const [months, setMonths] = useState<"3" | "6" | "12">("3");
+  const [months, setMonths] = useState<DurationSelectValue>("");
   const [note, setNote] = useState("");
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const requiresMonths = action === "extend" || action === "reactivate";
 
@@ -219,6 +218,10 @@ export default function PortalPatientMembershipPage() {
   }, [params.patientId, session, status]);
 
   const actionSummary = useMemo(() => {
+    if (!action) {
+      return "Select a membership action before saving.";
+    }
+
     switch (action) {
       case "extend":
         return "Extend access by adding more time to the current end date.";
@@ -231,8 +234,31 @@ export default function PortalPatientMembershipPage() {
     }
   }, [action]);
 
+  function validateForm() {
+    const nextErrors: FormErrors = {};
+
+    if (!action) {
+      nextErrors.action = "Select a membership action.";
+    }
+
+    if (requiresMonths && !months) {
+      nextErrors.months = "Select a duration.";
+    }
+
+    if (note.trim().length < 3) {
+      nextErrors.note = "Enter a short note of at least 3 characters.";
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
   async function submitAction() {
-    if (!session || !params.patientId || !note.trim()) {
+    if (!session || !params.patientId) {
+      return;
+    }
+
+    if (!validateForm() || !action) {
       return;
     }
 
@@ -246,7 +272,7 @@ export default function PortalPatientMembershipPage() {
         {
           body: JSON.stringify({
             action,
-            ...(requiresMonths ? { months } : {}),
+            ...(requiresMonths && months ? { months } : {}),
             note: note.trim(),
           }),
           headers: {
@@ -272,7 +298,10 @@ export default function PortalPatientMembershipPage() {
       setEvents(body.data.events);
       setMembership(body.data.membership);
       setPatientName(body.data.patient.name);
+      setAction("");
+      setMonths("");
       setNote("");
+      setFormErrors({});
       setMessage("Membership updated.");
     } catch (nextError) {
       setError(
@@ -370,9 +399,20 @@ export default function PortalPatientMembershipPage() {
             <label className={styles.carePlanFormGroup}>
               <span className={styles.carePlanFieldLabel}>Action</span>
               <select
-                className={styles.carePlanInput}
+                className={`${styles.carePlanInput} ${
+                  formErrors.action ? styles.portalFieldInputError : ""
+                }`}
                 onChange={(event) => {
-                  const nextAction = event.target.value as ActionType;
+                  const nextAction = event.target.value as ActionSelectValue;
+
+                  setFormErrors((current) => ({ ...current, action: undefined }));
+
+                  if (!nextAction) {
+                    setAction("");
+                    setMonths("");
+                    return;
+                  }
+
                   const invalidMessage = getInvalidActionMessage(
                     membership.computedStatus,
                     nextAction,
@@ -388,14 +428,25 @@ export default function PortalPatientMembershipPage() {
                   }
 
                   setAction(nextAction);
+                  if (nextAction !== "extend" && nextAction !== "reactivate") {
+                    setMonths("");
+                    setFormErrors((current) => ({
+                      ...current,
+                      months: undefined,
+                    }));
+                  }
                 }}
                 value={action}
               >
+                <option value="">Action</option>
                 <option value="extend">Extend membership</option>
                 <option value="suspend">Suspend access</option>
                 <option value="end">End membership</option>
                 <option value="reactivate">Reactivate membership</option>
               </select>
+              {formErrors.action ? (
+                <span className={styles.portalFieldError}>{formErrors.action}</span>
+              ) : null}
             </label>
 
             <p className={styles.dataScreenCaption}>{actionSummary}</p>
@@ -404,32 +455,52 @@ export default function PortalPatientMembershipPage() {
               <label className={styles.carePlanFormGroup}>
                 <span className={styles.carePlanFieldLabel}>Duration</span>
                 <select
-                  className={styles.carePlanInput}
-                  onChange={(event) => setMonths(event.target.value as "3" | "6" | "12")}
+                  className={`${styles.carePlanInput} ${
+                    formErrors.months ? styles.portalFieldInputError : ""
+                  }`}
+                  onChange={(event) => {
+                    setMonths(event.target.value as DurationSelectValue);
+                    setFormErrors((current) => ({
+                      ...current,
+                      months: undefined,
+                    }));
+                  }}
                   value={months}
                 >
+                  <option value="">Duration</option>
                   <option value="3">3 months</option>
                   <option value="6">6 months</option>
                   <option value="12">12 months</option>
                 </select>
+                {formErrors.months ? (
+                  <span className={styles.portalFieldError}>{formErrors.months}</span>
+                ) : null}
               </label>
             ) : null}
 
             <label className={styles.carePlanFormGroup}>
               <span className={styles.carePlanFieldLabel}>Note</span>
               <textarea
-                className={styles.carePlanInput}
-                onChange={(event) => setNote(event.target.value)}
+                className={`${styles.carePlanInput} ${
+                  formErrors.note ? styles.portalFieldInputError : ""
+                }`}
+                onChange={(event) => {
+                  setNote(event.target.value);
+                  setFormErrors((current) => ({ ...current, note: undefined }));
+                }}
                 placeholder="Add a short reason for the membership change"
                 rows={4}
                 value={note}
               />
+              {formErrors.note ? (
+                <span className={styles.portalFieldError}>{formErrors.note}</span>
+              ) : null}
             </label>
 
             <div className={styles.warningActions}>
               <button
                 className={styles.buttonPrimarySmall}
-                disabled={submitting || note.trim().length < 3}
+                disabled={submitting}
                 onClick={() => void submitAction()}
                 type="button"
               >
@@ -468,7 +539,7 @@ export default function PortalPatientMembershipPage() {
                 </span>
                 <span>
                   {formatDisplayDate(event.createdAt)} · {event.actorRole} ·{" "}
-                  {event.actorPrincipalId}
+                  {event.actorName ?? event.actorPrincipalId}
                 </span>
                 <span>Note: {event.note}</span>
               </div>

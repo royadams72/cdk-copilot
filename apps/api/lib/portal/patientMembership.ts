@@ -1,15 +1,17 @@
 import { Db, ObjectId } from "mongodb";
 
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { buildPortalPatientAccessMatch, buildPortalPatientDetailPipeline, getPrimaryAssignment, type RawPortalPatientDetailDoc } from "@/apps/api/lib/portal/patients";
+import {
+  derivePatientLifecycleStatus,
+  getPrimaryAssignment,
+} from "@/apps/api/lib/portal/patientLifecycle";
+import { buildPortalPatientAccessMatch, buildPortalPatientDetailPipeline, type RawPortalPatientDetailDoc } from "@/apps/api/lib/portal/patients";
 import type { PortalPatientAssignment } from "@/apps/api/lib/portal/patients";
 import type { PortalPatientDetail } from "@/apps/api/lib/portal/patient-shared";
 import { mapPortalPatientDetail } from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "core/server/constants/collections";
 import type { TPatientMembershipEventDoc } from "core/server/schemas/patientMembership";
 import type { TPatientMembershipAction } from "core/isomorphic/schemas/patient_membership_events";
-
-type AssignmentLike = PortalPatientAssignment;
 
 type PatientDoc = {
   _id: ObjectId;
@@ -18,8 +20,17 @@ type PatientDoc = {
   updatedAt?: Date;
 };
 
+type UserStaffDoc = {
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  principalId: string;
+  title?: string;
+};
+
 export type PortalPatientMembershipEventRow = {
   action: TPatientMembershipAction;
+  actorName: string | null;
   actorPrincipalId: string;
   actorRole: string;
   createdAt: string;
@@ -56,50 +67,48 @@ function toIso(value: string | Date | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-export function computeMembershipStatus(
-  assignment: PortalPatientAssignment | null | undefined,
-): PortalPatientMembershipSnapshot["computedStatus"] {
-  if (!assignment?.status) {
-    return "unassigned";
+export const computeMembershipStatus = derivePatientLifecycleStatus;
+
+function formatActorName(parts: Array<string | null | undefined>) {
+  const value = parts
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" ")
+    .trim();
+  return value || null;
+}
+
+function formatStaffDisplayName(doc: UserStaffDoc | null | undefined) {
+  if (!doc) {
+    return null;
   }
 
-  if (assignment.status === "pending") return "pending";
-  if (assignment.status === "inactive") return "inactive";
-  if (assignment.status === "ended") return "ended";
-
-  const endsAtIso = toIso(assignment.endsAt);
-  if (!endsAtIso) {
-    return "active";
-  }
-
-  const diffMs = new Date(endsAtIso).getTime() - Date.now();
-  if (diffMs <= 0) {
-    return "expired";
-  }
-  if (diffMs <= 30 * 24 * 60 * 60 * 1000) {
-    return "endingSoon";
-  }
-  return "active";
+  return (
+    doc.displayName?.trim() ||
+    formatActorName([doc.title, doc.firstName, doc.lastName]) ||
+    formatActorName([doc.firstName, doc.lastName]) ||
+    null
+  );
 }
 
 export function mapMembershipSnapshot(
   assignment: PortalPatientAssignment | null | undefined,
 ): PortalPatientMembershipSnapshot {
+  const computedStatus = computeMembershipStatus({ assignment });
   const endsAt = toIso(assignment?.endsAt);
   const daysRemaining =
-    endsAt && computeMembershipStatus(assignment) !== "expired"
+    endsAt && computedStatus !== "expired"
       ? Math.max(
           0,
           Math.ceil((new Date(endsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
         )
-      : computeMembershipStatus(assignment) === "expired"
+      : computedStatus === "expired"
         ? 0
         : null;
 
   return {
     assignmentId: assignment?.assignmentId ?? null,
     careTeamId: assignment?.careTeamId ?? null,
-    computedStatus: computeMembershipStatus(assignment),
+    computedStatus,
     consentStatus: assignment?.consentStatus ?? null,
     daysRemaining,
     endsAt,
@@ -175,8 +184,36 @@ export async function loadMembershipEvents(args: {
     .limit(20)
     .toArray();
 
+  const principalIds = [
+    ...new Set(rows.map((row) => row.actorPrincipalId).filter(Boolean)),
+  ];
+  const staffDocs = principalIds.length
+    ? await args.db
+        .collection<UserStaffDoc>(COLLECTIONS.UsersStaff)
+        .find(
+          { principalId: { $in: principalIds } },
+          {
+            projection: {
+              _id: 0,
+              displayName: 1,
+              firstName: 1,
+              lastName: 1,
+              principalId: 1,
+              title: 1,
+            },
+          },
+        )
+        .toArray()
+    : [];
+  const staffByPrincipalId = new Map(
+    staffDocs.map((doc) => [doc.principalId, doc] as const),
+  );
+
   return rows.map((row) => ({
     action: row.action,
+    actorName: formatStaffDisplayName(
+      staffByPrincipalId.get(row.actorPrincipalId),
+    ),
     actorPrincipalId: row.actorPrincipalId,
     actorRole: row.actorRole,
     createdAt:

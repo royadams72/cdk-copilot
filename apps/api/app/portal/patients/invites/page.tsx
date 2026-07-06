@@ -36,6 +36,8 @@ type InviteItem = {
   id: string;
   invitedAt: string | null;
   lastName: string;
+  membershipAccessEndsAt: string | null;
+  membershipStatus: string | null;
   nhsNumber: string | null;
   patientId: string;
   principalId: string;
@@ -429,6 +431,11 @@ export default function PortalPatientInvitesPage() {
                             ? `Sent ${formatDateTime(item.invitedAt)}`
                             : "Not sent yet"}
                       </div>
+                      {item.membershipStatus ? (
+                        <div className={styles.tableSubtleText}>
+                          Membership {item.membershipStatus}
+                        </div>
+                      ) : null}
                       <div className={styles.tableSubtleText}>
                         Updated {formatDateTime(item.updatedAt)}
                       </div>
@@ -452,7 +459,9 @@ export default function PortalPatientInvitesPage() {
                     <td>
                       <strong>{item.durationMonths} months</strong>
                       <div className={styles.tableSubtleText}>
-                        Patient {item.patientId.slice(-6)}
+                        {item.membershipAccessEndsAt
+                          ? `Access ends ${formatDateTime(item.membershipAccessEndsAt)}`
+                          : `Patient ${item.patientId.slice(-6)}`}
                       </div>
                     </td>
                     <td>
