@@ -1,5 +1,26 @@
-import { refreshSessionTokenOnce } from "@/lib/authSession";
+import {
+  handleMembershipInactiveSession,
+  refreshSessionTokenOnce,
+} from "@/lib/authSession";
 import { secureStorage } from "@/lib/secureStorage";
+
+async function hasMembershipInactiveCode(response: Response) {
+  try {
+    const data = (await response.clone().json()) as
+      | {
+          code?: string;
+          errors?: { code?: string };
+        }
+      | undefined;
+
+    return (
+      data?.code === "membership_inactive" ||
+      data?.errors?.code === "membership_inactive"
+    );
+  } catch {
+    return false;
+  }
+}
 
 export async function authFetch(input: string, init: RequestInit = {}) {
   const makeRequest = async () => {
@@ -19,6 +40,14 @@ export async function authFetch(input: string, init: RequestInit = {}) {
   };
 
   let response = await makeRequest();
+  if (
+    response.status === 403 &&
+    (await hasMembershipInactiveCode(response))
+  ) {
+    await handleMembershipInactiveSession();
+    return response;
+  }
+
   if (response.status !== 401) {
     return response;
   }
@@ -29,5 +58,11 @@ export async function authFetch(input: string, init: RequestInit = {}) {
   }
 
   response = await makeRequest();
+  if (
+    response.status === 403 &&
+    (await hasMembershipInactiveCode(response))
+  ) {
+    await handleMembershipInactiveSession();
+  }
   return response;
 }

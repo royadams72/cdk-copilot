@@ -11,8 +11,9 @@ import {
   TUserPII,
   TUsersAccount,
 } from "@ckd/core";
-import type { Db } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
+import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 
 export type AuthProvider =
   | "password"
@@ -54,6 +55,29 @@ export async function findPatientIdForPrincipal(db: Db, principalId: string) {
   }
 
   return undefined;
+}
+
+async function requireActivePatientMembership(db: Db, patientId: string) {
+  const patient = await db.collection(COLLECTIONS.Patients).findOne<{
+    assignments?: Array<{
+      endsAt?: Date | string | null;
+      status?: string | null;
+    }>;
+  }>(
+    { _id: new ObjectId(patientId) },
+    { projection: { assignments: 1 } },
+  );
+
+  const assignmentState = summarizeAssignmentState(
+    (patient?.assignments ?? []) as any,
+  );
+
+  if (!assignmentState.hasActiveAssignments) {
+    throw Object.assign(new Error("Your membership is no longer active."), {
+      code: "membership_inactive",
+      status: 403,
+    });
+  }
 }
 
 export async function requireUser(
@@ -188,6 +212,7 @@ export async function requireUser(
           status: 403,
         });
       }
+      await requireActivePatientMembership(db, patientId);
     }
 
     return {

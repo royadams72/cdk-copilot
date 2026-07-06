@@ -12,7 +12,14 @@ jest.mock("react-native", () => ({
   },
 }));
 
+jest.mock("expo-router", () => ({
+  router: {
+    replace: jest.fn(),
+  },
+}));
+
 import * as SecureStore from "expo-secure-store";
+import { router } from "expo-router";
 
 import {
   clearSessionToken,
@@ -32,6 +39,7 @@ const nativeSyncModule = (
     };
   }
 ).NativeModules.HealthConnectBackgroundSync;
+const mockedRouter = router as { replace: jest.Mock };
 
 describe("authSession", () => {
   beforeEach(() => {
@@ -95,5 +103,26 @@ describe("authSession", () => {
       "jwt-new",
       "refresh-new",
     );
+  });
+
+  it("clears auth and redirects when refresh returns membership inactive", async () => {
+    secureStore.getItemAsync.mockResolvedValueOnce("refresh-old");
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      json: async () => ({
+        errors: { code: "membership_inactive" },
+        message: "Your membership is no longer active.",
+        ok: false,
+      }),
+      ok: false,
+      status: 403,
+    });
+
+    const refreshed = await refreshSessionToken();
+
+    expect(refreshed).toBe(false);
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith("ckd_jwt");
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith("ckd_refresh");
+    expect(nativeSyncModule.clearAuthSession).toHaveBeenCalled();
+    expect(mockedRouter.replace).toHaveBeenCalledWith("/(auth)/access-ended");
   });
 });
