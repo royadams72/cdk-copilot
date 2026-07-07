@@ -21,6 +21,7 @@ type RefreshResponse = {
 let refreshPromise: Promise<boolean> | null = null;
 let membershipInactiveRedirectInFlight = false;
 let membershipInactiveSession = false;
+let authenticatedSessionReady = false;
 
 type HealthConnectBackgroundSyncModuleShape = {
   clearAuthSession?: () => Promise<boolean>;
@@ -78,6 +79,7 @@ export async function loadSessionToken() {
 }
 
 export async function clearSessionToken() {
+  authenticatedSessionReady = false;
   await secureStorage.removeItem("ckd_jwt");
   await secureStorage.removeItem("ckd_refresh");
   await nativeBackgroundSyncModule?.clearAuthSession?.();
@@ -92,8 +94,18 @@ export function resetMembershipInactiveSessionState() {
   membershipInactiveRedirectInFlight = false;
 }
 
+export function hasAuthenticatedSessionReady() {
+  return authenticatedSessionReady;
+}
+
+export function markAuthenticatedSessionReady() {
+  authenticatedSessionReady = true;
+  membershipInactiveSession = false;
+}
+
 export async function handleMembershipInactiveSession() {
   membershipInactiveSession = true;
+  authenticatedSessionReady = false;
   await clearSessionToken();
 
   // Clear cached RTK Query state so mounted screens stop retrying protected endpoints.
@@ -141,6 +153,7 @@ export async function refreshSessionToken() {
     await secureStorage.setItem("ckd_refresh", nextRefreshToken);
   }
   resetMembershipInactiveSessionState();
+  markAuthenticatedSessionReady();
   await syncNativeAuthSession(nextJwt, nextRefreshToken || refreshToken);
 
   return true;

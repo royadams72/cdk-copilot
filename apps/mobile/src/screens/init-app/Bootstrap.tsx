@@ -5,10 +5,12 @@ import { authFetch } from "@/lib/authFetch";
 import {
   clearSessionToken,
   loadSessionToken,
+  markAuthenticatedSessionReady,
   refreshSessionTokenOnce,
 } from "@/lib/authSession";
 import { API } from "@/constants/api";
 import { ThemedText } from "@/components/themed-text";
+import { syncAuthenticatedAppState } from "@/lib/pushNotifications";
 import { ActivityIndicator, View } from "react-native";
 import { styles } from "../dashboard/styles";
 import { ErrorState } from "../dashboard/Dashboard";
@@ -62,6 +64,8 @@ const Bootstrap = () => {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
+              markAuthenticatedSessionReady();
+              void syncAuthenticatedAppState();
               logPostAuthRouteDecision("bootstrap:refresh-only", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;
@@ -80,6 +84,8 @@ const Bootstrap = () => {
         const { res, data } = await restoreUserSession();
 
         if (data.ok) {
+          markAuthenticatedSessionReady();
+          void syncAuthenticatedAppState();
           logPostAuthRouteDecision("bootstrap", data ?? {});
           router.replace(resolvePostAuthRoute(data ?? {}) as never);
         } else if (res.status === 403 && hasMembershipInactiveCode(data)) {
@@ -91,6 +97,8 @@ const Bootstrap = () => {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
+              markAuthenticatedSessionReady();
+              void syncAuthenticatedAppState();
               logPostAuthRouteDecision("bootstrap:retry", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;
