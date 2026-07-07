@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
@@ -93,6 +93,20 @@ type CreateBatchResponse = {
   };
 };
 
+const CSV_TEMPLATE_HEADERS = [
+  "firstName",
+  "lastName",
+  "email",
+  "dateOfBirth",
+  "durationMonths",
+  "nhsNumber",
+] as const;
+
+const CSV_TEMPLATE_ROWS = [
+  ["Jane", "Doe", "jane.doe@example.com", "1980-04-15", "6", "9434765919"],
+  ["John", "Smith", "john.smith@example.com", "1972-11-09", "12", ""],
+];
+
 function readResponseErrorMessage(
   body: unknown,
   fallback: string,
@@ -107,6 +121,97 @@ function readResponseErrorMessage(
   };
 
   return value.message || value.error?.message || fallback;
+}
+
+function escapeCsvValue(value: string) {
+  if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
+    return `"${value.replace(/"/g, "\"\"")}"`;
+  }
+  return value;
+}
+
+function buildCsvTemplate() {
+  return [
+    CSV_TEMPLATE_HEADERS.join(","),
+    ...CSV_TEMPLATE_ROWS.map((row) => row.map(escapeCsvValue).join(",")),
+  ].join("\n");
+}
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === "\"") {
+      if (inQuotes && next === "\"") {
+        current += "\"";
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function parseCsvRows(source: string) {
+  const lines = source
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    throw new Error("The CSV file must include a header row and at least one patient row.");
+  }
+
+  const headers = parseCsvLine(lines[0]);
+  const expectedHeaders = [...CSV_TEMPLATE_HEADERS];
+  if (
+    headers.length !== expectedHeaders.length ||
+    headers.some((header, index) => header !== expectedHeaders[index])
+  ) {
+    throw new Error(
+      `Use the template headers exactly: ${expectedHeaders.join(", ")}`,
+    );
+  }
+
+  return lines.slice(1).map((line, index) => {
+    const values = parseCsvLine(line);
+    const row = Object.fromEntries(
+      expectedHeaders.map((header, valueIndex) => [header, values[valueIndex] ?? ""]),
+    ) as Record<(typeof CSV_TEMPLATE_HEADERS)[number], string>;
+
+    return {
+      dateOfBirth: row.dateOfBirth?.trim() ?? "",
+      durationMonths:
+        row.durationMonths === "3" ||
+        row.durationMonths === "6" ||
+        row.durationMonths === "12"
+          ? row.durationMonths
+          : "6",
+      email: row.email?.trim() ?? "",
+      firstName: row.firstName?.trim() ?? "",
+      id: `imported_${index}_${Math.random().toString(36).slice(2, 8)}`,
+      lastName: row.lastName?.trim() ?? "",
+      nhsNumber: row.nhsNumber?.trim() ?? "",
+    } satisfies IntakeRow;
+  });
 }
 
 const DEFAULT_ROW_COUNT = 5;
@@ -177,6 +282,7 @@ export default function PortalAddPatientPage() {
   const [careTeamError, setCareTeamError] = useState<string | null>(null);
   const [facilityError, setFacilityError] = useState<string | null>(null);
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const careTeamOptions = useMemo(
     () =>
@@ -407,6 +513,58 @@ export default function PortalAddPatientPage() {
     setFacilityError(null);
     setError(null);
     setModalState(null);
+  }
+
+  function downloadTemplate() {
+    const blob = new Blob([buildCsvTemplate()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ckd-copilot-patient-invite-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async function importCsvFile(file: File) {
+    const text = await file.text();
+    const importedRows = parseCsvRows(text);
+    if (!importedRows.length) {
+      throw new Error("The CSV file did not contain any patient rows.");
+    }
+
+    setRows([
+      ...importedRows,
+      ...Array.from(
+        { length: Math.max(0, DEFAULT_ROW_COUNT - importedRows.length) },
+        (_, index) => createEmptyRow(importedRows.length + index),
+      ),
+    ]);
+    setRowErrors({});
+    setError(null);
+    setModalState(null);
+  }
+
+  async function handleCsvUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      await importCsvFile(file);
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to import the CSV file",
+      );
+    } finally {
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
   }
 
   function handleRowBlur() {
@@ -679,6 +837,31 @@ export default function PortalAddPatientPage() {
           <p className={styles.dataScreenCaption}>
             First name, last name, email, date of birth, access duration, and optional NHS number.
           </p>
+        </div>
+
+        <input
+          accept=".csv,text/csv"
+          hidden
+          onChange={(event) => void handleCsvUpload(event)}
+          ref={csvInputRef}
+          type="file"
+        />
+
+        <div className={styles.portalButtonRow}>
+          <button
+            className={styles.buttonSecondarySmall}
+            onClick={downloadTemplate}
+            type="button"
+          >
+            Download template
+          </button>
+          <button
+            className={styles.buttonSecondarySmall}
+            onClick={() => csvInputRef.current?.click()}
+            type="button"
+          >
+            Import CSV
+          </button>
         </div>
 
         <div className={styles.portalIntakeRows}>

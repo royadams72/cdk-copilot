@@ -248,6 +248,10 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
+  membershipNoticeCard: {
+    borderColor: "rgba(234,179,8,0.35)",
+    backgroundColor: "rgba(250,204,21,0.12)",
+  },
   primaryActionButton: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,

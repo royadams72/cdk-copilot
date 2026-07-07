@@ -14,6 +14,8 @@ import {
   validateAuth,
 } from "@/apps/api/lib/auth/auth_token";
 import { ObjectId } from "mongodb";
+import { getPatientLifecycleSnapshot } from "@/apps/api/lib/portal/patientLifecycle";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { randomBytes } from "crypto";
 import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 import { updateScopes } from "@/apps/api/lib/utils/updateScopes";
@@ -111,7 +113,24 @@ export async function POST(req: NextRequest) {
       { projection: { _id: 1, assignments: 1 } },
     );
 
-    if (!patient)
+    if (res.doc.patientId instanceof ObjectId) {
+      await syncExpiredPatientMemberships({
+        db,
+        patientId: res.doc.patientId,
+      });
+    }
+
+    const refreshedPatient = await patients.findOne<{
+      _id: ObjectId;
+      assignments?: TPatientAssignment[];
+    }>(
+      {
+        _id: res.doc.patientId,
+      },
+      { projection: { _id: 1, assignments: 1 } },
+    );
+
+    if (!patient || !refreshedPatient)
       return NextResponse.json(
         { error: "There is no patient record", ok: false },
         { status: 400 },
@@ -215,12 +234,17 @@ export async function POST(req: NextRequest) {
       patientId: patient._id,
       status: "pending",
     });
-    const assignmentState = summarizeAssignmentState(patient.assignments);
+    const assignmentState = summarizeAssignmentState(
+      refreshedPatient.assignments,
+    );
     return NextResponse.json({
       activeAssignmentCount: assignmentState.activeAssignmentCount,
       hasActiveAssignments: assignmentState.hasActiveAssignments,
       hasPendingConsents: pendingConsentCount > 0,
       jwt,
+      membership: getPatientLifecycleSnapshot({
+        assignments: refreshedPatient.assignments,
+      }),
       onboardingCompleted: !!pii?.onboardingCompleted,
       onboardingSteps: pii?.onboardingSteps ?? [],
       nextOnboardingRoute: resolveOnboardingRoute(

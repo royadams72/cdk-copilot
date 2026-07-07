@@ -1,5 +1,7 @@
 import { Filter, ObjectId } from "mongodb";
 
+import { buildActiveAssignmentEndsAtFilter } from "@/apps/api/lib/utils/patientAssignmentDateFilters";
+
 type AssignmentAccessUser = {
   allowedPatientIds?: string[];
   careTeamIds?: string[];
@@ -21,7 +23,7 @@ export function buildPatientAccessFilter(
   user: AssignmentAccessUser,
 ): Filter<PatientAssignmentFilterDoc> {
   const ors: Filter<PatientAssignmentFilterDoc>[] = [];
-  const nowIso = new Date().toISOString();
+  const now = new Date();
 
   const allowedPatientIds = (user.allowedPatientIds ?? [])
     .filter((id) => ObjectId.isValid(id))
@@ -51,9 +53,7 @@ export function buildPatientAccessFilter(
       assignments: {
         $elemMatch: {
           $and: [
-            {
-              $or: [{ endsAt: null }, { endsAt: { $exists: false } }, { endsAt: { $gt: nowIso } }],
-            },
+            buildActiveAssignmentEndsAtFilter(now),
           ],
           orgId: user.orgId,
           status: "active",

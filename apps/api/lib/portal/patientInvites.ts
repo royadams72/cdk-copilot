@@ -120,21 +120,45 @@ export type PortalPatientInviteDoc = {
   updatedBy: string;
  };
 
-export async function syncExpiredPatientInvites(db: Db) {
+export async function syncExpiredPatientInvites(args: {
+  db: Db;
+  inviteScope?: {
+    careTeamIds?: string[];
+    facilityIds?: string[];
+    orgId?: string | null;
+  };
+}) {
   const now = new Date();
+  const filter: Record<string, unknown> = {
+    activationExpiresAt: { $lte: now },
+    status: { $in: ["pending_review", "invited"] },
+  };
 
-  await db.collection<PortalPatientInviteDoc>(COLLECTIONS.PatientInvites).updateMany(
-    {
-      activationExpiresAt: { $lte: now },
-      status: { $in: ["pending_review", "invited"] },
-    },
-    {
-      $set: {
-        status: "expired",
-        updatedAt: now,
+  if (args.inviteScope?.orgId) {
+    filter.orgId = args.inviteScope.orgId;
+  }
+
+  const facilityIds = args.inviteScope?.facilityIds?.filter(Boolean) ?? [];
+  if (facilityIds.length) {
+    filter.facilityId = { $in: facilityIds };
+  }
+
+  const careTeamIds = args.inviteScope?.careTeamIds?.filter(Boolean) ?? [];
+  if (careTeamIds.length) {
+    filter.careTeamId = { $in: careTeamIds };
+  }
+
+  await args.db
+    .collection<PortalPatientInviteDoc>(COLLECTIONS.PatientInvites)
+    .updateMany(
+      filter,
+      {
+        $set: {
+          status: "expired",
+          updatedAt: now,
+        },
       },
-    },
-  );
+    );
 }
 
 export function normalizeInviteEmail(value: string) {

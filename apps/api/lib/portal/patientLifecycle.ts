@@ -16,6 +16,13 @@ export type PortalPatientLifecycleStatus =
   | "pending"
   | "unassigned";
 
+export type PortalPatientLifecycleSnapshot = {
+  computedStatus: PortalPatientLifecycleStatus;
+  daysRemaining: number | null;
+  endsAt: string | null;
+  status: string | null;
+};
+
 export function getPrimaryAssignment<T extends AssignmentLike>(
   assignments: T[] = [],
   now = new Date(),
@@ -90,6 +97,50 @@ export function normalizeLifecycleStatusToMembershipStatus(
   status: PortalPatientLifecycleStatus,
 ): PortalPatientMembershipStatus {
   return status === "endingSoon" ? "active" : status;
+}
+
+export function getPatientLifecycleSnapshot(args: {
+  assignment?: AssignmentLike | null;
+  assignments?: AssignmentLike[];
+  endingSoonWindowDays?: number;
+  now?: Date;
+}): PortalPatientLifecycleSnapshot {
+  const now = args.now ?? new Date();
+  const assignment =
+    args.assignment ??
+    getPrimaryAssignment(args.assignments ?? [], now);
+  const endsAtDate =
+    assignment?.endsAt instanceof Date
+      ? assignment.endsAt
+      : assignment?.endsAt
+        ? new Date(assignment.endsAt)
+        : null;
+  const computedStatus = derivePatientLifecycleStatus({
+    assignment,
+    assignments: args.assignments,
+    endingSoonWindowDays: args.endingSoonWindowDays,
+    now,
+  });
+  const endsAt =
+    endsAtDate && !Number.isNaN(endsAtDate.getTime())
+      ? endsAtDate.toISOString()
+      : null;
+  const daysRemaining =
+    endsAt && computedStatus !== "expired"
+      ? Math.max(
+          0,
+          Math.ceil((new Date(endsAt).getTime() - now.getTime()) / DAY_MS),
+        )
+      : computedStatus === "expired"
+        ? 0
+        : null;
+
+  return {
+    computedStatus,
+    daysRemaining,
+    endsAt,
+    status: assignment?.status ?? null,
+  };
 }
 
 export function formatPatientLifecycleStatusLabel(

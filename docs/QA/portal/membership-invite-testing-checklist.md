@@ -35,6 +35,12 @@ Use one patient invite per scenario where possible so state changes are easy to 
    - status filter `Expired` finds it
    - resend/extend are still available
 
+6. Download/import template.
+   Expect:
+   - `Download template` returns a CSV with the required headers
+   - `Import CSV` hydrates the row grid from the file
+   - imported rows still go through normal validation and review before invite creation
+
 ### Activation flow
 
 1. Activate from the app with a valid code.
@@ -72,8 +78,9 @@ Use one patient invite per scenario where possible so state changes are easy to 
    Set assignment `status=active` and `endsAt` in the past.
    Expect:
    - patient remains visible in scoped patient queries
-   - membership filter `Expired` finds the patient
-   - membership page shows `Expired`
+   - the next membership sync converts the stored assignment to `Ended`
+   - membership history shows an automatic end note
+   - lifecycle filters/surfaces stop treating the patient as currently active
 
 4. Suspended.
    Use `Suspend access`.
@@ -96,12 +103,28 @@ Use one patient invite per scenario where possible so state changes are easy to 
    - new access end date is set
    - membership history shows reactivation
 
+7. App access ending soon.
+   Set assignment `status=active` and `endsAt` within the next 30 days.
+   Expect:
+   - patient can still use the app
+   - dashboard shows an `Access ending soon` notice
+   - notice includes the end date
+
+8. App access expired or ended.
+   Set assignment `status=active` with a past `endsAt`, or end the membership in the portal.
+   Expect:
+   - app session is cleared on next bootstrap or authenticated API call
+   - patient is routed to `Access no longer active`
+   - reactivating membership allows sign-in again
+
 ### History and labels
 
 1. Membership history actor names.
    Expect:
-   - history shows staff display name where a `users_staff` record exists
-   - falls back to principal id only when no staff name exists
+   - history shows invite events and membership events in one timeline
+   - staff actions show staff display name where a `users_staff` record exists
+   - patient activation is labelled as patient activity
+   - falls back to principal id only when no actor name exists
 
 2. Lifecycle labels.
    Expect the same wording everywhere:
@@ -127,3 +150,12 @@ Use one patient invite per scenario where possible so state changes are easy to 
    Expect:
    - subheadline shows `eGFR … • <membership status>`
    - access end row still shows `Ending soon` meta when applicable
+
+### Automation
+
+1. Cron/manual expiry sync.
+   Run `/api/membership/expire/run`.
+   Expect:
+   - overdue active assignments are converted to ended assignments
+   - an automatic membership history entry is created
+   - `Access ending soon` counts no longer include overdue memberships

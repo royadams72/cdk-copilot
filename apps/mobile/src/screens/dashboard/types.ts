@@ -1,3 +1,5 @@
+import type { MembershipLifecycleSnapshot } from "@/lib/membership";
+
 export type DashboardRadial = {
   id: string;
   label: string;
@@ -107,6 +109,7 @@ export type LabSummary = {
 
 export type DashboardData = {
   patientId: string;
+  membership: MembershipLifecycleSnapshot;
   summary: {
     ckdStage: string | null;
     egfrCurrent: number | null;
