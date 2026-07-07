@@ -9,6 +9,7 @@ import type {
 
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
+import { hasAuthenticatedSessionReady } from "@/lib/authSession";
 import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import { secureStorage } from "@/lib/secureStorage";
 
@@ -182,6 +183,19 @@ export async function syncPushToken() {
     console.error("syncPushToken failed", error);
     return false;
   }
+}
+
+export async function syncAuthenticatedAppState() {
+  if (!hasAuthenticatedSessionReady()) {
+    return;
+  }
+
+  await Promise.allSettled([
+    syncPushToken(),
+    syncCarePlanReminderNotifications(),
+    syncSleepReminderNotification(),
+    syncWorseningTrendNotifications(),
+  ]);
 }
 
 async function cancelCarePlanReminderNotifications() {

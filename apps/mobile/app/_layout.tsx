@@ -10,12 +10,14 @@ import { PersistGate } from "redux-persist/integration/react";
 
 import {
   markWorseningTrendViewed,
+  syncAuthenticatedAppState,
   syncCarePlanReminderNotifications,
-  syncPushToken,
-  syncSleepReminderNotification,
   syncWorseningTrendNotifications,
 } from "@/lib/pushNotifications";
-import { syncNativeAuthSessionMirrorFromSecureStore } from "@/lib/authSession";
+import {
+  hasAuthenticatedSessionReady,
+  syncNativeAuthSessionMirrorFromSecureStore,
+} from "@/lib/authSession";
 import { ensureNativeHealthConnectBackgroundSyncScheduled } from "@/lib/healthConnectNativeSync";
 import { store, persistor } from "@/store";
 
@@ -80,18 +82,11 @@ export default function RootLayout() {
       }
     }
 
-    async function syncNotificationState() {
-      await Promise.allSettled([
-        syncPushToken(),
-        syncCarePlanReminderNotifications(),
-        syncSleepReminderNotification(),
-        syncWorseningTrendNotifications(),
-      ]);
-    }
-
     void SystemUI.setBackgroundColorAsync("#FFFFFF");
     void syncNativeAuthSessionMirrorFromSecureStore();
-    void syncNotificationState();
+    if (hasAuthenticatedSessionReady()) {
+      void syncAuthenticatedAppState();
+    }
     void ensureNativeHealthConnectBackgroundSyncScheduled();
 
     void Notifications.getLastNotificationResponseAsync().then(
@@ -113,7 +108,7 @@ export default function RootLayout() {
 
     const appStateSubscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        void syncNotificationState();
+        void syncAuthenticatedAppState();
       }
     });
 
