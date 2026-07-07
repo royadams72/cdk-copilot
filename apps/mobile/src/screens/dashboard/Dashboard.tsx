@@ -37,6 +37,23 @@ function healthProviderName() {
   return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
 }
 
+function formatMembershipEndDate(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { data, error, isFetching, isLoading, refetch } = useGetDashboardQuery(
@@ -232,6 +249,24 @@ export default function Dashboard() {
               <ThemedText style={styles.subtleText}>{rangeSummary}</ThemedText>
             ) : null}
           </View>
+
+          {data?.membership.computedStatus === "endingSoon" ? (
+            <Card style={styles.membershipNoticeCard}>
+              <ThemedText type="defaultSemiBold">
+                Access ending soon
+              </ThemedText>
+              <ThemedText style={styles.helperText}>
+                {data.membership.endsAt
+                  ? `Your access is due to end on ${formatMembershipEndDate(
+                      data.membership.endsAt,
+                    )}.`
+                  : "Your current access window is due to end soon."}
+              </ThemedText>
+              <ThemedText style={styles.helperText}>
+                Keep following your care plan and contact your clinic if you think your access should continue.
+              </ThemedText>
+            </Card>
+          ) : null}
 
           {showCarePlanBanner && carePlanData?.latestUpdatedPlan ? (
             <Card style={styles.carePlanNotificationCard}>

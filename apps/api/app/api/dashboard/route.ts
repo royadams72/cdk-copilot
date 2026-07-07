@@ -5,6 +5,8 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { DAY_MS } from "@/apps/api/lib/constants/dashboard";
+import { getPatientLifecycleSnapshot } from "@/apps/api/lib/portal/patientLifecycle";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { getMappedNutritionTargets } from "@/apps/api/lib/utils/targets";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -26,6 +28,13 @@ type UserClinicalSummaryDoc = {
   lastClinicalUpdateAt?: Date | null;
 };
 
+type PatientMembershipDoc = {
+  assignments?: Array<{
+    endsAt?: Date | string | null;
+    status?: string | null;
+  }>;
+};
+
 export async function GET(req: NextRequest) {
   try {
     // Patients only have the default auth scopes, so rely on role + patient context.
@@ -41,12 +50,18 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
     const patientObjectId = new ObjectId(caller.patientId);
 
+    await syncExpiredPatientMemberships({
+      db,
+      patientId: patientObjectId,
+    });
+
     const [
       clinicalDoc,
       labDocs,
       nutritionDocs,
       medicationDocs,
       nutritionTargets,
+      patientDoc,
     ] = await Promise.all([
       db.collection<UserClinicalSummaryDoc>(COLLECTIONS.UsersClinical).findOne(
         { patientId: patientObjectId },
@@ -66,6 +81,10 @@ export async function GET(req: NextRequest) {
         orgId: caller.orgId,
         seedPrincipalId: caller.principalId,
       }),
+      db.collection<PatientMembershipDoc>(COLLECTIONS.Patients).findOne(
+        { _id: patientObjectId },
+        { projection: { assignments: 1 } },
+      ),
     ]);
 
     const scope = req.nextUrl.searchParams.get("scope");
@@ -104,6 +123,9 @@ export async function GET(req: NextRequest) {
     return ok({
       labs,
       medications,
+      membership: getPatientLifecycleSnapshot({
+        assignments: patientDoc?.assignments,
+      }),
       nutrition,
       patientId: caller.patientId,
       summary: {

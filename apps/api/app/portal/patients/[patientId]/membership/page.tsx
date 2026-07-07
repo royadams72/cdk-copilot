@@ -8,49 +8,15 @@ import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provi
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import { formatPatientLifecycleStatusLabel } from "@/apps/api/lib/portal/patientLifecycle";
+import type {
+  PortalPatientMembershipResponse,
+  PortalPatientMembershipSnapshot,
+  PortalPatientMembershipTimelineRow,
+} from "@/apps/api/lib/portal/patientMembership";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
-type MembershipStatus =
-  | "active"
-  | "endingSoon"
-  | "expired"
-  | "inactive"
-  | "ended"
-  | "pending"
-  | "unassigned";
-
-type MembershipSnapshot = {
-  assignmentId: string | null;
-  careTeamId: string | null;
-  computedStatus: MembershipStatus;
-  consentStatus: string | null;
-  daysRemaining: number | null;
-  endsAt: string | null;
-  facilityId: string | null;
-  orgId: string | null;
-  startsAt: string | null;
-  status: string | null;
-};
-
-type MembershipEvent = {
-  action: "extended" | "suspended" | "ended" | "reactivated";
-  actorName: string | null;
-  actorPrincipalId: string;
-  actorRole: string;
-  createdAt: string;
-  nextEndsAt: string | null;
-  nextStatus: string;
-  note: string;
-  previousEndsAt: string | null;
-  previousStatus: string;
-};
-
 type MembershipResponse = {
-  data: {
-    events: MembershipEvent[];
-    membership: MembershipSnapshot;
-    patient: { id: string; name: string };
-  };
+  data: PortalPatientMembershipResponse;
 };
 
 type ActionType = "extend" | "suspend" | "end" | "reactivate";
@@ -67,11 +33,11 @@ type FormErrors = {
   note?: string;
 };
 
-function formatStatusLabel(status: MembershipStatus) {
+function formatStatusLabel(status: PortalPatientMembershipSnapshot["computedStatus"]) {
   return formatPatientLifecycleStatusLabel(status);
 }
 
-function formatActionLabel(action: MembershipEvent["action"]) {
+function formatActionLabel(action: PortalPatientMembershipTimelineRow["action"]) {
   switch (action) {
     case "extended":
       return "Extended";
@@ -81,28 +47,27 @@ function formatActionLabel(action: MembershipEvent["action"]) {
       return "Ended";
     case "reactivated":
       return "Reactivated";
+    case "invite_created":
+      return "Invite created";
+    case "invite_sent":
+      return "Invite sent";
+    case "invite_activated":
+      return "Invite activated";
+    case "invite_expired":
+      return "Invite expired";
+    case "invite_revoked":
+      return "Invite revoked";
+    case "invite_cancelled":
+      return "Invite cancelled";
   }
-}
-
-function formatTransitionLabel(event: MembershipEvent) {
-  const previous = formatPatientLifecycleStatusLabel(
-    event.previousStatus as MembershipStatus,
-  );
-  const next = formatPatientLifecycleStatusLabel(event.nextStatus as MembershipStatus);
-
-  if (event.action === "extended" && event.previousStatus === event.nextStatus) {
-    return `${previous} membership extended`;
-  }
-
-  return `${previous} to ${next}`;
 }
 
 export default function PortalPatientMembershipPage() {
   const params = useParams<{ patientId: string }>();
   const { session, status } = usePortalAuthSession();
   const [patientName, setPatientName] = useState("Patient");
-  const [membership, setMembership] = useState<MembershipSnapshot | null>(null);
-  const [events, setEvents] = useState<MembershipEvent[]>([]);
+  const [membership, setMembership] = useState<PortalPatientMembershipSnapshot | null>(null);
+  const [events, setEvents] = useState<PortalPatientMembershipTimelineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +81,7 @@ export default function PortalPatientMembershipPage() {
   const requiresMonths = action === "extend" || action === "reactivate";
 
   function getInvalidActionMessage(
-    currentStatus: MembershipStatus,
+    currentStatus: PortalPatientMembershipSnapshot["computedStatus"],
     nextAction: ActionType,
   ) {
     switch (nextAction) {
@@ -515,7 +480,7 @@ export default function PortalPatientMembershipPage() {
         <div className={styles.listHeaderRow}>
           <span className={styles.listHeaderTitle}>Membership history</span>
           <span className={styles.listHeaderMeta}>
-            Recent extend, suspend, end, and reactivation actions
+            Invite and membership activity for this patient
           </span>
         </div>
 
@@ -531,17 +496,15 @@ export default function PortalPatientMembershipPage() {
                 key={`${event.createdAt}-${event.action}-${index}`}
               >
                 <strong>{formatActionLabel(event.action)}</strong>
+                <span>{event.summary}</span>
+                <span>{event.statusDetail}</span>
                 <span>
-                  {formatTransitionLabel(event)}
-                  {event.nextEndsAt
-                    ? ` · Ends ${formatDisplayDate(event.nextEndsAt)}`
+                  {formatDisplayDate(event.createdAt)} · {event.actorRole}
+                  {event.actorName || event.actorPrincipalId
+                    ? ` · ${event.actorName ?? event.actorPrincipalId}`
                     : ""}
                 </span>
-                <span>
-                  {formatDisplayDate(event.createdAt)} · {event.actorRole} ·{" "}
-                  {event.actorName ?? event.actorPrincipalId}
-                </span>
-                <span>Note: {event.note}</span>
+                {event.note ? <span>Note: {event.note}</span> : null}
               </div>
             ))}
           </div>

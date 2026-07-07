@@ -8,11 +8,12 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
-  loadMembershipEvents,
+  loadMembershipTimeline,
   loadPortalPatientMembershipContext,
   mapMembershipSnapshot,
   type PortalPatientMembershipResponse,
 } from "@/apps/api/lib/portal/patientMembership";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { COLLECTIONS } from "core/server/constants/collections";
 import type { TPatientMembershipEventDoc } from "core/server/schemas/patientMembership";
 import type { TPatientMembershipAction } from "core/isomorphic/schemas/patient_membership_events";
@@ -127,12 +128,16 @@ export async function GET(
     }
 
     const db = await getDb();
+    await syncExpiredPatientMemberships({
+      db,
+      patientId: new ObjectId(patientId),
+    });
     const membershipContext = await loadPortalPatientMembershipContext({
       db,
       patientId,
       user: caller,
     });
-    const events = await loadMembershipEvents({
+    const events = await loadMembershipTimeline({
       db,
       patientId: membershipContext.patientDoc._id,
     });
@@ -172,6 +177,10 @@ export async function POST(
     }
 
     const db = await getDb();
+    await syncExpiredPatientMemberships({
+      db,
+      patientId: new ObjectId(patientId),
+    });
     const membershipContext = await loadPortalPatientMembershipContext({
       db,
       patientId,
@@ -274,7 +283,7 @@ export async function POST(
       patientId,
       user: caller,
     });
-    const events = await loadMembershipEvents({
+    const events = await loadMembershipTimeline({
       db,
       patientId: updatedContext.patientDoc._id,
     });

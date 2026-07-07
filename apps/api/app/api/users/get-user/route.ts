@@ -3,6 +3,8 @@ import { makeRandomId } from "@/apps/api/lib/http/request";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { bad } from "@/apps/api/lib/http/responses";
 import { getDb } from "@/apps/api/lib/db/mongodb";
+import { getPatientLifecycleSnapshot } from "@/apps/api/lib/portal/patientLifecycle";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 import { COLLECTIONS } from "@/packages/core/dist/server";
 import { TUsersAccount } from "@/packages/core/dist/isomorphic";
@@ -38,6 +40,10 @@ export async function GET(req: NextRequest) {
     const usersPii = database.collection<TUserPII>(COLLECTIONS.UsersPII);
     const patientConsents = database.collection(COLLECTIONS.PatientConsents);
     const patients = database.collection(COLLECTIONS.Patients);
+    await syncExpiredPatientMemberships({
+      db: database,
+      patientId: new ObjectId(user.patientId),
+    });
     const activeUser = await usersAccounts.findOne({
       isActive: true,
       principalId: user.principalId,
@@ -62,6 +68,9 @@ export async function GET(req: NextRequest) {
       { projection: { assignments: 1 } },
     );
     const assignmentState = summarizeAssignmentState(patient?.assignments);
+    const membership = getPatientLifecycleSnapshot({
+      assignments: patient?.assignments,
+    });
 
     if (!activeUser) {
       return bad("Not found", { requestId }, 404);
@@ -75,6 +84,7 @@ export async function GET(req: NextRequest) {
       {
         activeAssignmentCount: assignmentState.activeAssignmentCount,
         hasActiveAssignments: assignmentState.hasActiveAssignments,
+        membership,
         ok: true,
         hasPendingConsents: pendingConsentCount > 0,
         onboardingCompleted: !!pii?.onboardingCompleted,

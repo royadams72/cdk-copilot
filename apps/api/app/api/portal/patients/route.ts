@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import {
   buildPortalPatientAccessMatch,
   buildPortalPatientStats,
@@ -16,6 +17,7 @@ import {
   normalizePortalPatientFilter,
   normalizePortalPatientMembershipStatusFilter,
 } from "@/apps/api/lib/portal/patient-shared";
+import { loadPortalStaffScope } from "@/apps/api/lib/portal/staffScope";
 import { COLLECTIONS } from "@ckd/core/server";
 import { ObjectId } from "mongodb";
 
@@ -65,6 +67,15 @@ export async function GET(req: NextRequest) {
       req.nextUrl.searchParams.get("facilityId")?.trim() ?? "";
 
     const db = await getDb();
+    const scope = await loadPortalStaffScope(db, caller);
+    await syncExpiredPatientMemberships({
+      assignmentScope: {
+        careTeamIds: scope.careTeamIds,
+        facilityIds: scope.facilityIds,
+        orgId: caller.orgId,
+      },
+      db,
+    });
     const patients = await db
       .collection(COLLECTIONS.Patients)
       .aggregate<RawPortalPatientDoc>([

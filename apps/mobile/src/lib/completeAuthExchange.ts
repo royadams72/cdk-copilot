@@ -1,6 +1,7 @@
 import { API } from "@/constants/api";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { syncNativeAuthSessionMirror } from "@/lib/authSession";
+import type { MembershipLifecycleSnapshot } from "@/lib/membership";
 import { secureStorage } from "@/lib/secureStorage";
 
 type ExchangeResponse = {
@@ -8,6 +9,7 @@ type ExchangeResponse = {
   hasActiveAssignments?: boolean | null;
   hasPendingConsents?: boolean | null;
   jwt?: string;
+  membership?: Partial<MembershipLifecycleSnapshot> | null;
   onboardingCompleted?: boolean;
   onboardingSteps?: string[] | null;
   refreshToken?: string | null;

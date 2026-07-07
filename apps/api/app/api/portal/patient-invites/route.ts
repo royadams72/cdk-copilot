@@ -14,6 +14,7 @@ import {
   PortalPatientInviteDoc,
   syncExpiredPatientInvites,
 } from "@/apps/api/lib/portal/patientInvites";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { loadPortalStaffScope } from "@/apps/api/lib/portal/staffScope";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -62,9 +63,24 @@ export async function GET(req: NextRequest) {
     }
 
     const db = await getDb();
-    await syncExpiredPatientInvites(db);
-
     const scope = await loadPortalStaffScope(db, caller);
+    await syncExpiredPatientInvites({
+      db,
+      inviteScope: {
+        careTeamIds: scope.careTeamIds,
+        facilityIds: scope.facilityIds,
+        orgId: caller.orgId,
+      },
+    });
+    await syncExpiredPatientMemberships({
+      assignmentScope: {
+        careTeamIds: scope.careTeamIds,
+        facilityIds: scope.facilityIds,
+        orgId: caller.orgId,
+      },
+      db,
+    });
+
     const careTeamIds = scope.careTeamIds;
     if (!careTeamIds.length) {
       return ok({ items: [] });
