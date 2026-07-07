@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 
 import { API } from "@/constants/api";
+import { APP_ROUTES } from "@/constants/routes";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { completeAuthExchange } from "@/lib/completeAuthExchange";
 import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
@@ -76,7 +77,7 @@ export default function ActivationCodeScreen() {
         disabled={submitting}
         label="Back to email sign in"
         onPress={() => {
-          router.replace("/(init-app)/welcome");
+          router.replace(APP_ROUTES.welcome);
         }}
       />
     </OnboardingFormScreen>

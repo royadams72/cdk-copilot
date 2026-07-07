@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { NativeModules, Platform } from "react-native";
 
 import { API } from "@/constants/api";
+import { APP_ROUTES } from "@/constants/routes";
 import { secureStorage } from "@/lib/secureStorage";
 
 type RefreshResponse = {
@@ -19,6 +20,7 @@ type RefreshResponse = {
 
 let refreshPromise: Promise<boolean> | null = null;
 let membershipInactiveRedirectInFlight = false;
+let membershipInactiveSession = false;
 
 type HealthConnectBackgroundSyncModuleShape = {
   clearAuthSession?: () => Promise<boolean>;
@@ -81,15 +83,30 @@ export async function clearSessionToken() {
   await nativeBackgroundSyncModule?.clearAuthSession?.();
 }
 
+export function hasMembershipInactiveSession() {
+  return membershipInactiveSession;
+}
+
+export function resetMembershipInactiveSessionState() {
+  membershipInactiveSession = false;
+  membershipInactiveRedirectInFlight = false;
+}
+
 export async function handleMembershipInactiveSession() {
+  membershipInactiveSession = true;
   await clearSessionToken();
+
+  // Clear cached RTK Query state so mounted screens stop retrying protected endpoints.
+  const { store } = await import("@/store");
+  const { appApi } = await import("@/store/services/appApi");
+  store.dispatch(appApi.util.resetApiState());
 
   if (membershipInactiveRedirectInFlight) {
     return;
   }
 
   membershipInactiveRedirectInFlight = true;
-  router.replace("/(auth)/access-ended");
+  router.replace(APP_ROUTES.accessEnded);
 }
 
 export async function refreshSessionToken() {
@@ -123,6 +140,7 @@ export async function refreshSessionToken() {
   if (nextRefreshToken) {
     await secureStorage.setItem("ckd_refresh", nextRefreshToken);
   }
+  resetMembershipInactiveSessionState();
   await syncNativeAuthSession(nextJwt, nextRefreshToken || refreshToken);
 
   return true;

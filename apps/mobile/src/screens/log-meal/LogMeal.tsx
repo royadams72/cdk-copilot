@@ -18,6 +18,7 @@ import type {
   TNutritionFavouriteMeal,
 } from "@ckd/core";
 
+import { APP_ROUTES } from "@/constants/routes";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
@@ -323,7 +324,7 @@ export default function LogMeal() {
 
       dispatch(clearMealState());
       isLeavingRef.current = true;
-      router.push("/(nutrition)/nutrition-details");
+      router.push(APP_ROUTES.nutritionDetails);
     } catch (err: any) {
       Alert.alert(
         editingEntryId ? "Update failed" : "Save failed",
@@ -340,7 +341,7 @@ export default function LogMeal() {
     try {
       await deleteMealData({ entryId: editingEntryId }).unwrap();
       isLeavingRef.current = true;
-      router.replace("/(nutrition)/nutrition-details");
+      router.replace(APP_ROUTES.nutritionDetails);
     } catch (err: any) {
       Alert.alert("Delete failed", err?.message ?? "Please try again.");
     } finally {
@@ -364,7 +365,7 @@ export default function LogMeal() {
                 onLeave();
                 return;
               }
-              router.replace("/(nutrition)/nutrition-details");
+              router.replace(APP_ROUTES.nutritionDetails);
             },
             style: "destructive",
             text: "Leave",
@@ -498,7 +499,7 @@ export default function LogMeal() {
               }
               isLeavingRef.current = true;
               dispatch(clearMealState());
-              router.replace("/(nutrition)/nutrition-details");
+              router.replace(APP_ROUTES.nutritionDetails);
             }}
             style={styles.navButton}
           >

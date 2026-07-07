@@ -11,7 +11,7 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { APP_ROUTES } from "@/constants/routes";
 import { getLastViewedCarePlanAt } from "@/lib/carePlans";
 import {
   toQueryErrorMessage,
@@ -103,13 +103,6 @@ export default function Dashboard() {
     refetch();
     void refetchCarePlans();
   }, [refetch, refetchCarePlans]);
-
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-      void refetchCarePlans();
-    }, [refetch, refetchCarePlans]),
-  );
 
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {
@@ -212,7 +205,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [carePlanData?.latestActivePlan?.id, carePlanData?.latestActivePlan?.updatedAt]);
+  }, [carePlanData?.latestUpdatedPlan]);
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -346,7 +339,7 @@ export default function Dashboard() {
             {data?.nutrition.radials?.length ? (
               <Pressable
                 style={styles.selectableCard}
-                onPress={() => router.push("/(nutrition)/nutrition-details")}
+                onPress={() => router.push(APP_ROUTES.nutritionDetails)}
               >
                 <StackedRadialsCard
                   centerLabel="Nutrition"

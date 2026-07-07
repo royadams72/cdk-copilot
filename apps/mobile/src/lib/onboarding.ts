@@ -1,14 +1,7 @@
 import { ONBOARDING_STEPS } from "@ckd/core";
 
+import { ONBOARDING_ROUTES } from "@/constants/routes";
 import { secureStorage } from "./secureStorage";
-
-export const ONBOARDING_ROUTES = {
-  accessEnded: "/(auth)/access-ended",
-  consent: "/(auth)/consent",
-  clinical: "/(auth)/onboarding/clinical-form",
-  dashboard: "/(dashboard)/dashboard",
-  pii: "/(auth)/onboarding/pii-form",
-} as const;
 
 type PostAuthRouteArgs = {
   activeAssignmentCount?: number | null;

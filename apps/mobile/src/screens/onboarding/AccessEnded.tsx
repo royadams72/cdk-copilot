@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Text } from "react-native";
 import { useRouter } from "expo-router";
 
+import { APP_ROUTES } from "@/constants/routes";
 import { clearSessionToken } from "@/lib/authSession";
 import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
@@ -27,7 +28,7 @@ export default function AccessEndedScreen() {
       <PrimaryButton
         label="Back to sign in"
         onPress={() => {
-          router.replace("/(init-app)/welcome");
+          router.replace(APP_ROUTES.welcome);
         }}
       />
     </OnboardingFormScreen>

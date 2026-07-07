@@ -1,5 +1,6 @@
 import {
   handleMembershipInactiveSession,
+  hasMembershipInactiveSession,
   refreshSessionTokenOnce,
 } from "@/lib/authSession";
 import { secureStorage } from "@/lib/secureStorage";
@@ -23,6 +24,19 @@ async function hasMembershipInactiveCode(response: Response) {
 }
 
 export async function authFetch(input: string, init: RequestInit = {}) {
+  if (hasMembershipInactiveSession()) {
+    return new Response(
+      JSON.stringify({
+        code: "membership_inactive",
+        message: "Your membership is no longer active.",
+      }),
+      {
+        headers: { "content-type": "application/json" },
+        status: 403,
+      },
+    );
+  }
+
   const makeRequest = async () => {
     let jwt = await secureStorage.getItem("ckd_jwt");
     if (!jwt) {

@@ -14,6 +14,7 @@ import type { ScrollView as ScrollViewType } from "react-native";
 import { useRouter } from "expo-router";
 import type { TMealType } from "@ckd/core";
 
+import { APP_ROUTES } from "@/constants/routes";
 import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
 import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
@@ -427,7 +428,7 @@ export default function NutritionDetails() {
           <View style={NutritionStyles.navRow}>
             <TouchableOpacity
               accessibilityRole="button"
-              onPress={() => router.replace("/(dashboard)/dashboard")}
+              onPress={() => router.replace(APP_ROUTES.dashboard)}
               style={NutritionStyles.navButton}
             >
               <ThemedText style={NutritionStyles.navButtonText}>
