@@ -1,5 +1,6 @@
 import { Text } from "react-native";
 import { useRouter } from "expo-router";
+import { APP_ROUTES } from "@/constants/routes";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
 import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
 
@@ -14,7 +15,7 @@ export default function CheckEmail() {
       <PrimaryButton
         label="Back to email"
         onPress={() => {
-          router.replace("/(init-app)/welcome");
+          router.replace(APP_ROUTES.welcome);
         }}
       />
     </OnboardingFormScreen>

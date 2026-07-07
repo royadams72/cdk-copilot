@@ -16,6 +16,7 @@ import {
 } from "@ckd/core";
 
 import { API } from "@/constants/api";
+import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import { onboardingDrafts } from "@/lib/onboarding";
@@ -156,7 +157,7 @@ export default function ClinicalForm({
 
       await onboardingDrafts.clearPiiDraft();
       await onboardingDrafts.clearClinicalDraft();
-      router.replace("/(dashboard)/dashboard");
+      router.replace(APP_ROUTES.dashboard);
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "Failed to save clinical data");
     }

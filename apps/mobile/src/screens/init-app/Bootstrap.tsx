@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
+import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import {
   clearSessionToken,
@@ -49,7 +50,7 @@ const Bootstrap = () => {
         const token = await loadSessionToken();
 
         if (!token.jwt && !token.refreshToken) {
-          router.replace("/(init-app)/welcome");
+          router.replace(APP_ROUTES.welcome);
           console.log("token:", token);
 
           return;
@@ -72,7 +73,7 @@ const Bootstrap = () => {
             return;
           }
           setError("Session expired, please sign in again.");
-          router.replace("/(init-app)/welcome");
+          router.replace(APP_ROUTES.welcome);
           return;
         }
 
@@ -83,7 +84,7 @@ const Bootstrap = () => {
           router.replace(resolvePostAuthRoute(data ?? {}) as never);
         } else if (res.status === 403 && hasMembershipInactiveCode(data)) {
           await clearSessionToken();
-          router.replace("/(auth)/access-ended");
+          router.replace(APP_ROUTES.accessEnded);
         } else if (res.status === 401) {
           const refreshed = await refreshSessionTokenOnce();
           if (refreshed) {
@@ -100,7 +101,7 @@ const Bootstrap = () => {
               hasMembershipInactiveCode(retried.data)
             ) {
               await clearSessionToken();
-              router.replace("/(auth)/access-ended");
+              router.replace(APP_ROUTES.accessEnded);
               return;
             }
 
@@ -109,7 +110,7 @@ const Bootstrap = () => {
             );
           } else {
             setError("Session expired, please sign in again.");
-            router.replace("/(init-app)/welcome");
+            router.replace(APP_ROUTES.welcome);
           }
         } else {
           setError(data?.message ?? "We couldn't restore your session.");

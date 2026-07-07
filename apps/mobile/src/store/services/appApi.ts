@@ -9,6 +9,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { API } from "@/constants/api";
 import {
   handleMembershipInactiveSession,
+  hasMembershipInactiveSession,
   refreshSessionTokenOnce,
 } from "@/lib/authSession";
 import { formatApiError } from "@/lib/formatApiError";
@@ -55,6 +56,18 @@ const baseQueryWithEnvelope: BaseQueryFn<
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
+  if (hasMembershipInactiveSession()) {
+    return {
+      error: {
+        data: {
+          code: "membership_inactive",
+          message: "Your membership is no longer active.",
+        },
+        status: 403,
+      },
+    };
+  }
+
   let result = await rawBaseQuery(args, api, extraOptions);
   if (result.error?.status === 401) {
     const refreshed = await refreshSessionTokenOnce();

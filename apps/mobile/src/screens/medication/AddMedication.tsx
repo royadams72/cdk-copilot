@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
+import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 
@@ -320,7 +321,7 @@ export default function AddMedication() {
         }
       }
 
-      router.replace("/(dashboard)/dashboard");
+      router.replace(APP_ROUTES.dashboard);
     } catch (err: any) {
       setErrorMessage(err?.message ?? "Failed to save medication");
       setShowErrorModal(true);
