@@ -42,6 +42,14 @@ export async function POST(
       facilityId: invite.facilityId,
     });
 
+    if (invite.activatedAt) {
+      return bad(
+        "Activated invites cannot be extended",
+        { code: "invite_extend_not_allowed" },
+        409,
+      );
+    }
+
     if (!EXTENDABLE_STATUSES.has(invite.status)) {
       return bad(
         "Only pending, invited, or expired invites can be extended",
