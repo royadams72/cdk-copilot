@@ -80,6 +80,7 @@ Usage:
 
 Options:
   --patientId <id>  Required Mongo ObjectId string for patients._id
+                    Not an invite _id, users_accounts _id, or principalId
   --apply           Execute deletes. Omit for dry run
   --db <name>       Override database name (default: MONGODB_DB | DB_NAME | ckd-copilot)
   --help            Show this message
@@ -296,6 +297,25 @@ async function buildDeletePlan(
   };
 }
 
+function getPlanSummary(plans: DeletePlan[]) {
+  return plans.reduce(
+    (summary, plan) => {
+      if (plan.count === 0) {
+        return summary;
+      }
+
+      if (plan.kind === "updateMany") {
+        summary.updates += plan.count;
+      } else {
+        summary.deletes += plan.count;
+      }
+
+      return summary;
+    },
+    { deletes: 0, updates: 0 },
+  );
+}
+
 async function applyPlan(
   client: MongoClient,
   dbName: string,
@@ -370,18 +390,18 @@ async function run() {
       `credentialIds: ${credentialIds.length > 0 ? credentialIds.join(", ") : "(none found)"}`,
     );
 
-    let plannedDeletes = 0;
-    let plannedUpdates = 0;
+    const { deletes: plannedDeletes, updates: plannedUpdates } = getPlanSummary(plans);
+
+    if (plannedDeletes === 0 && plannedUpdates === 0) {
+      throw new Error(
+        `No patient or linked records found for patientId ${patientObjectId.toString()}. ` +
+          "This script only accepts patients._id values.",
+      );
+    }
 
     for (const plan of plans) {
       if (plan.count === 0) {
         continue;
-      }
-
-      if (plan.kind === "updateMany") {
-        plannedUpdates += plan.count;
-      } else {
-        plannedDeletes += plan.count;
       }
 
       console.log(

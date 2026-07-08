@@ -127,6 +127,34 @@ function getDisplayStatusClassName(status: InviteDisplayStatus) {
   }
 }
 
+function isInviteActivated(item: InviteItem) {
+  return item.status === "activated" || Boolean(item.activatedAt);
+}
+
+function canResendInvite(item: InviteItem) {
+  if (isInviteActivated(item) || item.status === "cancelled") {
+    return false;
+  }
+
+  return ["pending_review", "invited", "expired", "revoked"].includes(item.status);
+}
+
+function canExtendInvite(item: InviteItem) {
+  if (isInviteActivated(item) || item.status === "cancelled" || item.status === "revoked") {
+    return false;
+  }
+
+  return ["pending_review", "invited", "expired"].includes(item.status);
+}
+
+function canRevokeInvite(item: InviteItem) {
+  if (isInviteActivated(item) || item.status === "cancelled" || item.status === "revoked") {
+    return false;
+  }
+
+  return ["pending_review", "invited", "expired"].includes(item.status);
+}
+
 function readResponseErrorMessage(body: unknown, fallback: string) {
   if (!body || typeof body !== "object") {
     return fallback;
@@ -490,10 +518,16 @@ export default function PortalPatientInvitesPage() {
                       ) : null}
                     </td>
                     <td>
+                      {(() => {
+                        const resendAllowed = canResendInvite(item);
+                        const extendAllowed = canExtendInvite(item);
+                        const revokeAllowed = canRevokeInvite(item);
+
+                        return (
                       <div className={styles.portalInviteActionGroup}>
                         <button
                           className={styles.buttonSecondarySmall}
-                          disabled={!item.canResend || actionPending === item.id}
+                          disabled={!resendAllowed || actionPending === item.id}
                           onClick={() => void runAction(item, "resend")}
                           type="button"
                         >
@@ -501,7 +535,7 @@ export default function PortalPatientInvitesPage() {
                         </button>
                         <button
                           className={styles.buttonSecondarySmall}
-                          disabled={!item.canExtend || actionPending === item.id}
+                          disabled={!extendAllowed || actionPending === item.id}
                           onClick={() => void runAction(item, "extend")}
                           type="button"
                         >
@@ -509,13 +543,15 @@ export default function PortalPatientInvitesPage() {
                         </button>
                         <button
                           className={styles.buttonGhost}
-                          disabled={!item.canRevoke || actionPending === item.id}
+                          disabled={!revokeAllowed || actionPending === item.id}
                           onClick={() => setRevokeTarget(item)}
                           type="button"
                         >
                           Revoke
                         </button>
                       </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
