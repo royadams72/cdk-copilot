@@ -47,6 +47,14 @@ export async function POST(
       facilityId: invite.facilityId,
     });
 
+    if (invite.activatedAt) {
+      return bad(
+        "Activated invites cannot be resent",
+        { code: "invite_resend_not_allowed" },
+        409,
+      );
+    }
+
     if (!RESENDABLE_STATUSES.has(invite.status)) {
       return bad(
         "Only pending, invited, or expired invites can be resent",

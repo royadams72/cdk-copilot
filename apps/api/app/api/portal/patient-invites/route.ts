@@ -191,16 +191,17 @@ export async function GET(req: NextRequest) {
 
     return ok({
       items: invites.map((invite) => {
-        const canMutate = invite.status !== "activated" && invite.status !== "revoked";
+        const isActivated = invite.status === "activated" || Boolean(invite.activatedAt);
+        const canMutate = !isActivated && invite.status !== "revoked";
         const patientDoc = patientById.get(invite.patientId.toHexString());
         const membershipLifecycleStatus =
-          invite.status === "activated"
+          isActivated
             ? derivePatientLifecycleStatus({
                 assignments: patientDoc?.assignments,
               })
             : null;
         const displayStatus = getInviteDisplayStatus({
-          inviteStatus: invite.status,
+          inviteStatus: isActivated ? "activated" : invite.status,
           membershipLifecycleStatus,
         });
         return {
@@ -222,7 +223,7 @@ export async function GET(req: NextRequest) {
           email: invite.email,
           displayStatus,
           displayStatusLabel:
-            invite.status === "activated" && membershipLifecycleStatus
+            isActivated && membershipLifecycleStatus
               ? `Activated · ${formatPatientLifecycleStatusLabel(membershipLifecycleStatus)}`
               : displayStatus === "ending_soon"
                 ? "Ending soon"
