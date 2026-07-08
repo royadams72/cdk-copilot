@@ -108,6 +108,16 @@ export async function handleMembershipInactiveSession() {
   authenticatedSessionReady = false;
   await clearSessionToken();
 
+  // Stop foreground sync loops immediately so the app does not keep issuing
+  // Health Connect and measurement requests while the redirect is in flight.
+  const [{ forceStopMeasurementSyncLoop }, { forceStopStepSyncLoop }] =
+    await Promise.all([
+      import("@/hooks/useSyncHealthConnectMeasurements"),
+      import("@/hooks/useSyncStepCount"),
+    ]);
+  forceStopMeasurementSyncLoop();
+  forceStopStepSyncLoop();
+
   // Clear cached RTK Query state so mounted screens stop retrying protected endpoints.
   const { store } = await import("@/store");
   const { appApi } = await import("@/store/services/appApi");

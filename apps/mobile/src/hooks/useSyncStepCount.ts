@@ -51,6 +51,11 @@ function stopStepSyncLoop() {
   stepSyncAppStateSubscription = null;
 }
 
+export function forceStopStepSyncLoop() {
+  stepSyncConsumers = 0;
+  stopStepSyncLoop();
+}
+
 export function useSyncStepCount(
   _stepsToday: number | null,
   isReady: boolean,

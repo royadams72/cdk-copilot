@@ -84,7 +84,11 @@ export async function GET(req: NextRequest) {
   try {
     const caller = await requireUser(req);
     if (caller.role === "patient") {
-      return bad("Portal staff session required", { code: "portal_staff_required" }, 403);
+      return bad(
+        "Portal staff session required",
+        { code: "portal_staff_required" },
+        403,
+      );
     }
 
     const db = await getDb();
@@ -149,7 +153,9 @@ export async function GET(req: NextRequest) {
 
     const principalIds = [
       ...new Set(
-        invites.flatMap((invite) => [invite.createdBy, invite.updatedBy]).filter(Boolean),
+        invites
+          .flatMap((invite) => [invite.createdBy, invite.updatedBy])
+          .filter(Boolean),
       ),
     ];
     const staffDocs = principalIds.length
@@ -173,8 +179,12 @@ export async function GET(req: NextRequest) {
     const staffByPrincipalId = new Map(
       staffDocs.map((doc) => [doc.principalId, doc] as const),
     );
-    const careTeamLabelById = new Map(scope.careTeams.map((item) => [item.id, item.label]));
-    const facilityLabelById = new Map(scope.facilities.map((item) => [item.id, item.label]));
+    const careTeamLabelById = new Map(
+      scope.careTeams.map((item) => [item.id, item.label]),
+    );
+    const facilityLabelById = new Map(
+      scope.facilities.map((item) => [item.id, item.label]),
+    );
     const patientIds = invites.map((invite) => invite.patientId);
     const patientDocs = patientIds.length
       ? await db
@@ -191,20 +201,21 @@ export async function GET(req: NextRequest) {
 
     return ok({
       items: invites.map((invite) => {
-        const isActivated = invite.status === "activated" || Boolean(invite.activatedAt);
+        const isActivated =
+          invite.status === "activated" || Boolean(invite.activatedAt);
         const canMutate = !isActivated;
         const patientDoc = patientById.get(invite.patientId.toHexString());
-        const membershipLifecycleStatus =
-          isActivated
-            ? derivePatientLifecycleStatus({
-                assignments: patientDoc?.assignments,
-              })
-            : null;
+        const membershipLifecycleStatus = isActivated
+          ? derivePatientLifecycleStatus({
+              assignments: patientDoc?.assignments,
+            })
+          : null;
         const displayStatus = getInviteDisplayStatus({
           inviteStatus: isActivated ? "activated" : invite.status,
           membershipLifecycleStatus,
         });
         return {
+          id: invite._id.toHexString(),
           activatedAt: invite.activatedAt?.toISOString() ?? null,
           activationCodeMasked: invite.activationCodeMasked,
           activationExpiresAt: invite.activationExpiresAt.toISOString(),
@@ -218,15 +229,14 @@ export async function GET(req: NextRequest) {
             invite.status !== "cancelled" &&
             invite.status !== "revoked",
           careTeamId: invite.careTeamId,
-          careTeamLabel: careTeamLabelById.get(invite.careTeamId) ?? invite.careTeamId,
+          careTeamLabel:
+            careTeamLabelById.get(invite.careTeamId) ?? invite.careTeamId,
           createdAt: invite.createdAt.toISOString(),
           createdByName: formatStaffDisplayName(
             staffByPrincipalId.get(invite.createdBy),
           ),
           createdByPrincipalId: invite.createdBy,
           dateOfBirth: invite.dateOfBirth.toISOString(),
-          durationMonths: invite.durationMonths,
-          email: invite.email,
           displayStatus,
           displayStatusLabel:
             isActivated && membershipLifecycleStatus
@@ -248,11 +258,12 @@ export async function GET(req: NextRequest) {
                             : invite.status === "cancelled"
                               ? "Cancelled"
                               : "Activated",
+          durationMonths: invite.durationMonths,
+          email: invite.email,
           facilityId: invite.facilityId,
           facilityLabel:
             facilityLabelById.get(invite.facilityId) ?? invite.facilityId,
           firstName: invite.firstName,
-          id: invite._id.toHexString(),
           invitedAt: invite.invitedAt?.toISOString() ?? null,
           lastName: invite.lastName,
           membershipAccessEndsAt:
@@ -272,7 +283,9 @@ export async function GET(req: NextRequest) {
                     activeLike.endsAt instanceof Date
                       ? activeLike.endsAt
                       : new Date(activeLike.endsAt);
-                  return Number.isNaN(value.getTime()) ? null : value.toISOString();
+                  return Number.isNaN(value.getTime())
+                    ? null
+                    : value.toISOString();
                 })()
               : null,
           membershipLifecycleStatus,
