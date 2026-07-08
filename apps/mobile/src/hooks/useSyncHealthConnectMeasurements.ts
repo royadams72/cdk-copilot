@@ -48,6 +48,11 @@ function stopMeasurementSyncLoop() {
   measurementSyncAppStateSubscription = null;
 }
 
+export function forceStopMeasurementSyncLoop() {
+  measurementSyncConsumers = 0;
+  stopMeasurementSyncLoop();
+}
+
 export function useSyncHealthConnectMeasurements(enabled: boolean) {
   useEffect(() => {
     if (!enabled || Platform.OS === "web") return;
