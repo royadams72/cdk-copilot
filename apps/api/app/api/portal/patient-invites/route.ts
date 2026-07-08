@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
     return ok({
       items: invites.map((invite) => {
         const isActivated = invite.status === "activated" || Boolean(invite.activatedAt);
-        const canMutate = !isActivated && invite.status !== "revoked";
+        const canMutate = !isActivated;
         const patientDoc = patientById.get(invite.patientId.toHexString());
         const membershipLifecycleStatus =
           isActivated
@@ -208,9 +208,15 @@ export async function GET(req: NextRequest) {
           activatedAt: invite.activatedAt?.toISOString() ?? null,
           activationCodeMasked: invite.activationCodeMasked,
           activationExpiresAt: invite.activationExpiresAt.toISOString(),
-          canExtend: canMutate && invite.status !== "cancelled",
+          canExtend:
+            canMutate &&
+            invite.status !== "cancelled" &&
+            invite.status !== "revoked",
           canResend: canMutate && invite.status !== "cancelled",
-          canRevoke: canMutate && invite.status !== "cancelled",
+          canRevoke:
+            canMutate &&
+            invite.status !== "cancelled" &&
+            invite.status !== "revoked",
           careTeamId: invite.careTeamId,
           careTeamLabel: careTeamLabelById.get(invite.careTeamId) ?? invite.careTeamId,
           createdAt: invite.createdAt.toISOString(),

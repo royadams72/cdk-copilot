@@ -15,7 +15,7 @@ import { PortalPatientInviteDoc } from "@/apps/api/lib/portal/patientInvites";
 import { assertPortalCareTeamFacilityAccess } from "@/apps/api/lib/portal/staffScope";
 import { COLLECTIONS } from "@ckd/core/server";
 
-const RESENDABLE_STATUSES = new Set(["pending_review", "invited", "expired"]);
+const RESENDABLE_STATUSES = new Set(["pending_review", "invited", "expired", "revoked"]);
 
 export async function POST(
   req: NextRequest,
@@ -57,7 +57,7 @@ export async function POST(
 
     if (!RESENDABLE_STATUSES.has(invite.status)) {
       return bad(
-        "Only pending, invited, or expired invites can be resent",
+        "Only pending, invited, expired, or revoked invites can be resent",
         { code: "invite_resend_not_allowed" },
         409,
       );
