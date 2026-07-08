@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { markPatientEngagementOpened } from "@/apps/api/lib/utils/patientEngagement";
 import { ROLES } from "@ckd/core";
 
@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
 
     return ok({ opened });
   } catch (err: any) {
-    return bad(err?.message || "Server error", undefined, err?.status || 500);
+    return badFromError(err);
   }
 }

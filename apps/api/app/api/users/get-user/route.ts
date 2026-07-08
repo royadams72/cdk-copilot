@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { bad } from "@/apps/api/lib/http/responses";
+import { bad, badFromError } from "@/apps/api/lib/http/responses";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { getPatientLifecycleSnapshot } from "@/apps/api/lib/portal/patientLifecycle";
 import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
@@ -105,7 +105,13 @@ export async function GET(req: NextRequest) {
           ? { message: error.message, stack: error.stack }
           : error,
     });
-    const status = error?.status || 500;
-    return bad(error?.message || "Server error", { requestId }, status);
+    return badFromError(
+      {
+        ...error,
+        requestId,
+      },
+      "Server error",
+      500,
+    );
   }
 }

@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { PatientWorseningTrendViewedRequest } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -52,10 +52,6 @@ export async function POST(req: NextRequest) {
       viewedAt: now.toISOString(),
     });
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to mark worsening trend as viewed",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to mark worsening trend as viewed");
   }
 }

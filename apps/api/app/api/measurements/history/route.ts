@@ -6,7 +6,7 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { isHealthSyncProvider, type HealthSyncProvider } from "@/apps/api/lib/healthSync/provider";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -392,7 +392,6 @@ export async function GET(req: NextRequest) {
 
     return ok({ entriesByDate, points });
   } catch (err: any) {
-    const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return badFromError(err);
   }
 }

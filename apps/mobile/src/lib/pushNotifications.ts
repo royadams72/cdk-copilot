@@ -10,6 +10,7 @@ import type {
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { hasAuthenticatedSessionReady } from "@/lib/authSession";
+import { ensureNativeHealthConnectBackgroundSyncScheduled } from "@/lib/healthConnectNativeSync";
 import { logHealthConnectEvent } from "@/lib/healthConnectEventLogger";
 import { secureStorage } from "@/lib/secureStorage";
 
@@ -189,6 +190,8 @@ export async function syncAuthenticatedAppState() {
   if (!hasAuthenticatedSessionReady()) {
     return;
   }
+
+  await ensureNativeHealthConnectBackgroundSyncScheduled();
 
   await Promise.allSettled([
     syncPushToken(),
