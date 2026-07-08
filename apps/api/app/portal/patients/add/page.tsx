@@ -27,6 +27,7 @@ type ValidationIssue = {
 type IntakeFieldKey = keyof Omit<IntakeRow, "id">;
 
 type RowFieldErrors = Partial<Record<IntakeFieldKey, string>>;
+type ExtendedRowFieldErrors = RowFieldErrors & { row?: string };
 
 type ValidatedRow = {
   rowIndex: number;
@@ -71,6 +72,10 @@ type ValidationModalState =
         email: string;
       }>;
       failedCount: number;
+      failedDeliveries?: Array<{
+        email: string;
+        message: string;
+      }>;
       sentCount: number;
       summary: string;
     };
@@ -353,8 +358,9 @@ export default function PortalAddPatientPage() {
   }
 
   function getClientValidationErrors(currentRows: IntakeRow[]) {
-    const nextErrors: Record<string, RowFieldErrors> = {};
+    const nextErrors: Record<string, ExtendedRowFieldErrors> = {};
     const emailCounts = new Map<string, number>();
+    const patientKeyCounts = new Map<string, number>();
 
     for (const row of currentRows) {
       if (isRowEmpty(row)) continue;
@@ -362,12 +368,20 @@ export default function PortalAddPatientPage() {
       if (email) {
         emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
       }
+      const patientKey = [
+        row.firstName.trim().toLowerCase(),
+        row.lastName.trim().toLowerCase(),
+        row.dateOfBirth.trim(),
+      ].join("|");
+      if (patientKey !== "||") {
+        patientKeyCounts.set(patientKey, (patientKeyCounts.get(patientKey) ?? 0) + 1);
+      }
     }
 
     for (const row of currentRows) {
       if (isRowEmpty(row)) continue;
 
-      const errors: RowFieldErrors = {};
+      const errors: ExtendedRowFieldErrors = {};
       const firstName = row.firstName.trim();
       const lastName = row.lastName.trim();
       const email = row.email.trim().toLowerCase();
@@ -387,6 +401,14 @@ export default function PortalAddPatientPage() {
         errors.dateOfBirth = "Enter date of birth";
       } else if (!isValidIsoDate(dateOfBirth)) {
         errors.dateOfBirth = "Enter a valid date of birth";
+      }
+      const patientKey = [
+        firstName.toLowerCase(),
+        lastName.toLowerCase(),
+        dateOfBirth,
+      ].join("|");
+      if (patientKey !== "||" && (patientKeyCounts.get(patientKey) ?? 0) > 1) {
+        errors.row = "This patient appears more than once in the batch";
       }
       if (!row.durationMonths) {
         errors.durationMonths = "Select access duration";
@@ -615,11 +637,11 @@ export default function PortalAddPatientPage() {
       }
 
       if (body.data.batch.invalidRows > 0) {
-        const nextRowErrors: Record<string, RowFieldErrors> = {};
+        const nextRowErrors: Record<string, ExtendedRowFieldErrors> = {};
         for (const invalidRow of body.data.rows.filter((row) => row.issues.length > 0)) {
           const currentRow = nonEmptyRows[invalidRow.rowIndex];
           if (!currentRow) continue;
-          const mapped: RowFieldErrors = {};
+          const mapped: ExtendedRowFieldErrors = {};
           for (const issue of invalidRow.issues) {
             if (
               issue.code === "missing_first_name" &&
@@ -637,6 +659,9 @@ export default function PortalAddPatientPage() {
               ["missing_date_of_birth", "invalid_date_of_birth"].includes(issue.code) &&
               !mapped.dateOfBirth
             ) mapped.dateOfBirth = issue.message;
+            if (issue.code === "duplicate_patient_in_batch" && !mapped.row) {
+              mapped.row = issue.message;
+            }
             if (
               ["missing_duration", "invalid_duration"].includes(issue.code) &&
               !mapped.durationMonths
@@ -709,10 +734,54 @@ export default function PortalAddPatientPage() {
 
       const body = (await response.json().catch(() => null)) as
         | CreateBatchResponse
-        | { error?: { message?: string } }
+        | {
+            error?: {
+              code?: string;
+              data?: ValidationResponse["data"];
+              message?: string;
+            };
+          }
         | null;
 
       if (!response.ok || !body || !("data" in body)) {
+        if (
+          response.status === 409 &&
+          body &&
+          "error" in body &&
+          body.error?.code === "invite_batch_requires_revalidation" &&
+          body.error.data
+        ) {
+          const invalidRows = body.error.data.rows.filter((row) => row.issues.length > 0);
+          const nextRowErrors: Record<string, ExtendedRowFieldErrors> = {};
+          for (const invalidRow of invalidRows) {
+            const currentRow = nonEmptyRows[invalidRow.rowIndex];
+            if (!currentRow) continue;
+            const mapped: ExtendedRowFieldErrors = {};
+            for (const issue of invalidRow.issues) {
+              if (
+                ["missing_email", "invalid_email", "duplicate_email_in_batch", "patient_record_exists", "patient_already_active", "pending_invite_exists"].includes(issue.code) &&
+                !mapped.email
+              ) mapped.email = issue.message;
+              if (
+                ["missing_date_of_birth", "invalid_date_of_birth"].includes(issue.code) &&
+                !mapped.dateOfBirth
+              ) mapped.dateOfBirth = issue.message;
+              if (issue.code === "duplicate_patient_in_batch" && !mapped.row) {
+                mapped.row = issue.message;
+              }
+            }
+            if (Object.keys(mapped).length > 0) {
+              nextRowErrors[currentRow.id] = mapped;
+            }
+          }
+          setRowErrors((current) => ({ ...current, ...nextRowErrors }));
+          setModalState({
+            invalidRows,
+            kind: "invalid",
+            summary: "One or more rows changed since validation. Review the highlighted rows and validate again.",
+          });
+          return;
+        }
         throw new Error(readResponseErrorMessage(body, "Unable to create invite batch"));
       }
 
@@ -720,6 +789,7 @@ export default function PortalAddPatientPage() {
         kind: "created",
         devInvites: body.data.devInvites,
         failedCount: body.data.failedCount,
+        failedDeliveries: body.data.failedDeliveries,
         sentCount: body.data.sentCount,
         summary:
           body.data.failedCount > 0
@@ -1117,6 +1187,19 @@ export default function PortalAddPatientPage() {
                   >
                     <strong>{invite.email}</strong>
                     <span>Activation code: {invite.activationCode}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {"failedDeliveries" in modalState && modalState.failedDeliveries?.length ? (
+              <div className={styles.portalFormSectionList}>
+                {modalState.failedDeliveries.map((failure) => (
+                  <div
+                    className={styles.portalFormSectionItem}
+                    key={`${failure.email}-${failure.message}`}
+                  >
+                    <strong>{failure.email}</strong>
+                    <span>{failure.message}</span>
                   </div>
                 ))}
               </div>

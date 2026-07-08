@@ -13,6 +13,7 @@ import {
 } from "@ckd/core";
 import { ObjectId, type Db } from "mongodb";
 import { getJwtSecretBytes } from "@/apps/api/lib/auth/jwt";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 
 export type AuthProvider =
@@ -58,6 +59,11 @@ export async function findPatientIdForPrincipal(db: Db, principalId: string) {
 }
 
 async function requireActivePatientMembership(db: Db, patientId: string) {
+  await syncExpiredPatientMemberships({
+    db,
+    patientId: new ObjectId(patientId),
+  });
+
   const patient = await db.collection(COLLECTIONS.Patients).findOne<{
     assignments?: Array<{
       endsAt?: Date | string | null;
