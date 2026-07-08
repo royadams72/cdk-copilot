@@ -5,7 +5,11 @@ export default function RootLayout() {
     <Stack initialRouteName="onboarding/pii-form">
       <Stack.Screen
         name="access-ended"
-        options={{ title: "Access no longer active" }}
+        options={{
+          gestureEnabled: false,
+          headerBackVisible: false,
+          title: "Access no longer active",
+        }}
       />
       <Stack.Screen
         name="check-email"

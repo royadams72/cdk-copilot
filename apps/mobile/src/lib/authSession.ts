@@ -22,6 +22,7 @@ let refreshPromise: Promise<boolean> | null = null;
 let membershipInactiveRedirectInFlight = false;
 let membershipInactiveSession = false;
 let authenticatedSessionReady = false;
+const MEMBERSHIP_INACTIVE_STORAGE_KEY = "ckd_membership_inactive";
 
 type HealthConnectBackgroundSyncModuleShape = {
   clearAuthSession?: () => Promise<boolean>;
@@ -85,6 +86,15 @@ export async function clearSessionToken() {
   await nativeBackgroundSyncModule?.clearAuthSession?.();
 }
 
+export async function loadMembershipInactiveSessionState() {
+  const storedValue = await secureStorage.getItem(MEMBERSHIP_INACTIVE_STORAGE_KEY);
+  membershipInactiveSession = storedValue === "1";
+  if (!membershipInactiveSession) {
+    membershipInactiveRedirectInFlight = false;
+  }
+  return membershipInactiveSession;
+}
+
 export function hasMembershipInactiveSession() {
   return membershipInactiveSession;
 }
@@ -92,6 +102,11 @@ export function hasMembershipInactiveSession() {
 export function resetMembershipInactiveSessionState() {
   membershipInactiveSession = false;
   membershipInactiveRedirectInFlight = false;
+}
+
+export async function clearMembershipInactiveSessionState() {
+  resetMembershipInactiveSessionState();
+  await secureStorage.removeItem(MEMBERSHIP_INACTIVE_STORAGE_KEY);
 }
 
 export function hasAuthenticatedSessionReady() {
@@ -106,6 +121,7 @@ export function markAuthenticatedSessionReady() {
 export async function handleMembershipInactiveSession() {
   membershipInactiveSession = true;
   authenticatedSessionReady = false;
+  await secureStorage.setItem(MEMBERSHIP_INACTIVE_STORAGE_KEY, "1");
   await clearSessionToken();
 
   // Stop foreground sync loops immediately so the app does not keep issuing
@@ -162,7 +178,7 @@ export async function refreshSessionToken() {
   if (nextRefreshToken) {
     await secureStorage.setItem("ckd_refresh", nextRefreshToken);
   }
-  resetMembershipInactiveSessionState();
+  await clearMembershipInactiveSessionState();
   markAuthenticatedSessionReady();
   await syncNativeAuthSession(nextJwt, nextRefreshToken || refreshToken);
 

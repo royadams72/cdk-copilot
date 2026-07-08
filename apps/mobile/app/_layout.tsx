@@ -1,7 +1,7 @@
 // app/_layout.tsx
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Notifications from "expo-notifications";
-import { Slot, useRouter } from "expo-router";
+import { Slot, useRouter, useSegments } from "expo-router";
 import * as SystemUI from "expo-system-ui";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { AppState } from "react-native";
@@ -16,8 +16,10 @@ import {
 } from "@/lib/pushNotifications";
 import {
   hasAuthenticatedSessionReady,
+  loadMembershipInactiveSessionState,
   syncNativeAuthSessionMirrorFromSecureStore,
 } from "@/lib/authSession";
+import { APP_ROUTES } from "@/constants/routes";
 import { ensureNativeHealthConnectBackgroundSyncScheduled } from "@/lib/healthConnectNativeSync";
 import { store, persistor } from "@/store";
 
@@ -34,9 +36,52 @@ const LightNavigationTheme = {
 };
 
 const handledNotificationResponseIds = new Set<string>();
+const PUBLIC_ROUTE_GROUPS = new Set(["(auth)", "(init-app)"]);
+
+function isProtectedRouteSegments(segments: string[]) {
+  if (segments.length === 0) {
+    return false;
+  }
+
+  const [firstSegment] = segments;
+  if (!firstSegment) {
+    return false;
+  }
+
+  return !PUBLIC_ROUTE_GROUPS.has(firstSegment);
+}
 
 export default function RootLayout() {
   const router = useRouter();
+  const segments = useSegments();
+  const [membershipGuardReady, setMembershipGuardReady] = useState(false);
+  const [membershipInactiveLocked, setMembershipInactiveLocked] = useState(false);
+  const isProtectedRoute = useMemo(
+    () => isProtectedRouteSegments(segments),
+    [segments],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const inactive = await loadMembershipInactiveSessionState();
+      if (cancelled) {
+        return;
+      }
+
+      setMembershipInactiveLocked(inactive);
+      setMembershipGuardReady(true);
+
+      if (inactive && isProtectedRoute) {
+        router.replace(APP_ROUTES.accessEnded);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isProtectedRoute, router, segments]);
 
   useEffect(() => {
     function handleNotificationResponse(
@@ -119,11 +164,15 @@ export default function RootLayout() {
     };
   }, [router]);
 
+  const shouldBlockProtectedRoute =
+    isProtectedRoute &&
+    (!membershipGuardReady || membershipInactiveLocked);
+
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider value={LightNavigationTheme}>
-          <Slot />
+          {shouldBlockProtectedRoute ? null : <Slot />}
         </ThemeProvider>
       </PersistGate>
     </Provider>

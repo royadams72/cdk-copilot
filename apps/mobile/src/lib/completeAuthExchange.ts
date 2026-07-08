@@ -1,8 +1,8 @@
 import { API } from "@/constants/api";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import {
+  clearMembershipInactiveSessionState,
   markAuthenticatedSessionReady,
-  resetMembershipInactiveSessionState,
   syncNativeAuthSessionMirror,
 } from "@/lib/authSession";
 import { syncAuthenticatedAppState } from "@/lib/pushNotifications";
@@ -41,7 +41,7 @@ export async function completeAuthExchange(token: string) {
   if (data.refreshToken) {
     await secureStorage.setItem("ckd_refresh", data.refreshToken);
   }
-  resetMembershipInactiveSessionState();
+  await clearMembershipInactiveSessionState();
   markAuthenticatedSessionReady();
   await syncNativeAuthSessionMirror(data.jwt, data.refreshToken ?? null);
   void syncAuthenticatedAppState();

@@ -3,7 +3,9 @@ import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import {
-  clearSessionToken,
+  clearMembershipInactiveSessionState,
+  handleMembershipInactiveSession,
+  loadMembershipInactiveSessionState,
   loadSessionToken,
   markAuthenticatedSessionReady,
   refreshSessionTokenOnce,
@@ -49,6 +51,12 @@ const Bootstrap = () => {
 
     (async () => {
       try {
+        const hasInactiveMembership = await loadMembershipInactiveSessionState();
+        if (hasInactiveMembership) {
+          router.replace(APP_ROUTES.accessEnded);
+          return;
+        }
+
         const token = await loadSessionToken();
 
         if (!token.jwt && !token.refreshToken) {
@@ -64,6 +72,7 @@ const Bootstrap = () => {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
+              await clearMembershipInactiveSessionState();
               markAuthenticatedSessionReady();
               void syncAuthenticatedAppState();
               logPostAuthRouteDecision("bootstrap:refresh-only", retried.data ?? {});
@@ -84,19 +93,20 @@ const Bootstrap = () => {
         const { res, data } = await restoreUserSession();
 
         if (data.ok) {
+          await clearMembershipInactiveSessionState();
           markAuthenticatedSessionReady();
           void syncAuthenticatedAppState();
           logPostAuthRouteDecision("bootstrap", data ?? {});
           router.replace(resolvePostAuthRoute(data ?? {}) as never);
         } else if (res.status === 403 && hasMembershipInactiveCode(data)) {
-          await clearSessionToken();
-          router.replace(APP_ROUTES.accessEnded);
+          await handleMembershipInactiveSession();
         } else if (res.status === 401) {
           const refreshed = await refreshSessionTokenOnce();
           if (refreshed) {
             const retried = await restoreUserSession();
 
             if (retried.data?.ok) {
+              await clearMembershipInactiveSessionState();
               markAuthenticatedSessionReady();
               void syncAuthenticatedAppState();
               logPostAuthRouteDecision("bootstrap:retry", retried.data ?? {});
@@ -108,8 +118,7 @@ const Bootstrap = () => {
               retried.res.status === 403 &&
               hasMembershipInactiveCode(retried.data)
             ) {
-              await clearSessionToken();
-              router.replace(APP_ROUTES.accessEnded);
+              await handleMembershipInactiveSession();
               return;
             }
 
