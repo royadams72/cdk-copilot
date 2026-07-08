@@ -15,6 +15,12 @@ type InviteStatus =
   | "revoked"
   | "cancelled";
 
+type InviteDisplayStatus =
+  | InviteStatus
+  | "ending_soon"
+  | "inactive"
+  | "ended";
+
 type InviteItem = {
   activatedAt: string | null;
   activationCodeMasked: string;
@@ -29,6 +35,8 @@ type InviteItem = {
   createdByPrincipalId: string;
   dateOfBirth: string;
   durationMonths: "3" | "6" | "12";
+  displayStatus: InviteDisplayStatus;
+  displayStatusLabel: string;
   email: string;
   facilityId: string;
   facilityLabel: string;
@@ -37,6 +45,15 @@ type InviteItem = {
   invitedAt: string | null;
   lastName: string;
   membershipAccessEndsAt: string | null;
+  membershipLifecycleStatus:
+    | "active"
+    | "endingSoon"
+    | "expired"
+    | "inactive"
+    | "ended"
+    | "pending"
+    | "unassigned"
+    | null;
   membershipStatus: string | null;
   nhsNumber: string | null;
   patientId: string;
@@ -98,22 +115,15 @@ function formatDateOnly(value: string | null) {
   });
 }
 
-function getStatusLabel(status: InviteStatus) {
+function getDisplayStatusClassName(status: InviteDisplayStatus) {
   switch (status) {
-    case "pending_review":
-      return "Pending send";
-    case "invited":
-      return "Invited";
-    case "activated":
-      return "Activated";
-    case "expired":
-      return "Expired";
-    case "revoked":
-      return "Revoked";
-    case "cancelled":
-      return "Cancelled";
+    case "ending_soon":
+      return styles.portalStatusPill_expired;
+    case "inactive":
+    case "ended":
+      return styles.portalStatusPill_revoked;
     default:
-      return status;
+      return styles[`portalStatusPill_${status}`];
   }
 }
 
@@ -136,7 +146,7 @@ export default function PortalPatientInvitesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "open" | InviteStatus
+    "all" | "open" | InviteStatus | InviteDisplayStatus
   >("all");
   const [query, setQuery] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
@@ -201,7 +211,7 @@ export default function PortalPatientInvitesPage() {
           ? true
           : statusFilter === "open"
             ? OPEN_STATUSES.has(item.status)
-            : item.status === statusFilter;
+            : item.status === statusFilter || item.displayStatus === statusFilter;
 
       if (!statusMatch) {
         return false;
@@ -353,7 +363,7 @@ export default function PortalPatientInvitesPage() {
               className={styles.carePlanInput}
               onChange={(event) =>
                 setStatusFilter(
-                  event.target.value as "all" | "open" | InviteStatus,
+                  event.target.value as "all" | "open" | InviteStatus | InviteDisplayStatus,
                 )
               }
               value={statusFilter}
@@ -362,8 +372,11 @@ export default function PortalPatientInvitesPage() {
               <option value="open">Open invites</option>
               <option value="pending_review">Pending send</option>
               <option value="invited">Invited</option>
+              <option value="activated">Activated access</option>
+              <option value="ending_soon">Access ending soon</option>
+              <option value="inactive">Suspended access</option>
+              <option value="ended">Ended access</option>
               <option value="expired">Expired</option>
-              <option value="activated">Activated</option>
               <option value="revoked">Revoked</option>
               <option value="cancelled">Cancelled</option>
             </select>
@@ -420,9 +433,9 @@ export default function PortalPatientInvitesPage() {
                     </td>
                     <td>
                       <span
-                        className={`${styles.portalStatusPill} ${styles[`portalStatusPill_${item.status}`]}`}
+                        className={`${styles.portalStatusPill} ${getDisplayStatusClassName(item.displayStatus)}`}
                       >
-                        {getStatusLabel(item.status)}
+                        {item.displayStatusLabel}
                       </span>
                       <div className={styles.tableSubtleText}>
                         {item.activatedAt
@@ -463,6 +476,18 @@ export default function PortalPatientInvitesPage() {
                           ? `Access ends ${formatDateTime(item.membershipAccessEndsAt)}`
                           : `Patient ${item.patientId.slice(-6)}`}
                       </div>
+                      {item.status === "activated" && item.membershipLifecycleStatus ? (
+                        <div className={styles.tableSubtleText}>
+                          {item.membershipLifecycleStatus === "endingSoon"
+                            ? "Action may be needed soon"
+                            : item.membershipLifecycleStatus === "ended" ||
+                                item.membershipLifecycleStatus === "expired"
+                              ? "Membership is no longer live"
+                              : item.membershipLifecycleStatus === "inactive"
+                                ? "Membership is suspended"
+                                : "Membership is live"}
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       <div className={styles.portalInviteActionGroup}>

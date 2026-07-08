@@ -40,6 +40,7 @@ export const COLLECTIONS = {
   MedicationsLedger: "medications_ledger",
   NutritionFavourites: "nutrition_favourites",
   NutritionLedger: "nutrition_ledger",
+  NutritionMonthlyPatientSummary: "nutrition_monthly_patient_summary",
   WeeklyNutritionInsights: "weekly_nutrition_insights",
   WorseningTrendCheckIns: "worsening_trend_check_ins",
   WorseningTrendSnapshots: "worsening_trend_snapshots",

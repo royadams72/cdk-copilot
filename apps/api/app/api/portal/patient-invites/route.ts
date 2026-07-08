@@ -12,6 +12,7 @@ import {
 } from "@/apps/api/lib/portal/patientLifecycle";
 import {
   PortalPatientInviteDoc,
+  type PortalPatientInviteMembershipLifecycleStatus,
   syncExpiredPatientInvites,
 } from "@/apps/api/lib/portal/patientInvites";
 import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
@@ -53,6 +54,30 @@ function formatStaffDisplayName(doc: UserStaffDoc | null | undefined) {
     formatActorName([doc.firstName, doc.lastName]) ||
     null
   );
+}
+
+function getInviteDisplayStatus(args: {
+  inviteStatus: PortalPatientInviteDoc["status"];
+  membershipLifecycleStatus: PortalPatientInviteMembershipLifecycleStatus | null;
+}) {
+  if (args.inviteStatus !== "activated") {
+    return args.inviteStatus;
+  }
+
+  switch (args.membershipLifecycleStatus) {
+    case "endingSoon":
+      return "ending_soon";
+    case "inactive":
+      return "inactive";
+    case "expired":
+    case "ended":
+      return "ended";
+    case "pending":
+      return "pending_review";
+    case "active":
+    default:
+      return "activated";
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -174,6 +199,10 @@ export async function GET(req: NextRequest) {
                 assignments: patientDoc?.assignments,
               })
             : null;
+        const displayStatus = getInviteDisplayStatus({
+          inviteStatus: invite.status,
+          membershipLifecycleStatus,
+        });
         return {
           activatedAt: invite.activatedAt?.toISOString() ?? null,
           activationCodeMasked: invite.activationCodeMasked,
@@ -191,6 +220,27 @@ export async function GET(req: NextRequest) {
           dateOfBirth: invite.dateOfBirth.toISOString(),
           durationMonths: invite.durationMonths,
           email: invite.email,
+          displayStatus,
+          displayStatusLabel:
+            invite.status === "activated" && membershipLifecycleStatus
+              ? `Activated · ${formatPatientLifecycleStatusLabel(membershipLifecycleStatus)}`
+              : displayStatus === "ending_soon"
+                ? "Ending soon"
+                : displayStatus === "inactive"
+                  ? "Suspended"
+                  : displayStatus === "ended"
+                    ? "Ended"
+                    : invite.status === "pending_review"
+                      ? "Pending send"
+                      : invite.status === "invited"
+                        ? "Invited"
+                        : invite.status === "expired"
+                          ? "Expired"
+                          : invite.status === "revoked"
+                            ? "Revoked"
+                            : invite.status === "cancelled"
+                              ? "Cancelled"
+                              : "Activated",
           facilityId: invite.facilityId,
           facilityLabel:
             facilityLabelById.get(invite.facilityId) ?? invite.facilityId,
@@ -218,6 +268,7 @@ export async function GET(req: NextRequest) {
                   return Number.isNaN(value.getTime()) ? null : value.toISOString();
                 })()
               : null,
+          membershipLifecycleStatus,
           membershipStatus:
             membershipLifecycleStatus &&
             formatPatientLifecycleStatusLabel(membershipLifecycleStatus),

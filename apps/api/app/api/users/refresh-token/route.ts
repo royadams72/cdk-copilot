@@ -16,6 +16,7 @@ import {
 } from "@/apps/api/lib/auth/auth_token";
 import { Collection, ObjectId } from "mongodb";
 import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
+import { syncExpiredPatientMemberships } from "@/apps/api/lib/portal/patientMembershipExpiry";
 import { summarizeAssignmentState } from "@/apps/api/lib/utils/patientAssignments";
 
 export const runtime = "nodejs";
@@ -140,6 +141,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (account.role === "patient") {
+      const patientObjectId =
+        tokenDoc.patientId instanceof ObjectId
+          ? tokenDoc.patientId
+          : new ObjectId(String(tokenDoc.patientId));
+      await syncExpiredPatientMemberships({
+        db,
+        patientId: patientObjectId,
+      });
       const patient = await db.collection(COLLECTIONS.Patients).findOne<{
         assignments?: Array<{
           endsAt?: Date | string | null;
@@ -147,10 +156,7 @@ export async function POST(req: NextRequest) {
         }>;
       }>(
         {
-          _id:
-            tokenDoc.patientId instanceof ObjectId
-              ? tokenDoc.patientId
-              : new ObjectId(String(tokenDoc.patientId)),
+          _id: patientObjectId,
         },
         { projection: { assignments: 1 } },
       );

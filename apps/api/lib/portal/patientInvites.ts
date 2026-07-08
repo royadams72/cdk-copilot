@@ -117,8 +117,17 @@ export type PortalPatientInviteDoc = {
   principalId: string;
   status: PortalPatientInviteStatus;
   updatedAt: Date;
-  updatedBy: string;
+ updatedBy: string;
  };
+
+export type PortalPatientInviteMembershipLifecycleStatus =
+  | "active"
+  | "endingSoon"
+  | "expired"
+  | "inactive"
+  | "ended"
+  | "pending"
+  | "unassigned";
 
 export async function syncExpiredPatientInvites(args: {
   db: Db;
