@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Text } from "react-native";
+import { BackHandler, Text } from "react-native";
 import { useRouter } from "expo-router";
 
 import { APP_ROUTES } from "@/constants/routes";
@@ -13,6 +13,15 @@ export default function AccessEndedScreen() {
 
   useEffect(() => {
     void clearSessionToken();
+
+    const backSubscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true,
+    );
+
+    return () => {
+      backSubscription.remove();
+    };
   }, []);
 
   return (
