@@ -6,7 +6,7 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { COLLECTIONS } from "@ckd/core/server";
 
 export async function GET(req: NextRequest) {
@@ -57,10 +57,6 @@ export async function GET(req: NextRequest) {
       ),
     });
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to load care plan reminders",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to load care plan reminders");
   }
 }

@@ -25,6 +25,7 @@ let authenticatedSessionReady = false;
 const MEMBERSHIP_INACTIVE_STORAGE_KEY = "ckd_membership_inactive";
 
 type HealthConnectBackgroundSyncModuleShape = {
+  cancelScheduled?: () => Promise<boolean>;
   clearAuthSession?: () => Promise<boolean>;
   syncAuthSession?: (
     jwt: string | null,
@@ -75,15 +76,22 @@ export async function syncNativeAuthSessionMirrorFromSecureStore() {
 export async function loadSessionToken() {
   const jwt = await secureStorage.getItem("ckd_jwt");
   const refreshToken = await secureStorage.getItem("ckd_refresh");
+  console.log("[membership] loadSessionToken", {
+    hasJwt: Boolean(jwt),
+    hasRefreshToken: Boolean(refreshToken),
+  });
   await syncNativeAuthSession(jwt, refreshToken);
   return { jwt, refreshToken };
 }
 
 export async function clearSessionToken() {
+  console.log("[membership] clearSessionToken:start");
   authenticatedSessionReady = false;
   await secureStorage.removeItem("ckd_jwt");
   await secureStorage.removeItem("ckd_refresh");
   await nativeBackgroundSyncModule?.clearAuthSession?.();
+  await nativeBackgroundSyncModule?.cancelScheduled?.();
+  console.log("[membership] clearSessionToken:done");
 }
 
 export async function loadMembershipInactiveSessionState() {
@@ -92,6 +100,11 @@ export async function loadMembershipInactiveSessionState() {
   if (!membershipInactiveSession) {
     membershipInactiveRedirectInFlight = false;
   }
+  console.log("[membership] loadMembershipInactiveSessionState", {
+    membershipInactiveRedirectInFlight,
+    membershipInactiveSession,
+    storedValue,
+  });
   return membershipInactiveSession;
 }
 
@@ -105,8 +118,10 @@ export function resetMembershipInactiveSessionState() {
 }
 
 export async function clearMembershipInactiveSessionState() {
+  console.log("[membership] clearMembershipInactiveSessionState:start");
   resetMembershipInactiveSessionState();
   await secureStorage.removeItem(MEMBERSHIP_INACTIVE_STORAGE_KEY);
+  console.log("[membership] clearMembershipInactiveSessionState:done");
 }
 
 export function hasAuthenticatedSessionReady() {
@@ -116,12 +131,17 @@ export function hasAuthenticatedSessionReady() {
 export function markAuthenticatedSessionReady() {
   authenticatedSessionReady = true;
   membershipInactiveSession = false;
+  console.log("[membership] markAuthenticatedSessionReady");
 }
 
 export async function handleMembershipInactiveSession() {
+  console.log("[membership] handleMembershipInactiveSession:start", {
+    membershipInactiveRedirectInFlight,
+  });
   membershipInactiveSession = true;
   authenticatedSessionReady = false;
   await secureStorage.setItem(MEMBERSHIP_INACTIVE_STORAGE_KEY, "1");
+  console.log("[membership] handleMembershipInactiveSession:stored-flag");
   await clearSessionToken();
 
   // Stop foreground sync loops immediately so the app does not keep issuing
@@ -138,19 +158,26 @@ export async function handleMembershipInactiveSession() {
   const { store } = await import("@/store");
   const { appApi } = await import("@/store/services/appApi");
   store.dispatch(appApi.util.resetApiState());
+  console.log("[membership] handleMembershipInactiveSession:reset-api-state");
 
   if (membershipInactiveRedirectInFlight) {
+    console.log("[membership] handleMembershipInactiveSession:redirect-already-in-flight");
     return;
   }
 
   membershipInactiveRedirectInFlight = true;
+  console.log("[membership] handleMembershipInactiveSession:redirecting");
   router.replace(APP_ROUTES.accessEnded);
 }
 
 export async function refreshSessionToken() {
   const refreshToken = await secureStorage.getItem("ckd_refresh");
+  console.log("[membership] refreshSessionToken:start", {
+    hasRefreshToken: Boolean(refreshToken),
+  });
   if (!refreshToken) {
     await secureStorage.removeItem("ckd_jwt");
+    console.log("[membership] refreshSessionToken:no-refresh-token");
     return false;
   }
 
@@ -164,6 +191,11 @@ export async function refreshSessionToken() {
     .json()
     .catch(() => null)) as RefreshResponse | null;
   const nextJwt = refreshBody?.data?.jwt?.trim();
+  console.log("[membership] refreshSessionToken:response", {
+    hasMembershipInactive: hasMembershipInactiveCode(refreshBody),
+    ok: refreshBody?.ok,
+    status: refreshRes.status,
+  });
   if (!refreshRes.ok || !refreshBody?.ok || !nextJwt) {
     if (refreshRes.status === 403 && hasMembershipInactiveCode(refreshBody)) {
       await handleMembershipInactiveSession();

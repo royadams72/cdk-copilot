@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { syncPatientWorseningTrendSnapshots } from "@/apps/api/lib/portal/worseningSnapshots";
 import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worseningTrends";
 
@@ -35,10 +35,6 @@ export async function GET(req: NextRequest) {
       message: error?.message ?? "unknown error",
       stack: error?.stack ?? null,
     });
-    return bad(
-      error?.message || "Unable to load worsening trends",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to load worsening trends");
   }
 }

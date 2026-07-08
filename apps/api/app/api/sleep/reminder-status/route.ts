@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { getSleepReminderStatus } from "@/apps/api/lib/utils/sleep";
 import { ROLES } from "@ckd/core";
 
@@ -24,6 +24,6 @@ export async function GET(_req: NextRequest) {
     const status = await getSleepReminderStatus(db, new ObjectId(caller.patientId));
     return ok(status);
   } catch (err: any) {
-    return bad(err?.message || "Server error", undefined, err?.status || 500);
+    return badFromError(err);
   }
 }

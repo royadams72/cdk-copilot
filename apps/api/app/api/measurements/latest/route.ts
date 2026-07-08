@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { badFromError } from "@/apps/api/lib/http/responses";
 import { getLatestAggregatedSleepMeasurement } from "@/apps/api/lib/utils/sleep";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -18,34 +19,38 @@ const MEASUREMENT_KINDS = [
 ] as const;
 
 export async function GET(req: NextRequest) {
-  const caller = await requireUser(req);
-  const patientIdParam =
-    new URL(req.url).searchParams.get("patientId") || caller.patientId || null;
+  try {
+    const caller = await requireUser(req);
+    const patientIdParam =
+      new URL(req.url).searchParams.get("patientId") || caller.patientId || null;
 
-  if (!patientIdParam || !ObjectId.isValid(patientIdParam)) {
-    return NextResponse.json(
-      { ok: false, error: "Patient context missing" },
-      { status: 403 },
+    if (!patientIdParam || !ObjectId.isValid(patientIdParam)) {
+      return NextResponse.json(
+        { ok: false, error: "Patient context missing" },
+        { status: 403 },
+      );
+    }
+
+    const patientId = new ObjectId(patientIdParam);
+
+    const db = await getDb();
+    const collection = db.collection(COLLECTIONS.MeasurementsLedger);
+    const results = await Promise.all(
+      MEASUREMENT_KINDS.map((kind) =>
+        kind === "sleep"
+          ? getLatestAggregatedSleepMeasurement(db, patientId)
+          : collection.findOne(
+              { kind, patientId },
+              { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
+            ),
+      ),
     );
+    const docs = results
+      .filter((doc) => doc !== null)
+      .sort((a, b) => String(a.kind).localeCompare(String(b.kind)));
+
+    return NextResponse.json({ ok: true, data: docs });
+  } catch (err: any) {
+    return badFromError(err);
   }
-
-  const patientId = new ObjectId(patientIdParam);
-
-  const db = await getDb();
-  const collection = db.collection(COLLECTIONS.MeasurementsLedger);
-  const results = await Promise.all(
-    MEASUREMENT_KINDS.map((kind) =>
-      kind === "sleep"
-        ? getLatestAggregatedSleepMeasurement(db, patientId)
-        : collection.findOne(
-            { kind, patientId },
-            { projection: { _id: 0 }, sort: { measuredAt: -1, receivedAt: -1 } },
-          ),
-    ),
-  );
-  const docs = results
-    .filter((doc) => doc !== null)
-    .sort((a, b) => String(a.kind).localeCompare(String(b.kind)));
-
-  return NextResponse.json({ ok: true, data: docs });
 }

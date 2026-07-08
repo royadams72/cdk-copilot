@@ -9,7 +9,7 @@ import {
   parseHealthSyncProvider,
   type HealthSyncProvider,
 } from "@/apps/api/lib/healthSync/provider";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
 
@@ -156,8 +156,7 @@ export async function GET(req: NextRequest) {
       accountCreatedAt: account?.createdAt ? account.createdAt.toISOString() : null,
     });
   } catch (err: any) {
-    const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return badFromError(err);
   }
 }
 
@@ -218,7 +217,6 @@ export async function PATCH(req: NextRequest) {
 
     return ok(toResponse(syncState, provider));
   } catch (err: any) {
-    const status = err?.status || 500;
-    return bad(err?.message || "Server error", undefined, status);
+    return badFromError(err);
   }
 }

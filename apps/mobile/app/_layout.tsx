@@ -20,7 +20,6 @@ import {
   syncNativeAuthSessionMirrorFromSecureStore,
 } from "@/lib/authSession";
 import { APP_ROUTES } from "@/constants/routes";
-import { ensureNativeHealthConnectBackgroundSyncScheduled } from "@/lib/healthConnectNativeSync";
 import { store, persistor } from "@/store";
 
 const LightNavigationTheme = {
@@ -72,8 +71,16 @@ export default function RootLayout() {
 
       setMembershipInactiveLocked(inactive);
       setMembershipGuardReady(true);
+      console.log("[membership] root-layout:membership-guard-ready", {
+        inactive,
+        isProtectedRoute,
+        segments,
+      });
 
       if (inactive && isProtectedRoute) {
+        console.log("[membership] root-layout:redirecting-to-access-ended", {
+          segments,
+        });
         router.replace(APP_ROUTES.accessEnded);
       }
     })();
@@ -84,6 +91,10 @@ export default function RootLayout() {
   }, [isProtectedRoute, router, segments]);
 
   useEffect(() => {
+    if (!membershipGuardReady || membershipInactiveLocked) {
+      return;
+    }
+
     function handleNotificationResponse(
       response: Notifications.NotificationResponse | null,
     ) {
@@ -132,7 +143,6 @@ export default function RootLayout() {
     if (hasAuthenticatedSessionReady()) {
       void syncAuthenticatedAppState();
     }
-    void ensureNativeHealthConnectBackgroundSyncScheduled();
 
     void Notifications.getLastNotificationResponseAsync().then(
       handleNotificationResponse,
@@ -162,11 +172,18 @@ export default function RootLayout() {
       receivedSubscription.remove();
       appStateSubscription.remove();
     };
-  }, [router]);
+  }, [membershipGuardReady, membershipInactiveLocked, router]);
 
-  const shouldBlockProtectedRoute =
-    isProtectedRoute &&
-    (!membershipGuardReady || membershipInactiveLocked);
+  if (!membershipGuardReady) {
+    return null;
+  }
+
+  const shouldBlockProtectedRoute = isProtectedRoute && membershipInactiveLocked;
+  if (shouldBlockProtectedRoute) {
+    console.log("[membership] root-layout:blocking-protected-route", {
+      segments,
+    });
+  }
 
   return (
     <Provider store={store}>
