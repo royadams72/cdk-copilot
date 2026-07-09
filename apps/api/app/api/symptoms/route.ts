@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import {
   createPatientSymptom,
@@ -29,10 +29,14 @@ export async function GET(req: NextRequest) {
     const data = await listPatientSymptoms(db, new ObjectId(caller.patientId));
     return ok({ ...data, requestId });
   } catch (err: any) {
-    return bad(
-      err?.message || "Server error",
-      { issues: err?.issues, requestId },
-      err?.status || 500,
+    return badFromError(
+      {
+        code: err?.code,
+        errors: { issues: err?.issues, requestId },
+        message: err?.message,
+        status: err?.status,
+      },
+      "Server error",
     );
   }
 }
@@ -54,10 +58,14 @@ export async function POST(req: NextRequest) {
     const data = await createPatientSymptom(db, caller, body);
     return ok({ ...data, requestId }, 201);
   } catch (err: any) {
-    return bad(
-      err?.message || "Server error",
-      { issues: err?.issues, requestId },
-      err?.status || 500,
+    return badFromError(
+      {
+        code: err?.code,
+        errors: { issues: err?.issues, requestId },
+        message: err?.message,
+        status: err?.status,
+      },
+      "Server error",
     );
   }
 }

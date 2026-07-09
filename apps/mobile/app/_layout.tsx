@@ -71,16 +71,8 @@ export default function RootLayout() {
 
       setMembershipInactiveLocked(inactive);
       setMembershipGuardReady(true);
-      console.log("[membership] root-layout:membership-guard-ready", {
-        inactive,
-        isProtectedRoute,
-        segments,
-      });
 
       if (inactive && isProtectedRoute) {
-        console.log("[membership] root-layout:redirecting-to-access-ended", {
-          segments,
-        });
         router.replace(APP_ROUTES.accessEnded);
       }
     })();
@@ -179,11 +171,6 @@ export default function RootLayout() {
   }
 
   const shouldBlockProtectedRoute = isProtectedRoute && membershipInactiveLocked;
-  if (shouldBlockProtectedRoute) {
-    console.log("[membership] root-layout:blocking-protected-route", {
-      segments,
-    });
-  }
 
   return (
     <Provider store={store}>

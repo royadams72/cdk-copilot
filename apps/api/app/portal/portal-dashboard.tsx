@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 import type {
@@ -179,11 +180,7 @@ function PortalDashboardContent() {
           | null;
 
         if (!response.ok || !body || !("data" in body)) {
-          throw new Error(
-            body && "error" in body
-              ? body.error?.message
-              : "Unable to load patients",
-          );
+          throw new Error(readResponseMessage(body, "Unable to load patients"));
         }
 
         setPatients(body.data.patients);
@@ -449,11 +446,7 @@ function PortalDashboardContent() {
         | null;
 
       if (!response.ok || !body || !("data" in body)) {
-        throw new Error(
-          body && "error" in body
-            ? body.error?.message
-            : "Unable to notify patients",
-        );
+        throw new Error(readResponseMessage(body, "Unable to notify patients"));
       }
 
       setActionMessage(

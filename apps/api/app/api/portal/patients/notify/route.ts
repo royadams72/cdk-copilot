@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { buildPortalPatientAccessMatch } from "@/apps/api/lib/portal/patients";
 import { sendPatientPushNotification } from "@/apps/api/lib/utils/pushNotifications";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -78,6 +78,6 @@ export async function POST(req: NextRequest) {
     if (error?.name === "ZodError") {
       return bad("Invalid notify request", { issues: error.issues }, 400);
     }
-    return bad(error?.message || "Unable to notify patients", undefined, error?.status || 500);
+    return badFromError(error, "Unable to notify patients");
   }
 }

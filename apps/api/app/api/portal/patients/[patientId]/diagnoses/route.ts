@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import {
   actorTypeFromRole,
   makeConditionEntryId,
@@ -107,11 +107,7 @@ export async function GET(
       patient: mapPortalPatientDetail(loaded.patient),
     });
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to load patient diagnoses",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to load patient diagnoses");
   }
 }
 
@@ -229,11 +225,7 @@ export async function POST(
 
     return ok({ added: true, item: nextEntry.value.condition }, 201);
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to add diagnosis",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to add diagnosis");
   }
 }
 
@@ -303,10 +295,6 @@ export async function DELETE(
 
     return ok({ removed: true });
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to remove diagnosis",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to remove diagnosis");
   }
 }

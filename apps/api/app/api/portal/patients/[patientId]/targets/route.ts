@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import {
   buildPortalPatientAccessMatch,
   buildPortalPatientDetailPipeline,
@@ -179,11 +179,7 @@ export async function GET(
       patient: mapPortalPatientDetail(loaded.patient),
     });
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to load patient targets",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to load patient targets");
   }
 }
 
@@ -310,10 +306,6 @@ export async function PATCH(
 
     return ok({ metric, updated: true });
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to update patient targets",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to update patient targets");
   }
 }

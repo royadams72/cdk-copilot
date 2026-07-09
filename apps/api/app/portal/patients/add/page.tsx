@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type IntakeDuration = "3" | "6" | "12";
@@ -111,22 +112,6 @@ const CSV_TEMPLATE_ROWS = [
   ["Jane", "Doe", "jane.doe@example.com", "1980-04-15", "6", "9434765919"],
   ["John", "Smith", "john.smith@example.com", "1972-11-09", "12", ""],
 ];
-
-function readResponseErrorMessage(
-  body: unknown,
-  fallback: string,
-) {
-  if (!body || typeof body !== "object") {
-    return fallback;
-  }
-
-  const value = body as {
-    error?: { message?: string };
-    message?: string;
-  };
-
-  return value.message || value.error?.message || fallback;
-}
 
 function escapeCsvValue(value: string) {
   if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
@@ -633,7 +618,7 @@ export default function PortalAddPatientPage() {
         | null;
 
       if (!response.ok || !body || !("data" in body)) {
-        throw new Error(readResponseErrorMessage(body, "Unable to validate patient batch"));
+        throw new Error(readResponseMessage(body, "Unable to validate patient batch"));
       }
 
       if (body.data.batch.invalidRows > 0) {
@@ -782,7 +767,7 @@ export default function PortalAddPatientPage() {
           });
           return;
         }
-        throw new Error(readResponseErrorMessage(body, "Unable to create invite batch"));
+        throw new Error(readResponseMessage(body, "Unable to create invite batch"));
       }
 
       setModalState({

@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { updatePatientSymptom } from "@/apps/api/lib/utils/symptoms";
 import { ROLES } from "@ckd/core";
@@ -31,10 +31,14 @@ export async function PATCH(
     const data = await updatePatientSymptom(db, caller, symptomId, body);
     return ok({ ...data, requestId });
   } catch (err: any) {
-    return bad(
-      err?.message || "Server error",
-      { issues: err?.issues, requestId },
-      err?.status || 500,
+    return badFromError(
+      {
+        code: err?.code,
+        errors: { issues: err?.issues, requestId },
+        message: err?.message,
+        status: err?.status,
+      },
+      "Server error",
     );
   }
 }

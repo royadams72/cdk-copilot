@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type TargetDefinitionValue = {
@@ -164,14 +165,9 @@ export default function PortalPatientTargetsPage() {
         );
         const body = (await response.json().catch(() => null)) as
           | TargetsResponse
-          | { error?: { message?: string } }
           | null;
         if (!response.ok || !body || !("data" in body)) {
-          throw new Error(
-            body && "error" in body
-              ? body.error?.message
-              : "Unable to load patient targets",
-          );
+          throw new Error(readResponseMessage(body, "Unable to load patient targets"));
         }
         setData(body.data);
         setDrafts(
@@ -248,14 +244,9 @@ export default function PortalPatientTargetsPage() {
       );
       const body = (await response.json().catch(() => null)) as
         | { data?: { updated?: boolean } }
-        | { error?: { message?: string } }
         | null;
       if (!response.ok) {
-        throw new Error(
-          body && "error" in body
-            ? body.error?.message
-            : "Unable to update target",
-        );
+        throw new Error(readResponseMessage(body, "Unable to update target"));
       }
 
       setData((current) =>
@@ -315,12 +306,9 @@ export default function PortalPatientTargetsPage() {
         },
       );
       const body = (await response.json().catch(() => null)) as
-        | { error?: { message?: string } }
         | null;
       if (!response.ok) {
-        throw new Error(
-          body?.error?.message ?? "Unable to clear target override",
-        );
+        throw new Error(readResponseMessage(body, "Unable to clear target override"));
       }
       setDrafts((current) => ({
         ...current,
