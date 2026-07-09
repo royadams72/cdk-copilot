@@ -52,11 +52,7 @@ const Bootstrap = () => {
     (async () => {
       try {
         const hasInactiveMembership = await loadMembershipInactiveSessionState();
-        console.log("[membership] bootstrap:loaded-inactive-flag", {
-          hasInactiveMembership,
-        });
         if (hasInactiveMembership) {
-          console.log("[membership] bootstrap:redirecting-to-access-ended-from-storage");
           router.replace(APP_ROUTES.accessEnded);
           return;
         }
@@ -95,11 +91,6 @@ const Bootstrap = () => {
         }
 
         const { res, data } = await restoreUserSession();
-        console.log("[membership] bootstrap:restoreUserSession", {
-          hasMembershipInactive: hasMembershipInactiveCode(data),
-          ok: data?.ok,
-          status: res.status,
-        });
 
         if (data.ok) {
           await clearMembershipInactiveSessionState();

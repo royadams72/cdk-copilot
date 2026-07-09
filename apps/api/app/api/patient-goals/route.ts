@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { getPatientGoalsCurrent, updatePatientSelectedGoals } from "@/apps/api/lib/utils/patientGoals";
 import { ROLES } from "@ckd/core";
@@ -26,7 +26,15 @@ export async function GET(req: NextRequest) {
     const current = await getPatientGoalsCurrent(db, new ObjectId(caller.patientId));
     return ok({ current, requestId });
   } catch (err: any) {
-    return bad(err?.message || "Server error", { requestId }, err?.status || 500);
+    return badFromError(
+      {
+        code: err?.code,
+        requestId,
+        message: err?.message,
+        status: err?.status,
+      },
+      "Server error",
+    );
   }
 }
 
@@ -47,10 +55,14 @@ export async function PATCH(req: NextRequest) {
     const current = await updatePatientSelectedGoals(db, caller, body);
     return ok({ current, requestId });
   } catch (err: any) {
-    return bad(
-      err?.message || "Server error",
-      { issues: err?.issues, requestId },
-      err?.status || 500,
+    return badFromError(
+      {
+        code: err?.code,
+        errors: { issues: err?.issues, requestId },
+        message: err?.message,
+        status: err?.status,
+      },
+      "Server error",
     );
   }
 }

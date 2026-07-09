@@ -25,10 +25,6 @@ async function hasMembershipInactiveCode(response: Response) {
 
 export async function authFetch(input: string, init: RequestInit = {}) {
   if (hasMembershipInactiveSession()) {
-    console.log("[membership] authFetch:blocked-by-local-flag", {
-      input,
-      method: init.method ?? "GET",
-    });
     return new Response(
       JSON.stringify({
         code: "membership_inactive",
@@ -62,10 +58,6 @@ export async function authFetch(input: string, init: RequestInit = {}) {
     response.status === 403 &&
     (await hasMembershipInactiveCode(response))
   ) {
-    console.log("[membership] authFetch:api-returned-membership-inactive", {
-      input,
-      method: init.method ?? "GET",
-    });
     await handleMembershipInactiveSession();
     return response;
   }
@@ -84,10 +76,6 @@ export async function authFetch(input: string, init: RequestInit = {}) {
     response.status === 403 &&
     (await hasMembershipInactiveCode(response))
   ) {
-    console.log("[membership] authFetch:retry-returned-membership-inactive", {
-      input,
-      method: init.method ?? "GET",
-    });
     await handleMembershipInactiveSession();
   }
   return response;

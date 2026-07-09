@@ -56,16 +56,7 @@ const baseQueryWithEnvelope: BaseQueryFn<
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  const requestLabel =
-    typeof args === "string"
-      ? { method: "GET", url: args }
-      : {
-          method: args.method ?? "GET",
-          url: typeof args.url === "string" ? args.url : "unknown",
-        };
-
   if (hasMembershipInactiveSession()) {
-    console.log("[membership] appApi:blocked-by-local-flag", requestLabel);
     return {
       error: {
         data: {
@@ -78,25 +69,10 @@ const baseQueryWithEnvelope: BaseQueryFn<
   }
 
   let result = await rawBaseQuery(args, api, extraOptions);
-  if (result.error) {
-    console.log("[membership] appApi:first-response-error", {
-      ...requestLabel,
-      hasMembershipInactive: hasMembershipInactiveCode(result.error.data),
-      status: result.error.status,
-    });
-  }
   if (result.error?.status === 401) {
     const refreshed = await refreshSessionTokenOnce();
     if (refreshed) {
-      console.log("[membership] appApi:retrying-after-refresh", requestLabel);
       result = await rawBaseQuery(args, api, extraOptions);
-      if (result.error) {
-        console.log("[membership] appApi:retry-response-error", {
-          ...requestLabel,
-          hasMembershipInactive: hasMembershipInactiveCode(result.error.data),
-          status: result.error.status,
-        });
-      }
     }
   }
 
@@ -104,7 +80,6 @@ const baseQueryWithEnvelope: BaseQueryFn<
     result.error?.status === 403 &&
     hasMembershipInactiveCode(result.error.data)
   ) {
-    console.log("[membership] appApi:api-returned-membership-inactive", requestLabel);
     await handleMembershipInactiveSession();
   }
 

@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import {
   PatientWorseningTrendCheckIn,
   PatientWorseningTrendCheckInRequest,
@@ -121,10 +121,6 @@ export async function POST(req: NextRequest) {
 
     return ok(saved);
   } catch (error: any) {
-    return bad(
-      error?.message || "Unable to save worsening trend check-in",
-      undefined,
-      error?.status || 500,
-    );
+    return badFromError(error, "Unable to save worsening trend check-in");
   }
 }

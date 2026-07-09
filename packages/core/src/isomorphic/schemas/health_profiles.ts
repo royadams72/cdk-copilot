@@ -422,9 +422,6 @@ export type TDietaryPreferenceFormItem = z.infer<
 >;
 export type THealthProfileActor = z.infer<typeof HealthProfileActor>;
 export type THealthProfileCurrent = z.infer<typeof HealthProfilesCurrent>;
-export type THealthProfileCurrentEntry = z.infer<
-  typeof HealthProfileCurrentEntry
->;
 export type THealthProfileFormValues = z.infer<typeof HealthProfileFormSchema>;
 export type THealthProfileLedgerEvent = z.infer<
   typeof HealthProfileLedgerEvent

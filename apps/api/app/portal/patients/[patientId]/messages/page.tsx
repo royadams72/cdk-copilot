@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type PatientResponse = {
@@ -70,11 +71,9 @@ export default function PortalPatientMessagesPage() {
         },
         method: "POST",
       });
-      const data = (await response.json().catch(() => null)) as
-        | { error?: { message?: string } }
-        | null;
+      const data = (await response.json().catch(() => null)) as unknown;
       if (!response.ok) {
-        throw new Error(data?.error?.message ?? "Unable to notify patient");
+        throw new Error(readResponseMessage(data, "Unable to notify patient"));
       }
       setMessage("Notification sent.");
     } catch (nextError) {
@@ -105,7 +104,7 @@ export default function PortalPatientMessagesPage() {
       ) : null}
       <section className={styles.panelSurface}>
         <div className={styles.listHeaderRow}>
-          <span className={styles.listHeaderTitle}>Send push notification</span>
+          <span className={styles.listHeaderTitle}>Notify patient</span>
         </div>
         <div className={styles.worseningModalList}>
           <label>
@@ -116,6 +115,9 @@ export default function PortalPatientMessagesPage() {
               onChange={(event) => setTitle(event.target.value)}
               value={title}
             />
+            <span className={styles.dataScreenCaption}>
+              Up to 80 characters.
+            </span>
           </label>
           <label>
             <span className={styles.listHeaderMeta}>Message</span>
@@ -126,6 +128,9 @@ export default function PortalPatientMessagesPage() {
               rows={5}
               value={body}
             />
+            <span className={styles.dataScreenCaption}>
+              Up to 240 characters. The patient receives this as a push notification.
+            </span>
           </label>
           <div className={styles.warningActions}>
             <button

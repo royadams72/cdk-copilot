@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
-import { bad, ok } from "@/apps/api/lib/http/responses";
+import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
 
 const RegisterPushDeviceBody = z.object({
@@ -88,6 +88,6 @@ export async function POST(req: NextRequest) {
     return ok({ registered: true });
   } catch (err: any) {
     console.error("[push:register] failed", err);
-    return bad(err?.message || "Server error", undefined, err?.status || 500);
+    return badFromError(err);
   }
 }

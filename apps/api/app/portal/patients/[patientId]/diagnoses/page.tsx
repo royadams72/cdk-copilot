@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type DiagnosisItem = {
@@ -60,14 +61,9 @@ export default function PortalPatientDiagnosesPage() {
         );
         const body = (await response.json().catch(() => null)) as
           | DiagnosisResponse
-          | { error?: { message?: string } }
           | null;
         if (!response.ok || !body || !("data" in body)) {
-          throw new Error(
-            body && "error" in body
-              ? body.error?.message
-              : "Unable to load diagnoses",
-          );
+          throw new Error(readResponseMessage(body, "Unable to load diagnoses"));
         }
         setData(body.data);
       } catch (nextError) {
@@ -107,10 +103,9 @@ export default function PortalPatientDiagnosesPage() {
         );
         const body = (await response.json().catch(() => null)) as
           | { data?: { items?: Array<{ code: string; label: string }> } }
-          | { error?: { message?: string } }
           | null;
         if (!response.ok) {
-          throw new Error(body && "error" in body ? body.error?.message : "Unable to search conditions");
+          throw new Error(readResponseMessage(body, "Unable to search conditions"));
         }
         setResults(body && "data" in body ? body.data?.items ?? [] : []);
       } catch (nextError) {
@@ -152,10 +147,9 @@ export default function PortalPatientDiagnosesPage() {
       );
       const body = (await response.json().catch(() => null)) as
         | { data?: { added?: boolean; item?: DiagnosisItem } }
-        | { error?: { message?: string } }
         | null;
       if (!response.ok) {
-        throw new Error(body && "error" in body ? body.error?.message : "Unable to add diagnosis");
+        throw new Error(readResponseMessage(body, "Unable to add diagnosis"));
       }
       await reload();
       setMessage(`Added ${input.label}.`);
@@ -188,10 +182,9 @@ export default function PortalPatientDiagnosesPage() {
         },
       );
       const body = (await response.json().catch(() => null)) as
-        | { error?: { message?: string } }
         | null;
       if (!response.ok) {
-        throw new Error(body?.error?.message ?? "Unable to remove diagnosis");
+        throw new Error(readResponseMessage(body, "Unable to remove diagnosis"));
       }
       await reload();
       setMessage(`Removed ${label}.`);
@@ -204,6 +197,15 @@ export default function PortalPatientDiagnosesPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function addCustomDiagnosis() {
+    const label = query.trim();
+    if (label.length < 2) {
+      return;
+    }
+
+    void addDiagnosis({ label });
   }
 
   async function reload() {
@@ -261,9 +263,7 @@ export default function PortalPatientDiagnosesPage() {
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
               event.preventDefault();
-              if (query.trim().length >= 2) {
-                void addDiagnosis({ label: query.trim() });
-              }
+              addCustomDiagnosis();
             }}
             placeholder="Search condition or enter custom diagnosis"
             value={query}
@@ -294,16 +294,6 @@ export default function PortalPatientDiagnosesPage() {
               ))}
             </div>
           ) : null}
-          <div className={styles.warningActions}>
-            <button
-              className={styles.buttonPrimarySmall}
-              disabled={saving || query.trim().length < 2}
-              onClick={() => void addDiagnosis({ label: query.trim() })}
-              type="button"
-            >
-              Add custom diagnosis
-            </button>
-          </div>
         </div>
 
         <div className={styles.carePlanFormGroup}>

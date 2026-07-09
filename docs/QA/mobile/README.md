@@ -4,6 +4,7 @@ Manual test coverage for the patient mobile app.
 
 ## Checklists
 
+- [Authentication and membership testing checklist](./auth-membership-testing-checklist.md)
 - [Worsening trends testing checklist](./worsening-trends-testing-checklist.md)
 
 ## Next likely additions

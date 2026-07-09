@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type InviteStatus =
@@ -155,19 +156,6 @@ function canRevokeInvite(item: InviteItem) {
   return ["pending_review", "invited", "expired"].includes(item.status);
 }
 
-function readResponseErrorMessage(body: unknown, fallback: string) {
-  if (!body || typeof body !== "object") {
-    return fallback;
-  }
-
-  const value = body as {
-    error?: { message?: string };
-    message?: string;
-  };
-
-  return value.message || value.error?.message || fallback;
-}
-
 export default function PortalPatientInvitesPage() {
   const { session, status } = usePortalAuthSession();
   const [items, setItems] = useState<InviteItem[]>([]);
@@ -207,7 +195,7 @@ export default function PortalPatientInvitesPage() {
           | null;
 
         if (!response.ok || !body || !("data" in body)) {
-          throw new Error(readResponseErrorMessage(body, "Unable to load invites"));
+          throw new Error(readResponseMessage(body, "Unable to load invites"));
         }
 
         setItems(body.data.items);
@@ -279,7 +267,7 @@ export default function PortalPatientInvitesPage() {
       | null;
 
     if (!response.ok || !body || !("data" in body)) {
-      throw new Error(readResponseErrorMessage(body, "Unable to refresh invites"));
+      throw new Error(readResponseMessage(body, "Unable to refresh invites"));
     }
 
     setItems(body.data.items);
@@ -318,7 +306,7 @@ export default function PortalPatientInvitesPage() {
 
       if (!response.ok) {
         throw new Error(
-          readResponseErrorMessage(body, `Unable to ${action} invite`),
+          readResponseMessage(body, `Unable to ${action} invite`),
         );
       }
 
