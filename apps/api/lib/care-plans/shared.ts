@@ -19,8 +19,48 @@ export type CarePlanMongoDoc = Omit<z.infer<typeof CarePlanDocSchema>, "patientI
   patientId: ObjectId;
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type CarePlanReviewFields = {
+  activatedAt?: Date | null;
+  reviewLabel?: string | null;
+  status: z.infer<typeof CarePlanDocSchema>["status"];
+  updatedAt: Date;
+};
+
 export function stableCarePlanKey(parts: string[]) {
   return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 24);
+}
+
+export function getCarePlanReviewIntervalDays(
+  reviewLabel: string | null | undefined,
+) {
+  switch ((reviewLabel ?? "").trim().toLowerCase()) {
+    case "1_week":
+      return 7;
+    case "2_weeks":
+      return 14;
+    case "1_month":
+      return 30;
+    case "3_months":
+      return 90;
+    default:
+      return null;
+  }
+}
+
+export function getCarePlanNextReviewAt(plan: CarePlanReviewFields) {
+  const days = getCarePlanReviewIntervalDays(plan.reviewLabel);
+  if (!days) return null;
+  const base = plan.activatedAt ?? plan.updatedAt;
+  return new Date(base.getTime() + days * DAY_MS);
+}
+
+export function isCarePlanReviewDue(plan: CarePlanReviewFields) {
+  if (plan.status !== "active") return false;
+  const nextReviewAt = getCarePlanNextReviewAt(plan);
+  if (!nextReviewAt) return false;
+  return nextReviewAt.getTime() <= Date.now();
 }
 
 export function makeCarePlanActivityKey(

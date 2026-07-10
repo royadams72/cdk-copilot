@@ -1,5 +1,9 @@
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import {
+  getCarePlanNextReviewAt,
+  isCarePlanReviewDue,
+} from "@/apps/api/lib/care-plans/shared";
+import {
   derivePatientLifecycleStatus,
   formatPatientLifecycleStatusLabel,
   getPrimaryAssignment,
@@ -168,35 +172,6 @@ function formatBloodPressure(doc: MeasurementDoc | null) {
 function formatWeight(doc: MeasurementDoc | null) {
   if (!doc || typeof doc.valueKg !== "number") return "No reading";
   return `${doc.valueKg.toFixed(1)} kg`;
-}
-
-function getReviewIntervalDays(reviewLabel: string | null | undefined) {
-  switch (reviewLabel) {
-    case "1_week":
-      return 7;
-    case "2_weeks":
-      return 14;
-    case "1_month":
-      return 30;
-    case "3_months":
-      return 90;
-    default:
-      return null;
-  }
-}
-
-function getNextReviewAt(plan: CarePlanDoc) {
-  const days = getReviewIntervalDays(plan.reviewLabel);
-  if (!days) return null;
-  const base = plan.activatedAt ?? plan.updatedAt;
-  return new Date(base.getTime() + days * DAY_MS);
-}
-
-function isReviewDue(plan: CarePlanDoc) {
-  if (plan.status !== "active") return false;
-  const nextReviewAt = getNextReviewAt(plan);
-  if (!nextReviewAt) return false;
-  return nextReviewAt.getTime() <= Date.now();
 }
 
 function getCarePlanActivityLabel(type: string) {
@@ -385,7 +360,7 @@ function buildCarePlanSnapshot(input: {
 
   return {
     href: `/portal/patients/${input.patientId}/care-plans/${carePlan._id.toHexString()}`,
-    nextReviewAt: getNextReviewAt(carePlan)?.toISOString() ?? null,
+    nextReviewAt: getCarePlanNextReviewAt(carePlan)?.toISOString() ?? null,
     openTasksLabel: `${
       carePlan.tasks?.filter((task) => task.status === "open").length ?? 0
     } open tasks`,
@@ -518,7 +493,7 @@ export function buildPortalPatientDashboard(input: {
   const activeCarePlanCount = carePlans.filter(
     (plan) => plan.status === "active",
   ).length;
-  const reviewDueCount = carePlans.filter(isReviewDue).length;
+  const reviewDueCount = carePlans.filter(isCarePlanReviewDue).length;
 
   return {
     actionCards: [
