@@ -8,7 +8,7 @@ import {
 } from "@ckd/core";
 import { z } from "zod";
 
-type CarePlanActivityTypeValue = z.infer<typeof CarePlanActivityType>;
+type CarePlanActivityTypeValue = z.infer<typeof CarePlanActivityType> | "reviewed";
 type CarePlanSourceValue = z.infer<typeof CarePlanSource>;
 type CarePlanStatusValue = z.infer<typeof CarePlanStatus>;
 type CarePlanTaskFreqValue = z.infer<typeof TaskFreq>;
@@ -472,9 +472,13 @@ export type PortalPatientCarePlanDetailData = {
     diagnoses: PortalPatientCarePlanDiagnosis[];
     goals: PortalPatientCarePlanGoal[];
     id: string;
+    nextReviewAt: string | null;
     notes: string | null;
     ownerLabels: string[];
+    reviewDue: boolean;
     reviewLabel: string | null;
+    reviewLabelDisplay: string | null;
+    reviewedAt: string | null;
     sources: CarePlanSourceValue[];
     status: CarePlanStatusValue;
     tasks: PortalPatientCarePlanTask[];

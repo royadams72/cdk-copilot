@@ -14,7 +14,11 @@ import type {
 } from "@/apps/api/lib/care-plans/shared";
 import {
   buildCarePlanDiagnosisActivityNote,
+  formatCarePlanReviewLabel,
+  getCarePlanNextReviewAt,
+  isCarePlanReviewDue,
   makeCarePlanActivityKey,
+  normalizeCarePlanReviewLabel,
   normalizeCarePlanLabel,
   slugifyCarePlanLabel,
   stableCarePlanKey,
@@ -76,10 +80,48 @@ const UPDATE_DRAFT_PAYLOAD = z.object({
   measureUsing: z.string().trim().min(1).max(60),
   notes: z.string().trim().max(2000).optional(),
   ownerLabels: z.array(z.string().trim().min(1).max(80)).default([]),
-  reviewLabel: z.string().trim().min(1).max(40),
+  reviewLabel: z.string().trim().min(1).max(40).transform((value, ctx) => {
+    const normalized = normalizeCarePlanReviewLabel(value);
+    if (!normalized) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid review label",
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  }),
   target: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(80),
 });
+
+const REVIEW_PAYLOAD = z.object({
+  action: z.literal("review"),
+  note: z.string().trim().min(3).max(2000),
+  outcome: z.enum([
+    "continue_unchanged",
+    "update_plan",
+    "complete_soon",
+    "patient_did_not_engage",
+  ]),
+});
+
+function formatReviewOutcomeLabel(
+  outcome: z.infer<typeof REVIEW_PAYLOAD>["outcome"],
+) {
+  switch (outcome) {
+    case "continue_unchanged":
+      return "Continue unchanged";
+    case "update_plan":
+      return "Update plan";
+    case "complete_soon":
+      return "Complete soon";
+    case "patient_did_not_engage":
+      return "Patient did not engage";
+    default:
+      return outcome;
+  }
+}
 
 function summarizeTarget(target: Record<string, unknown> | undefined) {
   if (!target) return null;
@@ -356,6 +398,7 @@ async function buildCarePlanDetailData(
         orgId: 1,
         patientId: 1,
         reviewLabel: 1,
+        reviewedAt: 1,
         sources: 1,
         status: 1,
         tasks: 1,
@@ -396,9 +439,13 @@ async function buildCarePlanDetailData(
         targetSummary: summarizeTarget(goal.target),
       })),
       id: plan._id.toHexString(),
+      nextReviewAt: toIsoDate(getCarePlanNextReviewAt(plan)),
       notes: plan.notes?.trim() || null,
       ownerLabels: plan.ownerLabels ?? [],
+      reviewDue: isCarePlanReviewDue(plan),
       reviewLabel: plan.reviewLabel?.trim() || null,
+      reviewLabelDisplay: formatCarePlanReviewLabel(plan.reviewLabel),
+      reviewedAt: toIsoDate(plan.reviewedAt),
       sources: plan.sources ?? [],
       status: plan.status,
       tasks: (plan.tasks ?? []).map((task) => ({
@@ -487,6 +534,7 @@ export async function PATCH(
         "activate",
         "archive",
         "delete",
+        "review",
         "update_draft",
         "update_draft_and_activate",
       ].includes(action ?? "")
@@ -583,13 +631,14 @@ export async function PATCH(
         ...(shouldActivateAfterUpdate
           ? {
               activatedAt: existing.activatedAt ?? activatedAt ?? now,
+              reviewedAt: existing.reviewedAt,
               status: "active" as const,
             }
           : {}),
         tasks: [
           {
             freq: parsed.data.frequency,
-            instructions: `Target to meet: ${parsed.data.target}. Review in: ${parsed.data.reviewLabel}.`,
+            instructions: `Target to meet: ${parsed.data.target}. Review in: ${formatCarePlanReviewLabel(parsed.data.reviewLabel)}.`,
             key: "measure_progress",
             label: parsed.data.measureUsing,
             status: "open",
@@ -640,6 +689,37 @@ export async function PATCH(
           console.error("[care-plan:activate] push failed", pushError);
         });
       }
+    }
+
+    if (action === "review" && existing.status !== "active") {
+      return bad("Only active care plans can be reviewed", { code: "care_plan_not_active" }, 409);
+    }
+
+    if (action === "review") {
+      const parsed = REVIEW_PAYLOAD.safeParse(rawBody);
+      if (!parsed.success) {
+        return bad("Invalid care plan review payload", { issues: parsed.error.flatten() }, 400);
+      }
+
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
+        { _id: carePlanObjectId, patientId: patientObjectId },
+        {
+          $push: {
+            activity: {
+              at: now,
+              by: caller.principalId,
+              key: makeCarePlanActivityKey("reviewed", now, caller.principalId),
+              note: `Outcome: ${formatReviewOutcomeLabel(parsed.data.outcome)}. ${parsed.data.note}`,
+              type: "reviewed",
+            },
+          },
+          $set: {
+            reviewedAt: now,
+            updatedAt: now,
+            updatedBy: caller.principalId,
+          },
+        },
+      );
     }
 
     if (action === "complete" && existing.status !== "completed") {

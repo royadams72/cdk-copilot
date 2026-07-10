@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
+import { normalizeCarePlanReviewLabel } from "@/apps/api/lib/care-plans/shared";
 import type {
   PortalPatientCarePlanCreateData,
   PortalPatientCarePlanDetailData,
@@ -127,7 +128,9 @@ export default function PortalPatientEditCarePlanPage() {
         setFrequency(detailBody.data.plan.tasks[0]?.freq ?? formBody.data.frequencyOptions[0]?.id ?? "daily");
         setReviewLabel(
           formBody.data.reviewOptions.find(
-            (option) => option.label === detailBody.data.plan.reviewLabel,
+            (option) =>
+              option.id ===
+              normalizeCarePlanReviewLabel(detailBody.data.plan.reviewLabel),
           )?.id ??
             formBody.data.reviewOptions[0]?.id ??
             "1_month",
@@ -282,9 +285,7 @@ export default function PortalPatientEditCarePlanPage() {
             measureUsing,
             notes,
             ownerLabels,
-            reviewLabel:
-              formData.reviewOptions.find((option) => option.id === reviewLabel)?.label ??
-              reviewLabel,
+            reviewLabel,
             target,
             title,
           }),

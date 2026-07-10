@@ -296,6 +296,7 @@ export async function mapPortalPatientListItemsWithWorsening(
               activatedAt: 1,
               patientId: 1,
               reviewLabel: 1,
+              reviewedAt: 1,
               status: 1,
               updatedAt: 1,
             },
