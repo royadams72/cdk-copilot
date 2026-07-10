@@ -52,6 +52,7 @@ type CarePlanDoc = {
   activity?: CarePlanActivityDoc[];
   completedAt?: Date | null;
   reviewLabel?: string | null;
+  reviewedAt?: Date | null;
   status: "draft" | "active" | "completed" | "archived";
   tasks?: Array<{ status?: string }>;
   title: string;
@@ -441,6 +442,7 @@ export async function loadPortalPatientDashboardQueryResult(
               activity: 1,
               completedAt: 1,
               reviewLabel: 1,
+              reviewedAt: 1,
               status: 1,
               tasks: 1,
               title: 1,

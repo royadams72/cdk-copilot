@@ -78,6 +78,8 @@ export async function GET(
             createdAt: 1,
             goals: 1,
             notes: 1,
+            reviewLabel: 1,
+            reviewedAt: 1,
             sources: 1,
             status: 1,
             tasks: 1,

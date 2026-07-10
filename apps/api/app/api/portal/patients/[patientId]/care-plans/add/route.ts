@@ -9,7 +9,9 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
 import {
   buildCarePlanDiagnosisActivityNote,
+  formatCarePlanReviewLabel,
   makeCarePlanActivityKey,
+  normalizeCarePlanReviewLabel,
   normalizeCarePlanLabel,
   slugifyCarePlanLabel,
   stableCarePlanKey,
@@ -77,7 +79,17 @@ const CREATE_PAYLOAD = z.object({
   measureUsing: z.string().trim().min(1).max(60),
   notes: z.string().trim().max(2000).optional(),
   ownerLabels: z.array(z.string().trim().min(1).max(80)).default([]),
-  reviewLabel: z.string().trim().min(1).max(40),
+  reviewLabel: z.string().trim().min(1).max(40).transform((value, ctx) => {
+    const normalized = normalizeCarePlanReviewLabel(value);
+    if (!normalized) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid review label",
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  }),
   target: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(80),
 });
@@ -543,7 +555,7 @@ export async function POST(
       tasks: [
         {
           freq: frequency,
-          instructions: `Target to meet: ${target}. Review in: ${reviewLabel}.`,
+          instructions: `Target to meet: ${target}. Review in: ${formatCarePlanReviewLabel(reviewLabel)}.`,
           key: "measure_progress",
           label: measureUsing,
           status: "open",

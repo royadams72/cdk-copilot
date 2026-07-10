@@ -37,6 +37,7 @@ export const CarePlanActivityType = z.enum([
   "created",
   "draft_updated",
   "activated",
+  "reviewed",
   "completed",
   "archived",
   "task_completed",
@@ -73,6 +74,7 @@ export const CarePlanDoc = z.object({
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   activatedAt: z.coerce.date().optional(),
+  reviewedAt: z.coerce.date().optional(),
   completedAt: z.coerce.date().optional(),
 });
 export type CarePlanDoc = z.infer<typeof CarePlanDoc>;

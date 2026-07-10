@@ -261,9 +261,7 @@ export default function PortalPatientAddCarePlanPage() {
             measureUsing,
             notes,
             ownerLabels,
-            reviewLabel:
-              data.reviewOptions.find((option) => option.id === reviewLabel)
-                ?.label ?? reviewLabel,
+            reviewLabel,
             target,
             title,
           }),

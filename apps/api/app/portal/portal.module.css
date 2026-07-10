@@ -957,6 +957,10 @@
   color: var(--portal-success);
 }
 
+.carePlanStatusInline[data-tone="warning"] {
+  color: var(--portal-warn);
+}
+
 .carePlanStatusInline[data-tone="danger"] {
   color: var(--portal-danger);
 }

@@ -16,9 +16,13 @@ type PortalCarePlanDetailResponse = {
 };
 
 function formatStatusLabel(
-  status: PortalPatientCarePlanDetailData["plan"]["status"],
+  plan: PortalPatientCarePlanDetailData["plan"],
 ) {
-  switch (status) {
+  if (plan.status === "active" && plan.reviewDue) {
+    return "Ready for review";
+  }
+
+  switch (plan.status) {
     case "active":
       return "Active";
     case "completed":
@@ -28,7 +32,7 @@ function formatStatusLabel(
     case "draft":
       return "Draft";
     default:
-      return status;
+      return plan.status;
   }
 }
 
@@ -37,6 +41,9 @@ function formatStatusSummary(plan: PortalPatientCarePlanDetailData["plan"]) {
     case "draft":
       return "Draft";
     case "active":
+      if (plan.reviewDue) {
+        return `Ready for review (${formatDisplayDate(plan.nextReviewAt, { fallback: "No date set" })})`;
+      }
       return `Active (${formatDisplayDate(plan.activatedAt, { fallback: "No date set" })})`;
     case "completed":
       return `Completed (${formatDisplayDate(plan.completedAt, { fallback: "No date set" })})`;
@@ -51,6 +58,8 @@ function formatActivityLabel(
   type: PortalPatientCarePlanDetailData["activity"][number]["type"],
 ) {
   switch (type) {
+    case "reviewed":
+      return "Reviewed";
     case "draft_updated":
       return "Draft updated";
     case "task_completed":
@@ -74,6 +83,11 @@ export default function PortalPatientCarePlanDetailPage() {
   const [draftAction, setDraftAction] = useState<
     "activate" | "edit" | "delete"
   >("activate");
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewOutcome, setReviewOutcome] = useState<
+    "continue_unchanged" | "update_plan" | "complete_soon" | "patient_did_not_engage"
+  >("continue_unchanged");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -157,9 +171,11 @@ export default function PortalPatientCarePlanDetailPage() {
       ? `/portal/patients/${params.patientId}`
       : "/portal";
   const carePlansHref = `${patientHref}/care-plans`;
+  const isReviewDue = data.plan.status === "active" && data.plan.reviewDue;
 
   async function runAction(
-    action: "complete" | "activate" | "archive" | "delete",
+    action: "complete" | "activate" | "archive" | "delete" | "review",
+    extra?: Record<string, unknown>,
   ) {
     if (!session || !params.patientId || !params.carePlanId || submitting) {
       return;
@@ -172,7 +188,7 @@ export default function PortalPatientCarePlanDetailPage() {
       const response = await fetch(
         `/api/portal/patients/${params.patientId}/care-plans/${params.carePlanId}`,
         {
-          body: JSON.stringify({ action }),
+          body: JSON.stringify({ action, ...extra }),
           headers: {
             ...getPortalSessionAuthHeaders(session.jwt),
             "Content-Type": "application/json",
@@ -200,6 +216,11 @@ export default function PortalPatientCarePlanDetailPage() {
       }
 
       setData(body.data);
+      if (action === "review") {
+        setReviewModalOpen(false);
+        setReviewNote("");
+        setReviewOutcome("continue_unchanged");
+      }
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -228,7 +249,9 @@ export default function PortalPatientCarePlanDetailPage() {
         <div
           className={styles.carePlanStatusInline}
           data-tone={
-            data.plan.status === "active"
+            isReviewDue
+              ? "warning"
+              : data.plan.status === "active"
               ? "success"
               : data.plan.status === "completed"
                 ? "danger"
@@ -237,7 +260,7 @@ export default function PortalPatientCarePlanDetailPage() {
                   : "muted"
           }
         >
-          {formatStatusLabel(data.plan.status)}
+          {formatStatusLabel(data.plan)}
         </div>
         <div className={styles.carePlanActionCell}>
           {data.plan.status === "draft" ? (
@@ -292,6 +315,25 @@ export default function PortalPatientCarePlanDetailPage() {
             >
               {submitting ? "Saving..." : "Archive"}
             </button>
+          ) : isReviewDue ? (
+            <div className={styles.carePlanActionGroup}>
+              <button
+                className={styles.buttonPrimarySmall}
+                disabled={submitting}
+                onClick={() => setReviewModalOpen(true)}
+                type="button"
+              >
+                {submitting ? "Saving..." : "Review care plan"}
+              </button>
+              <button
+                className={styles.buttonSecondarySmall}
+                disabled={submitting}
+                onClick={() => void runAction("complete")}
+                type="button"
+              >
+                {submitting ? "Saving..." : "Set complete"}
+              </button>
+            </div>
           ) : data.plan.status !== "archived" ? (
             <button
               className={styles.buttonPrimarySmall}
@@ -336,7 +378,7 @@ export default function PortalPatientCarePlanDetailPage() {
                 </td>
 
                 <td>{formatStatusSummary(data.plan)}</td>
-                <td>{data.plan.reviewLabel ?? "Not set"}</td>
+                <td>{data.plan.reviewLabelDisplay ?? "Not set"}</td>
                 <td>
                   {formatDisplayDate(data.plan.activatedAt, {
                     fallback: "No date set",
@@ -474,6 +516,128 @@ export default function PortalPatientCarePlanDetailPage() {
           </table>
         </div>
       </section>
+
+      <section className={styles.dataScreenCard}>
+        <div className={styles.dataScreenToolbar}>
+          <div>
+            <h2 className={styles.dataScreenTitle}>Activity</h2>
+            <p className={styles.dataScreenCaption}>
+              Review, activation, and completion history for this care plan.
+            </p>
+          </div>
+        </div>
+        <div className={styles.dataTableWrap}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>When</th>
+                <th>By</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.activity.length ? (
+                data.activity.map((event) => (
+                  <tr key={event.id}>
+                    <td>{formatActivityLabel(event.type)}</td>
+                    <td>{formatDisplayDate(event.at, { fallback: "No date set" })}</td>
+                    <td>{event.by}</td>
+                    <td>{event.note ?? "No note recorded."}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4}>No activity recorded for this care plan.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {reviewModalOpen ? (
+        <div
+          className={styles.warningModalBackdrop}
+          onClick={() => {
+            if (!submitting) {
+              setReviewModalOpen(false);
+            }
+          }}
+        >
+          <div
+            className={`${styles.modalCard} ${styles.modalWarning}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className={styles.modalTitle}>Review care plan</h3>
+            <p className={styles.modalCopy}>
+              Record the outcome and a short note. This keeps the plan active while
+              resetting the review due date.
+            </p>
+            <div className={styles.carePlanFormGroup}>
+              <label className={styles.carePlanFieldLabel} htmlFor="care-plan-review-outcome">
+                Review outcome
+              </label>
+              <select
+                className={styles.nutritionFilterSelect}
+                id="care-plan-review-outcome"
+                onChange={(event) =>
+                  setReviewOutcome(
+                    event.target.value as
+                      | "continue_unchanged"
+                      | "update_plan"
+                      | "complete_soon"
+                      | "patient_did_not_engage",
+                  )
+                }
+                value={reviewOutcome}
+              >
+                <option value="continue_unchanged">Continue unchanged</option>
+                <option value="update_plan">Update plan</option>
+                <option value="complete_soon">Complete soon</option>
+                <option value="patient_did_not_engage">Patient did not engage</option>
+              </select>
+            </div>
+            <div className={styles.carePlanFormGroup}>
+              <label className={styles.carePlanFieldLabel} htmlFor="care-plan-review-note">
+                Review note
+              </label>
+              <textarea
+                className={styles.carePlanTextarea}
+                id="care-plan-review-note"
+                maxLength={2000}
+                onChange={(event) => setReviewNote(event.target.value)}
+                placeholder="Example: Reviewed goals with patient, they understand the diagnosis and want to continue this plan unchanged."
+                rows={5}
+                value={reviewNote}
+              />
+            </div>
+            <div className={styles.warningActions}>
+              <button
+                className={styles.buttonSecondarySmall}
+                disabled={submitting}
+                onClick={() => setReviewModalOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.buttonPrimarySmall}
+                disabled={submitting || reviewNote.trim().length < 3}
+                onClick={() =>
+                  void runAction("review", {
+                    note: reviewNote.trim(),
+                    outcome: reviewOutcome,
+                  })
+                }
+                type="button"
+              >
+                {submitting ? "Saving..." : "Save review"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
