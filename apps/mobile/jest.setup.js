@@ -29,6 +29,45 @@ jest.mock("expo-linking", () => ({
   addEventListener: jest.fn(),
 }));
 
+jest.mock("expo-router", () => {
+  const router = {
+    back: jest.fn(),
+    canGoBack: jest.fn(() => false),
+    dismiss: jest.fn(),
+    push: jest.fn(),
+    replace: jest.fn(),
+    setParams: jest.fn(),
+  };
+
+  return {
+    router,
+    useLocalSearchParams: jest.fn(() => ({})),
+    useNavigation: jest.fn(() => ({
+      goBack: jest.fn(),
+      setOptions: jest.fn(),
+    })),
+    useRouter: jest.fn(() => router),
+    useSegments: jest.fn(() => []),
+  };
+});
+
+jest.mock("expo-notifications", () => ({
+  addNotificationReceivedListener: jest.fn(() => ({
+    remove: jest.fn(),
+  })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({
+    remove: jest.fn(),
+  })),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
+  getPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
+  requestPermissionsAsync: jest.fn(async () => ({
+    granted: true,
+    status: "granted",
+  })),
+  scheduleNotificationAsync: jest.fn(async () => "mock-notification-id"),
+  setNotificationHandler: jest.fn(),
+}));
+
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(async () => null),
   setItem: jest.fn(async () => {}),
@@ -38,3 +77,5 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 
 // Set environment variables
 process.env.EXPO_PUBLIC_API_URL = "http://localhost:3000";
+
+global.__DEV__ = false;

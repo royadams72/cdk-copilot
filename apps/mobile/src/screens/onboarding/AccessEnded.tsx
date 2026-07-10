@@ -3,7 +3,10 @@ import { BackHandler, Text } from "react-native";
 import { useRouter } from "expo-router";
 
 import { APP_ROUTES } from "@/constants/routes";
-import { clearSessionToken } from "@/lib/authSession";
+import {
+  clearMembershipInactiveSessionState,
+  clearSessionToken,
+} from "@/lib/authSession";
 import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
 import { styles } from "@/screens/onboarding/styles";
@@ -37,6 +40,7 @@ export default function AccessEndedScreen() {
       <PrimaryButton
         label="Back to sign in"
         onPress={() => {
+          void clearMembershipInactiveSessionState();
           router.replace(APP_ROUTES.welcome);
         }}
       />

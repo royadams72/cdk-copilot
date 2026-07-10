@@ -1,4 +1,10 @@
 jest.mock("react-native", () => ({
+  AppState: {
+    addEventListener: jest.fn(() => ({
+      remove: jest.fn(),
+    })),
+    currentState: "active",
+  },
   NativeModules: {
     HealthConnectBackgroundSync: {
       clearAuthSession: jest.fn(async () => true),
