@@ -47,6 +47,30 @@ async function loadIosPedometerStepState(): Promise<CurrentStepAccessState> {
     return unsupportedState();
   }
 
+  const readAuthorization = status.readAuthorization ?? {};
+  const missingHealthPermissions = Object.entries(readAuthorization)
+    .filter(([, value]) => value !== "authorized")
+    .map(([key]) => key)
+    .sort();
+  const hasAnyMeasurementAccess = Object.values(readAuthorization).some(
+    (value) => value === "authorized",
+  );
+
+  if (readAuthorization.steps === "denied") {
+    return {
+      backgroundReadGranted: status.backgroundDeliveryEnabled,
+      canRequestPermission: true,
+      dataOrigins: ["apple.healthkit"],
+      debug: null,
+      hasAnyMeasurementAccess,
+      missingHealthPermissions,
+      selectedDataOrigin: null,
+      status: "permission-denied",
+      stepsToday: null,
+      summary: null,
+    };
+  }
+
   const now = new Date();
   let summary = null;
 
@@ -62,8 +86,9 @@ async function loadIosPedometerStepState(): Promise<CurrentStepAccessState> {
       backgroundReadGranted: status.backgroundDeliveryEnabled,
       canRequestPermission: true,
       dataOrigins: ["apple.healthkit"],
-      hasAnyMeasurementAccess: false,
-      missingHealthPermissions: [],
+      debug: null,
+      hasAnyMeasurementAccess,
+      missingHealthPermissions,
       selectedDataOrigin: "apple.healthkit",
       status: "permission-required",
     };
@@ -80,7 +105,7 @@ async function loadIosPedometerStepState(): Promise<CurrentStepAccessState> {
     dataOrigins: ["apple.healthkit"],
     debug: null,
     hasAnyMeasurementAccess: true,
-    missingHealthPermissions: [],
+    missingHealthPermissions,
     selectedDataOrigin: "apple.healthkit",
     status: "ready",
     stepsToday,

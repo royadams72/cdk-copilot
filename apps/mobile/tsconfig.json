@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
+    "esModuleInterop": true,
+    "ignoreDeprecations": "5.0",
+    "isolatedModules": true,
     "types": ["react", "react-native", "jest", "node"],
     "paths": {
       "@/*": ["src/*"],

@@ -73,6 +73,9 @@ jest.mock("react-native", () => ({
   Alert: {
     alert: (...args: unknown[]) => mockAlert(...args),
   },
+  NativeModules: {
+    HealthConnectBackgroundSync: {},
+  },
   Platform: {
     OS: "android",
     select: <T,>(options: { android?: T; default?: T; ios?: T }) =>
@@ -161,6 +164,10 @@ describe("syncWorseningTrendNotifications", () => {
     expect(mockAlert).toHaveBeenCalledWith(
       "Activity down",
       "Your recent activity is below your normal baseline.",
+      expect.arrayContaining([
+        expect.objectContaining({ text: "Later" }),
+        expect.objectContaining({ text: "Review now" }),
+      ]),
     );
     expect(mockCancelScheduledNotificationAsync).toHaveBeenCalledWith(
       "old-reminder-id",
@@ -307,6 +314,10 @@ describe("syncWorseningTrendNotifications", () => {
     expect(mockAlert).toHaveBeenCalledWith(
       "Weight up this week",
       "Your weight is up this week.",
+      expect.arrayContaining([
+        expect.objectContaining({ text: "Later" }),
+        expect.objectContaining({ text: "Review now" }),
+      ]),
     );
     expect(mockSetItemAsync).toHaveBeenCalledWith(
       "ckd_worsening_trend_alert_state",

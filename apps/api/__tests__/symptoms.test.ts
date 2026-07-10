@@ -15,6 +15,8 @@ import {
 } from "../lib/utils/symptoms";
 
 describe("symptoms", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
   it("accepts valid structured symptom input", () => {
     expect(
       CreateSymptomRequest.parse({
@@ -166,17 +168,19 @@ describe("symptoms", () => {
   });
 
   it("normalizes names and builds grouped history with trend counts", () => {
+    const firstRecordedAt = new Date(Date.now() - 20 * DAY_MS);
+    const secondRecordedAt = new Date(Date.now() - 13 * DAY_MS);
     const groups = buildSymptomHistoryGroups([
       {
         _id: "1",
-        createdAt: new Date("2026-06-01T09:00:00.000Z"),
+        createdAt: firstRecordedAt,
         createdBy: { actorType: "patient", principalId: "pr_patient_1" },
         name: "Fatigue",
         normalizedName: normalizeSymptomName("Fatigue"),
         note: "Needed a nap",
         orgId: "org_1",
         patientId: "665f85cb40457089f5b75f9a",
-        recordedAt: new Date("2026-06-01T09:00:00.000Z"),
+        recordedAt: firstRecordedAt,
         resolvedAt: null,
         severity: 2,
         source: "patient",
@@ -184,19 +188,19 @@ describe("symptoms", () => {
         status: "active",
         symptomId: "sym_1",
         triggers: ["walking"],
-        updatedAt: new Date("2026-06-01T09:00:00.000Z"),
+        updatedAt: firstRecordedAt,
         updatedBy: { actorType: "patient", principalId: "pr_patient_1" },
       },
       {
         _id: "2",
-        createdAt: new Date("2026-06-08T09:00:00.000Z"),
+        createdAt: secondRecordedAt,
         createdBy: { actorType: "patient", principalId: "pr_patient_1" },
         name: "fatigue",
         normalizedName: normalizeSymptomName("fatigue"),
         note: "Worse this week",
         orgId: "org_1",
         patientId: "665f85cb40457089f5b75f9a",
-        recordedAt: new Date("2026-06-08T09:00:00.000Z"),
+        recordedAt: secondRecordedAt,
         resolvedAt: null,
         severity: 4,
         source: "patient",
@@ -204,7 +208,7 @@ describe("symptoms", () => {
         status: "active",
         symptomId: "sym_2",
         triggers: [],
-        updatedAt: new Date("2026-06-08T09:00:00.000Z"),
+        updatedAt: secondRecordedAt,
         updatedBy: { actorType: "patient", principalId: "pr_patient_1" },
       },
     ]);
