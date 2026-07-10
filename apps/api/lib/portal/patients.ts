@@ -1,5 +1,6 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import {
+  getCarePlanNextReviewAt,
   isCarePlanReviewDue,
   type CarePlanMongoDoc,
 } from "@/apps/api/lib/care-plans/shared";
@@ -215,6 +216,7 @@ export function mapPortalPatientListItem(raw: {
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
+  reviewCarePlanHref?: string | null;
   reviewDueCount?: number;
   stage?: string | null;
   summary?: PortalPatientSummary | null;
@@ -233,6 +235,7 @@ export function mapPortalPatientListItem(raw: {
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     membershipStatus: getPortalPatientMembershipStatus(raw.assignments ?? []),
     name: normalizeName(raw.pii ?? {}),
+    reviewCarePlanHref: raw.reviewCarePlanHref ?? null,
     reviewDueCount: raw.reviewDueCount ?? 0,
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
@@ -282,6 +285,7 @@ export async function mapPortalPatientListItemsWithWorsening(
     string,
     PatientWorseningTrendAlert[]
   >();
+  const reviewCarePlanHrefByPatientId = new Map<string, string>();
   const reviewDueCountByPatientId = new Map<string, number>();
   const patientIds = raws.map((raw) => raw._id);
 
@@ -292,7 +296,7 @@ export async function mapPortalPatientListItemsWithWorsening(
           { patientId: { $in: patientIds } },
           {
             projection: {
-              _id: 0,
+              _id: 1,
               activatedAt: 1,
               patientId: 1,
               reviewLabel: 1,
@@ -315,6 +319,29 @@ export async function mapPortalPatientListItemsWithWorsening(
       patientId,
       (reviewDueCountByPatientId.get(patientId) ?? 0) + 1,
     );
+
+    const currentHref = reviewCarePlanHrefByPatientId.get(patientId);
+    const currentPlan = currentHref
+      ? carePlans.find(
+          (candidate) =>
+            candidate.patientId.toHexString() === patientId &&
+            `/portal/patients/${patientId}/care-plans/${candidate._id.toHexString()}` ===
+              currentHref,
+        )
+      : null;
+    const currentNextReviewAt =
+      currentPlan && isCarePlanReviewDue(currentPlan)
+        ? getCarePlanNextReviewAt(currentPlan)?.getTime() ?? Number.POSITIVE_INFINITY
+        : Number.POSITIVE_INFINITY;
+    const nextReviewAt =
+      getCarePlanNextReviewAt(plan)?.getTime() ?? Number.POSITIVE_INFINITY;
+
+    if (!currentHref || nextReviewAt < currentNextReviewAt) {
+      reviewCarePlanHrefByPatientId.set(
+        patientId,
+        `/portal/patients/${patientId}/care-plans/${plan._id.toHexString()}`,
+      );
+    }
   }
 
   await Promise.all(
@@ -340,6 +367,8 @@ export async function mapPortalPatientListItemsWithWorsening(
         activeAlertsByPatientId
           .get(raw._id.toHexString())
           ?.filter((alert) => alert.portalEscalationEligible) ?? [],
+      reviewCarePlanHref:
+        reviewCarePlanHrefByPatientId.get(raw._id.toHexString()) ?? null,
       reviewDueCount: reviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
     }),
     worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],

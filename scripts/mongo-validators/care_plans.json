@@ -93,6 +93,7 @@
                   "created",
                   "draft_updated",
                   "activated",
+                  "reviewed",
                   "completed",
                   "archived",
                   "task_completed",
@@ -109,6 +110,7 @@
         "createdAt": { "bsonType": "date" },
         "updatedAt": { "bsonType": "date" },
         "activatedAt": { "bsonType": "date" },
+        "reviewedAt": { "bsonType": "date" },
         "completedAt": { "bsonType": "date" }
       },
       "additionalProperties": true
