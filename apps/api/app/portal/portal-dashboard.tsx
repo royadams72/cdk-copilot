@@ -169,6 +169,7 @@ function PortalDashboardContent() {
         const response = await fetch(
           `/api/portal/patients${params.size ? `?${params.toString()}` : ""}`,
           {
+            cache: "no-store",
             headers: getPortalSessionAuthHeaders(authenticatedSession.jwt),
             signal: controller.signal,
           },
@@ -695,7 +696,11 @@ function PortalDashboardContent() {
                   <div className={styles.patientLabelBlock}>
                     <Link
                       className={styles.patientLink}
-                      href={`/portal/patients/${patient.id}`}
+                      href={
+                        activeFilter === "review" && patient.reviewCarePlanHref
+                          ? patient.reviewCarePlanHref
+                          : `/portal/patients/${patient.id}`
+                      }
                     >
                       {patient.name}
                     </Link>
@@ -709,7 +714,11 @@ function PortalDashboardContent() {
                     <button
                       className={styles.buttonPrimaryCompact}
                       onClick={() =>
-                        router.push(`/portal/patients/${patient.id}`)
+                        router.push(
+                          activeFilter === "review" && patient.reviewCarePlanHref
+                            ? patient.reviewCarePlanHref
+                            : `/portal/patients/${patient.id}`,
+                        )
                       }
                       type="button"
                     >

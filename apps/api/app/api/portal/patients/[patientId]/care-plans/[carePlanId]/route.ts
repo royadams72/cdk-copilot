@@ -111,13 +111,13 @@ function formatReviewOutcomeLabel(
 ) {
   switch (outcome) {
     case "continue_unchanged":
-      return "Continue unchanged";
+      return "Keep current plan";
     case "update_plan":
-      return "Update plan";
+      return "Create replacement plan";
     case "complete_soon":
-      return "Complete soon";
+      return "Goals achieved";
     case "patient_did_not_engage":
-      return "Patient did not engage";
+      return "Patient not engaging";
     default:
       return outcome;
   }

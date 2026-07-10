@@ -153,7 +153,7 @@ export default function PortalPatientCarePlanDetailPage() {
     );
   }
 
-  if (!data || error) {
+  if (!data) {
     return (
       <section className={styles.emptyState}>
         <Link className={styles.inlineLink} href="/portal">
@@ -592,10 +592,10 @@ export default function PortalPatientCarePlanDetailPage() {
                 }
                 value={reviewOutcome}
               >
-                <option value="continue_unchanged">Continue unchanged</option>
-                <option value="update_plan">Update plan</option>
-                <option value="complete_soon">Complete soon</option>
-                <option value="patient_did_not_engage">Patient did not engage</option>
+                <option value="continue_unchanged">Keep current plan</option>
+                <option value="update_plan">Create replacement plan</option>
+                <option value="complete_soon">Goals achieved</option>
+                <option value="patient_did_not_engage">Patient not engaging</option>
               </select>
             </div>
             <div className={styles.carePlanFormGroup}>
