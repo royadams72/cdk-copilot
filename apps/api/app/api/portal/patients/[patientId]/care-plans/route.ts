@@ -4,7 +4,10 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
-import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
+import {
+  isCarePlanReviewDue,
+  type CarePlanMongoDoc,
+} from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { toIsoDate } from "@/apps/api/lib/format/date";
 import { bad, ok } from "@/apps/api/lib/http/responses";
@@ -30,12 +33,6 @@ function statusWeight(status: CarePlanMongoDoc["status"]) {
     default:
       return 9;
   }
-}
-
-function isReviewDue(plan: CarePlanMongoDoc) {
-  if (plan.status !== "active") return false;
-  const ageMs = Date.now() - plan.updatedAt.getTime();
-  return ageMs > 1000 * 60 * 60 * 24 * 28;
 }
 
 export async function GET(
@@ -114,7 +111,7 @@ export async function GET(
       }));
 
     const mappedPatient = mapPortalPatientDetail(patient);
-    const reviewDueCount = carePlans.filter(isReviewDue).length;
+    const reviewDueCount = carePlans.filter(isCarePlanReviewDue).length;
 
     const data: PortalPatientCarePlanData = {
       headline: `Care Plans ${mappedPatient.name}`,

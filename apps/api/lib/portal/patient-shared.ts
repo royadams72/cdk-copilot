@@ -70,6 +70,7 @@ export type PortalPatientListItem = {
   lastContactAt: string | null;
   membershipStatus: PortalPatientMembershipStatus;
   name: string;
+  reviewDueCount: number;
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];
 };

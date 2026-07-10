@@ -1,4 +1,8 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
+import {
+  isCarePlanReviewDue,
+  type CarePlanMongoDoc,
+} from "@/apps/api/lib/care-plans/shared";
 import { type Document, ObjectId } from "mongodb";
 import type { Db } from "mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -211,6 +215,7 @@ export function mapPortalPatientListItem(raw: {
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
+  reviewDueCount?: number;
   stage?: string | null;
   summary?: PortalPatientSummary | null;
 }): PortalPatientListItem {
@@ -228,6 +233,7 @@ export function mapPortalPatientListItem(raw: {
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     membershipStatus: getPortalPatientMembershipStatus(raw.assignments ?? []),
     name: normalizeName(raw.pii ?? {}),
+    reviewDueCount: raw.reviewDueCount ?? 0,
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
       activeAlerts: raw.activeAlerts ?? [],
@@ -276,7 +282,39 @@ export async function mapPortalPatientListItemsWithWorsening(
     string,
     PatientWorseningTrendAlert[]
   >();
+  const reviewDueCountByPatientId = new Map<string, number>();
   const patientIds = raws.map((raw) => raw._id);
+
+  const carePlans = patientIds.length
+    ? await db
+        .collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans)
+        .find(
+          { patientId: { $in: patientIds } },
+          {
+            projection: {
+              _id: 0,
+              activatedAt: 1,
+              patientId: 1,
+              reviewLabel: 1,
+              status: 1,
+              updatedAt: 1,
+            },
+          },
+        )
+        .toArray()
+    : [];
+
+  for (const plan of carePlans) {
+    if (!isCarePlanReviewDue(plan)) {
+      continue;
+    }
+
+    const patientId = plan.patientId.toHexString();
+    reviewDueCountByPatientId.set(
+      patientId,
+      (reviewDueCountByPatientId.get(patientId) ?? 0) + 1,
+    );
+  }
 
   await Promise.all(
     raws.map(async (raw) => {
@@ -301,6 +339,7 @@ export async function mapPortalPatientListItemsWithWorsening(
         activeAlertsByPatientId
           .get(raw._id.toHexString())
           ?.filter((alert) => alert.portalEscalationEligible) ?? [],
+      reviewDueCount: reviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
     }),
     worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
   }));
@@ -347,7 +386,7 @@ export function matchesPortalPatientFilter(
     case "worsening":
       return item.worseningItems.length > 0;
     case "review":
-      return hasFlag(item, ["care-plan-review", "review-due"]);
+      return item.reviewDueCount > 0;
     case "disengaged":
       return isDisengaged(item);
     case "endingSoon":
