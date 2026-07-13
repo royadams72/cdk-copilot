@@ -304,11 +304,13 @@ export type MonthlyNutritionSummaryResponse = {
 export type CarePlanStatus = TCarePlanStatus;
 export type CarePlanTaskFrequency = TCarePlanTaskFreq;
 export type CarePlanTaskStatus = TCarePlanTaskStatus;
-export type CarePlanActivityTypeValue = TCarePlanActivityType;
+export type CarePlanActivityTypeValue = TCarePlanActivityType | "patient_reviewed";
 export type CarePlanListItem = {
   activatedAt: string | null;
   id: string;
+  reviewDue: boolean;
   reviewLabel: string | null;
+  reviewLabelDisplay: string | null;
   status: CarePlanStatus;
   taskCount: number;
   title: string;
@@ -353,9 +355,13 @@ export type CarePlanDetailResponse = {
     }>;
     goals: CarePlanDetailGoal[];
     id: string;
+    nextReviewAt: string | null;
     notes: string | null;
     ownerLabels: string[];
+    reviewDue: boolean;
     reviewLabel: string | null;
+    reviewLabelDisplay: string | null;
+    reviewedAt: string | null;
     status: CarePlanStatus;
     tasks: CarePlanDetailTask[];
     title: string;

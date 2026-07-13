@@ -38,6 +38,7 @@ export const CarePlanActivityType = z.enum([
   "draft_updated",
   "activated",
   "reviewed",
+  "patient_reviewed",
   "completed",
   "archived",
   "task_completed",

@@ -11,7 +11,7 @@ import {
 import { z } from "zod";
 
 export type CarePlanActivityDoc = Omit<z.infer<typeof CarePlanActivity>, "type"> & {
-  type: z.infer<typeof CarePlanActivity>["type"] | "reviewed";
+  type: z.infer<typeof CarePlanActivity>["type"] | "reviewed" | "patient_reviewed";
 };
 export type CarePlanDiagnosisDoc = z.infer<typeof CarePlanDiagnosis>;
 export type CarePlanGoalDoc = z.infer<typeof CarePlanGoal>;

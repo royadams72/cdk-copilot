@@ -720,6 +720,21 @@ export async function PATCH(
           },
         },
       );
+
+      if ((existing.ownerLabels ?? []).length === 1) {
+        await sendPatientPushNotification(db, {
+          body: `Please review how "${existing.title}" is going and tell us what support you still need.`,
+          data: {
+            carePlanId: carePlanObjectId.toHexString(),
+            screen: `/(dashboard)/care-plan-review?id=${carePlanObjectId.toHexString()}`,
+            type: "care-plan-review-requested",
+          },
+          patientId,
+          title: "Care plan review requested",
+        }).catch((pushError) => {
+          console.error("[care-plan:review] push failed", pushError);
+        });
+      }
     }
 
     if (action === "complete" && existing.status !== "completed") {

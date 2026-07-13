@@ -71,6 +71,10 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(37,99,235,0.28)",
     backgroundColor: "rgba(37,99,235,0.08)",
   },
+  carePlanReviewCard: {
+    borderColor: "rgba(234,179,8,0.35)",
+    backgroundColor: "rgba(250,204,21,0.12)",
+  },
   carePlanSection: {
     gap: 6,
   },
@@ -109,6 +113,25 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1D4ED8",
     marginTop: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#94A3B8",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  checkboxChecked: {
+    backgroundColor: "rgba(37,99,235,0.14)",
+    borderColor: "#2563EB",
+  },
+  checkboxTick: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D4ED8",
   },
   carePlanViewButton: {
     marginTop: 4,
@@ -252,6 +275,18 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(234,179,8,0.35)",
     backgroundColor: "rgba(250,204,21,0.12)",
   },
+  multilineInput: {
+    minHeight: 120,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#111827",
+    textAlignVertical: "top",
+  },
   primaryActionButton: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,
@@ -283,8 +318,17 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1E3A8A",
   },
+  selectedOptionCard: {
+    borderColor: "rgba(37,99,235,0.3)",
+    backgroundColor: "rgba(37,99,235,0.08)",
+  },
   selectableCard: {
     borderRadius: 16,
+  },
+  selectableRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
   },
   stackedChart: {
     width: STACKED_SIZE,

@@ -74,19 +74,30 @@ export default function CarePlanList() {
         data.items.map((plan) => (
           <TouchableOpacity
             key={plan.id}
-            onPress={() => router.push(`/(dashboard)/care-plan?id=${plan.id}` as never)}
+            onPress={() =>
+              router.push(
+                (plan.reviewDue
+                  ? `/(dashboard)/care-plan-review?id=${plan.id}`
+                  : `/(dashboard)/care-plan?id=${plan.id}`) as never,
+              )
+            }
           >
-            <Card>
+            <Card style={plan.reviewDue ? styles.carePlanReviewCard : undefined}>
               <View style={styles.carePlanTaskHeader}>
                 <ThemedText type="defaultSemiBold">{plan.title}</ThemedText>
                 <ThemedText style={styles.carePlanTaskMeta}>
-                  {formatStatus(plan.status)}
+                  {plan.reviewDue ? "Review due" : formatStatus(plan.status)}
                 </ThemedText>
               </View>
               <ThemedText style={styles.helperText}>
                 {plan.taskCount} active task{plan.taskCount === 1 ? "" : "s"}
-                {plan.reviewLabel ? ` · Review in ${plan.reviewLabel}` : ""}
+                {plan.reviewLabelDisplay ? ` · Review in ${plan.reviewLabelDisplay}` : ""}
               </ThemedText>
+              {plan.reviewDue ? (
+                <ThemedText style={styles.helperText}>
+                  Open this plan to send your review back to the care team.
+                </ThemedText>
+              ) : null}
               <ThemedText style={styles.helperText}>
                 Activated {formatMobileDate(plan.activatedAt)} · Updated{" "}
                 {formatMobileDate(plan.updatedAt)}

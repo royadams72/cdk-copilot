@@ -4,7 +4,11 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
-import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
+import {
+  formatCarePlanReviewLabel,
+  isCarePlanReviewDue,
+  type CarePlanMongoDoc,
+} from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -36,6 +40,7 @@ export async function GET(req: NextRequest) {
             createdAt: 1,
             patientId: 1,
             reviewLabel: 1,
+            reviewedAt: 1,
             status: 1,
             tasks: 1,
             title: 1,
@@ -49,7 +54,9 @@ export async function GET(req: NextRequest) {
     const items = plans.map((plan) => ({
       activatedAt: plan.activatedAt?.toISOString() ?? null,
       id: plan._id.toHexString(),
+      reviewDue: isCarePlanReviewDue(plan),
       reviewLabel: plan.reviewLabel?.trim() || null,
+      reviewLabelDisplay: formatCarePlanReviewLabel(plan.reviewLabel),
       status: plan.status,
       taskCount: (plan.tasks ?? []).filter((task) => task.status !== "done").length,
       title: plan.title,
