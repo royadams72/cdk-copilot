@@ -1,6 +1,5 @@
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import {
-  getCarePlanNextReviewAt,
   isCarePlanReviewDue,
 } from "@/apps/api/lib/care-plans/shared";
 import {
@@ -9,12 +8,12 @@ import {
   getPrimaryAssignment,
 } from "@/apps/api/lib/portal/patientLifecycle";
 import type {
-  PortalPatientAttentionItem,
   PortalPatientDashboardData,
   PortalPatientDetail,
+  PortalPatientSignalItem,
 } from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS } from "@ckd/core/server";
-import { ObjectId, type Db } from "mongodb";
+import { type Db, ObjectId } from "mongodb";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -51,8 +50,8 @@ type CarePlanDoc = {
   activatedAt?: Date | null;
   activity?: CarePlanActivityDoc[];
   completedAt?: Date | null;
-  reviewLabel?: string | null;
   reviewedAt?: Date | null;
+  reviewLabel?: string | null;
   status: "draft" | "active" | "completed" | "archived";
   tasks?: Array<{ status?: string }>;
   title: string;
@@ -192,7 +191,7 @@ function getCarePlanActivityLabel(type: string) {
   }
 }
 
-function buildAttentionItems(input: {
+function buildSignals(input: {
   activeCarePlan: CarePlanDoc | null;
   activeCarePlanCount: number;
   bloodPressureLoggingDays: number;
@@ -200,13 +199,14 @@ function buildAttentionItems(input: {
   latestWeight: MeasurementDoc | null;
   mealLoggingDays: number;
   patientId: string;
-  weightLoggingDays: number;
   reviewDueCount: number;
-}): PortalPatientAttentionItem[] {
-  const items: PortalPatientAttentionItem[] = [];
+  weightLoggingDays: number;
+}): PortalPatientSignalItem[] {
+  const items: PortalPatientSignalItem[] = [];
 
   if (input.activeCarePlanCount === 0) {
     items.push({
+      category: "care_plan",
       detail: "There is no active care plan for this patient.",
       href: `/portal/patients/${input.patientId}/care-plans`,
       title: "No active care plan",
@@ -216,6 +216,7 @@ function buildAttentionItems(input: {
 
   if (input.reviewDueCount > 0) {
     items.push({
+      category: "care_plan",
       detail: `${input.reviewDueCount} active care plan${input.reviewDueCount === 1 ? "" : "s"} should be reviewed.`,
       href: `/portal/patients/${input.patientId}/care-plans`,
       title: "Care plan review due",
@@ -228,6 +229,7 @@ function buildAttentionItems(input: {
     Date.now() - input.latestBloodPressure.measuredAt.getTime() > 14 * DAY_MS
   ) {
     items.push({
+      category: "clinical",
       detail: "No blood pressure reading has been logged in the last 14 days.",
       href: `/portal/patients/${input.patientId}/health`,
       title: "Missing recent blood pressure data",
@@ -240,6 +242,7 @@ function buildAttentionItems(input: {
     Date.now() - input.latestWeight.measuredAt.getTime() > 14 * DAY_MS
   ) {
     items.push({
+      category: "clinical",
       detail: "No weight reading has been logged in the last 14 days.",
       href: `/portal/patients/${input.patientId}/health`,
       title: "Missing recent weight data",
@@ -256,6 +259,7 @@ function buildAttentionItems(input: {
     input.weightLoggingDays === 0
   ) {
     items.push({
+      category: "engagement",
       detail:
         "An active care plan exists, but there has been no nutrition, blood pressure or weight data in the last 31 days.",
       href: `/portal/patients/${input.patientId}/health`,
@@ -270,6 +274,7 @@ function buildAttentionItems(input: {
       (input.latestBloodPressure.diastolicMmHg ?? 0) >= 90)
   ) {
     items.push({
+      category: "clinical",
       detail: `${formatBloodPressure(input.latestBloodPressure)} on ${formatDisplayDate(
         input.latestBloodPressure.measuredAt,
       )}.`,
@@ -281,6 +286,7 @@ function buildAttentionItems(input: {
 
   if (items.length === 0) {
     items.push({
+      category: "engagement",
       detail: "Nothing urgent is flagged on the overview right now.",
       title: "No urgent issues",
       tone: "success",
@@ -349,32 +355,6 @@ function buildRecentActivity(input: {
     .slice(0, 5);
 }
 
-function buildCarePlanSnapshot(input: {
-  activeCarePlan: CarePlanDoc | null;
-  latestCarePlan: CarePlanDoc | null;
-  patientId: string;
-}) {
-  const carePlan = input.activeCarePlan ?? input.latestCarePlan;
-  if (!carePlan) {
-    return null;
-  }
-
-  return {
-    href: `/portal/patients/${input.patientId}/care-plans/${carePlan._id.toHexString()}`,
-    nextReviewAt: getCarePlanNextReviewAt(carePlan)?.toISOString() ?? null,
-    openTasksLabel: `${
-      carePlan.tasks?.filter((task) => task.status === "open").length ?? 0
-    } open tasks`,
-    reviewLabel: carePlan.reviewLabel?.trim() || null,
-    status:
-      carePlan === input.activeCarePlan
-        ? "Active"
-        : carePlan.status.charAt(0).toUpperCase() + carePlan.status.slice(1),
-    title: carePlan.title,
-    updatedAt: carePlan.updatedAt.toISOString(),
-  };
-}
-
 function formatMembershipStatus(patient: PortalPatientDetail) {
   return formatPatientLifecycleStatusLabel(
     derivePatientLifecycleStatus({ assignments: patient.assignments }),
@@ -441,8 +421,8 @@ export async function loadPortalPatientDashboardQueryResult(
               activatedAt: 1,
               activity: 1,
               completedAt: 1,
-              reviewLabel: 1,
               reviewedAt: 1,
+              reviewLabel: 1,
               status: 1,
               tasks: 1,
               title: 1,
@@ -512,7 +492,7 @@ export function buildPortalPatientDashboard(input: {
       "Messaging",
       "Reviewed Trends",
     ],
-    attentionItems: buildAttentionItems({
+    signals: buildSignals({
       activeCarePlan,
       activeCarePlanCount,
       bloodPressureLoggingDays,
@@ -522,11 +502,6 @@ export function buildPortalPatientDashboard(input: {
       patientId: input.patientId,
       reviewDueCount,
       weightLoggingDays,
-    }),
-    carePlanSnapshot: buildCarePlanSnapshot({
-      activeCarePlan,
-      latestCarePlan,
-      patientId: input.patientId,
     }),
     clinicalSummary: [
       {
@@ -556,11 +531,11 @@ export function buildPortalPatientDashboard(input: {
       {
         href: `/portal/patients/${input.patientId}/membership`,
         label: "Access ends",
+        meta: isAccessEndingSoon(input.patient) ? "Ending soon" : null,
         value:
           formatDisplayDate(input.patient.accessEndsAt, {
             fallback: "Not set",
           }) ?? "Not set",
-        meta: isAccessEndingSoon(input.patient) ? "Ending soon" : null,
       },
       {
         href: `/portal/patients/${input.patientId}/care-plans`,

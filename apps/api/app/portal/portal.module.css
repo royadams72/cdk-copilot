@@ -708,7 +708,7 @@
   line-height: 22px;
 }
 
-.patientSummaryRow:nth-child(odd) {
+.patientSummaryRow:nth-child(even) {
   background: var(--portal-surface-row-strong);
 }
 
@@ -953,6 +953,12 @@
   white-space: nowrap;
 }
 
+.carePlanStatusBlock {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
 .carePlanStatusInline[data-tone="success"] {
   color: var(--portal-success);
 }
@@ -971,6 +977,14 @@
 
 .carePlanStatusInline[data-tone="muted"] {
   color: var(--portal-text-soft);
+}
+
+.carePlanReviewInline {
+  margin: 0;
+  color: var(--portal-text-soft);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: right;
 }
 
 .carePlanActionCell {
@@ -1414,6 +1428,12 @@
 
 .carePlanStatus[data-tone="muted"] {
   color: var(--portal-text-soft);
+}
+
+.carePlanStatusBlockList {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
 }
 
 .nutritionInsightLayout {

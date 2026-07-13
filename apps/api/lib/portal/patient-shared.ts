@@ -108,10 +108,10 @@ export type PortalPatientWorseningItem = {
   patientResponseLabel: string | null;
   portalEscalationEligible: boolean;
   reviewedAt?: string | null;
-  reviewedNote?: string | null;
   reviewedByName?: string | null;
   reviewedByPrincipalId?: string | null;
   reviewedByRole?: string | null;
+  reviewedNote?: string | null;
   viewedAt: string | null;
 };
 
@@ -141,7 +141,8 @@ export type PortalPatientOverviewRow = {
   value: string;
 };
 
-export type PortalPatientAttentionItem = {
+export type PortalPatientSignalItem = {
+  category: "care_plan" | "clinical" | "engagement";
   detail: string;
   href?: string | null;
   title: string;
@@ -155,26 +156,15 @@ export type PortalPatientRecentActivityItem = {
   label: string;
 };
 
-export type PortalPatientCarePlanSnapshot = {
-  href: string | null;
-  nextReviewAt: string | null;
-  openTasksLabel: string;
-  reviewLabel: string | null;
-  status: string;
-  title: string;
-  updatedAt: string;
-} | null;
-
 export type PortalPatientDashboardData = {
   actionCards: string[];
-  attentionItems: PortalPatientAttentionItem[];
-  carePlanSnapshot: PortalPatientCarePlanSnapshot;
   clinicalSummary: PortalPatientOverviewRow[];
   currentStatus: PortalPatientOverviewRow[];
   engagementSummary: PortalPatientOverviewRow[];
   headline: string;
   latestReadings: PortalPatientOverviewRow[];
   recentActivity: PortalPatientRecentActivityItem[];
+  signals: PortalPatientSignalItem[];
   subheadline: string;
 };
 
@@ -313,9 +303,9 @@ export type PortalPatientHealthData = {
 };
 
 export type PortalPatientLabCurrentRow = {
+  id: string;
   abnormalFlag: "L" | "LL" | "H" | "HH" | "A" | "N" | null;
   code: string;
-  id: string;
   isTracked: boolean;
   label: string;
   rangeLabel: string | null;
@@ -325,9 +315,9 @@ export type PortalPatientLabCurrentRow = {
 };
 
 export type PortalPatientLabHistoryRow = {
+  id: string;
   abnormalFlag: "L" | "LL" | "H" | "HH" | "A" | "N" | null;
   code: string;
-  id: string;
   label: string;
   reportedAt: string | null;
   status: "final" | "corrected" | "preliminary" | "cancelled";
@@ -337,9 +327,9 @@ export type PortalPatientLabHistoryRow = {
 };
 
 export type PortalPatientLabChartPoint = {
+  id: string;
   abnormalFlag: "L" | "LL" | "H" | "HH" | "A" | "N" | null;
   at: string;
-  id: string;
   rangeHigh: number | null;
   rangeLow: number | null;
   status: "final" | "corrected" | "preliminary" | "cancelled";
@@ -415,6 +405,8 @@ export type PortalPatientCarePlanRow = {
   goalsCount: number;
   notes: string | null;
   openTasksCount: number;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
   sources: CarePlanSourceValue[];
   status: CarePlanStatusValue;
   tasksCount: number;

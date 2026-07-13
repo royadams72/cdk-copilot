@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import {
@@ -20,6 +20,25 @@ import {
 } from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "@ckd/core/server";
 
+type UserPiiActorDoc = {
+  firstName?: string;
+  lastName?: string;
+  principalId: string;
+};
+
+type UserStaffActorDoc = {
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  principalId: string;
+  title?: string;
+};
+
+type UserAccountActorDoc = {
+  email?: string;
+  principalId: string;
+};
+
 function statusWeight(status: CarePlanMongoDoc["status"]) {
   switch (status) {
     case "active":
@@ -33,6 +52,122 @@ function statusWeight(status: CarePlanMongoDoc["status"]) {
     default:
       return 9;
   }
+}
+
+function formatActorName(parts: Array<string | null | undefined>) {
+  const value = parts
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" ")
+    .trim();
+  return value || null;
+}
+
+function formatStaffDisplayName(doc: UserStaffActorDoc) {
+  return (
+    doc.displayName?.trim() ||
+    formatActorName([doc.title, doc.firstName, doc.lastName]) ||
+    formatActorName([doc.firstName, doc.lastName])
+  );
+}
+
+function prettifyActorToken(value: string | null | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withoutPrefix = trimmed.replace(/^(pr|acc)_/i, "");
+  const emailLocalPart = withoutPrefix.includes("@")
+    ? withoutPrefix.split("@")[0]
+    : withoutPrefix;
+  const prettified = emailLocalPart
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!prettified) return null;
+
+  return prettified
+    .split(" ")
+    .map((part) =>
+      /^[a-z]+$/i.test(part)
+        ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        : part,
+    )
+    .join(" ");
+}
+
+async function loadActorNames(db: Db, actorPrincipalIds: string[]) {
+  const [actorStaffDocs, actorPiiDocs, actorAccountDocs] = await Promise.all([
+    actorPrincipalIds.length === 0
+      ? Promise.resolve([])
+      : db
+          .collection<UserStaffActorDoc>(COLLECTIONS.UsersStaff)
+          .find(
+            { principalId: { $in: actorPrincipalIds } },
+            {
+              projection: {
+                _id: 0,
+                displayName: 1,
+                firstName: 1,
+                lastName: 1,
+                principalId: 1,
+                title: 1,
+              },
+            },
+          )
+          .toArray(),
+    actorPrincipalIds.length === 0
+      ? Promise.resolve([])
+      : db
+          .collection<UserPiiActorDoc>(COLLECTIONS.UsersPII)
+          .find(
+            { principalId: { $in: actorPrincipalIds } },
+            {
+              projection: {
+                _id: 0,
+                firstName: 1,
+                lastName: 1,
+                principalId: 1,
+              },
+            },
+          )
+          .toArray(),
+    actorPrincipalIds.length === 0
+      ? Promise.resolve([])
+      : db
+          .collection<UserAccountActorDoc>(COLLECTIONS.UsersAccounts)
+          .find(
+            { principalId: { $in: actorPrincipalIds } },
+            {
+              projection: {
+                _id: 0,
+                email: 1,
+                principalId: 1,
+              },
+            },
+          )
+          .toArray(),
+  ]);
+
+  const actorNames = new Map<string, string>();
+  for (const doc of actorStaffDocs) {
+    const name = formatStaffDisplayName(doc);
+    if (name) actorNames.set(doc.principalId, name);
+  }
+  for (const doc of actorPiiDocs) {
+    if (actorNames.has(doc.principalId)) continue;
+    const name = formatActorName([doc.firstName, doc.lastName]);
+    if (name) actorNames.set(doc.principalId, name);
+  }
+  for (const doc of actorAccountDocs) {
+    if (!actorNames.has(doc.principalId)) {
+      const fallback =
+        prettifyActorToken(doc.principalId) ?? prettifyActorToken(doc.email);
+      if (fallback) actorNames.set(doc.principalId, fallback);
+    }
+  }
+
+  return actorNames;
 }
 
 export async function GET(
@@ -80,6 +215,7 @@ export async function GET(
             notes: 1,
             reviewLabel: 1,
             reviewedAt: 1,
+            activity: 1,
             sources: 1,
             status: 1,
             tasks: 1,
@@ -90,6 +226,20 @@ export async function GET(
       )
       .toArray();
 
+    const reviewerPrincipalIds = Array.from(
+      new Set(
+        carePlans.flatMap((plan) =>
+          (plan.activity ?? [])
+            .filter(
+              (event) =>
+                event.type === "reviewed" || event.type === "patient_reviewed",
+            )
+            .map((event) => event.by),
+        ),
+      ),
+    );
+    const actorNames = await loadActorNames(db, reviewerPrincipalIds);
+
     const rows = carePlans
       .slice()
       .sort((left, right) => {
@@ -97,20 +247,33 @@ export async function GET(
         if (byStatus !== 0) return byStatus;
         return right.updatedAt.getTime() - left.updatedAt.getTime();
       })
-      .map((plan) => ({
-        activatedAt: toIsoDate(plan.activatedAt),
-        completedAt: toIsoDate(plan.completedAt),
-        goalsCount: plan.goals?.length ?? 0,
-        id: plan._id.toHexString(),
-        notes: plan.notes?.trim() || null,
-        openTasksCount:
-          plan.tasks?.filter((task) => task.status === "open").length ?? 0,
-        sources: plan.sources ?? [],
-        status: plan.status,
-        tasksCount: plan.tasks?.length ?? 0,
-        title: plan.title,
-        updatedAt: plan.updatedAt.toISOString(),
-      }));
+      .map((plan) => {
+        const latestReviewActivity = (plan.activity ?? [])
+          .filter(
+            (event) =>
+              event.type === "reviewed" || event.type === "patient_reviewed",
+          )
+          .sort((left, right) => right.at.getTime() - left.at.getTime())[0];
+
+        return {
+          activatedAt: toIsoDate(plan.activatedAt),
+          completedAt: toIsoDate(plan.completedAt),
+          goalsCount: plan.goals?.length ?? 0,
+          id: plan._id.toHexString(),
+          notes: plan.notes?.trim() || null,
+          openTasksCount:
+            plan.tasks?.filter((task) => task.status === "open").length ?? 0,
+          reviewedAt: toIsoDate(latestReviewActivity?.at),
+          reviewedBy: latestReviewActivity
+            ? actorNames.get(latestReviewActivity.by) ?? latestReviewActivity.by
+            : null,
+          sources: plan.sources ?? [],
+          status: plan.status,
+          tasksCount: plan.tasks?.length ?? 0,
+          title: plan.title,
+          updatedAt: plan.updatedAt.toISOString(),
+        };
+      });
 
     const mappedPatient = mapPortalPatientDetail(patient);
     const reviewDueCount = carePlans.filter(isCarePlanReviewDue).length;

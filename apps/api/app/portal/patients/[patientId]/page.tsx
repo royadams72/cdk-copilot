@@ -8,7 +8,6 @@ import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provi
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type {
-  PortalPatientCarePlanSnapshot,
   PortalPatientDashboardData,
   PortalPatientDetail,
   PortalPatientDetailResponse,
@@ -32,55 +31,25 @@ function renderOverviewValue(row: PortalPatientOverviewRow) {
 function renderOverviewRows(rows: PortalPatientOverviewRow[]) {
   return rows.map((row) => (
     <div className={styles.patientSummaryRow} key={row.label}>
-      <span>
-        {row.label}
-        {row.meta ? (
-          <small className={styles.patientSummaryMeta}>{row.meta}</small>
-        ) : null}
-      </span>
+      <span>{row.label}</span>
       {renderOverviewValue(row)}
     </div>
   ));
 }
 
-function renderCarePlanSnapshot(snapshot: PortalPatientCarePlanSnapshot) {
-  if (!snapshot) {
-    return (
-      <div className={styles.patientPanelEmpty}>
-        No care plans recorded yet.
-      </div>
-    );
+function formatSignalCategory(
+  category: PortalPatientDashboardData["signals"][number]["category"],
+) {
+  switch (category) {
+    case "care_plan":
+      return "Care plan";
+    case "clinical":
+      return "Clinical";
+    case "engagement":
+      return "Engagement";
+    default:
+      return category;
   }
-
-  const reviewValue = formatDisplayDate(snapshot.nextReviewAt, {
-    fallback: snapshot.reviewLabel
-      ? `Review cadence ${snapshot.reviewLabel}`
-      : "Not set",
-  });
-
-  const rows = [
-    { label: "Latest plan", value: snapshot.title },
-    { label: "Status", value: snapshot.status },
-    { label: "Open tasks", value: snapshot.openTasksLabel },
-    { label: "Next review", value: reviewValue },
-  ];
-
-  return rows.map((row) => (
-    <div className={styles.patientSummaryRow} key={row.label}>
-      <span>{row.label}</span>
-      {snapshot.href ? (
-        <Link
-          className={styles.patientPanelLink}
-          href={snapshot.href}
-          prefetch={false}
-        >
-          {row.value}
-        </Link>
-      ) : (
-        <strong>{row.value}</strong>
-      )}
-    </div>
-  ));
 }
 
 export default function PortalPatientDetailPage() {
@@ -197,47 +166,40 @@ export default function PortalPatientDetailPage() {
         <PatientOverviewPanel title="Latest readings">
           {renderOverviewRows(dashboard?.latestReadings ?? [])}
         </PatientOverviewPanel>
+      </div>
 
-        <PatientOverviewPanel title="Care plan snapshot">
-          {renderCarePlanSnapshot(dashboard?.carePlanSnapshot ?? null)}
-        </PatientOverviewPanel>
-
-        <PatientOverviewPanel id="attention-needed" title="Attention needed">
+      <PatientOverviewPanel title="Patient signals">
+        {(dashboard?.signals ?? []).length ? (
           <div className={styles.patientAttentionList}>
-            {(dashboard?.attentionItems ?? []).map((item) => (
+            {dashboard?.signals.map((item, index) => (
               <div
                 className={styles.patientAttentionItem}
                 data-tone={item.tone}
-                key={`${item.title}-${item.detail}`}
+                key={`${item.category}-${item.title}-${index}`}
               >
+                <strong>{item.title}</strong>
+                <span>{item.detail}</span>
+                <small className={styles.patientSummaryMeta}>
+                  {formatSignalCategory(item.category)}
+                </small>
                 {item.href ? (
-                  <>
-                    <Link
-                      className={styles.patientPanelLink}
-                      href={item.href}
-                      prefetch={false}
-                    >
-                      {item.title}
-                    </Link>
-                    <Link
-                      className={styles.patientAttentionLink}
-                      href={item.href}
-                      prefetch={false}
-                    >
-                      {item.detail}
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <strong>{item.title}</strong>
-                    <span>{item.detail}</span>
-                  </>
-                )}
+                  <Link
+                    className={styles.patientAttentionLink}
+                    href={item.href}
+                    prefetch={false}
+                  >
+                    Open
+                  </Link>
+                ) : null}
               </div>
             ))}
           </div>
-        </PatientOverviewPanel>
-      </div>
+        ) : (
+          <div className={styles.patientPanelEmpty}>
+            No patient signals to show.
+          </div>
+        )}
+      </PatientOverviewPanel>
 
       <div className={styles.patientSummaryGrid}>
         <article className={styles.patientSummaryPanel}>
@@ -246,24 +208,28 @@ export default function PortalPatientDetailPage() {
               31-day clinical trends
             </h3>
           </div>
-          {(dashboard?.clinicalSummary ?? []).map((row) => (
-            <div className={styles.patientSummaryRow} key={row.label}>
-              <span>{row.label}</span>
-              <strong>{row.value}</strong>
-            </div>
-          ))}
+          <div className={styles.patientOverviewBody}>
+            {(dashboard?.clinicalSummary ?? []).map((row) => (
+              <div className={styles.patientSummaryRow} key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            ))}
+          </div>
         </article>
 
         <article className={styles.patientSummaryPanel}>
           <div className={styles.patientOverviewHeader}>
             <h3 className={styles.patientOverviewTitle}>31-day engagement</h3>
           </div>
-          {(dashboard?.engagementSummary ?? []).map((row) => (
-            <div className={styles.patientSummaryRow} key={row.label}>
-              <span>{row.label}</span>
-              <strong>{row.value}</strong>
-            </div>
-          ))}
+          <div className={styles.patientOverviewBody}>
+            {(dashboard?.engagementSummary ?? []).map((row) => (
+              <div className={styles.patientSummaryRow} key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            ))}
+          </div>
         </article>
       </div>
 

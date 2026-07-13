@@ -11,8 +11,8 @@ import {
   buildCarePlanDiagnosisActivityNote,
   formatCarePlanReviewLabel,
   makeCarePlanActivityKey,
-  normalizeCarePlanReviewLabel,
   normalizeCarePlanLabel,
+  normalizeCarePlanReviewLabel,
   slugifyCarePlanLabel,
   stableCarePlanKey,
 } from "@/apps/api/lib/care-plans/shared";
@@ -79,17 +79,22 @@ const CREATE_PAYLOAD = z.object({
   measureUsing: z.string().trim().min(1).max(60),
   notes: z.string().trim().max(2000).optional(),
   ownerLabels: z.array(z.string().trim().min(1).max(80)).default([]),
-  reviewLabel: z.string().trim().min(1).max(40).transform((value, ctx) => {
-    const normalized = normalizeCarePlanReviewLabel(value);
-    if (!normalized) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Invalid review label",
-      });
-      return z.NEVER;
-    }
-    return normalized;
-  }),
+  reviewLabel: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .transform((value, ctx) => {
+      const normalized = normalizeCarePlanReviewLabel(value);
+      if (!normalized) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid review label",
+        });
+        return z.NEVER;
+      }
+      return normalized;
+    }),
   target: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(80),
 });
@@ -397,7 +402,7 @@ export async function GET(
     const ownerOptions = Array.from(
       new Map(
         [
-          { id: "patient", label: mappedPatient.name },
+          { id: "patient", label: `${mappedPatient.name} (Patient)` },
           ...(staffOwnerOptions.length
             ? staffOwnerOptions
             : fallbackCareTeamOptions),
