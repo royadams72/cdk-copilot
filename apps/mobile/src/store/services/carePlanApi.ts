@@ -69,6 +69,33 @@ export const carePlanApi = appApi.injectEndpoints({
         url: `/api/care-plans/${carePlanId}`,
       }),
     }),
+    submitCarePlanReview: builder.mutation<
+      { updated: boolean },
+      {
+        carePlanId: string;
+        note?: string;
+        responses: Array<
+          | "understand_diagnosis"
+          | "know_next_steps"
+          | "fits_into_routine"
+          | "need_more_support"
+        >;
+      }
+    >({
+      invalidatesTags: (_result, _error, arg) => [
+        { id: arg.carePlanId, type: "CarePlan" as const },
+        { id: "LIST", type: "CarePlan" as const },
+      ],
+      query: ({ carePlanId, note, responses }) => ({
+        body: {
+          action: "submit_review",
+          note,
+          responses,
+        },
+        method: "PATCH",
+        url: `/api/care-plans/${carePlanId}`,
+      }),
+    }),
   }),
   overrideExisting: __DEV__,
 });
@@ -76,5 +103,6 @@ export const carePlanApi = appApi.injectEndpoints({
 export const {
   useGetCarePlanByIdQuery,
   useGetCarePlansQuery,
+  useSubmitCarePlanReviewMutation,
   useUpdateCarePlanTaskStatusMutation,
 } = carePlanApi;

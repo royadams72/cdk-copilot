@@ -264,7 +264,9 @@ export default function Dashboard() {
           {showCarePlanBanner && carePlanData?.latestUpdatedPlan ? (
             <Card style={styles.carePlanNotificationCard}>
               <ThemedText type="defaultSemiBold">
-                {carePlanData.latestUpdatedPlan.status === "completed"
+                {carePlanData.latestUpdatedPlan.reviewDue
+                  ? "Care plan review due"
+                  : carePlanData.latestUpdatedPlan.status === "completed"
                   ? "Care plan completed"
                   : "New care plan update"}
               </ThemedText>
@@ -275,12 +277,16 @@ export default function Dashboard() {
                 style={[styles.primaryActionButton, styles.carePlanViewButton]}
                 onPress={() =>
                   router.push(
-                    `/(dashboard)/care-plan?id=${carePlanData.latestUpdatedPlan!.id}` as never,
+                    (carePlanData.latestUpdatedPlan?.reviewDue
+                      ? `/(dashboard)/care-plan-review?id=${carePlanData.latestUpdatedPlan.id}`
+                      : `/(dashboard)/care-plan?id=${carePlanData.latestUpdatedPlan!.id}`) as never,
                   )
                 }
               >
                 <ThemedText style={styles.primaryActionText}>
-                  {carePlanData.latestUpdatedPlan.status === "completed"
+                  {carePlanData.latestUpdatedPlan.reviewDue
+                    ? "Review now"
+                    : carePlanData.latestUpdatedPlan.status === "completed"
                     ? "Review completion"
                     : "View care plan"}
                 </ThemedText>
@@ -291,7 +297,9 @@ export default function Dashboard() {
           {error && data && <InlineError message={errorMessage} />}
 
           {carePlanData?.latestActivePlan ? (
-            <Card>
+            <Card
+              style={carePlanData.latestActivePlan.reviewDue ? styles.carePlanReviewCard : undefined}
+            >
               <ThemedText type="defaultSemiBold">Care plan</ThemedText>
               <ThemedText style={styles.helperText}>
                 {carePlanData.latestActivePlan.title}
@@ -299,17 +307,39 @@ export default function Dashboard() {
               <ThemedText style={styles.helperText}>
                 {carePlanData.latestActivePlan.taskCount} active task
                 {carePlanData.latestActivePlan.taskCount === 1 ? "" : "s"}
-                {carePlanData.latestActivePlan.reviewLabel
-                  ? ` · Review in ${carePlanData.latestActivePlan.reviewLabel}`
+                {carePlanData.latestActivePlan.reviewLabelDisplay
+                  ? ` · Review in ${carePlanData.latestActivePlan.reviewLabelDisplay}`
                   : ""}
               </ThemedText>
+              {carePlanData.latestActivePlan.reviewDue ? (
+                <ThemedText style={styles.helperText}>
+                  Your care team would like a quick check-in on how this plan is going.
+                </ThemedText>
+              ) : null}
               <Pressable
-                style={[styles.secondaryActionButton, styles.carePlanViewButton]}
+                style={[
+                  carePlanData.latestActivePlan.reviewDue
+                    ? styles.primaryActionButton
+                    : styles.secondaryActionButton,
+                  styles.carePlanViewButton,
+                ]}
                 onPress={() =>
-                  router.push("/(dashboard)/care-plans" as never)
+                  router.push(
+                    (carePlanData.latestActivePlan?.reviewDue
+                      ? `/(dashboard)/care-plan-review?id=${carePlanData.latestActivePlan.id}`
+                      : "/(dashboard)/care-plans") as never,
+                  )
                 }
               >
-                <ThemedText style={styles.secondaryActionText}>All care plans</ThemedText>
+                <ThemedText
+                  style={
+                    carePlanData.latestActivePlan.reviewDue
+                      ? styles.primaryActionText
+                      : styles.secondaryActionText
+                  }
+                >
+                  {carePlanData.latestActivePlan.reviewDue ? "Review care plan" : "All care plans"}
+                </ThemedText>
               </Pressable>
             </Card>
           ) : null}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -95,9 +96,26 @@ export default function CarePlanDetail() {
           <View style={styles.header}>
             <ThemedText type="title">{data.title}</ThemedText>
             <ThemedText style={styles.carePlanStatusText}>
-              {formatStatus(data.status)}
+              {data.reviewDue ? "Review due" : formatStatus(data.status)}
             </ThemedText>
           </View>
+
+          {data.reviewDue ? (
+            <Card style={styles.carePlanReviewCard}>
+              <ThemedText type="defaultSemiBold">Review ready</ThemedText>
+              <ThemedText style={styles.helperText}>
+                Your care team wants a quick update on whether this plan is working for you.
+              </ThemedText>
+              <Pressable
+                style={styles.primaryActionButton}
+                onPress={() =>
+                  router.push(`/(dashboard)/care-plan-review?id=${carePlanId}` as never)
+                }
+              >
+                <ThemedText style={styles.primaryActionText}>Review care plan</ThemedText>
+              </Pressable>
+            </Card>
+          ) : null}
 
           <Card>
             <ThemedText type="defaultSemiBold">Plan summary</ThemedText>
@@ -127,13 +145,25 @@ export default function CarePlanDetail() {
               <View style={styles.carePlanSummaryCell}>
                 <ThemedText style={styles.carePlanMetaLabel}>Review in</ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
-                  {data.reviewLabel ?? "Not set"}
+                  {data.reviewLabelDisplay ?? "Not set"}
                 </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
                 <ThemedText style={styles.carePlanMetaLabel}>Activated</ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
                   {formatMobileDate(data.activatedAt)}
+                </ThemedText>
+              </View>
+              <View style={styles.carePlanSummaryCell}>
+                <ThemedText style={styles.carePlanMetaLabel}>Next review</ThemedText>
+                <ThemedText style={styles.carePlanMetaValue}>
+                  {formatMobileDate(data.nextReviewAt)}
+                </ThemedText>
+              </View>
+              <View style={styles.carePlanSummaryCell}>
+                <ThemedText style={styles.carePlanMetaLabel}>Last reviewed</ThemedText>
+                <ThemedText style={styles.carePlanMetaValue}>
+                  {formatMobileDate(data.reviewedAt)}
                 </ThemedText>
               </View>
             </View>
@@ -155,7 +185,9 @@ export default function CarePlanDetail() {
                 <View key={event.id} style={styles.carePlanListRow}>
                   <View style={styles.carePlanTaskHeader}>
                     <ThemedText style={styles.carePlanListTitle}>
-                      {formatStatus(event.type.replace(/_/g, " "))}
+                      {event.type === "patient_reviewed"
+                        ? "Review shared"
+                        : formatStatus(event.type.replace(/_/g, " "))}
                     </ThemedText>
                     <ThemedText style={styles.carePlanTaskMeta}>
                       {formatMobileDate(event.at)}

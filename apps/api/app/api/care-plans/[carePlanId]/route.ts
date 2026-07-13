@@ -9,15 +9,34 @@ import type {
   CarePlanActivityDoc,
   CarePlanMongoDoc,
 } from "@/apps/api/lib/care-plans/shared";
-import { makeCarePlanActivityKey } from "@/apps/api/lib/care-plans/shared";
+import {
+  formatCarePlanReviewLabel,
+  getCarePlanNextReviewAt,
+  isCarePlanReviewDue,
+  makeCarePlanActivityKey,
+} from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import { COLLECTIONS } from "@ckd/core/server";
 
-const UpdateCarePlanTaskBody = z.object({
-  action: z.enum(["complete_task", "reopen_task"]),
-  taskId: z.string().trim().min(1),
-});
+const PatientReviewResponseValue = z.enum([
+  "understand_diagnosis",
+  "know_next_steps",
+  "fits_into_routine",
+  "need_more_support",
+]);
+
+const UpdateCarePlanBody = z.discriminatedUnion("action", [
+  z.object({
+    action: z.enum(["complete_task", "reopen_task"]),
+    taskId: z.string().trim().min(1),
+  }),
+  z.object({
+    action: z.literal("submit_review"),
+    note: z.string().trim().max(4000).optional().default(""),
+    responses: z.array(PatientReviewResponseValue).max(4).default([]),
+  }),
+]);
 
 type UserStaffActorDoc = {
   displayName?: string;
@@ -88,6 +107,34 @@ function summarizeTarget(target: Record<string, unknown> | undefined) {
     .slice(0, 3)
     .map(([key, value]) => `${key}: ${String(value)}`);
   return parts.length ? parts.join(" • ") : null;
+}
+
+function formatPatientReviewResponseLabel(value: z.infer<typeof PatientReviewResponseValue>) {
+  switch (value) {
+    case "understand_diagnosis":
+      return "This care plan helped me understand my diagnosis";
+    case "know_next_steps":
+      return "I know what I should do next";
+    case "fits_into_routine":
+      return "This plan fits into my day-to-day routine";
+    case "need_more_support":
+      return "I still need more support with this plan";
+  }
+}
+
+function buildPatientReviewActivityNote(input: {
+  note?: string;
+  responses: Array<z.infer<typeof PatientReviewResponseValue>>;
+}) {
+  const selected = input.responses.map(formatPatientReviewResponseLabel);
+  const sections: string[] = ["Patient review submitted."];
+  if (selected.length) {
+    sections.push(`Checked: ${selected.join("; ")}.`);
+  }
+  if (input.note?.trim()) {
+    sections.push(`Note: ${input.note.trim()}`);
+  }
+  return sections.join(" ");
 }
 
 async function loadActorNames(
@@ -195,21 +242,22 @@ export async function GET(
           completedAt: 1,
           createdAt: 1,
           createdBy: 1,
-        diagnoses: 1,
-        goals: 1,
-        notes: 1,
-        ownerLabels: 1,
-        patientId: 1,
-        reviewLabel: 1,
-        status: 1,
-        tasks: 1,
-        title: 1,
-        updatedAt: 1,
-        updatedBy: 1,
-        activity: 1,
+          diagnoses: 1,
+          goals: 1,
+          notes: 1,
+          ownerLabels: 1,
+          patientId: 1,
+          reviewLabel: 1,
+          reviewedAt: 1,
+          status: 1,
+          tasks: 1,
+          title: 1,
+          updatedAt: 1,
+          updatedBy: 1,
+          activity: 1,
+        },
       },
-    },
-  );
+    );
 
     if (!plan) {
       return bad("Care plan not found", { code: "care_plan_not_found" }, 404);
@@ -245,7 +293,11 @@ export async function GET(
         id: plan._id.toHexString(),
         notes: plan.notes?.trim() || null,
         ownerLabels: plan.ownerLabels ?? [],
+        reviewDue: isCarePlanReviewDue(plan),
         reviewLabel: plan.reviewLabel?.trim() || null,
+        reviewLabelDisplay: formatCarePlanReviewLabel(plan.reviewLabel),
+        reviewedAt: plan.reviewedAt?.toISOString() ?? null,
+        nextReviewAt: getCarePlanNextReviewAt(plan)?.toISOString() ?? null,
         status: plan.status,
         tasks: (plan.tasks ?? []).map((task) => ({
           freq: task.freq,
@@ -293,7 +345,7 @@ export async function PATCH(
       return bad("Invalid care plan request", { code: "invalid_care_plan_request" }, 400);
     }
 
-    const parsed = UpdateCarePlanTaskBody.safeParse(await req.json().catch(() => null));
+    const parsed = UpdateCarePlanBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return bad("Invalid care plan update payload", parsed.error.flatten(), 400);
     }
@@ -310,27 +362,72 @@ export async function PATCH(
       return bad("Care plan not found", { code: "care_plan_not_found" }, 404);
     }
     if (plan.status !== "active") {
-      return bad("Only active care plans can update tasks", { code: "care_plan_not_active" }, 409);
+      return bad(
+        "Only active care plans can be updated",
+        { code: "care_plan_not_active" },
+        409,
+      );
     }
 
-    const targetTask = (plan.tasks ?? []).find((task) => task.key === parsed.data.taskId);
+    if (parsed.data.action === "submit_review") {
+      if (!plan.reviewLabel?.trim()) {
+        return bad(
+          "This care plan is not set up for review",
+          { code: "care_plan_review_not_configured" },
+          409,
+        );
+      }
+      if (!isCarePlanReviewDue(plan)) {
+        return bad(
+          "This care plan is not ready for review yet",
+          { code: "care_plan_review_not_due" },
+          409,
+        );
+      }
+
+      const now = new Date();
+      await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
+        { _id: carePlanObjectId, patientId: patientObjectId },
+        {
+          $push: {
+            activity: {
+              at: now,
+              by: caller.principalId,
+              key: makeCarePlanActivityKey("patient_reviewed", now, caller.principalId),
+              note: buildPatientReviewActivityNote(parsed.data),
+              type: "patient_reviewed",
+            },
+          },
+          $set: {
+            reviewedAt: now,
+            updatedAt: now,
+            updatedBy: caller.principalId,
+          },
+        },
+      );
+
+      return ok({ updated: true });
+    }
+
+    const taskUpdate = parsed.data;
+    const targetTask = (plan.tasks ?? []).find((task) => task.key === taskUpdate.taskId);
     if (!targetTask) {
       return bad("Task not found", { code: "care_plan_task_not_found" }, 404);
     }
 
-    const nextStatus = parsed.data.action === "complete_task" ? "done" : "open";
+    const nextStatus = taskUpdate.action === "complete_task" ? "done" : "open";
     if (targetTask.status === nextStatus) {
       return ok({ updated: false });
     }
 
     const now = new Date();
-    const activityType = parsed.data.action === "complete_task" ? "task_completed" : "task_reopened";
+    const activityType = taskUpdate.action === "complete_task" ? "task_completed" : "task_reopened";
     await db.collection<CarePlanMongoDoc>(COLLECTIONS.CarePlans).updateOne(
       { _id: carePlanObjectId, patientId: patientObjectId },
       {
         $set: {
           tasks: (plan.tasks ?? []).map((task) =>
-            task.key === parsed.data.taskId ? { ...task, status: nextStatus } : task,
+            task.key === taskUpdate.taskId ? { ...task, status: nextStatus } : task,
           ),
           updatedAt: now,
           updatedBy: caller.principalId,
@@ -341,7 +438,7 @@ export async function PATCH(
             by: caller.principalId,
             key: makeCarePlanActivityKey(activityType, now, caller.principalId),
             note:
-              parsed.data.action === "complete_task"
+              taskUpdate.action === "complete_task"
                 ? `Completed task: ${targetTask.label}.`
                 : `Reopened task: ${targetTask.label}.`,
             type: activityType,

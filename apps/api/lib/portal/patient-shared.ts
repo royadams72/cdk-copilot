@@ -8,7 +8,10 @@ import {
 } from "@ckd/core";
 import { z } from "zod";
 
-type CarePlanActivityTypeValue = z.infer<typeof CarePlanActivityType> | "reviewed";
+type CarePlanActivityTypeValue =
+  | z.infer<typeof CarePlanActivityType>
+  | "reviewed"
+  | "patient_reviewed";
 type CarePlanSourceValue = z.infer<typeof CarePlanSource>;
 type CarePlanStatusValue = z.infer<typeof CarePlanStatus>;
 type CarePlanTaskFreqValue = z.infer<typeof TaskFreq>;
