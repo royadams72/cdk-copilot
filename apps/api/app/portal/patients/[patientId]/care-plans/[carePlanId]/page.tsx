@@ -71,6 +71,14 @@ function formatActivityLabel(
   }
 }
 
+function getLatestReviewActivity(
+  activity: PortalPatientCarePlanDetailData["activity"],
+) {
+  return activity.find(
+    (event) => event.type === "reviewed" || event.type === "patient_reviewed",
+  );
+}
+
 export default function PortalPatientCarePlanDetailPage() {
   const params = useParams<{ carePlanId: string; patientId: string }>();
   const router = useRouter();
@@ -172,6 +180,10 @@ export default function PortalPatientCarePlanDetailPage() {
       : "/portal";
   const carePlansHref = `${patientHref}/care-plans`;
   const isReviewDue = data.plan.status === "active" && data.plan.reviewDue;
+  const latestReviewActivity = getLatestReviewActivity(data.activity);
+  const latestReviewLabel = latestReviewActivity
+    ? `Recently reviewed by ${latestReviewActivity.by}`
+    : null;
 
   async function runAction(
     action: "complete" | "activate" | "archive" | "delete" | "review",
@@ -246,21 +258,26 @@ export default function PortalPatientCarePlanDetailPage() {
         <div className={styles.carePlanTitleBlock}>
           <h2 className={styles.carePlanPrimaryTitle}>{data.plan.title}</h2>
         </div>
-        <div
-          className={styles.carePlanStatusInline}
-          data-tone={
-            isReviewDue
-              ? "warning"
-              : data.plan.status === "active"
-              ? "success"
-              : data.plan.status === "completed"
-                ? "danger"
-                : data.plan.status === "draft"
-                  ? "accent"
-                  : "muted"
-          }
-        >
-          {formatStatusLabel(data.plan)}
+        <div className={styles.carePlanStatusBlock}>
+          <div
+            className={styles.carePlanStatusInline}
+            data-tone={
+              isReviewDue
+                ? "warning"
+                : data.plan.status === "active"
+                ? "success"
+                : data.plan.status === "completed"
+                  ? "danger"
+                  : data.plan.status === "draft"
+                    ? "accent"
+                    : "muted"
+            }
+          >
+            {formatStatusLabel(data.plan)}
+          </div>
+          {latestReviewLabel ? (
+            <p className={styles.carePlanReviewInline}>{latestReviewLabel}</p>
+          ) : null}
         </div>
         <div className={styles.carePlanActionCell}>
           {data.plan.status === "draft" ? (

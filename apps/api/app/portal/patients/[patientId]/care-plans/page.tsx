@@ -49,6 +49,14 @@ function statusColour(
   }
 }
 
+function formatReviewLabel(row: PortalPatientCarePlanData["rows"][number]) {
+  if (!row.reviewedBy) {
+    return null;
+  }
+
+  return `Recently reviewed by ${row.reviewedBy}`;
+}
+
 export default function PortalPatientCarePlansPage() {
   const params = useParams<{ patientId: string }>();
   const { session, status } = usePortalAuthSession();
@@ -175,11 +183,18 @@ export default function PortalPatientCarePlansPage() {
                     <div className={styles.carePlanRowNote}>{row.notes}</div>
                   ) : null}
                 </div>
-                <div
-                  className={styles.carePlanStatus}
-                  data-tone={statusColour(row.status)}
-                >
-                  {formatStatusLabel(row.status)}
+                <div className={styles.carePlanStatusBlockList}>
+                  <div
+                    className={styles.carePlanStatus}
+                    data-tone={statusColour(row.status)}
+                  >
+                    {formatStatusLabel(row.status)}
+                  </div>
+                  {formatReviewLabel(row) ? (
+                    <p className={styles.carePlanReviewInline}>
+                      {formatReviewLabel(row)}
+                    </p>
+                  ) : null}
                 </div>
               </article>
             ))
