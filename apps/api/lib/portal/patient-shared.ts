@@ -500,11 +500,14 @@ export type PortalPatientCarePlanCreateData = {
 };
 
 export type PortalPatientStat = {
+  actionLabel?: string;
   count: number;
   detail: string;
   icon: string;
   label: string;
   tone: "accent" | "warning";
+  valueLabelPlural?: string;
+  valueLabelSingular?: string;
 };
 
 export function normalizePortalPatientFilter(

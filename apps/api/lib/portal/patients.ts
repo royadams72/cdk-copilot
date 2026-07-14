@@ -514,6 +514,15 @@ export function sortPortalPatients(items: PortalPatientListItem[]) {
 }
 
 export function buildPortalPatientStats(items: PortalPatientListItem[]) {
+  const reviewDuePatients = items.filter((item) =>
+    matchesPortalPatientFilter(item, "review"),
+  );
+  const carePlanReviewDueCount = reviewDuePatients.reduce(
+    (sum, item) => sum + item.reviewDueCount,
+    0,
+  );
+  const renalGuidanceReviewDueCount = 0;
+
   const statsByFilter: Record<
     Exclude<PortalPatientFilter, "all">,
     PortalPatientStat
@@ -537,12 +546,14 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       tone: "accent",
     },
     review: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "review"))
-        .length,
-      detail: "Need their care plans reviewed.",
+      actionLabel: "View reviews",
+      count: carePlanReviewDueCount + renalGuidanceReviewDueCount,
+      detail: `${carePlanReviewDueCount} care plan${carePlanReviewDueCount === 1 ? "" : "s"} · ${renalGuidanceReviewDueCount} renal guidance`,
       icon: "/portal/icons/review icon.png",
-      label: "Care plan review due",
+      label: "Reviews due",
       tone: "warning",
+      valueLabelPlural: "items due",
+      valueLabelSingular: "item due",
     },
     worsening: {
       count: items.filter((item) =>
