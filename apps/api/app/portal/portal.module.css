@@ -580,6 +580,7 @@
   justify-content: center;
   gap: var(--portal-space-3);
   min-width: 0;
+  margin-top: 20px;
 }
 
 .patientBackLinkSpacer {
@@ -681,19 +682,6 @@
 
 .patientOverviewBody {
   display: grid;
-}
-
-.patientSummaryGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--portal-space-3);
-}
-
-.patientSummaryPanel {
-  overflow: hidden;
-  border: 1px solid var(--portal-line-strong);
-  border-radius: var(--portal-radius-md);
-  background: var(--portal-surface);
 }
 
 .patientSummaryRow {
@@ -821,6 +809,8 @@
   flex-wrap: wrap;
   gap: var(--portal-space-2);
   align-items: center;
+  justify-content: center;
+  margin: 20px 0;
 }
 
 .patientActionInlineButton,
@@ -832,13 +822,13 @@
   justify-content: center;
   border: 1px solid var(--portal-line);
   border-radius: 999px;
-  color: var(--portal-accent-dark);
+  color: var(--portal-surface);
   font-size: 15px;
   line-height: 22px;
-  font-weight: 700;
+  font-weight: 500;
   text-align: center;
   text-decoration: none;
-  background: var(--portal-surface);
+  background: var(--portal-accent-dark);
 }
 
 .patientActionInlineButton {

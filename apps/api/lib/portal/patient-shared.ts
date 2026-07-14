@@ -141,7 +141,7 @@ export type PortalPatientOverviewRow = {
   value: string;
 };
 
-export type PortalPatientSignalItem = {
+export type PortalPatientHighlightItem = {
   category: "care_plan" | "clinical" | "engagement";
   detail: string;
   href?: string | null;
@@ -162,9 +162,9 @@ export type PortalPatientDashboardData = {
   currentStatus: PortalPatientOverviewRow[];
   engagementSummary: PortalPatientOverviewRow[];
   headline: string;
+  highlights: PortalPatientHighlightItem[];
   latestReadings: PortalPatientOverviewRow[];
   recentActivity: PortalPatientRecentActivityItem[];
-  signals: PortalPatientSignalItem[];
   subheadline: string;
 };
 

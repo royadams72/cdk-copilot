@@ -10,7 +10,7 @@ import {
 import type {
   PortalPatientDashboardData,
   PortalPatientDetail,
-  PortalPatientSignalItem,
+  PortalPatientHighlightItem,
 } from "@/apps/api/lib/portal/patient-shared";
 import { COLLECTIONS } from "@ckd/core/server";
 import { type Db, ObjectId } from "mongodb";
@@ -191,7 +191,7 @@ function getCarePlanActivityLabel(type: string) {
   }
 }
 
-function buildSignals(input: {
+function buildHighlights(input: {
   activeCarePlan: CarePlanDoc | null;
   activeCarePlanCount: number;
   bloodPressureLoggingDays: number;
@@ -201,15 +201,15 @@ function buildSignals(input: {
   patientId: string;
   reviewDueCount: number;
   weightLoggingDays: number;
-}): PortalPatientSignalItem[] {
-  const items: PortalPatientSignalItem[] = [];
+}): PortalPatientHighlightItem[] {
+  const items: PortalPatientHighlightItem[] = [];
 
   if (input.activeCarePlanCount === 0) {
     items.push({
       category: "care_plan",
-      detail: "There is no active care plan for this patient.",
+      detail: "No active care plan is currently in place.",
       href: `/portal/patients/${input.patientId}/care-plans`,
-      title: "No active care plan",
+      title: "No active care plan in place",
       tone: "warning",
     });
   }
@@ -217,9 +217,9 @@ function buildSignals(input: {
   if (input.reviewDueCount > 0) {
     items.push({
       category: "care_plan",
-      detail: `${input.reviewDueCount} active care plan${input.reviewDueCount === 1 ? "" : "s"} should be reviewed.`,
+      detail: `${input.reviewDueCount} active care plan${input.reviewDueCount === 1 ? "" : "s"} ${input.reviewDueCount === 1 ? "is" : "are"} due for review.`,
       href: `/portal/patients/${input.patientId}/care-plans`,
-      title: "Care plan review due",
+      title: "Care plan due for review",
       tone: "warning",
     });
   }
@@ -230,9 +230,9 @@ function buildSignals(input: {
   ) {
     items.push({
       category: "clinical",
-      detail: "No blood pressure reading has been logged in the last 14 days.",
+      detail: "No blood pressure has been logged in the last 14 days.",
       href: `/portal/patients/${input.patientId}/health`,
-      title: "Missing recent blood pressure data",
+      title: "No blood pressure logged in 14 days",
       tone: "warning",
     });
   }
@@ -243,9 +243,9 @@ function buildSignals(input: {
   ) {
     items.push({
       category: "clinical",
-      detail: "No weight reading has been logged in the last 14 days.",
+      detail: "No weight has been logged in the last 14 days.",
       href: `/portal/patients/${input.patientId}/health`,
-      title: "Missing recent weight data",
+      title: "No weight logged in 14 days",
       tone: "warning",
     });
   }
@@ -261,9 +261,9 @@ function buildSignals(input: {
     items.push({
       category: "engagement",
       detail:
-        "An active care plan exists, but there has been no nutrition, blood pressure or weight data in the last 31 days.",
+        "An active care plan is in place, but there has been no nutrition, blood pressure, or weight data in the last 31 days.",
       href: `/portal/patients/${input.patientId}/health`,
-      title: "Active plan with no recent patient data",
+      title: "Active care plan with no recent patient data",
       tone: "warning",
     });
   }
@@ -279,7 +279,7 @@ function buildSignals(input: {
         input.latestBloodPressure.measuredAt,
       )}.`,
       href: `/portal/patients/${input.patientId}/health`,
-      title: "Latest blood pressure above target",
+      title: "Latest blood pressure above target range",
       tone: "warning",
     });
   }
@@ -287,8 +287,8 @@ function buildSignals(input: {
   if (items.length === 0) {
     items.push({
       category: "engagement",
-      detail: "Nothing urgent is flagged on the overview right now.",
-      title: "No urgent issues",
+      detail: "Nothing notable is showing on the overview right now.",
+      title: "No notable issues at present",
       tone: "success",
     });
   }
@@ -492,7 +492,7 @@ export function buildPortalPatientDashboard(input: {
       "Messaging",
       "Reviewed Trends",
     ],
-    signals: buildSignals({
+    highlights: buildHighlights({
       activeCarePlan,
       activeCarePlanCount,
       bloodPressureLoggingDays,
