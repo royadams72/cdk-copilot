@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
       conditions: currentEntries.conditions,
       createdAt: previous?.createdAt ?? now,
       createdBy: previous?.createdBy ?? actor,
+      dietaryRestrictions: previous?.dietaryRestrictions ?? [],
       dietaryPreferences: currentEntries.dietaryPreferences,
       ...(caller.orgId ? { orgId: caller.orgId } : {}),
       patientId,
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
           $setOnInsert: {
             createdAt: currentDoc.createdAt,
             createdBy: currentDoc.createdBy,
+            dietaryRestrictions: currentDoc.dietaryRestrictions,
             patientId,
           },
         },
