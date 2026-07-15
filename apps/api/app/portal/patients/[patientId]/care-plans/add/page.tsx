@@ -343,14 +343,15 @@ export default function PortalPatientAddCarePlanPage() {
         <p className={styles.carePlanFormLead}>{actionLead}</p>
       </div>
 
-      <section className={styles.carePlanFormShell}>
+      <section className={styles.formShell}>
         <div className={styles.carePlanFormGroup}>
           <label className={styles.carePlanFieldLabel}>
             Associated diagnoses
           </label>
 
           <p className={styles.dataScreenCaption}>
-            Select an existing diagnosis already recorded for this patient, or search SNOMED and add a new one. (optional)
+            Select an existing diagnosis already recorded for this patient, or
+            search SNOMED and add a new one. (optional)
           </p>
           {data.diagnosisOptions.length ? (
             <div className={styles.carePlanInlineRow}>
@@ -390,7 +391,8 @@ export default function PortalPatientAddCarePlanPage() {
             />
           </div>
           <p className={styles.dataScreenCaption}>
-            Select a search result to add it, or press Enter to save custom text.
+            Select a search result to add it, or press Enter to save custom
+            text.
           </p>
           {conditionSearchLoading ? (
             <p className={styles.dataScreenCaption}>Searching conditions...</p>

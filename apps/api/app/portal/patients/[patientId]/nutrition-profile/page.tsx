@@ -16,10 +16,10 @@ import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
 
 type TargetDefinitionValue = {
+  type: "range" | "max" | "min" | "exact";
   basis?: "perDay" | "perKgPerDay" | null;
   high?: number | null;
   low?: number | null;
-  type: "range" | "max" | "min" | "exact";
   value?: number | null;
 };
 
@@ -118,7 +118,9 @@ function sanitizeNumericInput(value: string) {
   }
 
   const integerPart = normalized.slice(0, firstDecimalIndex + 1);
-  const decimalPart = normalized.slice(firstDecimalIndex + 1).replace(/\./g, "");
+  const decimalPart = normalized
+    .slice(firstDecimalIndex + 1)
+    .replace(/\./g, "");
   return `${integerPart}${decimalPart}`;
 }
 
@@ -152,7 +154,7 @@ function dedupeStrings(items: string[]) {
 function optionChildrenLabels(
   option:
     | { label: string }
-    | { label: string; children: readonly { label: string }[] },
+    | { children: readonly { label: string }[]; label: string },
 ) {
   if (!("children" in option)) {
     return [];
@@ -184,7 +186,11 @@ const DIETARY_RESTRICTION_LABELS = dedupeStrings(
 
 const ALLERGY_LABELS = flattenAllergyLabels();
 
-function filterSuggestions(options: string[], query: string, selected: string[]) {
+function filterSuggestions(
+  options: string[],
+  query: string,
+  selected: string[],
+) {
   const normalizedQuery = query.trim().toLowerCase();
   return options.filter((option) => {
     if (selected.includes(option)) {
@@ -209,9 +215,13 @@ export default function PortalPatientNutritionProfilePage() {
   const params = useParams<{ patientId: string }>();
   const patientId = params["patientId"];
   const { session, status } = usePortalAuthSession();
-  const [data, setData] = useState<NutritionProfileResponse["data"] | null>(null);
+  const [data, setData] = useState<NutritionProfileResponse["data"] | null>(
+    null,
+  );
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null);
-  const [targetDrafts, setTargetDrafts] = useState<Record<string, DraftState>>({});
+  const [targetDrafts, setTargetDrafts] = useState<Record<string, DraftState>>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [savingMetric, setSavingMetric] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -237,9 +247,9 @@ export default function PortalPatientNutritionProfilePage() {
             signal: controller.signal,
           },
         );
-        const body = (await response.json().catch(() => null)) as
-          | NutritionProfileResponse
-          | null;
+        const body = (await response
+          .json()
+          .catch(() => null)) as NutritionProfileResponse | null;
         if (!response.ok || !body || !("data" in body)) {
           throw new Error(
             readResponseMessage(body, "Unable to load renal nutrition profile"),
@@ -296,7 +306,8 @@ export default function PortalPatientNutritionProfilePage() {
         (data.profile.notesFromDietitian ?? "").trim() ||
       profileDraft.renalDietGuidance.trim() !==
         (data.profile.renalDietGuidance ?? "").trim() ||
-      profileDraft.reviewDueDate.trim() !== (data.profile.reviewDueDate ?? "").trim()
+      profileDraft.reviewDueDate.trim() !==
+        (data.profile.reviewDueDate ?? "").trim()
     );
   }, [data, profileDraft]);
 
@@ -326,9 +337,9 @@ export default function PortalPatientNutritionProfilePage() {
           method: "PATCH",
         },
       );
-      const body = (await response.json().catch(() => null)) as
-        | { data?: { message?: string } }
-        | null;
+      const body = (await response.json().catch(() => null)) as {
+        data?: { message?: string };
+      } | null;
       if (!response.ok) {
         throw new Error(
           readResponseMessage(body, "Unable to update renal nutrition profile"),
@@ -342,9 +353,13 @@ export default function PortalPatientNutritionProfilePage() {
               profile: {
                 allergyIntolerances: profileDraft.allergyIntolerances,
                 dietaryRestrictions: profileDraft.dietaryRestrictions,
-                fluidLimitLitres: parseNumberInput(profileDraft.fluidLimitLitres),
-                notesFromDietitian: profileDraft.notesFromDietitian.trim() || null,
-                renalDietGuidance: profileDraft.renalDietGuidance.trim() || null,
+                fluidLimitLitres: parseNumberInput(
+                  profileDraft.fluidLimitLitres,
+                ),
+                notesFromDietitian:
+                  profileDraft.notesFromDietitian.trim() || null,
+                renalDietGuidance:
+                  profileDraft.renalDietGuidance.trim() || null,
                 reviewDueDate: profileDraft.reviewDueDate.trim() || null,
               },
             }
@@ -368,10 +383,10 @@ export default function PortalPatientNutritionProfilePage() {
     if (!draft) return;
 
     const override: TargetDefinitionValue = {
+      type: item.state.effective.type,
       basis: item.state.effective.basis ?? null,
       high: draft.high.trim() ? parseNumberInput(draft.high) : null,
       low: draft.low.trim() ? parseNumberInput(draft.low) : null,
-      type: item.state.effective.type,
       value:
         item.state.effective.type === "range"
           ? null
@@ -383,21 +398,24 @@ export default function PortalPatientNutritionProfilePage() {
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/portal/patients/${patientId}/targets`, {
-        body: JSON.stringify({
-          metric: item.metric,
-          override,
-          reason: draft.reason.trim() || undefined,
-        }),
-        headers: {
-          ...getPortalSessionAuthHeaders(session.jwt),
-          "content-type": "application/json",
+      const response = await fetch(
+        `/api/portal/patients/${patientId}/targets`,
+        {
+          body: JSON.stringify({
+            metric: item.metric,
+            override,
+            reason: draft.reason.trim() || undefined,
+          }),
+          headers: {
+            ...getPortalSessionAuthHeaders(session.jwt),
+            "content-type": "application/json",
+          },
+          method: "PATCH",
         },
-        method: "PATCH",
-      });
-      const body = (await response.json().catch(() => null)) as
-        | { data?: { updated?: boolean } }
-        | null;
+      );
+      const body = (await response.json().catch(() => null)) as {
+        data?: { updated?: boolean };
+      } | null;
       if (!response.ok) {
         throw new Error(readResponseMessage(body, "Unable to update target"));
       }
@@ -429,7 +447,9 @@ export default function PortalPatientNutritionProfilePage() {
       setMessage(`Updated ${item.label}.`);
     } catch (nextError) {
       setError(
-        nextError instanceof Error ? nextError.message : "Unable to update target",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to update target",
       );
     } finally {
       setSavingMetric(null);
@@ -443,20 +463,25 @@ export default function PortalPatientNutritionProfilePage() {
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/portal/patients/${patientId}/targets`, {
-        body: JSON.stringify({
-          clearOverride: true,
-          metric: item.metric,
-        }),
-        headers: {
-          ...getPortalSessionAuthHeaders(session.jwt),
-          "content-type": "application/json",
+      const response = await fetch(
+        `/api/portal/patients/${patientId}/targets`,
+        {
+          body: JSON.stringify({
+            clearOverride: true,
+            metric: item.metric,
+          }),
+          headers: {
+            ...getPortalSessionAuthHeaders(session.jwt),
+            "content-type": "application/json",
+          },
+          method: "PATCH",
         },
-        method: "PATCH",
-      });
+      );
       const body = (await response.json().catch(() => null)) as null;
       if (!response.ok) {
-        throw new Error(readResponseMessage(body, "Unable to clear target override"));
+        throw new Error(
+          readResponseMessage(body, "Unable to clear target override"),
+        );
       }
 
       setTargetDrafts((current) => ({
@@ -530,7 +555,9 @@ export default function PortalPatientNutritionProfilePage() {
         backLabel="Back to patient"
         headline={`${data.patient.name} renal nutrition profile`}
       />
-      {message ? <section className={styles.metaStrip}>{message}</section> : null}
+      {message ? (
+        <section className={styles.metaStrip}>{message}</section>
+      ) : null}
       {error ? (
         <section className={styles.emptyState}>
           <p>{error}</p>
@@ -554,7 +581,9 @@ export default function PortalPatientNutritionProfilePage() {
                 </span>
                 <input
                   className={styles.carePlanInput}
-                  onChange={(event) => setDietaryRestrictionQuery(event.target.value)}
+                  onChange={(event) =>
+                    setDietaryRestrictionQuery(event.target.value)
+                  }
                   onKeyDown={(event) => {
                     if (event.key !== "Enter") return;
                     const value = dietaryRestrictionQuery.trim();
@@ -753,7 +782,9 @@ export default function PortalPatientNutritionProfilePage() {
                   />
                 </label>
                 <label className={styles.carePlanFormGroup}>
-                  <span className={styles.dataScreenCaption}>Review due date</span>
+                  <span className={styles.dataScreenCaption}>
+                    Review due date
+                  </span>
                   <input
                     className={styles.carePlanInput}
                     onChange={(event) =>
@@ -823,10 +854,12 @@ export default function PortalPatientNutritionProfilePage() {
                 <div className={styles.portalFormSectionItem} key={item.metric}>
                   <strong>{item.label}</strong>
                   <span>
-                    Recommended: {formatDefinition(item.state.recommended, item.state.unit)}
+                    Recommended:{" "}
+                    {formatDefinition(item.state.recommended, item.state.unit)}
                   </span>
                   <span>
-                    Current: {formatDefinition(item.state.effective, item.state.unit)}
+                    Current:{" "}
+                    {formatDefinition(item.state.effective, item.state.unit)}
                   </span>
                   <div className={styles.carePlanFormGroup}>
                     {item.state.effective.type !== "range" ? (
@@ -878,7 +911,9 @@ export default function PortalPatientNutritionProfilePage() {
                                 ...current,
                                 [item.metric]: {
                                   ...current[item.metric],
-                                  high: sanitizeNumericInput(event.target.value),
+                                  high: sanitizeNumericInput(
+                                    event.target.value,
+                                  ),
                                 },
                               }))
                             }
@@ -910,7 +945,9 @@ export default function PortalPatientNutritionProfilePage() {
                   <div className={styles.warningActions}>
                     <button
                       className={styles.buttonSecondarySmall}
-                      disabled={savingMetric === item.metric || !item.state.override}
+                      disabled={
+                        savingMetric === item.metric || !item.state.override
+                      }
                       onClick={() => void clearMetric(item)}
                       type="button"
                     >
@@ -918,7 +955,9 @@ export default function PortalPatientNutritionProfilePage() {
                     </button>
                     <button
                       className={styles.buttonPrimarySmall}
-                      disabled={savingMetric === item.metric || !hasDraftChanges}
+                      disabled={
+                        savingMetric === item.metric || !hasDraftChanges
+                      }
                       onClick={() => void saveMetric(item)}
                       type="button"
                     >

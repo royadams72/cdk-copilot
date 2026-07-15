@@ -59,11 +59,13 @@ export default function PortalPatientDiagnosesPage() {
             signal: controller.signal,
           },
         );
-        const body = (await response.json().catch(() => null)) as
-          | DiagnosisResponse
-          | null;
+        const body = (await response
+          .json()
+          .catch(() => null)) as DiagnosisResponse | null;
         if (!response.ok || !body || !("data" in body)) {
-          throw new Error(readResponseMessage(body, "Unable to load diagnoses"));
+          throw new Error(
+            readResponseMessage(body, "Unable to load diagnoses"),
+          );
         }
         setData(body.data);
       } catch (nextError) {
@@ -101,13 +103,15 @@ export default function PortalPatientDiagnosesPage() {
             signal: controller.signal,
           },
         );
-        const body = (await response.json().catch(() => null)) as
-          | { data?: { items?: Array<{ code: string; label: string }> } }
-          | null;
+        const body = (await response.json().catch(() => null)) as {
+          data?: { items?: Array<{ code: string; label: string }> };
+        } | null;
         if (!response.ok) {
-          throw new Error(readResponseMessage(body, "Unable to search conditions"));
+          throw new Error(
+            readResponseMessage(body, "Unable to search conditions"),
+          );
         }
-        setResults(body && "data" in body ? body.data?.items ?? [] : []);
+        setResults(body && "data" in body ? (body.data?.items ?? []) : []);
       } catch (nextError) {
         if (controller.signal.aborted) return;
         setError(
@@ -145,9 +149,9 @@ export default function PortalPatientDiagnosesPage() {
           method: "POST",
         },
       );
-      const body = (await response.json().catch(() => null)) as
-        | { data?: { added?: boolean; item?: DiagnosisItem } }
-        | null;
+      const body = (await response.json().catch(() => null)) as {
+        data?: { added?: boolean; item?: DiagnosisItem };
+      } | null;
       if (!response.ok) {
         throw new Error(readResponseMessage(body, "Unable to add diagnosis"));
       }
@@ -157,7 +161,9 @@ export default function PortalPatientDiagnosesPage() {
       setResults([]);
     } catch (nextError) {
       setError(
-        nextError instanceof Error ? nextError.message : "Unable to add diagnosis",
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to add diagnosis",
       );
     } finally {
       setSaving(false);
@@ -181,10 +187,11 @@ export default function PortalPatientDiagnosesPage() {
           method: "DELETE",
         },
       );
-      const body = (await response.json().catch(() => null)) as
-        | null;
+      const body = (await response.json().catch(() => null)) as null;
       if (!response.ok) {
-        throw new Error(readResponseMessage(body, "Unable to remove diagnosis"));
+        throw new Error(
+          readResponseMessage(body, "Unable to remove diagnosis"),
+        );
       }
       await reload();
       setMessage(`Removed ${label}.`);
@@ -210,17 +217,24 @@ export default function PortalPatientDiagnosesPage() {
 
   async function reload() {
     if (!session) return;
-    const response = await fetch(`/api/portal/patients/${patientId}/diagnoses`, {
-      headers: getPortalSessionAuthHeaders(session!.jwt),
-    });
-    const body = (await response.json().catch(() => null)) as DiagnosisResponse | null;
+    const response = await fetch(
+      `/api/portal/patients/${patientId}/diagnoses`,
+      {
+        headers: getPortalSessionAuthHeaders(session!.jwt),
+      },
+    );
+    const body = (await response
+      .json()
+      .catch(() => null)) as DiagnosisResponse | null;
     if (response.ok && body && "data" in body) {
       setData(body.data);
     }
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading diagnoses...</section>;
+    return (
+      <section className={styles.emptyState}>Loading diagnoses...</section>
+    );
   }
 
   if (!data || error) {
@@ -239,7 +253,9 @@ export default function PortalPatientDiagnosesPage() {
         backLabel="Back to patient"
         headline={`${data.patient.name} diagnoses`}
       />
-      {message ? <section className={styles.metaStrip}>{message}</section> : null}
+      {message ? (
+        <section className={styles.metaStrip}>{message}</section>
+      ) : null}
       {error ? (
         <section className={styles.emptyState}>
           <p>{error}</p>
@@ -251,7 +267,7 @@ export default function PortalPatientDiagnosesPage() {
           Add or remove diagnoses already recorded for this patient.
         </p>
       </div>
-      <section className={styles.carePlanFormShell}>
+      <section className={styles.formShell}>
         <div className={styles.carePlanFormGroup}>
           <label className={styles.carePlanFieldLabel}>Add diagnosis</label>
           <p className={styles.dataScreenCaption}>
@@ -269,7 +285,8 @@ export default function PortalPatientDiagnosesPage() {
             value={query}
           />
           <p className={styles.dataScreenCaption}>
-            Select a search result to add it, or press Enter to save custom text.
+            Select a search result to add it, or press Enter to save custom
+            text.
           </p>
           {searching ? (
             <p className={styles.dataScreenCaption}>Searching conditions...</p>
@@ -303,7 +320,10 @@ export default function PortalPatientDiagnosesPage() {
           ) : (
             <div className={styles.portalFormSectionList}>
               {data.items.map((item) => (
-                <div className={styles.portalFormSectionItem} key={item.entryId}>
+                <div
+                  className={styles.portalFormSectionItem}
+                  key={item.entryId}
+                >
                   <strong>{item.label}</strong>
                   <span>
                     {item.codeSystem}
@@ -314,7 +334,9 @@ export default function PortalPatientDiagnosesPage() {
                     <button
                       className={styles.buttonSecondarySmall}
                       disabled={saving}
-                      onClick={() => void removeDiagnosis(item.entryId, item.label)}
+                      onClick={() =>
+                        void removeDiagnosis(item.entryId, item.label)
+                      }
                       type="button"
                     >
                       Delete

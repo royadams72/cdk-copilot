@@ -59,10 +59,7 @@ function formatNumber(value: number) {
   return value.toFixed(1).replace(/\.0$/, "");
 }
 
-function toInputValue(
-  metric: string,
-  value: number | null | undefined,
-) {
+function toInputValue(metric: string, value: number | null | undefined) {
   if (typeof value !== "number") return "";
   if (isSleepDurationMetric(metric)) {
     return formatNumber(value / 60);
@@ -89,11 +86,17 @@ function sanitizeNumericInput(value: string) {
   }
 
   const integerPart = normalized.slice(0, firstDecimalIndex + 1);
-  const decimalPart = normalized.slice(firstDecimalIndex + 1).replace(/\./g, "");
+  const decimalPart = normalized
+    .slice(firstDecimalIndex + 1)
+    .replace(/\./g, "");
   return `${integerPart}${decimalPart}`;
 }
 
-function formatUnit(metric: string, definition: TargetDefinitionValue, unit: string) {
+function formatUnit(
+  metric: string,
+  definition: TargetDefinitionValue,
+  unit: string,
+) {
   if (isSleepDurationMetric(metric)) {
     return "hours/day";
   }
@@ -175,11 +178,13 @@ export default function PortalPatientTargetsPage() {
             signal: controller.signal,
           },
         );
-        const body = (await response.json().catch(() => null)) as
-          | TargetsResponse
-          | null;
+        const body = (await response
+          .json()
+          .catch(() => null)) as TargetsResponse | null;
         if (!response.ok || !body || !("data" in body)) {
-          throw new Error(readResponseMessage(body, "Unable to load patient targets"));
+          throw new Error(
+            readResponseMessage(body, "Unable to load patient targets"),
+          );
         }
         setData(body.data);
         setDrafts(
@@ -254,9 +259,9 @@ export default function PortalPatientTargetsPage() {
           method: "PATCH",
         },
       );
-      const body = (await response.json().catch(() => null)) as
-        | { data?: { updated?: boolean } }
-        | null;
+      const body = (await response.json().catch(() => null)) as {
+        data?: { updated?: boolean };
+      } | null;
       if (!response.ok) {
         throw new Error(readResponseMessage(body, "Unable to update target"));
       }
@@ -317,10 +322,11 @@ export default function PortalPatientTargetsPage() {
           method: "PATCH",
         },
       );
-      const body = (await response.json().catch(() => null)) as
-        | null;
+      const body = (await response.json().catch(() => null)) as null;
       if (!response.ok) {
-        throw new Error(readResponseMessage(body, "Unable to clear target override"));
+        throw new Error(
+          readResponseMessage(body, "Unable to clear target override"),
+        );
       }
       setDrafts((current) => ({
         ...current,
@@ -377,10 +383,20 @@ export default function PortalPatientTargetsPage() {
               <div className={styles.portalFormSectionItem} key={item.metric}>
                 <strong>{item.label}</strong>
                 <span>
-                  Recommended: {formatDefinition(item.metric, item.state.recommended, item.state.unit)}
+                  Recommended:{" "}
+                  {formatDefinition(
+                    item.metric,
+                    item.state.recommended,
+                    item.state.unit,
+                  )}
                 </span>
                 <span>
-                  Current: {formatDefinition(item.metric, item.state.effective, item.state.unit)}
+                  Current:{" "}
+                  {formatDefinition(
+                    item.metric,
+                    item.state.effective,
+                    item.state.unit,
+                  )}
                 </span>
                 <div className={styles.carePlanFormGroup}>
                   {item.state.effective.type !== "range" ? (
@@ -464,7 +480,9 @@ export default function PortalPatientTargetsPage() {
                 <div className={styles.warningActions}>
                   <button
                     className={styles.buttonSecondarySmall}
-                    disabled={savingMetric === item.metric || !item.state.override}
+                    disabled={
+                      savingMetric === item.metric || !item.state.override
+                    }
                     onClick={() => void clearMetric(item)}
                     type="button"
                   >
@@ -488,7 +506,9 @@ export default function PortalPatientTargetsPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading renal targets...</section>;
+    return (
+      <section className={styles.emptyState}>Loading renal targets...</section>
+    );
   }
 
   if (!data) {
@@ -507,7 +527,9 @@ export default function PortalPatientTargetsPage() {
         backLabel="Back to patient"
         headline={`${data.patient.name} renal targets`}
       />
-      {message ? <section className={styles.metaStrip}>{message}</section> : null}
+      {message ? (
+        <section className={styles.metaStrip}>{message}</section>
+      ) : null}
       {error ? (
         <section className={styles.emptyState}>
           <p>{error}</p>
@@ -520,7 +542,7 @@ export default function PortalPatientTargetsPage() {
           needed. Nutrition targets are managed in the renal nutrition profile.
         </p>
       </div>
-      <section className={styles.carePlanFormShell}>
+      <section className={styles.formShell}>
         {renderItems("Daily monitoring targets", groupedItems.lifestyle)}
       </section>
     </section>
