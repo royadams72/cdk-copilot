@@ -393,6 +393,8 @@
   line-height: 24px;
   font-weight: 700;
   background: var(--portal-accent-dark);
+  border-top-left-radius: var(--portal-radius-md);
+  border-top-right-radius: var(--portal-radius-md);
 }
 
 .listHeaderTitle {

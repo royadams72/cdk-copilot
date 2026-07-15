@@ -27,8 +27,8 @@ import {
 type PortalPatientsResponse = {
   data: {
     filter: PortalPatientFilter;
-    membershipStatus: PortalPatientMembershipStatusFilter;
     matchedPatients: number;
+    membershipStatus: PortalPatientMembershipStatusFilter;
     patients: PortalPatientListItem[];
     query: string;
     stats: Record<Exclude<PortalPatientFilter, "all">, PortalPatientStat>;
@@ -52,13 +52,11 @@ type PortalReviewWorseningResponse = {
   };
 };
 
-type ReviewComposerState =
-  | {
-      episodeIds?: string[];
-      patientIds?: string[];
-      title: string;
-    }
-  | null;
+type ReviewComposerState = {
+  episodeIds?: string[];
+  patientIds?: string[];
+  title: string;
+} | null;
 
 const worseningFilterOptions: Array<{
   label: string;
@@ -94,7 +92,9 @@ function summarizeWorseningItems(items: PortalPatientWorseningItem[]) {
   return `${labels.slice(0, 2).join(", ")}...`;
 }
 
-function normalizeReviewType(value: string | null): "all" | "carePlans" | "renalGuidance" {
+function normalizeReviewType(
+  value: string | null,
+): "all" | "carePlans" | "renalGuidance" {
   switch (value) {
     case "carePlans":
     case "renalGuidance":
@@ -138,16 +138,16 @@ function PortalDashboardContent() {
   const [notifyBody, setNotifyBody] = useState(
     "Your care team would like you to review your recent health information in CKD Copilot.",
   );
-  const [reviewComposer, setReviewComposer] = useState<ReviewComposerState>(null);
+  const [reviewComposer, setReviewComposer] =
+    useState<ReviewComposerState>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [detailsPatient, setDetailsPatient] =
     useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
   const activeReviewType = normalizeReviewType(searchParams.get("reviewType"));
-  const activeMembershipStatus =
-    normalizePortalPatientMembershipStatusFilter(
-      searchParams.get("membershipStatus"),
-    );
+  const activeMembershipStatus = normalizePortalPatientMembershipStatusFilter(
+    searchParams.get("membershipStatus"),
+  );
   const submittedQuery = searchParams.get("q")?.trim() ?? "";
 
   useEffect(() => {
@@ -371,8 +371,8 @@ function PortalDashboardContent() {
 
   async function submitReviewedNote(input: {
     episodeIds?: string[];
-    patientIds?: string[];
     patientIdForSingleEpisode?: string;
+    patientIds?: string[];
   }) {
     setActionError(null);
     setActionMessage(null);
@@ -526,7 +526,7 @@ function PortalDashboardContent() {
   }
 
   return (
-    <>
+    <div className={styles.detailLayout}>
       <section className={styles.statGrid}>
         {statCards.map((card) => (
           <article
@@ -538,10 +538,10 @@ function PortalDashboardContent() {
             <div className={styles.statCardBody}>
               <h2 className={styles.statTitle}>{card.label}</h2>
               <strong className={styles.statValue}>
-                {card.count}{" "}
+                {card.count}
                 {card.count === 1
-                  ? card.valueLabelSingular ?? "patient"
-                  : card.valueLabelPlural ?? "patients"}
+                  ? (card.valueLabelSingular ?? " patient")
+                  : (card.valueLabelPlural ?? " patients")}
               </strong>
               {card.filter === "review" ? (
                 <div className={styles.statDetailLines}>
@@ -553,7 +553,9 @@ function PortalDashboardContent() {
                     <button
                       className={styles.statInlineAction}
                       onClick={() => {
-                        const params = new URLSearchParams(searchParams.toString());
+                        const params = new URLSearchParams(
+                          searchParams.toString(),
+                        );
                         params.set("filter", "review");
                         params.set("reviewType", "carePlans");
                         router.push(`/portal?${params.toString()}`);
@@ -568,7 +570,9 @@ function PortalDashboardContent() {
                     <button
                       className={styles.statInlineAction}
                       onClick={() => {
-                        const params = new URLSearchParams(searchParams.toString());
+                        const params = new URLSearchParams(
+                          searchParams.toString(),
+                        );
                         params.set("filter", "review");
                         params.set("reviewType", "renalGuidance");
                         router.push(`/portal?${params.toString()}`);
@@ -607,10 +611,10 @@ function PortalDashboardContent() {
               {card.filter === "review"
                 ? activeFilter === "review"
                   ? "Show all"
-                  : card.actionLabel ?? "View reviews"
+                  : (card.actionLabel ?? "View reviews")
                 : activeFilter === card.filter
                   ? "Show all"
-                  : card.actionLabel ?? "View patients"}
+                  : (card.actionLabel ?? "View patients")}
             </button>
             <span className={styles.iconBadge}>
               <Image alt="" height={24} src={card.icon} width={24} />
@@ -618,51 +622,55 @@ function PortalDashboardContent() {
           </article>
         ))}
       </section>
-      <section className={styles.metaStrip}>
-        <span>
-          Showing{" "}
-          <select
-            className={styles.compactSelect}
-            onChange={(event) => {
-              const params = new URLSearchParams(searchParams.toString());
-              const nextValue = normalizePortalPatientMembershipStatusFilter(
-                event.target.value,
-              );
-              if (nextValue === "active") {
-                params.delete("membershipStatus");
-              } else {
-                params.set("membershipStatus", nextValue);
-              }
-              router.push(`/portal${params.size ? `?${params.toString()}` : ""}`);
-            }}
-            value={activeMembershipStatus}
-          >
-            <option value="active">active</option>
-            <option value="inactive">suspended</option>
-            <option value="expired">expired</option>
-            <option value="ended">ended</option>
-            <option value="pending">pending</option>
-            <option value="all">all</option>
-          </select>{" "}
-          patients. <strong>{matchedPatients}</strong> of{" "}
-          <strong>{totalPatients}</strong> accessible patients
-        </span>
-        {submittedQuery ? (
-          <button
-            className={styles.buttonGhost}
-            onClick={() => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.delete("q");
-              router.push(
-                `/portal${params.size ? `?${params.toString()}` : ""}`,
-              );
-            }}
-            type="button"
-          >
-            Clear search
-          </button>
-        ) : null}
-      </section>
+      {!patientsLoading ? (
+        <section className={styles.metaStrip}>
+          <span>
+            Showing
+            <select
+              className={styles.compactSelect}
+              onChange={(event) => {
+                const params = new URLSearchParams(searchParams.toString());
+                const nextValue = normalizePortalPatientMembershipStatusFilter(
+                  event.target.value,
+                );
+                if (nextValue === "active") {
+                  params.delete("membershipStatus");
+                } else {
+                  params.set("membershipStatus", nextValue);
+                }
+                router.push(
+                  `/portal${params.size ? `?${params.toString()}` : ""}`,
+                );
+              }}
+              value={activeMembershipStatus}
+            >
+              <option value="active">active</option>
+              <option value="inactive">suspended</option>
+              <option value="expired">expired</option>
+              <option value="ended">ended</option>
+              <option value="pending">pending</option>
+              <option value="all">all</option>
+            </select>
+            patients. <strong>{matchedPatients}</strong> of
+            <strong>{totalPatients}</strong> accessible patients
+          </span>
+          {submittedQuery ? (
+            <button
+              className={styles.buttonGhost}
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete("q");
+                router.push(
+                  `/portal${params.size ? `?${params.toString()}` : ""}`,
+                );
+              }}
+              type="button"
+            >
+              Clear search
+            </button>
+          ) : null}
+        </section>
+      ) : null}
       <section className={styles.panelSurface}>
         {patientsError ? (
           <div className={styles.emptyState}>
@@ -788,7 +796,7 @@ function PortalDashboardContent() {
         ) : (
           <>
             <div className={styles.listHeaderRow}>
-                <span className={styles.listHeaderTitle}>Patient list</span>
+              <span className={styles.listHeaderTitle}>Patient list</span>
               <span className={styles.listHeaderMeta}>
                 {activeFilter === "all"
                   ? "All accessible patients"
@@ -802,41 +810,42 @@ function PortalDashboardContent() {
               </span>
             </div>
             <div className={styles.patientList}>
-              {(activeFilter === "review" ? reviewPatients : patients).map((patient) => (
-                <div className={styles.patientListRow} key={patient.id}>
-                  <div className={styles.patientLabelBlock}>
-                    <Link
-                      className={styles.patientLink}
-                      href={
-                        activeFilter === "review" &&
-                        activeReviewType === "renalGuidance" &&
-                        patient.reviewRenalGuidanceHref
-                          ? patient.reviewRenalGuidanceHref
-                          : activeFilter === "review" &&
-                              activeReviewType !== "renalGuidance" &&
-                              patient.reviewCarePlanHref
-                            ? patient.reviewCarePlanHref
-                          : activeFilter === "review" &&
-                              patient.reviewRenalGuidanceHref
-                            ? patient.reviewRenalGuidanceHref
-                          : `/portal/patients/${patient.id}`
-                      }
-                    >
-                      {patient.name}
-                    </Link>
-                    <div className={styles.patientSubline}>
-                      <span>{patient.dateOfBirth ?? "DOB missing"}</span>
-                      <span>{patient.email ?? "Email missing"}</span>
-                      <span>Stage {patient.stage ?? "Not set"}</span>
-                    </div>
-                  </div>
-                  <div className={styles.patientActions}>
-                    <button
-                      className={styles.buttonPrimaryCompact}
-                      onClick={() =>
-                        router.push(
+              {(activeFilter === "review" ? reviewPatients : patients).map(
+                (patient) => (
+                  <div className={styles.patientListRow} key={patient.id}>
+                    <div className={styles.patientLabelBlock}>
+                      <Link
+                        className={styles.patientLink}
+                        href={
                           activeFilter === "review" &&
-                            activeReviewType === "renalGuidance" &&
+                          activeReviewType === "renalGuidance" &&
+                          patient.reviewRenalGuidanceHref
+                            ? patient.reviewRenalGuidanceHref
+                            : activeFilter === "review" &&
+                                activeReviewType !== "renalGuidance" &&
+                                patient.reviewCarePlanHref
+                              ? patient.reviewCarePlanHref
+                              : activeFilter === "review" &&
+                                  patient.reviewRenalGuidanceHref
+                                ? patient.reviewRenalGuidanceHref
+                                : `/portal/patients/${patient.id}`
+                        }
+                      >
+                        {patient.name}
+                      </Link>
+                      <div className={styles.patientSubline}>
+                        <span>{patient.dateOfBirth ?? "DOB missing"}</span>
+                        <span>{patient.email ?? "Email missing"}</span>
+                        <span>Stage {patient.stage ?? "Not set"}</span>
+                      </div>
+                    </div>
+                    <div className={styles.patientActions}>
+                      <button
+                        className={styles.buttonPrimaryCompact}
+                        onClick={() =>
+                          router.push(
+                            activeFilter === "review" &&
+                              activeReviewType === "renalGuidance" &&
                               patient.reviewRenalGuidanceHref
                               ? patient.reviewRenalGuidanceHref
                               : activeFilter === "review" &&
@@ -846,16 +855,17 @@ function PortalDashboardContent() {
                                 : activeFilter === "review" &&
                                     patient.reviewRenalGuidanceHref
                                   ? patient.reviewRenalGuidanceHref
-                            : `/portal/patients/${patient.id}`,
-                        )
-                      }
-                      type="button"
-                    >
-                      Open
-                    </button>
+                                  : `/portal/patients/${patient.id}`,
+                          )
+                        }
+                        type="button"
+                      >
+                        Open
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ),
+              )}
             </div>
             {activeFilter === "review" && reviewPatients.length === 0 ? (
               <div className={styles.emptyState}>
@@ -957,8 +967,8 @@ function PortalDashboardContent() {
           >
             <h3 className={styles.modalTitle}>{reviewComposer.title}</h3>
             <p className={styles.modalCopy}>
-              Add a short note so the reviewed history shows why this follow-up item
-              was cleared.
+              Add a short note so the reviewed history shows why this follow-up
+              item was cleared.
             </p>
             <div className={styles.worseningModalList}>
               <label>
@@ -992,10 +1002,9 @@ function PortalDashboardContent() {
                       reviewComposer.patientIds?.length === 1
                         ? reviewComposer.patientIds[0]
                         : undefined,
-                    patientIds:
-                      reviewComposer.episodeIds?.length
-                        ? undefined
-                        : reviewComposer.patientIds,
+                    patientIds: reviewComposer.episodeIds?.length
+                      ? undefined
+                      : reviewComposer.patientIds,
                   })
                 }
                 type="button"
@@ -1018,9 +1027,10 @@ function PortalDashboardContent() {
           >
             <h3 className={styles.modalTitle}>Notify patient(s)</h3>
             <p className={styles.modalCopy}>
-              Send a custom push notification to {selectedPatientIds.length} selected
-              {selectedPatientIds.length === 1 ? " patient" : " patients"} to prompt
-              app follow-up.
+              Send a custom push notification to {selectedPatientIds.length}{" "}
+              selected
+              {selectedPatientIds.length === 1 ? " patient" : " patients"} to
+              prompt app follow-up.
             </p>
             <div className={styles.worseningModalList}>
               <label>
@@ -1091,6 +1101,6 @@ function PortalDashboardContent() {
           </div>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
