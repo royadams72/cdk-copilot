@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -105,11 +106,7 @@ function normalizeReviewType(value: string | null): "all" | "carePlans" | "renal
 
 export function PortalDashboard() {
   return (
-    <Suspense
-      fallback={
-        <section className={styles.emptyState}>Loading portal...</section>
-      }
-    >
+    <Suspense fallback={<PortalLoadingState label="Loading portal..." />}>
       <PortalDashboardContent />
     </Suspense>
   );
@@ -673,7 +670,7 @@ function PortalDashboardContent() {
             <p>{patientsError}</p>
           </div>
         ) : patientsLoading ? (
-          <div className={styles.emptyState}>Loading patient list...</div>
+          <PortalLoadingState label="Loading patient list..." />
         ) : patients.length === 0 ? (
           <div className={styles.emptyState}>
             <h2>No patients match this view</h2>

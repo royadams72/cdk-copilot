@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
@@ -232,9 +233,7 @@ export default function PortalPatientDiagnosesPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>Loading diagnoses...</section>
-    );
+    return <PortalLoadingState label="Loading diagnoses..." />;
   }
 
   if (!data || error) {

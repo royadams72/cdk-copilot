@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
@@ -77,11 +78,7 @@ export default function PortalPatientMedicationPage() {
   }, [params.patientId, session, status]);
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>
-        Loading medication profile...
-      </section>
-    );
+    return <PortalLoadingState label="Loading medication profile..." />;
   }
 
   if (!data || error) {

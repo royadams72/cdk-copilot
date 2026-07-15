@@ -15,6 +15,7 @@ import {
 } from "recharts";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
@@ -134,7 +135,7 @@ export default function PortalPatientLabsPage() {
   }, [chartData]);
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading lab results...</section>;
+    return <PortalLoadingState label="Loading lab results..." />;
   }
 
   if (!data || error) {

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
@@ -156,9 +157,7 @@ export default function PortalPatientCarePlanDetailPage() {
   }, [params.carePlanId, params.patientId, session, status]);
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>Loading care plan...</section>
-    );
+    return <PortalLoadingState label="Loading care plan..." />;
   }
 
   if (!data) {

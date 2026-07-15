@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatPatientLifecycleStatusLabel } from "@/apps/api/lib/portal/patientLifecycle";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -194,7 +195,7 @@ export default function PortalAdvancedSearchPageClient() {
   }
 
   if (status === "loading") {
-    return <section className={styles.emptyState}>Loading advanced search...</section>;
+    return <PortalLoadingState label="Loading advanced search..." />;
   }
 
   return (
@@ -348,7 +349,7 @@ export default function PortalAdvancedSearchPageClient() {
         </div>
 
         {loading ? (
-          <p className={styles.dataScreenCaption}>Loading patients...</p>
+          <PortalLoadingState label="Loading patients..." />
         ) : error ? (
           <p className={styles.dataScreenCaption}>{error}</p>
         ) : patients.length ? (

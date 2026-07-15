@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -336,7 +337,7 @@ export default function PortalPatientInvitesPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading patient invites...</section>;
+    return <PortalLoadingState label="Loading patient invites..." />;
   }
 
   return (

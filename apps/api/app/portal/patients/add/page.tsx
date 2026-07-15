@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -793,7 +794,7 @@ export default function PortalAddPatientPage() {
   }
 
   if (status === "loading") {
-    return <section className={styles.emptyState}>Loading patient intake...</section>;
+    return <PortalLoadingState label="Loading patient intake..." />;
   }
 
   return (

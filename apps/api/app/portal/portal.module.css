@@ -1854,6 +1854,46 @@
   color: var(--portal-text);
 }
 
+.loadingState {
+  display: grid;
+  justify-items: center;
+  gap: var(--portal-space-3);
+  padding: calc(var(--portal-space-6) * 1.5) var(--portal-space-6);
+  color: var(--portal-text);
+  text-align: center;
+}
+
+.loadingStateIconWrap {
+  width: 108px;
+  height: 108px;
+  display: grid;
+  place-items: center;
+}
+
+.loadingStateIcon {
+  width: 86px;
+  height: 86px;
+  animation: portalLoaderSpin 1.2s linear infinite;
+}
+
+.loadingStateLabel {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+@keyframes portalLoaderSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .inlineLink {
   color: var(--portal-accent-dark);
   font-weight: 700;

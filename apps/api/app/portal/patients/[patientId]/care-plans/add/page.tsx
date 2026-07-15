@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import type {
@@ -301,9 +302,7 @@ export default function PortalPatientAddCarePlanPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>Loading care plan form...</section>
-    );
+    return <PortalLoadingState label="Loading care plan form..." />;
   }
 
   if (!data) {
