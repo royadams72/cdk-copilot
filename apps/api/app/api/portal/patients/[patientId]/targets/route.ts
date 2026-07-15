@@ -3,15 +3,12 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
-import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
-import { getDb } from "@/apps/api/lib/db/mongodb";
+import { targetActorTypeFromRole } from "@/apps/api/lib/audit/actors";
 import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import {
-  buildPortalPatientAccessMatch,
-  buildPortalPatientDetailPipeline,
   mapPortalPatientDetail,
-  type RawPortalPatientDetailDoc,
 } from "@/apps/api/lib/portal/patients";
+import { loadAccessiblePortalPatient } from "@/apps/api/lib/portal/loadAccessiblePatient";
 import {
   ensurePatientTargetsSeeded,
   findTargetsCurrentDoc,
@@ -84,60 +81,13 @@ function definitionsEqual(
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
-async function loadAccessiblePatient(
-  req: NextRequest,
-  patientId: string,
-) {
-  const caller = await requireUser(req);
-  if (caller.role === "patient") {
-    return {
-      caller,
-      error: bad("Portal staff session required", { code: "portal_staff_required" }, 403),
-      patient: null,
-      patientObjectId: null,
-    };
-  }
-
-  if (!ObjectId.isValid(patientId)) {
-    return {
-      caller,
-      error: bad("Invalid patient id", { code: "invalid_patient_id" }, 400),
-      patient: null,
-      patientObjectId: null,
-    };
-  }
-
-  const db = await getDb();
-  const patientObjectId = new ObjectId(patientId);
-  const patient = await db
-    .collection(COLLECTIONS.Patients)
-    .aggregate<RawPortalPatientDetailDoc>(
-      buildPortalPatientDetailPipeline({
-        ...buildPortalPatientAccessMatch(caller),
-        _id: patientObjectId,
-      }),
-    )
-    .next();
-
-  if (!patient) {
-    return {
-      caller,
-      error: bad("Patient not found", { code: "patient_not_found" }, 404),
-      patient: null,
-      patientObjectId: null,
-    };
-  }
-
-  return { caller, db, error: null, patient, patientObjectId };
-}
-
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ patientId: string }> },
 ) {
   try {
     const { patientId } = await context.params;
-    const loaded = await loadAccessiblePatient(req, patientId);
+    const loaded = await loadAccessiblePortalPatient(req, patientId);
     if (loaded.error || !loaded.db || !loaded.patient || !loaded.patientObjectId) {
       return loaded.error;
     }
@@ -154,6 +104,7 @@ export async function GET(
 
     const items = Object.entries(currentDoc?.targets ?? {})
       .filter(([, state]) => isStructuredTargetState(state))
+      .filter(([, state]) => state.domain === "lifestyle")
       .sort(([left], [right]) => humanizeMetric(left).localeCompare(humanizeMetric(right)))
       .map(([metric, state]) => ({
         domain: state.domain,
@@ -189,7 +140,7 @@ export async function PATCH(
 ) {
   try {
     const { patientId } = await context.params;
-    const loaded = await loadAccessiblePatient(req, patientId);
+    const loaded = await loadAccessiblePortalPatient(req, patientId);
     if (loaded.error || !loaded.db || !loaded.patientObjectId) {
       return loaded.error;
     }
@@ -229,7 +180,6 @@ export async function PATCH(
     if (!isStructuredTargetState(existingState)) {
       return bad("Target metric not found", { metric }, 404);
     }
-
     const overrideResult = clearOverride
       ? { data: null as TargetDefinitionValue | null, success: true as const }
       : TargetDefinition.safeParse(body.override);
@@ -242,7 +192,7 @@ export async function PATCH(
     }
 
     const actorResult = TargetActor.safeParse({
-      actorType: "clinician",
+      actorType: targetActorTypeFromRole(loaded.caller.role),
       displayName: null,
       principalId: loaded.caller.principalId,
     });

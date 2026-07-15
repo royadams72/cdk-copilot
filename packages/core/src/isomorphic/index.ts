@@ -17,6 +17,7 @@ export * from "./schemas/patient_membership_events";
 export * from "./schemas/patient_consents";
 export * from "./schemas/patient_invites";
 export * from "./schemas/patients";
+export * from "./schemas/renal_nutrition_profiles";
 export * from "./schemas/symptoms";
 export * from "./schemas/weekly_nutrition_insights";
 export * from "./schemas/clinical_reference_rules";

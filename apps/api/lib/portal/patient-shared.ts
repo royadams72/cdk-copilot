@@ -75,6 +75,8 @@ export type PortalPatientListItem = {
   name: string;
   reviewCarePlanHref: string | null;
   reviewDueCount: number;
+  reviewRenalGuidanceHref: string | null;
+  renalGuidanceReviewDueCount: number;
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];
 };
@@ -141,7 +143,7 @@ export type PortalPatientOverviewRow = {
   value: string;
 };
 
-export type PortalPatientSignalItem = {
+export type PortalPatientHighlightItem = {
   category: "care_plan" | "clinical" | "engagement";
   detail: string;
   href?: string | null;
@@ -162,9 +164,9 @@ export type PortalPatientDashboardData = {
   currentStatus: PortalPatientOverviewRow[];
   engagementSummary: PortalPatientOverviewRow[];
   headline: string;
+  highlights: PortalPatientHighlightItem[];
   latestReadings: PortalPatientOverviewRow[];
   recentActivity: PortalPatientRecentActivityItem[];
-  signals: PortalPatientSignalItem[];
   subheadline: string;
 };
 
@@ -500,11 +502,14 @@ export type PortalPatientCarePlanCreateData = {
 };
 
 export type PortalPatientStat = {
+  actionLabel?: string;
   count: number;
   detail: string;
   icon: string;
   label: string;
   tone: "accent" | "warning";
+  valueLabelPlural?: string;
+  valueLabelSingular?: string;
 };
 
 export function normalizePortalPatientFilter(

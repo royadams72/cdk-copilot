@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import { ConditionFormItem } from "@ckd/core";
+import { actorTypeFromRole } from "@/apps/api/lib/audit/actors";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import type { CarePlanMongoDoc } from "@/apps/api/lib/care-plans/shared";
 import {
@@ -18,7 +19,6 @@ import {
 } from "@/apps/api/lib/care-plans/shared";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import {
-  actorTypeFromRole,
   type ConditionCurrentEntry,
   type HealthProfileLedgerEventDoc,
   type HealthProfilesCurrentDoc,

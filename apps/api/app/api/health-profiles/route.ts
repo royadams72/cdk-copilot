@@ -13,8 +13,8 @@ import { COLLECTIONS } from "@ckd/core/server";
 
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { actorTypeFromRole } from "@/apps/api/lib/audit/actors";
 import {
-  actorTypeFromRole,
   type HealthProfileLedgerEventDoc,
   type HealthProfilesCurrentDoc,
 } from "@/apps/api/lib/health-profiles/shared";
@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
       conditions: currentEntries.conditions,
       createdAt: previous?.createdAt ?? now,
       createdBy: previous?.createdBy ?? actor,
+      dietaryRestrictions: previous?.dietaryRestrictions ?? [],
       dietaryPreferences: currentEntries.dietaryPreferences,
       ...(caller.orgId ? { orgId: caller.orgId } : {}),
       patientId,
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
           $setOnInsert: {
             createdAt: currentDoc.createdAt,
             createdBy: currentDoc.createdBy,
+            dietaryRestrictions: currentDoc.dietaryRestrictions,
             patientId,
           },
         },

@@ -33,6 +33,11 @@ import {
   syncPatientWorseningTrendSnapshots,
 } from "@/apps/api/lib/portal/worseningSnapshots";
 import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worseningTrends";
+import type { HealthProfilesCurrentDoc } from "@/apps/api/lib/health-profiles/shared";
+
+type PortalHealthProfilesCurrentDoc = HealthProfilesCurrentDoc & {
+  reviewDueDate?: Date | null;
+};
 
 type PortalPatientSummary = {
   dietitianAssigned?: boolean;
@@ -218,6 +223,8 @@ export function mapPortalPatientListItem(raw: {
   pii?: PortalPatientPii | null;
   reviewCarePlanHref?: string | null;
   reviewDueCount?: number;
+  reviewRenalGuidanceHref?: string | null;
+  renalGuidanceReviewDueCount?: number;
   stage?: string | null;
   summary?: PortalPatientSummary | null;
 }): PortalPatientListItem {
@@ -235,7 +242,9 @@ export function mapPortalPatientListItem(raw: {
     lastContactAt: toIsoDate(raw.summary?.lastContactAt),
     membershipStatus: getPortalPatientMembershipStatus(raw.assignments ?? []),
     name: normalizeName(raw.pii ?? {}),
+    renalGuidanceReviewDueCount: raw.renalGuidanceReviewDueCount ?? 0,
     reviewCarePlanHref: raw.reviewCarePlanHref ?? null,
+    reviewRenalGuidanceHref: raw.reviewRenalGuidanceHref ?? null,
     reviewDueCount: raw.reviewDueCount ?? 0,
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
@@ -286,7 +295,9 @@ export async function mapPortalPatientListItemsWithWorsening(
     PatientWorseningTrendAlert[]
   >();
   const reviewCarePlanHrefByPatientId = new Map<string, string>();
+  const reviewRenalGuidanceHrefByPatientId = new Map<string, string>();
   const reviewDueCountByPatientId = new Map<string, number>();
+  const renalGuidanceReviewDueCountByPatientId = new Map<string, number>();
   const patientIds = raws.map((raw) => raw._id);
 
   const carePlans = patientIds.length
@@ -303,6 +314,25 @@ export async function mapPortalPatientListItemsWithWorsening(
               reviewedAt: 1,
               status: 1,
               updatedAt: 1,
+            },
+          },
+        )
+        .toArray()
+    : [];
+  const renalNutritionProfiles = patientIds.length
+    ? await db
+        .collection<PortalHealthProfilesCurrentDoc>(
+          COLLECTIONS.HealthProfilesCurrent,
+        )
+        .find(
+          {
+            patientId: { $in: patientIds },
+            reviewDueDate: { $ne: null, $lte: new Date() },
+          },
+          {
+            projection: {
+              patientId: 1,
+              reviewDueDate: 1,
             },
           },
         )
@@ -344,6 +374,18 @@ export async function mapPortalPatientListItemsWithWorsening(
     }
   }
 
+  for (const profile of renalNutritionProfiles) {
+    const patientId = profile.patientId.toHexString();
+    renalGuidanceReviewDueCountByPatientId.set(
+      patientId,
+      (renalGuidanceReviewDueCountByPatientId.get(patientId) ?? 0) + 1,
+    );
+    reviewRenalGuidanceHrefByPatientId.set(
+      patientId,
+      `/portal/patients/${patientId}/nutrition-profile`,
+    );
+  }
+
   await Promise.all(
     raws.map(async (raw) => {
       const alerts = await getActivePatientWorseningTrendAlerts(db, {
@@ -369,6 +411,10 @@ export async function mapPortalPatientListItemsWithWorsening(
           ?.filter((alert) => alert.portalEscalationEligible) ?? [],
       reviewCarePlanHref:
         reviewCarePlanHrefByPatientId.get(raw._id.toHexString()) ?? null,
+      reviewRenalGuidanceHref:
+        reviewRenalGuidanceHrefByPatientId.get(raw._id.toHexString()) ?? null,
+      renalGuidanceReviewDueCount:
+        renalGuidanceReviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
       reviewDueCount: reviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
     }),
     worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
@@ -416,7 +462,7 @@ export function matchesPortalPatientFilter(
     case "worsening":
       return item.worseningItems.length > 0;
     case "review":
-      return item.reviewDueCount > 0;
+      return item.reviewDueCount > 0 || item.renalGuidanceReviewDueCount > 0;
     case "disengaged":
       return isDisengaged(item);
     case "endingSoon":
@@ -514,6 +560,18 @@ export function sortPortalPatients(items: PortalPatientListItem[]) {
 }
 
 export function buildPortalPatientStats(items: PortalPatientListItem[]) {
+  const reviewDuePatients = items.filter((item) =>
+    matchesPortalPatientFilter(item, "review"),
+  );
+  const carePlanReviewDueCount = reviewDuePatients.reduce(
+    (sum, item) => sum + item.reviewDueCount,
+    0,
+  );
+  const renalGuidanceReviewDueCount = reviewDuePatients.reduce(
+    (sum, item) => sum + item.renalGuidanceReviewDueCount,
+    0,
+  );
+
   const statsByFilter: Record<
     Exclude<PortalPatientFilter, "all">,
     PortalPatientStat
@@ -537,12 +595,14 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       tone: "accent",
     },
     review: {
-      count: items.filter((item) => matchesPortalPatientFilter(item, "review"))
-        .length,
-      detail: "Need their care plans reviewed.",
+      actionLabel: "View reviews",
+      count: carePlanReviewDueCount + renalGuidanceReviewDueCount,
+      detail: `${carePlanReviewDueCount} care plan${carePlanReviewDueCount === 1 ? "" : "s"} · ${renalGuidanceReviewDueCount} renal guidance`,
       icon: "/portal/icons/review icon.png",
-      label: "Care plan review due",
+      label: "Reviews due",
       tone: "warning",
+      valueLabelPlural: "items due",
+      valueLabelSingular: "item due",
     },
     worsening: {
       count: items.filter((item) =>

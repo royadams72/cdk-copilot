@@ -19,6 +19,7 @@ import type {
 import { makeCarePlanActivityKey } from "@/apps/api/lib/care-plans/shared";
 
 import type { SessionUser } from "../auth/auth_requireUser";
+import { actorTypeFromRole } from "../audit/actors";
 
 type GoalStateDoc = Omit<TPatientGoalState, "selectedAt" | "updatedAt" | "overrideAt"> & {
   selectedAt: Date;
@@ -103,13 +104,7 @@ function cleanText(value: unknown) {
 
 export function buildPatientGoalActor(caller: SessionUser) {
   return PatientGoalActor.parse({
-    actorType:
-      caller.role === "patient" ||
-      caller.role === "clinician" ||
-      caller.role === "dietitian" ||
-      caller.role === "admin"
-        ? caller.role
-        : "system",
+    actorType: actorTypeFromRole(caller.role),
     displayName: null,
     principalId: caller.principalId,
   });

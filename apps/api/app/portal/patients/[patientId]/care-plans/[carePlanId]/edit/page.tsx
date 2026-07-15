@@ -37,16 +37,22 @@ export default function PortalPatientEditCarePlanPage() {
   const params = useParams<{ patientId: string; carePlanId: string }>();
   const router = useRouter();
   const { session, status } = usePortalAuthSession();
-  const [formData, setFormData] = useState<PortalPatientCarePlanCreateData | null>(null);
-  const [planData, setPlanData] = useState<PortalPatientCarePlanDetailData | null>(null);
+  const [formData, setFormData] =
+    useState<PortalPatientCarePlanCreateData | null>(null);
+  const [planData, setPlanData] =
+    useState<PortalPatientCarePlanDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDiagnosisId, setSelectedDiagnosisId] = useState("");
   const [conditionQuery, setConditionQuery] = useState("");
-  const [conditionResults, setConditionResults] = useState<ConditionSearchItem[]>([]);
+  const [conditionResults, setConditionResults] = useState<
+    ConditionSearchItem[]
+  >([]);
   const [conditionSearchLoading, setConditionSearchLoading] = useState(false);
-  const [diagnoses, setDiagnoses] = useState<PortalPatientCarePlanDiagnosis[]>([]);
+  const [diagnoses, setDiagnoses] = useState<PortalPatientCarePlanDiagnosis[]>(
+    [],
+  );
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [measureUsing, setMeasureUsing] = useState("");
@@ -54,9 +60,9 @@ export default function PortalPatientEditCarePlanPage() {
   const [frequency, setFrequency] = useState("daily");
   const [reviewLabel, setReviewLabel] = useState("1_month");
   const [ownerLabels, setOwnerLabels] = useState<string[]>([]);
-  const [draftAction, setDraftAction] = useState<"save_as_draft" | "activate_and_notify">(
-    "save_as_draft",
-  );
+  const [draftAction, setDraftAction] = useState<
+    "save_as_draft" | "activate_and_notify"
+  >("save_as_draft");
 
   useEffect(() => {
     if (
@@ -125,7 +131,11 @@ export default function PortalPatientEditCarePlanPage() {
         setTarget(detailBody.data.plan.goals[0]?.targetSummary ?? "");
         setMeasureUsing(detailBody.data.plan.tasks[0]?.label ?? "");
         setNotes(detailBody.data.plan.notes ?? "");
-        setFrequency(detailBody.data.plan.tasks[0]?.freq ?? formBody.data.frequencyOptions[0]?.id ?? "daily");
+        setFrequency(
+          detailBody.data.plan.tasks[0]?.freq ??
+            formBody.data.frequencyOptions[0]?.id ??
+            "daily",
+        );
         setReviewLabel(
           formBody.data.reviewOptions.find(
             (option) =>
@@ -227,7 +237,9 @@ export default function PortalPatientEditCarePlanPage() {
 
   function addSelectedDiagnosis() {
     if (!formData || !selectedDiagnosisId) return;
-    const match = formData.diagnosisOptions.find((item) => item.id === selectedDiagnosisId);
+    const match = formData.diagnosisOptions.find(
+      (item) => item.id === selectedDiagnosisId,
+    );
     if (!match) return;
     addDiagnosis(match);
     setSelectedDiagnosisId("");
@@ -236,7 +248,9 @@ export default function PortalPatientEditCarePlanPage() {
   function addCustomDiagnosis() {
     const label = conditionQuery.trim();
     if (!label) return;
-    if (diagnoses.some((item) => item.label.toLowerCase() === label.toLowerCase())) {
+    if (
+      diagnoses.some((item) => item.label.toLowerCase() === label.toLowerCase())
+    ) {
       setConditionQuery("");
       return;
     }
@@ -261,7 +275,13 @@ export default function PortalPatientEditCarePlanPage() {
   }
 
   async function submitForm() {
-    if (!session || !params.patientId || !params.carePlanId || !formData || submitting) {
+    if (
+      !session ||
+      !params.patientId ||
+      !params.carePlanId ||
+      !formData ||
+      submitting
+    ) {
       return;
     }
 
@@ -325,7 +345,11 @@ export default function PortalPatientEditCarePlanPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading care plan draft...</section>;
+    return (
+      <section className={styles.emptyState}>
+        Loading care plan draft...
+      </section>
+    );
   }
 
   if (!formData || !planData) {
@@ -364,11 +388,14 @@ export default function PortalPatientEditCarePlanPage() {
         </p>
       </div>
 
-      <section className={styles.carePlanFormShell}>
+      <section className={styles.formShell}>
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>Associated diagnoses</label>
+          <label className={styles.carePlanFieldLabel}>
+            Associated diagnoses
+          </label>
           <p className={styles.dataScreenCaption}>
-            Select an existing diagnosis already recorded for this patient, or search SNOMED and add a new one.
+            Select an existing diagnosis already recorded for this patient, or
+            search SNOMED and add a new one.
           </p>
           {formData.diagnosisOptions.length ? (
             <div className={styles.carePlanInlineRow}>
@@ -408,7 +435,8 @@ export default function PortalPatientEditCarePlanPage() {
             />
           </div>
           <p className={styles.dataScreenCaption}>
-            Select a search result to add it, or press Enter to save custom text.
+            Select a search result to add it, or press Enter to save custom
+            text.
           </p>
           {conditionSearchLoading ? (
             <p className={styles.dataScreenCaption}>Searching conditions...</p>
@@ -451,7 +479,10 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-title">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-title"
+          >
             Goal of care plan
           </label>
           <p className={styles.dataScreenCaption}>
@@ -468,7 +499,10 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-target">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-target"
+          >
             Target
           </label>
           <p className={styles.dataScreenCaption}>Target to meet.</p>
@@ -483,7 +517,10 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-measure">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-measure"
+          >
             Measure using
           </label>
           <p className={styles.dataScreenCaption}>
@@ -500,7 +537,10 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-notes">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-notes"
+          >
             Notes
           </label>
           <p className={styles.dataScreenCaption}>
@@ -518,7 +558,10 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-frequency">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-frequency"
+          >
             Frequency to measure
           </label>
           <select
@@ -536,7 +579,10 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-review">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-review"
+          >
             Review in
           </label>
           <select
@@ -573,11 +619,15 @@ export default function PortalPatientEditCarePlanPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel} htmlFor="care-plan-draft-edit-action">
+          <label
+            className={styles.carePlanFieldLabel}
+            htmlFor="care-plan-draft-edit-action"
+          >
             Action
           </label>
           <p className={styles.dataScreenCaption}>
-            Choose whether to keep this as a draft or activate it and notify the patient now.
+            Choose whether to keep this as a draft or activate it and notify the
+            patient now.
           </p>
           <select
             className={styles.carePlanInput}
@@ -592,7 +642,9 @@ export default function PortalPatientEditCarePlanPage() {
             value={draftAction}
           >
             <option value="save_as_draft">Save as draft</option>
-            <option value="activate_and_notify">Activate care plan and notify patient</option>
+            <option value="activate_and_notify">
+              Activate care plan and notify patient
+            </option>
           </select>
         </div>
 

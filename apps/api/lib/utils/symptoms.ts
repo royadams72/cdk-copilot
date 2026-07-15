@@ -19,6 +19,7 @@ import { ObjectId, type Db } from "mongodb";
 import { treeifyError } from "zod";
 
 import type { SessionUser } from "../auth/auth_requireUser";
+import { actorTypeFromRole } from "../audit/actors";
 
 type SymptomEntryDoc = Omit<TSymptomEntry, "_id" | "patientId"> & {
   _id?: ObjectId;
@@ -34,14 +35,6 @@ type SymptomLedgerEventDoc = Omit<
   before: SymptomEntryDoc | null;
   patientId: ObjectId;
 };
-
-function actorTypeFromRole(role: SessionUser["role"]): TSymptomActor["actorType"] {
-  if (role === "patient") return "patient";
-  if (role === "clinician") return "clinician";
-  if (role === "dietitian") return "dietitian";
-  if (role === "admin") return "admin";
-  return "system";
-}
 
 export function buildSymptomActor(caller: SessionUser): TSymptomActor {
   return {

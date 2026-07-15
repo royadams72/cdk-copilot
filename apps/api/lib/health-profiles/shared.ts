@@ -3,7 +3,6 @@ import {
   HealthProfileCurrentEntry,
   HealthProfileLedgerEvent,
   HealthProfilesCurrent,
-  ROLES,
 } from "@ckd/core";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
@@ -37,14 +36,6 @@ export type ConditionCurrentEntry = THealthProfileCurrentEntry & {
 
 export const makeStableProfileKey = stableCarePlanKey;
 export const normalizeProfileLabel = normalizeCarePlanLabel;
-
-export function actorTypeFromRole(role: string) {
-  if (role === ROLES.Patient) return "patient";
-  if (role === ROLES.Clinician) return "clinician";
-  if (role === ROLES.Dietitian) return "dietitian";
-  if (role === "admin") return "admin";
-  return "system";
-}
 
 export function makeConditionEntryId(item: TConditionFormItem) {
   return `hp_condition_${stableCarePlanKey([

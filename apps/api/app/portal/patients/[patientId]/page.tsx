@@ -37,8 +37,8 @@ function renderOverviewRows(rows: PortalPatientOverviewRow[]) {
   ));
 }
 
-function formatSignalCategory(
-  category: PortalPatientDashboardData["signals"][number]["category"],
+function formatHighlightCategory(
+  category: PortalPatientDashboardData["highlights"][number]["category"],
 ) {
   switch (category) {
     case "care_plan":
@@ -168,10 +168,10 @@ export default function PortalPatientDetailPage() {
         </PatientOverviewPanel>
       </div>
 
-      <PatientOverviewPanel title="Patient signals">
-        {(dashboard?.signals ?? []).length ? (
+      <PatientOverviewPanel title="Patient highlights">
+        {(dashboard?.highlights ?? []).length ? (
           <div className={styles.patientAttentionList}>
-            {dashboard?.signals.map((item, index) => (
+            {dashboard?.highlights.map((item, index) => (
               <div
                 className={styles.patientAttentionItem}
                 data-tone={item.tone}
@@ -180,7 +180,7 @@ export default function PortalPatientDetailPage() {
                 <strong>{item.title}</strong>
                 <span>{item.detail}</span>
                 <small className={styles.patientSummaryMeta}>
-                  {formatSignalCategory(item.category)}
+                  {formatHighlightCategory(item.category)}
                 </small>
                 {item.href ? (
                   <Link
@@ -196,41 +196,29 @@ export default function PortalPatientDetailPage() {
           </div>
         ) : (
           <div className={styles.patientPanelEmpty}>
-            No patient signals to show.
+            No patient highlights to show.
           </div>
         )}
       </PatientOverviewPanel>
 
-      <div className={styles.patientSummaryGrid}>
-        <article className={styles.patientSummaryPanel}>
-          <div className={styles.patientOverviewHeader}>
-            <h3 className={styles.patientOverviewTitle}>
-              31-day clinical trends
-            </h3>
-          </div>
-          <div className={styles.patientOverviewBody}>
-            {(dashboard?.clinicalSummary ?? []).map((row) => (
-              <div className={styles.patientSummaryRow} key={row.label}>
-                <span>{row.label}</span>
-                <strong>{row.value}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
+      <div className={styles.patientOverviewGrid}>
+        <PatientOverviewPanel title="31-day clinical trends">
+          {(dashboard?.clinicalSummary ?? []).map((row) => (
+            <div className={styles.patientSummaryRow} key={row.label}>
+              <span>{row.label}</span>
+              <strong>{row.value}</strong>
+            </div>
+          ))}
+        </PatientOverviewPanel>
 
-        <article className={styles.patientSummaryPanel}>
-          <div className={styles.patientOverviewHeader}>
-            <h3 className={styles.patientOverviewTitle}>31-day engagement</h3>
-          </div>
-          <div className={styles.patientOverviewBody}>
-            {(dashboard?.engagementSummary ?? []).map((row) => (
-              <div className={styles.patientSummaryRow} key={row.label}>
-                <span>{row.label}</span>
-                <strong>{row.value}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
+        <PatientOverviewPanel title="31-day engagement">
+          {(dashboard?.engagementSummary ?? []).map((row) => (
+            <div className={styles.patientSummaryRow} key={row.label}>
+              <span>{row.label}</span>
+              <strong>{row.value}</strong>
+            </div>
+          ))}
+        </PatientOverviewPanel>
       </div>
 
       <PatientOverviewPanel title="Recent activity">

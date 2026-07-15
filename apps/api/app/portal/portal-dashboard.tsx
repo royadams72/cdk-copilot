@@ -93,6 +93,16 @@ function summarizeWorseningItems(items: PortalPatientWorseningItem[]) {
   return `${labels.slice(0, 2).join(", ")}...`;
 }
 
+function normalizeReviewType(value: string | null): "all" | "carePlans" | "renalGuidance" {
+  switch (value) {
+    case "carePlans":
+    case "renalGuidance":
+      return value;
+    default:
+      return "all";
+  }
+}
+
 export function PortalDashboard() {
   return (
     <Suspense
@@ -136,6 +146,7 @@ function PortalDashboardContent() {
   const [detailsPatient, setDetailsPatient] =
     useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
+  const activeReviewType = normalizeReviewType(searchParams.get("reviewType"));
   const activeMembershipStatus =
     normalizePortalPatientMembershipStatusFilter(
       searchParams.get("membershipStatus"),
@@ -230,6 +241,50 @@ function PortalDashboardContent() {
       ),
     [patients, selectedWorseningFilter],
   );
+  const carePlanReviewPatients = useMemo(
+    () => patients.filter((patient) => patient.reviewDueCount > 0),
+    [patients],
+  );
+  const carePlanReviewTotal = useMemo(
+    () =>
+      carePlanReviewPatients.reduce(
+        (sum, patient) => sum + patient.reviewDueCount,
+        0,
+      ),
+    [carePlanReviewPatients],
+  );
+  const renalGuidanceReviewPatients = useMemo(
+    () => patients.filter((patient) => patient.renalGuidanceReviewDueCount > 0),
+    [patients],
+  );
+  const renalGuidanceReviewTotal = useMemo(
+    () =>
+      renalGuidanceReviewPatients.reduce(
+        (sum, patient) => sum + patient.renalGuidanceReviewDueCount,
+        0,
+      ),
+    [renalGuidanceReviewPatients],
+  );
+  const reviewPatients = useMemo(() => {
+    switch (activeReviewType) {
+      case "carePlans":
+        return carePlanReviewPatients;
+      case "renalGuidance":
+        return renalGuidanceReviewPatients;
+      case "all":
+      default:
+        return patients.filter(
+          (patient) =>
+            patient.reviewDueCount > 0 ||
+            patient.renalGuidanceReviewDueCount > 0,
+        );
+    }
+  }, [
+    activeReviewType,
+    carePlanReviewPatients,
+    patients,
+    renalGuidanceReviewPatients,
+  ]);
 
   const allVisibleWorseningSelected =
     worseningPatients.length > 0 &&
@@ -486,9 +541,50 @@ function PortalDashboardContent() {
             <div className={styles.statCardBody}>
               <h2 className={styles.statTitle}>{card.label}</h2>
               <strong className={styles.statValue}>
-                {card.count} {card.count === 1 ? "patient" : "patients"}
+                {card.count}{" "}
+                {card.count === 1
+                  ? card.valueLabelSingular ?? "patient"
+                  : card.valueLabelPlural ?? "patients"}
               </strong>
-              <p className={styles.statDetail}>{card.detail}</p>
+              {card.filter === "review" ? (
+                <div className={styles.statDetailLines}>
+                  <div className={styles.statDetailLine}>
+                    <span>
+                      {carePlanReviewTotal} care plan
+                      {carePlanReviewTotal === 1 ? "" : "s"}
+                    </span>
+                    <button
+                      className={styles.statInlineAction}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("filter", "review");
+                        params.set("reviewType", "carePlans");
+                        router.push(`/portal?${params.toString()}`);
+                      }}
+                      type="button"
+                    >
+                      View
+                    </button>
+                  </div>
+                  <div className={styles.statDetailLine}>
+                    <span>{renalGuidanceReviewTotal} renal guidance</span>
+                    <button
+                      className={styles.statInlineAction}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set("filter", "review");
+                        params.set("reviewType", "renalGuidance");
+                        router.push(`/portal?${params.toString()}`);
+                      }}
+                      type="button"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className={styles.statDetail}>{card.detail}</p>
+              )}
             </div>
             <button
               className={styles.cardAction}
@@ -496,8 +592,14 @@ function PortalDashboardContent() {
                 const params = new URLSearchParams(searchParams.toString());
                 if (activeFilter === card.filter) {
                   params.delete("filter");
+                  if (card.filter === "review") {
+                    params.delete("reviewType");
+                  }
                 } else {
                   params.set("filter", card.filter);
+                  if (card.filter === "review") {
+                    params.set("reviewType", "all");
+                  }
                 }
                 router.push(
                   `/portal${params.size ? `?${params.toString()}` : ""}`,
@@ -505,7 +607,13 @@ function PortalDashboardContent() {
               }}
               type="button"
             >
-              {activeFilter === card.filter ? "Show all" : "View patients"}
+              {card.filter === "review"
+                ? activeFilter === "review"
+                  ? "Show all"
+                  : card.actionLabel ?? "View reviews"
+                : activeFilter === card.filter
+                  ? "Show all"
+                  : card.actionLabel ?? "View patients"}
             </button>
             <span className={styles.iconBadge}>
               <Image alt="" height={24} src={card.icon} width={24} />
@@ -683,22 +791,37 @@ function PortalDashboardContent() {
         ) : (
           <>
             <div className={styles.listHeaderRow}>
-              <span className={styles.listHeaderTitle}>Patient list</span>
+                <span className={styles.listHeaderTitle}>Patient list</span>
               <span className={styles.listHeaderMeta}>
                 {activeFilter === "all"
                   ? "All accessible patients"
-                  : `Filtered by ${activeFilter}`}
+                  : activeFilter === "review"
+                    ? activeReviewType === "renalGuidance"
+                      ? "Filtered by renal guidance reviews"
+                      : activeReviewType === "carePlans"
+                        ? "Filtered by care plan reviews"
+                        : "Filtered by reviews due"
+                    : `Filtered by ${activeFilter}`}
               </span>
             </div>
             <div className={styles.patientList}>
-              {patients.map((patient) => (
+              {(activeFilter === "review" ? reviewPatients : patients).map((patient) => (
                 <div className={styles.patientListRow} key={patient.id}>
                   <div className={styles.patientLabelBlock}>
                     <Link
                       className={styles.patientLink}
                       href={
-                        activeFilter === "review" && patient.reviewCarePlanHref
-                          ? patient.reviewCarePlanHref
+                        activeFilter === "review" &&
+                        activeReviewType === "renalGuidance" &&
+                        patient.reviewRenalGuidanceHref
+                          ? patient.reviewRenalGuidanceHref
+                          : activeFilter === "review" &&
+                              activeReviewType !== "renalGuidance" &&
+                              patient.reviewCarePlanHref
+                            ? patient.reviewCarePlanHref
+                          : activeFilter === "review" &&
+                              patient.reviewRenalGuidanceHref
+                            ? patient.reviewRenalGuidanceHref
                           : `/portal/patients/${patient.id}`
                       }
                     >
@@ -715,8 +838,17 @@ function PortalDashboardContent() {
                       className={styles.buttonPrimaryCompact}
                       onClick={() =>
                         router.push(
-                          activeFilter === "review" && patient.reviewCarePlanHref
-                            ? patient.reviewCarePlanHref
+                          activeFilter === "review" &&
+                            activeReviewType === "renalGuidance" &&
+                              patient.reviewRenalGuidanceHref
+                              ? patient.reviewRenalGuidanceHref
+                              : activeFilter === "review" &&
+                                  activeReviewType !== "renalGuidance" &&
+                                  patient.reviewCarePlanHref
+                                ? patient.reviewCarePlanHref
+                                : activeFilter === "review" &&
+                                    patient.reviewRenalGuidanceHref
+                                  ? patient.reviewRenalGuidanceHref
                             : `/portal/patients/${patient.id}`,
                         )
                       }
@@ -728,6 +860,16 @@ function PortalDashboardContent() {
                 </div>
               ))}
             </div>
+            {activeFilter === "review" && reviewPatients.length === 0 ? (
+              <div className={styles.emptyState}>
+                <h2>No patients match this review view</h2>
+                <p>
+                  {activeReviewType === "renalGuidance"
+                    ? "There are no renal guidance reviews due right now."
+                    : "There are no care plan reviews due right now."}
+                </p>
+              </div>
+            ) : null}
           </>
         )}
       </section>
