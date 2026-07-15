@@ -41,6 +41,7 @@ export const COLLECTIONS = {
   NutritionFavourites: "nutrition_favourites",
   NutritionLedger: "nutrition_ledger",
   NutritionMonthlyPatientSummary: "nutrition_monthly_patient_summary",
+  RenalNutritionProfilesCurrent: "renal_nutrition_profiles_current",
   WeeklyNutritionInsights: "weekly_nutrition_insights",
   WorseningTrendCheckIns: "worsening_trend_check_ins",
   WorseningTrendSnapshots: "worsening_trend_snapshots",

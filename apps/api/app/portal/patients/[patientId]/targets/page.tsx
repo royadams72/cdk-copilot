@@ -81,6 +81,18 @@ function parseNumberInput(metric: string, value: string) {
   return numeric;
 }
 
+function sanitizeNumericInput(value: string) {
+  const normalized = value.replace(/[^0-9.]/g, "");
+  const firstDecimalIndex = normalized.indexOf(".");
+  if (firstDecimalIndex === -1) {
+    return normalized;
+  }
+
+  const integerPart = normalized.slice(0, firstDecimalIndex + 1);
+  const decimalPart = normalized.slice(firstDecimalIndex + 1).replace(/\./g, "");
+  return `${integerPart}${decimalPart}`;
+}
+
 function formatUnit(metric: string, definition: TargetDefinitionValue, unit: string) {
   if (isSleepDurationMetric(metric)) {
     return "hours/day";
@@ -381,10 +393,12 @@ export default function PortalPatientTargetsPage() {
                             ...current,
                             [item.metric]: {
                               ...current[item.metric],
-                              value: event.target.value,
+                              value: sanitizeNumericInput(event.target.value),
                             },
                           }))
                         }
+                        inputMode="decimal"
+                        pattern="[0-9]*[.]?[0-9]*"
                         value={draft?.value ?? ""}
                       />
                     </label>
@@ -400,10 +414,12 @@ export default function PortalPatientTargetsPage() {
                               ...current,
                               [item.metric]: {
                                 ...current[item.metric],
-                                low: event.target.value,
+                                low: sanitizeNumericInput(event.target.value),
                               },
                             }))
                           }
+                          inputMode="decimal"
+                          pattern="[0-9]*[.]?[0-9]*"
                           value={draft?.low ?? ""}
                         />
                       </label>
@@ -416,10 +432,12 @@ export default function PortalPatientTargetsPage() {
                               ...current,
                               [item.metric]: {
                                 ...current[item.metric],
-                                high: event.target.value,
+                                high: sanitizeNumericInput(event.target.value),
                               },
                             }))
                           }
+                          inputMode="decimal"
+                          pattern="[0-9]*[.]?[0-9]*"
                           value={draft?.high ?? ""}
                         />
                       </label>
@@ -470,13 +488,13 @@ export default function PortalPatientTargetsPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading patient targets...</section>;
+    return <section className={styles.emptyState}>Loading renal targets...</section>;
   }
 
-  if (!data || error) {
+  if (!data) {
     return (
       <section className={styles.emptyState}>
-        <h2>Unable to load patient targets</h2>
+        <h2>Unable to load renal targets</h2>
         <p>{error ?? "Unknown error"}</p>
       </section>
     );
@@ -487,7 +505,7 @@ export default function PortalPatientTargetsPage() {
       <PortalPatientSubpageHeader
         backHref={`/portal/patients/${patientId}`}
         backLabel="Back to patient"
-        headline={`${data.patient.name} targets`}
+        headline={`${data.patient.name} renal targets`}
       />
       {message ? <section className={styles.metaStrip}>{message}</section> : null}
       {error ? (
@@ -496,14 +514,14 @@ export default function PortalPatientTargetsPage() {
         </section>
       ) : null}
       <div className={styles.carePlanFormIntro}>
-        <h2 className={styles.carePlanFormTitle}>Patient targets</h2>
+        <h2 className={styles.carePlanFormTitle}>Renal targets</h2>
         <p className={styles.carePlanFormLead}>
-          Review the current targets and set clinician overrides where needed.
+          Review the daily monitoring targets and set clinician overrides where
+          needed. Nutrition targets are managed in the renal nutrition profile.
         </p>
       </div>
       <section className={styles.carePlanFormShell}>
-        {renderItems("Lifestyle targets", groupedItems.lifestyle)}
-        {renderItems("Renal targets", groupedItems.renal)}
+        {renderItems("Daily monitoring targets", groupedItems.lifestyle)}
       </section>
     </section>
   );

@@ -253,8 +253,18 @@ function PortalDashboardContent() {
       ),
     [carePlanReviewPatients],
   );
-  const renalGuidanceReviewPatients = useMemo(() => [], []);
-  const renalGuidanceReviewTotal = 0;
+  const renalGuidanceReviewPatients = useMemo(
+    () => patients.filter((patient) => patient.renalGuidanceReviewDueCount > 0),
+    [patients],
+  );
+  const renalGuidanceReviewTotal = useMemo(
+    () =>
+      renalGuidanceReviewPatients.reduce(
+        (sum, patient) => sum + patient.renalGuidanceReviewDueCount,
+        0,
+      ),
+    [renalGuidanceReviewPatients],
+  );
   const reviewPatients = useMemo(() => {
     switch (activeReviewType) {
       case "carePlans":
@@ -263,11 +273,16 @@ function PortalDashboardContent() {
         return renalGuidanceReviewPatients;
       case "all":
       default:
-        return carePlanReviewPatients;
+        return patients.filter(
+          (patient) =>
+            patient.reviewDueCount > 0 ||
+            patient.renalGuidanceReviewDueCount > 0,
+        );
     }
   }, [
     activeReviewType,
     carePlanReviewPatients,
+    patients,
     renalGuidanceReviewPatients,
   ]);
 
@@ -797,9 +812,16 @@ function PortalDashboardContent() {
                       className={styles.patientLink}
                       href={
                         activeFilter === "review" &&
-                        activeReviewType !== "renalGuidance" &&
-                        patient.reviewCarePlanHref
-                          ? patient.reviewCarePlanHref
+                        activeReviewType === "renalGuidance" &&
+                        patient.reviewRenalGuidanceHref
+                          ? patient.reviewRenalGuidanceHref
+                          : activeFilter === "review" &&
+                              activeReviewType !== "renalGuidance" &&
+                              patient.reviewCarePlanHref
+                            ? patient.reviewCarePlanHref
+                          : activeFilter === "review" &&
+                              patient.reviewRenalGuidanceHref
+                            ? patient.reviewRenalGuidanceHref
                           : `/portal/patients/${patient.id}`
                       }
                     >
@@ -817,9 +839,16 @@ function PortalDashboardContent() {
                       onClick={() =>
                         router.push(
                           activeFilter === "review" &&
-                            activeReviewType !== "renalGuidance" &&
-                            patient.reviewCarePlanHref
-                            ? patient.reviewCarePlanHref
+                            activeReviewType === "renalGuidance" &&
+                              patient.reviewRenalGuidanceHref
+                              ? patient.reviewRenalGuidanceHref
+                              : activeFilter === "review" &&
+                                  activeReviewType !== "renalGuidance" &&
+                                  patient.reviewCarePlanHref
+                                ? patient.reviewCarePlanHref
+                                : activeFilter === "review" &&
+                                    patient.reviewRenalGuidanceHref
+                                  ? patient.reviewRenalGuidanceHref
                             : `/portal/patients/${patient.id}`,
                         )
                       }
@@ -836,7 +865,7 @@ function PortalDashboardContent() {
                 <h2>No patients match this review view</h2>
                 <p>
                   {activeReviewType === "renalGuidance"
-                    ? "Renal guidance review dates are not wired up yet."
+                    ? "There are no renal guidance reviews due right now."
                     : "There are no care plan reviews due right now."}
                 </p>
               </div>

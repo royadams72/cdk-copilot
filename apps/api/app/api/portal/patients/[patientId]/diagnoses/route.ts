@@ -4,10 +4,10 @@ import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
+import { actorTypeFromRole } from "@/apps/api/lib/audit/actors";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import {
-  actorTypeFromRole,
   makeConditionEntryId,
   toConditionCurrentEntry,
   type HealthProfileLedgerEventDoc,

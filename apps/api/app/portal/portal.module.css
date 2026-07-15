@@ -1113,7 +1113,7 @@
 }
 
 .portalFormShellWide {
-  width: min(100%, 760px);
+  width: min(100%, 670px);
   display: grid;
   gap: var(--portal-space-4);
   margin: 0 auto;

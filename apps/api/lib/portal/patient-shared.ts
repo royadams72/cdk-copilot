@@ -75,6 +75,8 @@ export type PortalPatientListItem = {
   name: string;
   reviewCarePlanHref: string | null;
   reviewDueCount: number;
+  reviewRenalGuidanceHref: string | null;
+  renalGuidanceReviewDueCount: number;
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];
 };

@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   ConditionFormItem,
 } from "@ckd/core";
+import { actorTypeFromRole } from "@/apps/api/lib/audit/actors";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import type {
   CarePlanActivityDoc,
@@ -26,7 +27,6 @@ import {
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { toIsoDate } from "@/apps/api/lib/format/date";
 import {
-  actorTypeFromRole,
   type ConditionCurrentEntry,
   type HealthProfileLedgerEventDoc,
   type HealthProfilesCurrentDoc,

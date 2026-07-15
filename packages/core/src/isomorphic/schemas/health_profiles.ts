@@ -372,6 +372,7 @@ export const HealthProfilesCurrent = z.object({
     .default([]),
   createdAt: z.date(),
   createdBy: HealthProfileActor,
+  dietaryRestrictions: z.array(z.string().trim().min(1)).default([]),
   dietaryPreferences: z
     .array(
       HealthProfileCurrentEntry.extend({
@@ -382,8 +383,12 @@ export const HealthProfilesCurrent = z.object({
       }),
     )
     .default([]),
+  fluidLimitLitres: z.number().positive().nullable().optional(),
+  notesFromDietitian: z.string().trim().nullable().optional(),
   orgId: z.string().min(1).optional(),
   patientId: objectIdHex,
+  renalDietGuidance: z.string().trim().nullable().optional(),
+  reviewDueDate: z.date().nullable().optional(),
   updatedAt: z.date(),
   updatedBy: HealthProfileActor,
 });

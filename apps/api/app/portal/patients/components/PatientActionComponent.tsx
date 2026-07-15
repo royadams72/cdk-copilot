@@ -11,7 +11,8 @@ const actionHrefByLabel: Record<string, string> = {
   Membership: "/membership",
   Messaging: "/messages",
   "Nutrition Data": "/nutrition",
-  "Patient targets": "/targets",
+  "Renal Nutrition Profile": "/nutrition-profile",
+  "Renal Targets": "/targets",
   "Reviewed Trends": "/worsening-reviewed",
   "Worsening Trends": "#attention-needed",
 };

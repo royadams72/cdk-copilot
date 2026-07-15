@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 
+import { targetActorTypeFromRole } from "@/apps/api/lib/audit/actors";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
@@ -136,7 +137,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const actorResult = TargetActor.safeParse({
-      actorType: "user",
+      actorType: targetActorTypeFromRole(caller.role),
       displayName: null,
       principalId: caller.principalId,
     });
