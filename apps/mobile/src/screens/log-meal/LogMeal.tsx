@@ -422,7 +422,9 @@ export default function LogMeal() {
         uid: food.uid,
       }),
     );
-    router.push("/(log-meal)/food-details");
+    router.push(
+      `/(log-meal)/food-details?day=${encodeURIComponent(formatDayKey(dateTime))}`,
+    );
   }
 
   function addFood(food: TFoodItem) {
@@ -1027,6 +1029,13 @@ function buildLogDateTimeForDay(dayKey: string) {
   }
 
   return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function formatDayKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function buildInitialDateTime(
