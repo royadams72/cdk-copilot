@@ -15,6 +15,7 @@ import {
 } from "recharts";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
@@ -134,7 +135,7 @@ export default function PortalPatientLabsPage() {
   }, [chartData]);
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading lab results...</section>;
+    return <PortalLoadingState label="Loading lab results..." />;
   }
 
   if (!data || error) {
@@ -313,13 +314,14 @@ export default function PortalPatientLabsPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Current lab values</caption>
             <thead>
               <tr>
-                <th>Lab</th>
-                <th>Value</th>
-                <th>Range</th>
-                <th>Status</th>
-                <th>Taken</th>
+                <th scope="col">Lab</th>
+                <th scope="col">Value</th>
+                <th scope="col">Range</th>
+                <th scope="col">Status</th>
+                <th scope="col">Taken</th>
               </tr>
             </thead>
             <tbody>
@@ -364,14 +366,15 @@ export default function PortalPatientLabsPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Recent lab history</caption>
             <thead>
               <tr>
-                <th>When taken</th>
-                <th>Lab</th>
-                <th>Value</th>
-                <th>Status</th>
-                <th>Reported</th>
-                <th>Flag</th>
+                <th scope="col">When taken</th>
+                <th scope="col">Lab</th>
+                <th scope="col">Value</th>
+                <th scope="col">Status</th>
+                <th scope="col">Reported</th>
+                <th scope="col">Flag</th>
               </tr>
             </thead>
             <tbody>

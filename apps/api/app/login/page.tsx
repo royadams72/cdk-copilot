@@ -14,7 +14,6 @@ export default function LoginPage() {
       </header>
 
       <div className="portal-page-frame">
-        <div aria-hidden="true" className="portal-side-gutter" />
         <section className={`portal-center-column ${styles.centerColumn}`}>
           <div className={styles.loginCanvas}>
             <div className={styles.panel}>
@@ -39,7 +38,6 @@ export default function LoginPage() {
             </div>
           </div>
         </section>
-        <div aria-hidden="true" className="portal-side-gutter" />
       </div>
     </main>
   );

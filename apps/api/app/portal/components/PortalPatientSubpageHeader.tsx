@@ -30,15 +30,11 @@ export function PortalPatientSubpageHeader({
         </span>
         <div className={styles.patientHeadlineContent}>
           <div className={styles.patientHeadlineRow}>
-            <div className={styles.patientHeadlineText}>{headline}</div>
+            <h1 className={styles.patientHeadlineText}>{headline}</h1>
           </div>
         </div>
       </div>
-      {action ?? (
-        <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
-          {backLabel}
-        </span>
-      )}
+      {action}
     </div>
   );
 }

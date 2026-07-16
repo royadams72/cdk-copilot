@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import {
@@ -60,7 +61,7 @@ export default function PortalHeaderBar() {
   }
 
   return (
-    <section className={styles.actionBar}>
+    <div className={styles.actionBar}>
       <div className={styles.searchCluster}>
         <label className={styles.inlineSearch}>
           <input
@@ -86,13 +87,12 @@ export default function PortalHeaderBar() {
           </button>
         </label>
 
-        <button
+        <Link
           className={styles.buttonSecondary}
-          onClick={() => router.push("/portal/advanced-search")}
-          type="button"
+          href="/portal/advanced-search"
         >
           Advanced Search
-        </button>
+        </Link>
       </div>
 
       <div className={styles.actionCluster}>
@@ -100,20 +100,18 @@ export default function PortalHeaderBar() {
           Logged in as <strong>{userLabel}</strong>
         </span>
         <span className={styles.headerMeta}>Last logged in {lastLoggedIn}</span>
-        <button
+        <Link
           className={styles.buttonSecondary}
-          onClick={() => router.push("/portal/patients/invites")}
-          type="button"
+          href="/portal/patients/invites"
         >
           Invites
-        </button>
-        <button
+        </Link>
+        <Link
           className={styles.buttonSecondary}
-          onClick={() => router.push("/portal/patients/add")}
-          type="button"
+          href="/portal/patients/add"
         >
           Add Patient
-        </button>
+        </Link>
         <button
           className={styles.headerLogoutButton}
           onClick={() => logout("manual")}
@@ -122,6 +120,6 @@ export default function PortalHeaderBar() {
           Log out
         </button>
       </div>
-    </section>
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "@ckd/core";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
@@ -521,11 +522,7 @@ export default function PortalPatientNutritionProfilePage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>
-        Loading renal nutrition profile...
-      </section>
-    );
+    return <PortalLoadingState label="Loading renal nutrition profile..." />;
   }
 
   if (!data || !profileDraft) {

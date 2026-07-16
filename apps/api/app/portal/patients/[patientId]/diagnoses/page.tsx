@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
@@ -232,9 +233,7 @@ export default function PortalPatientDiagnosesPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>Loading diagnoses...</section>
-    );
+    return <PortalLoadingState label="Loading diagnoses..." />;
   }
 
   if (!data || error) {
@@ -269,12 +268,13 @@ export default function PortalPatientDiagnosesPage() {
       </div>
       <section className={styles.formShell}>
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>Add diagnosis</label>
+          <label className={styles.carePlanFieldLabel} htmlFor="diagnosis-search">Add diagnosis</label>
           <p className={styles.dataScreenCaption}>
             Search SNOMED and add a result, or enter a custom diagnosis.
           </p>
           <input
             className={styles.carePlanInput}
+            id="diagnosis-search"
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
@@ -314,7 +314,7 @@ export default function PortalPatientDiagnosesPage() {
         </div>
 
         <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>Current diagnoses</label>
+          <h2 className={styles.carePlanFieldLabel}>Current diagnoses</h2>
           {!data.items.length ? (
             <div className={styles.emptyState}>No diagnoses recorded yet.</div>
           ) : (

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
@@ -77,11 +78,7 @@ export default function PortalPatientMedicationPage() {
   }, [params.patientId, session, status]);
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>
-        Loading medication profile...
-      </section>
-    );
+    return <PortalLoadingState label="Loading medication profile..." />;
   }
 
   if (!data || error) {
@@ -158,15 +155,16 @@ export default function PortalPatientMedicationPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Current medications</caption>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Dose</th>
-                <th>Frequency</th>
-                <th>Status</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Reason / instructions</th>
+                <th scope="col">Name</th>
+                <th scope="col">Dose</th>
+                <th scope="col">Frequency</th>
+                <th scope="col">Status</th>
+                <th scope="col">Start</th>
+                <th scope="col">End</th>
+                <th scope="col">Reason / instructions</th>
               </tr>
             </thead>
             <tbody>
@@ -223,12 +221,13 @@ export default function PortalPatientMedicationPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Medication change history</caption>
             <thead>
               <tr>
-                <th>When</th>
-                <th>Change</th>
-                <th>By</th>
-                <th>Reason</th>
+                <th scope="col">When</th>
+                <th scope="col">Change</th>
+                <th scope="col">By</th>
+                <th scope="col">Reason</th>
               </tr>
             </thead>
             <tbody>

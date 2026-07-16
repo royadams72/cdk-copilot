@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
@@ -98,7 +99,7 @@ export default function ReviewedWorseningTrendsPage() {
         </div>
 
         {loading ? (
-          <div className={styles.emptyState}>Loading reviewed follow-up items...</div>
+          <PortalLoadingState label="Loading reviewed follow-up items..." />
         ) : error ? (
           <div className={styles.emptyState}>
             <h2>Unable to load reviewed follow-up items</h2>

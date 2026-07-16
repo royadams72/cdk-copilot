@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { normalizeCarePlanReviewLabel } from "@/apps/api/lib/care-plans/shared";
@@ -345,11 +346,7 @@ export default function PortalPatientEditCarePlanPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>
-        Loading care plan draft...
-      </section>
-    );
+    return <PortalLoadingState label="Loading care plan draft..." />;
   }
 
   if (!formData || !planData) {
@@ -388,7 +385,13 @@ export default function PortalPatientEditCarePlanPage() {
         </p>
       </div>
 
-      <section className={styles.formShell}>
+      <form
+        className={styles.formShell}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submitForm();
+        }}
+      >
         <div className={styles.carePlanFormGroup}>
           <label className={styles.carePlanFieldLabel}>
             Associated diagnoses
@@ -599,8 +602,8 @@ export default function PortalPatientEditCarePlanPage() {
           </select>
         </div>
 
-        <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>Owner</label>
+        <fieldset className={styles.carePlanFormGroup}>
+          <legend className={styles.carePlanFieldLabel}>Owner</legend>
           <p className={styles.dataScreenCaption}>
             Who will review this? You can select multiple.
           </p>
@@ -616,7 +619,7 @@ export default function PortalPatientEditCarePlanPage() {
               </label>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         <div className={styles.carePlanFormGroup}>
           <label
@@ -660,8 +663,7 @@ export default function PortalPatientEditCarePlanPage() {
               !measureUsing.trim() ||
               ownerLabels.length === 0
             }
-            onClick={() => void submitForm()}
-            type="button"
+            type="submit"
           >
             {submitting
               ? "Saving..."
@@ -670,7 +672,7 @@ export default function PortalPatientEditCarePlanPage() {
                 : "Continue to draft"}
           </button>
         </div>
-      </section>
+      </form>
     </section>
   );
 }

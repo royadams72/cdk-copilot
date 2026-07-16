@@ -1,8 +1,8 @@
 import type { SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import {
+  type CarePlanMongoDoc,
   getCarePlanNextReviewAt,
   isCarePlanReviewDue,
-  type CarePlanMongoDoc,
 } from "@/apps/api/lib/care-plans/shared";
 import { type Document, ObjectId } from "mongodb";
 import type { Db } from "mongodb";
@@ -221,10 +221,10 @@ export function mapPortalPatientListItem(raw: {
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
+  renalGuidanceReviewDueCount?: number;
   reviewCarePlanHref?: string | null;
   reviewDueCount?: number;
   reviewRenalGuidanceHref?: string | null;
-  renalGuidanceReviewDueCount?: number;
   stage?: string | null;
   summary?: PortalPatientSummary | null;
 }): PortalPatientListItem {
@@ -244,8 +244,8 @@ export function mapPortalPatientListItem(raw: {
     name: normalizeName(raw.pii ?? {}),
     renalGuidanceReviewDueCount: raw.renalGuidanceReviewDueCount ?? 0,
     reviewCarePlanHref: raw.reviewCarePlanHref ?? null,
-    reviewRenalGuidanceHref: raw.reviewRenalGuidanceHref ?? null,
     reviewDueCount: raw.reviewDueCount ?? 0,
+    reviewRenalGuidanceHref: raw.reviewRenalGuidanceHref ?? null,
     stage: raw.stage ?? null,
     worseningItems: buildPortalPatientWorseningItems({
       activeAlerts: raw.activeAlerts ?? [],
@@ -310,8 +310,8 @@ export async function mapPortalPatientListItemsWithWorsening(
               _id: 1,
               activatedAt: 1,
               patientId: 1,
-              reviewLabel: 1,
               reviewedAt: 1,
+              reviewLabel: 1,
               status: 1,
               updatedAt: 1,
             },
@@ -361,7 +361,8 @@ export async function mapPortalPatientListItemsWithWorsening(
       : null;
     const currentNextReviewAt =
       currentPlan && isCarePlanReviewDue(currentPlan)
-        ? getCarePlanNextReviewAt(currentPlan)?.getTime() ?? Number.POSITIVE_INFINITY
+        ? (getCarePlanNextReviewAt(currentPlan)?.getTime() ??
+          Number.POSITIVE_INFINITY)
         : Number.POSITIVE_INFINITY;
     const nextReviewAt =
       getCarePlanNextReviewAt(plan)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -409,13 +410,13 @@ export async function mapPortalPatientListItemsWithWorsening(
         activeAlertsByPatientId
           .get(raw._id.toHexString())
           ?.filter((alert) => alert.portalEscalationEligible) ?? [],
-      reviewCarePlanHref:
-        reviewCarePlanHrefByPatientId.get(raw._id.toHexString()) ?? null,
-      reviewRenalGuidanceHref:
-        reviewRenalGuidanceHrefByPatientId.get(raw._id.toHexString()) ?? null,
       renalGuidanceReviewDueCount:
         renalGuidanceReviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
+      reviewCarePlanHref:
+        reviewCarePlanHrefByPatientId.get(raw._id.toHexString()) ?? null,
       reviewDueCount: reviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
+      reviewRenalGuidanceHref:
+        reviewRenalGuidanceHrefByPatientId.get(raw._id.toHexString()) ?? null,
     }),
     worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
   }));
@@ -482,12 +483,7 @@ export function matchesPortalPatientQuery(
     return true;
   }
 
-  const haystack = [
-    item.name,
-    item.email ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
+  const haystack = [item.name, item.email ?? ""].join(" ").toLowerCase();
 
   return haystack.includes(normalized);
 }
@@ -508,10 +504,7 @@ function matchesPortalPatientDateOfBirth(
   return item.dateOfBirthIso?.slice(0, 10) === normalizedDateOfBirth;
 }
 
-function matchesPortalPatientStage(
-  item: PortalPatientListItem,
-  stage: string,
-) {
+function matchesPortalPatientStage(item: PortalPatientListItem, stage: string) {
   const normalizedStage = stage.trim().toLowerCase();
   if (!normalizedStage) {
     return true;
@@ -601,8 +594,8 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       icon: "/portal/icons/review icon.png",
       label: "Reviews due",
       tone: "warning",
-      valueLabelPlural: "items due",
-      valueLabelSingular: "item due",
+      valueLabelPlural: " items due",
+      valueLabelSingular: " item due",
     },
     worsening: {
       count: items.filter((item) =>

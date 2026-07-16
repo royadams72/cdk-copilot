@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
+import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
@@ -280,7 +282,7 @@ export default function PortalPatientMembershipPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading membership...</section>;
+    return <PortalLoadingState label="Loading membership..." />;
   }
 
   if (!membership) {
@@ -300,7 +302,7 @@ export default function PortalPatientMembershipPage() {
         headline={`${patientName} membership`}
       />
 
-      {message ? <section className={styles.metaStrip}>{message}</section> : null}
+      {message ? <section className={styles.metaStrip} role="status">{message}</section> : null}
       {error ? (
         <section className={styles.emptyState}>
           <p>{error}</p>
@@ -512,15 +514,12 @@ export default function PortalPatientMembershipPage() {
       </section>
 
       {actionGuard ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setActionGuard(null)}
+        <PortalDialog
+          className={styles.modalWarning}
+          labelledBy="membership-message-dialog-title"
+          onClose={() => setActionGuard(null)}
         >
-          <div
-            className={`${styles.modalCard} ${styles.modalWarning}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>{actionGuard.title}</h3>
+            <h2 className={styles.modalTitle} id="membership-message-dialog-title">{actionGuard.title}</h2>
             <p className={styles.modalCopy}>{actionGuard.message}</p>
             <div className={styles.warningActions}>
               <button
@@ -531,8 +530,7 @@ export default function PortalPatientMembershipPage() {
                 Close
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
     </section>
   );

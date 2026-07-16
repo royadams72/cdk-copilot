@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
+import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -336,7 +338,7 @@ export default function PortalPatientInvitesPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading patient invites...</section>;
+    return <PortalLoadingState label="Loading patient invites..." />;
   }
 
   return (
@@ -345,7 +347,7 @@ export default function PortalPatientInvitesPage() {
         <Link className={styles.inlineLink} href="/portal">
           Back to portal
         </Link>
-        <h2 className={styles.carePlanFormTitle}>Patient invites</h2>
+        <h1 className={styles.carePlanFormTitle}>Patient invites</h1>
         <p className={styles.carePlanFormLead}>
           Review invite status, resend activation codes, revoke access, or extend expiry.
         </p>
@@ -369,6 +371,7 @@ export default function PortalPatientInvitesPage() {
 
           <div className={styles.portalInviteToolbar}>
             <input
+              aria-label="Search invites"
               className={styles.carePlanInput}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search name, email, care team, facility, NHS number"
@@ -376,6 +379,7 @@ export default function PortalPatientInvitesPage() {
               value={query}
             />
             <select
+              aria-label="Filter invites by status"
               className={styles.carePlanInput}
               onChange={(event) =>
                 setStatusFilter(
@@ -415,15 +419,16 @@ export default function PortalPatientInvitesPage() {
         ) : (
           <div className={styles.dataTableWrap}>
             <table className={styles.dataTable}>
+              <caption className={styles.visuallyHidden}>Patient invite queue</caption>
               <thead>
                 <tr>
-                  <th>Patient</th>
-                  <th>Invite</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Expiry</th>
-                  <th>Access</th>
-                  <th>Actions</th>
+                  <th scope="col">Patient</th>
+                  <th scope="col">Invite</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Created</th>
+                  <th scope="col">Expiry</th>
+                  <th scope="col">Access</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -550,15 +555,12 @@ export default function PortalPatientInvitesPage() {
       </section>
 
       {revokeTarget ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setRevokeTarget(null)}
+        <PortalDialog
+          className={styles.modalWarning}
+          labelledBy="revoke-invite-dialog-title"
+          onClose={() => setRevokeTarget(null)}
         >
-          <div
-            className={`${styles.modalCard} ${styles.modalWarning}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Revoke invite</h3>
+            <h2 className={styles.modalTitle} id="revoke-invite-dialog-title">Revoke invite</h2>
             <p className={styles.modalCopy}>
               Revoke the invite for {revokeTarget.firstName} {revokeTarget.lastName}?
               The activation code will stop working.
@@ -580,20 +582,15 @@ export default function PortalPatientInvitesPage() {
                 {actionPending === revokeTarget.id ? "Revoking..." : "Confirm revoke"}
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {actionFeedback ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setActionFeedback(null)}
+        <PortalDialog
+          labelledBy="invite-updated-dialog-title"
+          onClose={() => setActionFeedback(null)}
         >
-          <div
-            className={styles.modalCard}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Invite updated</h3>
+            <h2 className={styles.modalTitle} id="invite-updated-dialog-title">Invite updated</h2>
             <p className={styles.modalCopy}>{actionFeedback.summary}</p>
             {actionFeedback.activationCode ? (
               <div className={styles.portalFormSectionList}>
@@ -612,8 +609,7 @@ export default function PortalPatientInvitesPage() {
                 Close
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
     </section>
   );

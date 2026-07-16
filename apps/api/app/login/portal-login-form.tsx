@@ -121,6 +121,7 @@ export function PortalLoginForm() {
           autoCapitalize="none"
           autoCorrect="off"
           className={styles.control}
+          autoComplete="email"
           name="email"
           onChange={(event) => setEmail(event.target.value)}
           placeholder="name@trust.nhs.uk"
@@ -135,6 +136,7 @@ export function PortalLoginForm() {
           <span className={styles.label}>Six-digit code</span>
           <input
             className={styles.control}
+            autoComplete="one-time-code"
             inputMode="numeric"
             maxLength={6}
             name="code"
@@ -153,8 +155,8 @@ export function PortalLoginForm() {
         </div>
       ) : null}
 
-      {notice ? <p className={styles.notice}>{notice}</p> : null}
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
       <div className={styles.actions}>
         {hasRequestedCode ? (
@@ -166,9 +168,7 @@ export function PortalLoginForm() {
           >
             Resend code
           </button>
-        ) : (
-          <span />
-        )}
+        ) : null}
 
         <button
           className={styles.primaryButton}

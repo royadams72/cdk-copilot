@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
+import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -793,7 +795,7 @@ export default function PortalAddPatientPage() {
   }
 
   if (status === "loading") {
-    return <section className={styles.emptyState}>Loading patient intake...</section>;
+    return <PortalLoadingState label="Loading patient intake..." />;
   }
 
   return (
@@ -802,7 +804,7 @@ export default function PortalAddPatientPage() {
         <Link className={styles.inlineLink} href="/portal">
           Back to portal
         </Link>
-        <h2 className={styles.carePlanFormTitle}>Invite Patients</h2>
+        <h1 className={styles.carePlanFormTitle}>Invite Patients</h1>
         <p className={styles.carePlanFormLead}>
           Add a small batch, validate the rows, then review before invite creation.
         </p>
@@ -837,6 +839,7 @@ export default function PortalAddPatientPage() {
               </select>
             ) : (
               <input
+                aria-invalid={Boolean(careTeamError)}
                 className={styles.carePlanInput}
                 id="patient-care-team"
                 onChange={(event) => setCareTeamId(event.target.value)}
@@ -872,6 +875,7 @@ export default function PortalAddPatientPage() {
               </select>
             ) : (
               <input
+                aria-invalid={Boolean(facilityError)}
                 className={styles.carePlanInput}
                 id="patient-facility"
                 onChange={(event) => setFacilityId(event.target.value)}
@@ -923,6 +927,8 @@ export default function PortalAddPatientPage() {
           {rows.map((row, index) => (
             <div className={styles.portalIntakeRow} key={row.id}>
               <input
+                aria-invalid={Boolean(rowErrors[row.id]?.firstName)}
+                aria-label={`Row ${index + 1} first name`}
                 className={`${styles.carePlanInput} ${rowErrors[row.id]?.firstName ? styles.portalFieldInputError : ""}`}
                 onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "firstName", event.target.value)}
@@ -931,6 +937,8 @@ export default function PortalAddPatientPage() {
                 value={row.firstName}
               />
               <input
+                aria-invalid={Boolean(rowErrors[row.id]?.lastName)}
+                aria-label={`Row ${index + 1} last name`}
                 className={`${styles.carePlanInput} ${rowErrors[row.id]?.lastName ? styles.portalFieldInputError : ""}`}
                 onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "lastName", event.target.value)}
@@ -939,6 +947,9 @@ export default function PortalAddPatientPage() {
                 value={row.lastName}
               />
               <input
+                aria-invalid={Boolean(rowErrors[row.id]?.email)}
+                aria-label={`Row ${index + 1} email address`}
+                autoComplete="email"
                 className={`${styles.carePlanInput} ${rowErrors[row.id]?.email ? styles.portalFieldInputError : ""}`}
                 onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "email", event.target.value)}
@@ -948,6 +959,8 @@ export default function PortalAddPatientPage() {
                 value={row.email}
               />
               <input
+                aria-invalid={Boolean(rowErrors[row.id]?.dateOfBirth)}
+                aria-label={`Row ${index + 1} date of birth`}
                 className={`${styles.carePlanInput} ${rowErrors[row.id]?.dateOfBirth ? styles.portalFieldInputError : ""}`}
                 onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "dateOfBirth", event.target.value)}
@@ -956,6 +969,8 @@ export default function PortalAddPatientPage() {
                 value={row.dateOfBirth}
               />
               <select
+                aria-invalid={Boolean(rowErrors[row.id]?.durationMonths)}
+                aria-label={`Row ${index + 1} access duration`}
                 className={`${styles.carePlanInput} ${rowErrors[row.id]?.durationMonths ? styles.portalFieldInputError : ""}`}
                 onBlur={handleRowBlur}
                 onChange={(event) =>
@@ -971,6 +986,8 @@ export default function PortalAddPatientPage() {
                 ))}
               </select>
               <input
+                aria-invalid={Boolean(rowErrors[row.id]?.nhsNumber)}
+                aria-label={`Row ${index + 1} NHS number`}
                 className={`${styles.carePlanInput} ${rowErrors[row.id]?.nhsNumber ? styles.portalFieldInputError : ""}`}
                 onBlur={handleRowBlur}
                 onChange={(event) => updateRow(row.id, "nhsNumber", event.target.value)}
@@ -979,6 +996,7 @@ export default function PortalAddPatientPage() {
                 value={row.nhsNumber}
               />
               <button
+                aria-label={`Remove row ${index + 1}`}
                 className={styles.buttonSecondarySmall}
                 onClick={() => removeRow(row.id)}
                 type="button"
@@ -1021,12 +1039,8 @@ export default function PortalAddPatientPage() {
       </section>
 
       {error ? (
-        <div className={styles.warningModalBackdrop}>
-          <div
-            className={`${styles.modalCard} ${styles.modalWarning}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Unable to process invite batch</h3>
+        <PortalDialog className={styles.modalWarning} labelledBy="invite-error-dialog-title" onClose={() => setError(null)}>
+            <h2 className={styles.modalTitle} id="invite-error-dialog-title">Unable to process invite batch</h2>
             <p className={styles.modalCopy}>{error}</p>
             <div className={styles.warningActions}>
               <button
@@ -1037,20 +1051,16 @@ export default function PortalAddPatientPage() {
                 Close
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {modalState?.kind === "invalid" ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setModalState(null)}
+        <PortalDialog
+          className={styles.modalWarning}
+          labelledBy="invalid-rows-dialog-title"
+          onClose={() => setModalState(null)}
         >
-          <div
-            className={`${styles.modalCard} ${styles.modalWarning}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Rows need attention</h3>
+            <h2 className={styles.modalTitle} id="invalid-rows-dialog-title">Rows need attention</h2>
             <p className={styles.modalCopy}>
               {modalState.summary} Only the invalid rows are shown below.
             </p>
@@ -1093,20 +1103,15 @@ export default function PortalAddPatientPage() {
                 Back to rows
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {modalState?.kind === "confirm" ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setModalState(null)}
+        <PortalDialog
+          labelledBy="review-batch-dialog-title"
+          onClose={() => setModalState(null)}
         >
-          <div
-            className={styles.modalCard}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Review invite batch</h3>
+            <h2 className={styles.modalTitle} id="review-batch-dialog-title">Review invite batch</h2>
             <p className={styles.modalCopy}>{modalState.summary}</p>
             <div className={styles.portalFormSectionList}>
               {modalState.validRows.map((row) => (
@@ -1148,20 +1153,15 @@ export default function PortalAddPatientPage() {
                 {creatingBatch ? "Creating..." : "Create and send invites"}
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {modalState?.kind === "created" ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setModalState(null)}
+        <PortalDialog
+          labelledBy="batch-processed-dialog-title"
+          onClose={() => setModalState(null)}
         >
-          <div
-            className={styles.modalCard}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Invite batch processed</h3>
+            <h2 className={styles.modalTitle} id="batch-processed-dialog-title">Invite batch processed</h2>
             <p className={styles.modalCopy}>{modalState.summary}</p>
             {modalState.devInvites?.length ? (
               <div className={styles.portalFormSectionList}>
@@ -1205,8 +1205,7 @@ export default function PortalAddPatientPage() {
                 Add more patients
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
     </section>
   );

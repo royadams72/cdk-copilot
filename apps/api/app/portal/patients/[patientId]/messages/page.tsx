@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PortalPatientSubpageHeader } from "@/apps/api/app/portal/components/PortalPatientSubpageHeader";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
@@ -86,7 +87,7 @@ export default function PortalPatientMessagesPage() {
   }
 
   if (status === "loading" || loading) {
-    return <section className={styles.emptyState}>Loading messaging...</section>;
+    return <PortalLoadingState label="Loading messaging..." />;
   }
 
   return (
@@ -96,9 +97,9 @@ export default function PortalPatientMessagesPage() {
         backLabel="Back to patient"
         headline={`Message ${patientName}`}
       />
-      {message ? <section className={styles.metaStrip}>{message}</section> : null}
+      {message ? <section className={styles.metaStrip} role="status">{message}</section> : null}
       {error ? (
-        <section className={styles.emptyState}>
+        <section className={styles.emptyState} role="alert">
           <p>{error}</p>
         </section>
       ) : null}
@@ -106,7 +107,13 @@ export default function PortalPatientMessagesPage() {
         <div className={styles.listHeaderRow}>
           <span className={styles.listHeaderTitle}>Notify patient</span>
         </div>
-        <div className={styles.worseningModalList}>
+        <form
+          className={styles.worseningModalList}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSend();
+          }}
+        >
           <label>
             <span className={styles.listHeaderMeta}>Title</span>
             <input
@@ -136,13 +143,12 @@ export default function PortalPatientMessagesPage() {
             <button
               className={styles.buttonPrimarySmall}
               disabled={sending || !title.trim() || !body.trim()}
-              onClick={() => void handleSend()}
-              type="button"
+              type="submit"
             >
               {sending ? "Sending..." : "Send"}
             </button>
           </div>
-        </div>
+        </form>
       </section>
     </section>
   );

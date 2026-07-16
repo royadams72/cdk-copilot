@@ -31,27 +31,62 @@
 }
 
 .pageFrame {
-  display: grid;
-  grid-template-columns: minmax(24px, 1fr) minmax(980px, 1000px) minmax(
-      24px,
-      1fr
-    );
-}
-
-.sideGutter {
-  background: var(--portal-gutter);
-  border-right: 1px solid var(--portal-accent-dark);
-}
-
-.sideGutter:last-child {
-  border-right: 0;
-  border-left: 1px solid var(--portal-accent-dark);
+  width: min(1000px, calc(100% - 48px));
+  margin-inline: auto;
 }
 
 .centerColumn {
   min-height: calc(100vh - 48px);
   padding: 0;
   background: var(--portal-bg);
+  border-inline: 1px solid var(--portal-accent-dark);
+}
+
+.skipLink {
+  position: fixed;
+  z-index: 1000;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  color: var(--portal-surface);
+  background: var(--portal-accent-dark);
+  transform: translateY(-200%);
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.portalDialog {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: var(--portal-space-3);
+  border: 0;
+  background: transparent;
+}
+
+.portalDialog[open] {
+  display: grid;
+  place-items: center;
+}
+
+.portalDialog::backdrop {
+  background: var(--portal-overlay);
 }
 
 .portalSupportedContent {
@@ -156,7 +191,8 @@
 }
 
 .inputField:focus {
-  outline: none;
+  outline: 3px solid var(--portal-accent-bright);
+  outline-offset: 2px;
 }
 
 .buttonBase {
@@ -164,7 +200,7 @@
   border: 1px solid transparent;
   border-radius: 10px;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 2rem;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -192,12 +228,16 @@
 .inlineSearch .buttonPrimary {
   position: absolute;
   top: 50%;
-  right: 4px;
+  right: 2px;
   min-height: 24px;
   min-width: 80px;
   padding: 0 14px;
   transform: translateY(-50%);
   border-radius: 8px;
+}
+
+.inlineSearch .inputField {
+  min-height: 37px;
 }
 
 .buttonPrimary:hover,
@@ -367,12 +407,6 @@
   cursor: pointer;
 }
 
-.panelSurface {
-  /* margin-top: var(--portal-space-3); */
-  padding-bottom: var(--portal-space-7);
-  border-top: 1px solid var(--portal-line);
-}
-
 .listHeaderRow,
 .patientListRow {
   min-height: 40px;
@@ -393,6 +427,8 @@
   line-height: 24px;
   font-weight: 700;
   background: var(--portal-accent-dark);
+  border-top-left-radius: var(--portal-radius-md);
+  border-top-right-radius: var(--portal-radius-md);
 }
 
 .listHeaderTitle {
@@ -613,15 +649,6 @@
   margin-top: 20px;
 }
 
-.patientBackLinkSpacer {
-  visibility: hidden;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 700;
-  white-space: nowrap;
-  user-select: none;
-}
-
 .patientHeadlineIcon {
   width: 44px;
   height: 44px;
@@ -665,6 +692,7 @@
 }
 
 .patientHeadlineText {
+  margin: 0;
   color: var(--portal-text);
   font-size: 22px;
   line-height: 30px;
@@ -984,7 +1012,7 @@
 }
 
 .carePlanStatusInline[data-tone="warning"] {
-  color: var(--portal-warn);
+  color: var(--portal-warn-text);
 }
 
 .carePlanStatusInline[data-tone="danger"] {
@@ -1129,6 +1157,10 @@
 }
 
 .carePlanFormGroup {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
   display: grid;
   gap: var(--portal-space-2);
 }
@@ -1647,7 +1679,7 @@
 .portalStatusPill_pending_review,
 .portalStatusPill_expired {
   border-color: var(--portal-warn);
-  color: var(--portal-warn);
+  color: var(--portal-warn-text);
   background: color-mix(in srgb, var(--portal-warn) 10%, white);
 }
 
@@ -1854,18 +1886,49 @@
   color: var(--portal-text);
 }
 
+.loadingState {
+  display: grid;
+  justify-items: center;
+  gap: var(--portal-space-3);
+  padding: calc(var(--portal-space-6) * 1.5) var(--portal-space-6);
+  color: var(--portal-text);
+  text-align: center;
+}
+
+.loadingStateIconWrap {
+  width: 108px;
+  height: 108px;
+  display: grid;
+  place-items: center;
+}
+
+.loadingStateIcon {
+  width: 86px;
+  height: 86px;
+  animation: portalLoaderSpin 1.2s linear infinite;
+}
+
+.loadingStateLabel {
+  margin: 0;
+  color: var(--portal-text);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+@keyframes portalLoaderSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .inlineLink {
   color: var(--portal-accent-dark);
   font-weight: 700;
-}
-
-.warningModalBackdrop {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: var(--portal-space-4);
-  background: var(--portal-overlay);
 }
 
 .modalCard {
@@ -1904,7 +1967,7 @@
 
 @media (max-width: 1240px) {
   .pageFrame {
-    grid-template-columns: 24px minmax(0, 1fr) 24px;
+    width: calc(100% - 48px);
   }
 
   .orgLine {
@@ -1976,11 +2039,11 @@
   }
 
   .pageFrame {
-    grid-template-columns: 0 1fr 0;
+    width: 100%;
   }
 
-  .sideGutter {
-    display: none;
+  .centerColumn {
+    border-inline: 0;
   }
 
   .brand {
@@ -2024,10 +2087,6 @@
 
   .patientHeadlineContainer {
     grid-template-columns: 1fr;
-  }
-
-  .patientBackLinkSpacer {
-    display: none;
   }
 
   .patientHeadlineRow {

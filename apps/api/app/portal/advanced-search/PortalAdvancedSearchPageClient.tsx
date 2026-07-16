@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatPatientLifecycleStatusLabel } from "@/apps/api/lib/portal/patientLifecycle";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -194,7 +195,7 @@ export default function PortalAdvancedSearchPageClient() {
   }
 
   if (status === "loading") {
-    return <section className={styles.emptyState}>Loading advanced search...</section>;
+    return <PortalLoadingState label="Loading advanced search..." />;
   }
 
   return (
@@ -203,13 +204,19 @@ export default function PortalAdvancedSearchPageClient() {
         <Link className={styles.inlineLink} href="/portal">
           Back to portal
         </Link>
-        <h2 className={styles.carePlanFormTitle}>Advanced Search</h2>
+        <h1 className={styles.carePlanFormTitle}>Advanced Search</h1>
         <p className={styles.carePlanFormLead}>
           Search by patient name, email, date of birth, stage, team, facility, or current follow-up state.
         </p>
       </div>
 
-      <section className={styles.portalFormShellWide}>
+      <form
+        className={styles.portalFormShellWide}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitSearch();
+        }}
+      >
         <div className={styles.portalFormGrid}>
           <div className={styles.carePlanFormGroup}>
             <label className={styles.carePlanFieldLabel} htmlFor="advanced-query">
@@ -331,13 +338,12 @@ export default function PortalAdvancedSearchPageClient() {
           </button>
           <button
             className={styles.buttonPrimarySmall}
-            onClick={submitSearch}
-            type="button"
+            type="submit"
           >
             Search
           </button>
         </div>
-      </section>
+      </form>
 
       <section className={styles.portalResultCard}>
         <div className={styles.portalResultHeader}>
@@ -348,7 +354,7 @@ export default function PortalAdvancedSearchPageClient() {
         </div>
 
         {loading ? (
-          <p className={styles.dataScreenCaption}>Loading patients...</p>
+          <PortalLoadingState label="Loading patients..." />
         ) : error ? (
           <p className={styles.dataScreenCaption}>{error}</p>
         ) : patients.length ? (

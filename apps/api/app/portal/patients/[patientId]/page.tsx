@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
+import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type {
@@ -119,11 +120,7 @@ export default function PortalPatientDetailPage() {
   }, [params.patientId, jwt, status]);
 
   if (status === "loading" || loading) {
-    return (
-      <section className={styles.emptyState}>
-        Loading patient dashboard...
-      </section>
-    );
+    return <PortalLoadingState label="Loading patient dashboard..." />;
   }
 
   if (!patient || error) {
