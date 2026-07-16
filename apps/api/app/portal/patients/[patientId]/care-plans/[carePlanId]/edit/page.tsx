@@ -385,7 +385,13 @@ export default function PortalPatientEditCarePlanPage() {
         </p>
       </div>
 
-      <section className={styles.formShell}>
+      <form
+        className={styles.formShell}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submitForm();
+        }}
+      >
         <div className={styles.carePlanFormGroup}>
           <label className={styles.carePlanFieldLabel}>
             Associated diagnoses
@@ -596,8 +602,8 @@ export default function PortalPatientEditCarePlanPage() {
           </select>
         </div>
 
-        <div className={styles.carePlanFormGroup}>
-          <label className={styles.carePlanFieldLabel}>Owner</label>
+        <fieldset className={styles.carePlanFormGroup}>
+          <legend className={styles.carePlanFieldLabel}>Owner</legend>
           <p className={styles.dataScreenCaption}>
             Who will review this? You can select multiple.
           </p>
@@ -613,7 +619,7 @@ export default function PortalPatientEditCarePlanPage() {
               </label>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         <div className={styles.carePlanFormGroup}>
           <label
@@ -657,8 +663,7 @@ export default function PortalPatientEditCarePlanPage() {
               !measureUsing.trim() ||
               ownerLabels.length === 0
             }
-            onClick={() => void submitForm()}
-            type="button"
+            type="submit"
           >
             {submitting
               ? "Saving..."
@@ -667,7 +672,7 @@ export default function PortalPatientEditCarePlanPage() {
                 : "Continue to draft"}
           </button>
         </div>
-      </section>
+      </form>
     </section>
   );
 }

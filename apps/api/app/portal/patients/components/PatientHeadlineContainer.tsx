@@ -32,7 +32,7 @@ export default function PatientHeadlineContainer({
         </span>
         <div className={styles.patientHeadlineContent}>
           <div className={styles.patientHeadlineRow}>
-            <div className={styles.patientHeadlineText}>{headline}</div>
+            <h1 className={styles.patientHeadlineText}>{headline}</h1>
           </div>
           {subheadline ? (
             <p className={styles.patientHeadlineMeta}>
@@ -49,9 +49,6 @@ export default function PatientHeadlineContainer({
           ) : null}
         </div>
       </div>
-      <span aria-hidden="true" className={styles.patientBackLinkSpacer}>
-        {backLabel}
-      </span>
     </div>
   );
 }

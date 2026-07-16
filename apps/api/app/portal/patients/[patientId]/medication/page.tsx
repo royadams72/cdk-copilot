@@ -155,15 +155,16 @@ export default function PortalPatientMedicationPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Current medications</caption>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Dose</th>
-                <th>Frequency</th>
-                <th>Status</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Reason / instructions</th>
+                <th scope="col">Name</th>
+                <th scope="col">Dose</th>
+                <th scope="col">Frequency</th>
+                <th scope="col">Status</th>
+                <th scope="col">Start</th>
+                <th scope="col">End</th>
+                <th scope="col">Reason / instructions</th>
               </tr>
             </thead>
             <tbody>
@@ -220,12 +221,13 @@ export default function PortalPatientMedicationPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Medication change history</caption>
             <thead>
               <tr>
-                <th>When</th>
-                <th>Change</th>
-                <th>By</th>
-                <th>Reason</th>
+                <th scope="col">When</th>
+                <th scope="col">Change</th>
+                <th scope="col">By</th>
+                <th scope="col">Reason</th>
               </tr>
             </thead>
             <tbody>

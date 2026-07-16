@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
+import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { formatDisplayDate } from "@/apps/api/lib/format/date";
 import type { PortalPatientCarePlanDetailData } from "@/apps/api/lib/portal/patient-shared";
@@ -371,12 +372,13 @@ export default function PortalPatientCarePlanDetailPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Care plan summary</caption>
             <thead>
               <tr>
-                <th>Associated diagnoses</th>
-                <th>Status</th>
-                <th>Review in</th>
-                <th>Activated</th>
+                <th scope="col">Associated diagnoses</th>
+                <th scope="col">Status</th>
+                <th scope="col">Review in</th>
+                <th scope="col">Activated</th>
               </tr>
             </thead>
             <tbody>
@@ -427,11 +429,12 @@ export default function PortalPatientCarePlanDetailPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Care plan participants</caption>
             <thead>
               <tr>
-                <th>Created by</th>
-                <th>Updated by</th>
-                <th>Owners</th>
+                <th scope="col">Created by</th>
+                <th scope="col">Updated by</th>
+                <th scope="col">Owners</th>
               </tr>
             </thead>
             <tbody>
@@ -466,10 +469,11 @@ export default function PortalPatientCarePlanDetailPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Care plan goals</caption>
             <thead>
               <tr>
-                <th>Goal</th>
-                <th>Target summary</th>
+                <th scope="col">Goal</th>
+                <th scope="col">Target summary</th>
               </tr>
             </thead>
             <tbody>
@@ -503,12 +507,13 @@ export default function PortalPatientCarePlanDetailPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Care plan tasks</caption>
             <thead>
               <tr>
-                <th>Task</th>
-                <th>Frequency</th>
-                <th>Status</th>
-                <th>Instructions</th>
+                <th scope="col">Task</th>
+                <th scope="col">Frequency</th>
+                <th scope="col">Status</th>
+                <th scope="col">Instructions</th>
               </tr>
             </thead>
             <tbody>
@@ -544,12 +549,13 @@ export default function PortalPatientCarePlanDetailPage() {
         </div>
         <div className={styles.dataTableWrap}>
           <table className={styles.dataTable}>
+            <caption className={styles.visuallyHidden}>Care plan activity</caption>
             <thead>
               <tr>
-                <th>Event</th>
-                <th>When</th>
-                <th>By</th>
-                <th>Note</th>
+                <th scope="col">Event</th>
+                <th scope="col">When</th>
+                <th scope="col">By</th>
+                <th scope="col">Note</th>
               </tr>
             </thead>
             <tbody>
@@ -573,19 +579,16 @@ export default function PortalPatientCarePlanDetailPage() {
       </section>
 
       {reviewModalOpen ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => {
+        <PortalDialog
+          className={styles.modalWarning}
+          labelledBy="review-care-plan-dialog-title"
+          onClose={() => {
             if (!submitting) {
               setReviewModalOpen(false);
             }
           }}
         >
-          <div
-            className={`${styles.modalCard} ${styles.modalWarning}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Review care plan</h3>
+            <h2 className={styles.modalTitle} id="review-care-plan-dialog-title">Review care plan</h2>
             <p className={styles.modalCopy}>
               Record the outcome and a short note. This keeps the plan active while
               resetting the review due date.
@@ -651,8 +654,7 @@ export default function PortalPatientCarePlanDetailPage() {
                 {submitting ? "Saving..." : "Save review"}
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
     </section>
   );

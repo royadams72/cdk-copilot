@@ -10,7 +10,7 @@ type Props = {
 
 export function PortalLoadingState({ label }: Props) {
   return (
-    <section className={styles.loadingState}>
+    <section aria-live="polite" aria-busy="true" className={styles.loadingState} role="status">
       <div className={styles.loadingStateIconWrap} aria-hidden="true">
         <Image
           alt=""

@@ -8,6 +8,9 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   return (
     <PortalSessionProvider>
       <div className={styles.portalShell}>
+        <a className={styles.skipLink} href="#portal-main">
+          Skip to main content
+        </a>
         <header className={styles.topBar}>
           <div className={styles.topBarInner}>
             <strong className={styles.brand}>CKD Copilot</strong>
@@ -20,28 +23,26 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
           </Suspense>
         </header>
 
-        <section className={styles.unsupportedViewportNotice}>
-          <div className={styles.unsupportedViewportCard}>
-            <h2 className={styles.unsupportedViewportTitle}>
+        <main id="portal-main" tabIndex={-1}>
+          <section className={styles.unsupportedViewportNotice}>
+            <div className={styles.unsupportedViewportCard}>
+            <h1 className={styles.unsupportedViewportTitle}>
               Desktop or tablet required
-            </h2>
+            </h1>
             <p className={styles.unsupportedViewportCopy}>
               The clinical portal is currently designed for desktop and tablet
               screen sizes. Please use a larger device or widen this window to
               continue.
             </p>
-          </div>
-        </section>
-
-        <div className={styles.portalSupportedContent}>
-          <div className={styles.pageFrame}>
-            <div aria-hidden="true" className={styles.sideGutter} />
-            <div className={styles.centerColumn}>
-              {children}
             </div>
-            <div aria-hidden="true" className={styles.sideGutter} />
+          </section>
+
+          <div className={styles.portalSupportedContent}>
+            <div className={styles.pageFrame}>
+              <div className={styles.centerColumn}>{children}</div>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </PortalSessionProvider>
   );

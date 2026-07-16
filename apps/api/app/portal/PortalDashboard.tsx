@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
+import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -527,6 +528,7 @@ function PortalDashboardContent() {
 
   return (
     <div className={styles.detailLayout}>
+      <h1 className={styles.visuallyHidden}>Patient dashboard</h1>
       <section className={styles.statGrid}>
         {statCards.map((card) => (
           <article
@@ -882,15 +884,12 @@ function PortalDashboardContent() {
       </section>
 
       {detailsPatient ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setDetailsPatient(null)}
+        <PortalDialog
+          className={styles.worseningModalCard}
+          labelledBy="patient-details-dialog-title"
+          onClose={() => setDetailsPatient(null)}
         >
-          <div
-            className={`${styles.modalCard} ${styles.worseningModalCard}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>{detailsPatient.name}</h3>
+            <h2 className={styles.modalTitle} id="patient-details-dialog-title">{detailsPatient.name}</h2>
             <p className={styles.modalCopy}>
               {detailsPatient.dateOfBirth ?? "DOB missing"}
               {detailsPatient.stage ? ` · Stage ${detailsPatient.stage}` : ""}
@@ -948,24 +947,19 @@ function PortalDashboardContent() {
                 Open patient
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {reviewComposer ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => {
+        <PortalDialog
+          labelledBy="review-dialog-title"
+          onClose={() => {
             if (!actionPending) {
               setReviewComposer(null);
             }
           }}
         >
-          <div
-            className={styles.modalCard}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>{reviewComposer.title}</h3>
+            <h2 className={styles.modalTitle} id="review-dialog-title">{reviewComposer.title}</h2>
             <p className={styles.modalCopy}>
               Add a short note so the reviewed history shows why this follow-up
               item was cleared.
@@ -1012,20 +1006,15 @@ function PortalDashboardContent() {
                 {actionPending ? "Saving..." : "Mark as reviewed"}
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {notifyComposerOpen ? (
-        <div
-          className={styles.warningModalBackdrop}
-          onClick={() => setNotifyComposerOpen(false)}
+        <PortalDialog
+          labelledBy="notify-dialog-title"
+          onClose={() => setNotifyComposerOpen(false)}
         >
-          <div
-            className={styles.modalCard}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className={styles.modalTitle}>Notify patient(s)</h3>
+            <h2 className={styles.modalTitle} id="notify-dialog-title">Notify patient(s)</h2>
             <p className={styles.modalCopy}>
               Send a custom push notification to {selectedPatientIds.length}{" "}
               selected
@@ -1070,14 +1059,15 @@ function PortalDashboardContent() {
                 Send
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
 
       {warningOpen && isLeaderTab ? (
-        <div className={styles.warningModalBackdrop}>
-          <div className={`${styles.modalCard} ${styles.modalWarning}`}>
-            <h3 className={styles.modalTitle}>Session warning</h3>
+        <PortalDialog
+          className={styles.modalWarning}
+          labelledBy="session-warning-dialog-title"
+        >
+            <h2 className={styles.modalTitle} id="session-warning-dialog-title">Session warning</h2>
             <p className={styles.modalCopy}>
               No activity has been detected for 18 minutes. Interact with the
               portal to keep the session alive.
@@ -1098,8 +1088,7 @@ function PortalDashboardContent() {
                 Log out now
               </button>
             </div>
-          </div>
-        </div>
+        </PortalDialog>
       ) : null}
     </div>
   );

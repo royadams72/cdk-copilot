@@ -97,9 +97,9 @@ export default function PortalPatientMessagesPage() {
         backLabel="Back to patient"
         headline={`Message ${patientName}`}
       />
-      {message ? <section className={styles.metaStrip}>{message}</section> : null}
+      {message ? <section className={styles.metaStrip} role="status">{message}</section> : null}
       {error ? (
-        <section className={styles.emptyState}>
+        <section className={styles.emptyState} role="alert">
           <p>{error}</p>
         </section>
       ) : null}
@@ -107,7 +107,13 @@ export default function PortalPatientMessagesPage() {
         <div className={styles.listHeaderRow}>
           <span className={styles.listHeaderTitle}>Notify patient</span>
         </div>
-        <div className={styles.worseningModalList}>
+        <form
+          className={styles.worseningModalList}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSend();
+          }}
+        >
           <label>
             <span className={styles.listHeaderMeta}>Title</span>
             <input
@@ -137,13 +143,12 @@ export default function PortalPatientMessagesPage() {
             <button
               className={styles.buttonPrimarySmall}
               disabled={sending || !title.trim() || !body.trim()}
-              onClick={() => void handleSend()}
-              type="button"
+              type="submit"
             >
               {sending ? "Sending..." : "Send"}
             </button>
           </div>
-        </div>
+        </form>
       </section>
     </section>
   );

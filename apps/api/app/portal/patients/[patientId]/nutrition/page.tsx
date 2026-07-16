@@ -342,6 +342,7 @@ export default function PortalPatientNutritionPage() {
             <>
               <div className={styles.dataTableWrap}>
                 <table className={styles.dataTable}>
+                  <caption className={styles.visuallyHidden}>{data.tableTitle}</caption>
                   <thead>
                     {table.getHeaderGroups().map((headerGroup) => (
                       <tr key={headerGroup.id}>

@@ -118,6 +118,10 @@
   margin-top: var(--portal-space-2);
 }
 
+.actions > :last-child {
+  margin-left: auto;
+}
+
 .buttonBase {
   min-height: 40px;
   padding: 0 18px;
