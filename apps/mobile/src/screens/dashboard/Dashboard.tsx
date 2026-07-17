@@ -79,7 +79,6 @@ export default function Dashboard() {
     missingHealthPermissions,
     openAppSettings,
     openHealthAccessSettings,
-    percentOfGoal,
     requestAccess,
     requestBackgroundReadAccess,
     status: stepStatus,
@@ -182,7 +181,7 @@ export default function Dashboard() {
           id: "steps",
           actual: stepsToday,
           label: "Steps",
-          percent: percentOfGoal,
+          percent: stepsToday === null ? null : stepsToday / 10000,
           target: 10000,
           unit: "steps",
         },
@@ -210,7 +209,7 @@ export default function Dashboard() {
         },
       ];
     },
-    [exerciseHistory?.points, percentOfGoal, stepSummary?.caloriesKcal, stepsToday],
+    [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday],
   );
 
   useEffect(() => {

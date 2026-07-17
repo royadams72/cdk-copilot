@@ -424,7 +424,7 @@ export function summarizeNutrition(
       | number
       | null;
     const percent =
-      targetValue && targetValue > 0 ? clamp(actual / targetValue, 0, 2) : null;
+      targetValue && targetValue > 0 ? Math.max(actual / targetValue, 0) : null;
 
     return {
       id: metric.id,
@@ -724,10 +724,6 @@ function roundNutrientTotals(
 
 export function startOfDayUtc(date: Date) {
   return startOfDay(date);
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
 }
 
 function round(value: number, decimals = 1) {
