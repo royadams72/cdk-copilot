@@ -32,6 +32,7 @@ export type NutrientKey =
   | "sodiumMg";
 
 export type NutritionMetricKey =
+  | "caloriesKcal"
   | "proteinG"
   | "phosphorusMg"
   | "potassiumMg"

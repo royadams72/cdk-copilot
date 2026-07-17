@@ -674,18 +674,8 @@ export default function FitnessMetricTrend() {
         kind !== "steps" ||
         !provider ||
         !selectedDateKey ||
-        !selectedStepSummary ||
-        !isSelectedToday
+        !selectedStepSummary
       ) {
-        setHealthConnectStepSummary(null);
-        return;
-      }
-
-      const needsFallback =
-        selectedStepSummary.distanceMeters === null ||
-        selectedStepSummary.averageSpeedKph === null ||
-        selectedStepSummary.caloriesKcal === null;
-      if (!needsFallback) {
         setHealthConnectStepSummary(null);
         return;
       }
@@ -702,7 +692,7 @@ export default function FitnessMetricTrend() {
           setHealthConnectStepSummary(result ?? null);
         }
       } catch (error) {
-        console.log("Health Connect historical step summary failed", {
+        console.log("Health provider step summary failed", {
           date: selectedDateKey,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -717,7 +707,7 @@ export default function FitnessMetricTrend() {
     return () => {
       cancelled = true;
     };
-  }, [isSelectedToday, kind, selectedDateKey, selectedStepSummary]);
+  }, [kind, selectedDateKey, selectedStepSummary]);
 
   const resolvedStepSummary = useMemo(() => {
     if (kind !== "steps" || !selectedStepSummary) {
@@ -726,19 +716,19 @@ export default function FitnessMetricTrend() {
 
     return {
       averageSpeedKph:
-        selectedStepSummary.averageSpeedKph ??
         healthConnectStepSummary?.averageSpeedKph ??
+        selectedStepSummary.averageSpeedKph ??
         null,
       caloriesKcal:
-        selectedStepSummary.caloriesKcal ??
         healthConnectStepSummary?.caloriesKcal ??
+        selectedStepSummary.caloriesKcal ??
         null,
       distanceMeters:
-        selectedStepSummary.distanceMeters ??
         healthConnectStepSummary?.distanceMeters ??
+        selectedStepSummary.distanceMeters ??
         null,
       steps:
-        selectedStepSummary.steps ?? healthConnectStepSummary?.steps ?? null,
+        healthConnectStepSummary?.steps ?? selectedStepSummary.steps ?? null,
     } satisfies StepActivitySummary;
   }, [healthConnectStepSummary, kind, selectedStepSummary]);
 

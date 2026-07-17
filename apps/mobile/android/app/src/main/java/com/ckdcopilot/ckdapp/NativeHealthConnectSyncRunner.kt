@@ -13,6 +13,8 @@ import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.metadata.DataOrigin
 import androidx.health.connect.client.request.AggregateRequest
@@ -281,15 +283,40 @@ class NativeHealthConnectSyncRunner(
     client: HealthConnectClient,
     timeRange: TimeRangeFilter,
     selectedOrigin: String?,
-  ): Double? = runCatching {
-    client.aggregate(
-      AggregateRequest(
-        metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-        timeRangeFilter = timeRange,
-        dataOriginFilter = selectedOrigin?.let { setOf(DataOrigin(it)) } ?: emptySet(),
+  ): Double? {
+    suspend fun readActive(origin: String?): Double? = runCatching {
+      client.aggregate(
+        AggregateRequest(
+          metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+          timeRangeFilter = timeRange,
+          dataOriginFilter = origin?.let { setOf(DataOrigin(it)) } ?: emptySet(),
+        )
+      )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
+    }.getOrNull()?.takeIf { it > 0.0 }
+
+    val active = readActive(selectedOrigin)
+      ?: if (selectedOrigin != null) readActive(null) else null
+    if (active != null) return active
+
+    suspend fun readDerived(origin: String?): Double? = runCatching {
+      val result = client.aggregate(
+        AggregateRequest(
+          metrics = setOf(
+            TotalCaloriesBurnedRecord.ENERGY_TOTAL,
+            BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL,
+          ),
+          timeRangeFilter = timeRange,
+          dataOriginFilter = origin?.let { setOf(DataOrigin(it)) } ?: emptySet(),
+        )
       )
-    )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
-  }.getOrNull()
+      val total = result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+      val basal = result[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories
+      if (total != null && basal != null) (total - basal).coerceAtLeast(0.0) else null
+    }.getOrNull()?.takeIf { it > 0.0 }
+
+    return readDerived(selectedOrigin)
+      ?: if (selectedOrigin != null) readDerived(null) else null
+  }
 
   private suspend fun readAverageSpeed(
     client: HealthConnectClient,

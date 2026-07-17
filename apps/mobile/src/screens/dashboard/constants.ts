@@ -1,6 +1,7 @@
 import { NutritionMetricKey } from "./types";
 
 export const STACKED_COLORS = [
+  "#10b981",
   "#a855f7",
   "#f97316",
   "#38bdf8",
@@ -50,38 +51,45 @@ export const NUTRITION_METRICS: Array<{
   color: string;
 }> = [
   {
+    id: "calories",
+    key: "caloriesKcal",
+    label: "Calories",
+    unit: "kcal",
+    color: STACKED_COLORS[0],
+  },
+  {
     id: "protein",
     key: "proteinG",
     label: "Protein",
     unit: "g",
-    color: STACKED_COLORS[0],
+    color: STACKED_COLORS[1],
   },
   {
     id: "phosphorus",
     key: "phosphorusMg",
     label: "Phosphorus",
     unit: "mg",
-    color: STACKED_COLORS[1],
+    color: STACKED_COLORS[2],
   },
   {
     id: "potassium",
     key: "potassiumMg",
     label: "Potassium",
     unit: "mg",
-    color: STACKED_COLORS[2],
+    color: STACKED_COLORS[3],
   },
   {
     id: "sodium",
     key: "sodiumMg",
     label: "Sodium",
     unit: "mg",
-    color: STACKED_COLORS[3],
+    color: STACKED_COLORS[4],
   },
   {
     id: "phosphorus-protein-ratio",
     key: "phosphorus_protein_ratio",
     label: "Phosphorus/Protein ratio",
     unit: "mg/g",
-    color: STACKED_COLORS[4],
+    color: STACKED_COLORS[5],
   },
 ];

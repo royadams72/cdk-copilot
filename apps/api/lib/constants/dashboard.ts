@@ -27,6 +27,13 @@ export const TRACKED_LABS = [
 ] as const;
 
 export const RADIAL_METRICS = [
+  {
+    id: "calories",
+    key: "caloriesKcal",
+    label: "Calories",
+    precision: 0,
+    unit: "kcal",
+  },
   { id: "protein", key: "proteinG", label: "Protein", precision: 0, unit: "g" },
   {
     id: "phosphorus",

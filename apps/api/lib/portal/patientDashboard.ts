@@ -485,7 +485,7 @@ export function buildPortalPatientDashboard(input: {
       "Labs",
       "Care Plans",
       "Worsening Trends",
-      "Renal Targets",
+      "Health Targets",
       "Medication Profile",
       "Renal Nutrition Profile",
       "Diagnoses",

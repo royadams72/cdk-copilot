@@ -117,19 +117,6 @@ function dayTimeRange(date: Date) {
   };
 }
 
-function hourTimeRange(dayStart: Date, hour: number) {
-  const start = new Date(dayStart);
-  start.setHours(hour, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(hour + 1, 0, 0, 0);
-
-  return {
-    endTime: new Date(end.getTime() - 1).toISOString(),
-    operator: "between" as const,
-    startTime: start.toISOString(),
-  };
-}
-
 async function readStepTotalsByOrigin(
   healthConnect: typeof import("react-native-health-connect"),
   timeRangeFilter: {
@@ -219,7 +206,11 @@ async function readStepAggregateSummary(
     : [undefined];
 
   const readAggregateMetric = async (
-    recordType: "Distance" | "TotalCaloriesBurned",
+    recordType:
+      | "ActiveCaloriesBurned"
+      | "BasalMetabolicRate"
+      | "Distance"
+      | "TotalCaloriesBurned",
     pickValue: (result: AggregateRecordResult) => number | null,
   ) => {
     if (!hasGrantedPermission(grantedPermissions, recordType)) {
@@ -320,7 +311,7 @@ async function readStepAggregateSummary(
     }
   };
 
-  const [distanceMeters, caloriesKcal, speed] = await Promise.all([
+  const [distanceMeters, activeCaloriesKcal, speed] = await Promise.all([
     readAggregateMetric(
       "Distance",
       (result) =>
@@ -328,13 +319,40 @@ async function readStepAggregateSummary(
         null,
     ),
     readAggregateMetric(
-      "TotalCaloriesBurned",
-      (result) =>
-        (result as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL
-          ?.inKilocalories ?? null,
+      "ActiveCaloriesBurned",
+      (result) => {
+        const value = (
+          result as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }
+        ).ACTIVE_CALORIES_TOTAL?.inKilocalories;
+        // A selected step origin can legitimately have no active-calorie
+        // records. Treat zero as unavailable so the next aggregate attempt
+        // can check all permitted origins.
+        return typeof value === "number" && value > 0 ? value : null;
+      },
     ),
     readAverageSpeed(),
   ]);
+
+  let caloriesKcal = activeCaloriesKcal;
+  if (caloriesKcal === null) {
+    const [totalCaloriesKcal, basalCaloriesKcal] = await Promise.all([
+      readAggregateMetric(
+        "TotalCaloriesBurned",
+        (result) =>
+          (result as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL
+            ?.inKilocalories ?? null,
+      ),
+      readAggregateMetric(
+        "BasalMetabolicRate",
+        (result) =>
+          (result as { BASAL_CALORIES_TOTAL?: { inKilocalories?: number } })
+            .BASAL_CALORIES_TOTAL?.inKilocalories ?? null,
+      ),
+    ]);
+    if (totalCaloriesKcal !== null && basalCaloriesKcal !== null) {
+      caloriesKcal = Math.max(0, totalCaloriesKcal - basalCaloriesKcal);
+    }
+  }
 
   return {
     averageSpeedKph: speed.value,
@@ -507,11 +525,27 @@ function hasFlatHourlyDistribution(values: number[]) {
   return nonZero.every((value) => value === nonZero[0]);
 }
 
-async function readHourlyStepAggregateFallback(
+async function readHourlyStepRecordsFallback(
   healthConnect: typeof import("react-native-health-connect"),
   date: Date,
-  selectedDataOrigin: string | null,
+  timeRangeFilter: {
+    endTime: string;
+    operator: "between";
+    startTime: string;
+  },
+  targetTotal: number,
 ) {
+  const result = await healthConnect.readRecords("Steps", {
+    ascendingOrder: true,
+    pageSize: 500,
+    timeRangeFilter,
+  });
+  const records = result.records as {
+    count?: number;
+    endTime: string;
+    metadata?: { dataOrigin?: string };
+    startTime: string;
+  }[];
   const dayStart = new Date(
     date.getFullYear(),
     date.getMonth(),
@@ -521,15 +555,71 @@ async function readHourlyStepAggregateFallback(
     0,
     0,
   );
-  const hourly = Array.from({ length: 24 }, () => 0);
+  const nextDayStart = new Date(dayStart);
+  nextDayStart.setDate(nextDayStart.getDate() + 1);
+  const byOrigin = new Map<string, typeof records>();
 
-  for (let hour = 0; hour < 24; hour += 1) {
-    const aggregate = await healthConnect.aggregateRecord({
-      dataOriginFilter: selectedDataOrigin ? [selectedDataOrigin] : undefined,
-      recordType: "Steps",
-      timeRangeFilter: hourTimeRange(dayStart, hour),
-    });
-    hourly[hour] = Math.max(0, Math.round(aggregate.COUNT_TOTAL ?? 0));
+  for (const record of records) {
+    const origin = record.metadata?.dataOrigin?.trim() || "unknown";
+    const bucket = byOrigin.get(origin) ?? [];
+    bucket.push(record);
+    byOrigin.set(origin, bucket);
+  }
+
+  const candidates = Array.from(byOrigin.entries())
+    .map(([origin, originRecords]) => {
+      const hourly = bucketHourlyStepValues(
+        originRecords,
+        dayStart,
+        nextDayStart.getTime(),
+      );
+      return {
+        hourly,
+        nonZeroHours: hourly.filter((value) => value > 0).length,
+        origin,
+        total: hourly.reduce((sum, value) => sum + value, 0),
+      };
+    })
+    .filter((candidate) => candidate.total > 0)
+    .sort(
+      (left, right) =>
+        right.nonZeroHours - left.nonZeroHours || right.total - left.total,
+    );
+  const best = candidates[0];
+  if (!best) return null;
+
+  const scale = targetTotal > 0 ? targetTotal / best.total : 1;
+  const hourly = clampTodayFutureHours(
+    date,
+    best.hourly.map((value) => Math.max(0, Math.round(value * scale))),
+  );
+  console.log("HC hourly steps v7 record fallback", {
+    origin: best.origin,
+    recordTotal: best.total,
+    targetTotal,
+  });
+  return hourly;
+}
+
+async function readHourlyStepAggregateFallback(
+  healthConnect: typeof import("react-native-health-connect"),
+  date: Date,
+  selectedDataOrigin: string | null,
+) {
+  const hourly = Array.from({ length: 24 }, () => 0);
+  const groups = await healthConnect.aggregateGroupByDuration({
+    dataOriginFilter: selectedDataOrigin ? [selectedDataOrigin] : undefined,
+    recordType: "Steps",
+    timeRangeFilter: dayTimeRange(date),
+    timeRangeSlicer: { duration: "HOURS", length: 1 },
+  });
+
+  for (const group of groups) {
+    const start = new Date(group.startTime);
+    if (Number.isNaN(start.getTime())) continue;
+    const hour = start.getHours();
+    if (hour < 0 || hour > 23) continue;
+    hourly[hour] += Math.max(0, Math.round(group.result.COUNT_TOTAL ?? 0));
   }
 
   return hourly;
@@ -622,7 +712,12 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
         date: date.toISOString(),
         hourly,
       });
-      return null;
+      return readHourlyStepRecordsFallback(
+        healthConnect,
+        date,
+        dayRange,
+        selected.total,
+      );
     }
 
     return hourly;
@@ -631,7 +726,20 @@ export async function readHealthConnectHourlyStepsForDate(date: Date) {
       date: date.toISOString(),
       error: toErrorMessage(error),
     });
-    return null;
+    try {
+      return await readHourlyStepRecordsFallback(
+        healthConnect,
+        date,
+        dayRange,
+        selected.total,
+      );
+    } catch (recordsError) {
+      console.log("HC hourly steps record fallback failed v7", {
+        date: date.toISOString(),
+        error: toErrorMessage(recordsError),
+      });
+      return null;
+    }
   }
 }
 

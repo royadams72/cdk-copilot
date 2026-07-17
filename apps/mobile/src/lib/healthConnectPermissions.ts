@@ -11,6 +11,8 @@ export const ANDROID_HEALTH_BACKGROUND_READ_PERMISSION = {
 export const ANDROID_STEP_AGGREGATE_PERMISSIONS = [
   { accessType: "read", recordType: "Distance" },
   { accessType: "read", recordType: "Speed" },
+  { accessType: "read", recordType: "ActiveCaloriesBurned" },
+  { accessType: "read", recordType: "BasalMetabolicRate" },
   { accessType: "read", recordType: "TotalCaloriesBurned" },
 ] as const;
 

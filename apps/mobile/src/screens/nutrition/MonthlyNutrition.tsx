@@ -350,7 +350,9 @@ function MonthlyFoodRow({
 }
 
 function formatMetricValue(value: number, unit: string) {
-  return `${Math.round(value * 10) / 10} ${unit}`;
+  return `${(Math.round(value * 10) / 10).toLocaleString("en-GB", {
+    maximumFractionDigits: 1,
+  })} ${unit}`;
 }
 
 function formatTrend(trend: MonthlyNutritionFoodRow["trend"]) {
