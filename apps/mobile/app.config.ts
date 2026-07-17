@@ -57,6 +57,8 @@ const config: ExpoConfig = {
       "android.permission.health.READ_DISTANCE",
       "android.permission.health.READ_SPEED",
       "android.permission.health.READ_STEPS",
+      "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+      "android.permission.health.READ_BASAL_METABOLIC_RATE",
       "android.permission.health.READ_TOTAL_CALORIES_BURNED",
     ],
     intentFilters: [

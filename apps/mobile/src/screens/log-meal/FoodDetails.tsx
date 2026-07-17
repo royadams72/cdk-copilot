@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Picker } from "@react-native-picker/picker";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -52,6 +52,8 @@ const EPSILON = 0.0001;
 
 export default function FoodDetails() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ day?: string | string[] }>();
+  const requestedDay = Array.isArray(params.day) ? params.day[0] : params.day;
   const dispatch = useAppDispatch();
   const [fetchNutritionData] = useFetchNutritionDataMutation();
   const [activeEstimateNutrientKey, setActiveEstimateNutrientKey] = useState<
@@ -365,7 +367,12 @@ export default function FoodDetails() {
                   );
                 }
                 dispatch(saveActiveItemToMeal());
-                router.replace("/(log-meal)/log-meal?tab=current");
+                const dayParam = requestedDay
+                  ? `&day=${encodeURIComponent(requestedDay)}`
+                  : "";
+                router.replace(
+                  `/(log-meal)/log-meal?tab=current${dayParam}`,
+                );
               }}
             >
               <ThemedText style={NutritionStyles.modalButtonTextPrimary}>
@@ -493,16 +500,9 @@ function resolvePortionConfig(
   const fallbackPortionMeasure = findFirstNonDirectMeasure(measures);
   const preferredPortionMeasure =
     fallbackServingMeasure ?? fallbackPortionMeasure;
-  const shouldDefaultToServing =
-    isDirectMeasureUnit(currentUnitNorm) &&
-    !currentMeasure &&
-    !!preferredPortionMeasure;
-
-  const servingMeasure = shouldDefaultToServing
+  const servingMeasure = isDirectMeasureUnit(currentUnitNorm)
     ? preferredPortionMeasure
-    : isDirectMeasureUnit(currentUnitNorm)
-      ? preferredPortionMeasure
-      : (currentMeasure ?? preferredPortionMeasure);
+    : (currentMeasure ?? preferredPortionMeasure);
 
   const servingWeight = servingMeasure?.weight;
   const servingLabel = servingMeasure?.label?.trim() || "serving";
@@ -511,8 +511,7 @@ function resolvePortionConfig(
     ? ["serving", "direct"]
     : ["direct"];
   const mode: PortionMode =
-    preferredPortionMeasure &&
-    (shouldDefaultToServing || !isDirectMeasureUnit(currentUnitNorm))
+    preferredPortionMeasure && !isDirectMeasureUnit(currentUnitNorm)
       ? "serving"
       : "direct";
   const shouldUseDirectFallbackDefault =

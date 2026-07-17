@@ -230,7 +230,10 @@ export default function PortalPatientTargetsPage() {
     if (!draft) return;
 
     const override: TargetDefinitionValue = {
-      basis: item.state.effective.basis ?? null,
+      basis:
+        item.metric === "caloriesKcal"
+          ? "perDay"
+          : (item.state.effective.basis ?? null),
       high: parseNumberInput(item.metric, draft.high),
       low: parseNumberInput(item.metric, draft.low),
       type: item.state.effective.type,
@@ -507,13 +510,13 @@ export default function PortalPatientTargetsPage() {
   }
 
   if (status === "loading" || loading) {
-    return <PortalLoadingState label="Loading renal targets..." />;
+    return <PortalLoadingState label="Loading health targets..." />;
   }
 
   if (!data) {
     return (
       <section className={styles.emptyState}>
-        <h2>Unable to load renal targets</h2>
+        <h2>Unable to load health targets</h2>
         <p>{error ?? "Unknown error"}</p>
       </section>
     );
@@ -524,7 +527,7 @@ export default function PortalPatientTargetsPage() {
       <PortalPatientSubpageHeader
         backHref={`/portal/patients/${patientId}`}
         backLabel="Back to patient"
-        headline={`${data.patient.name} renal targets`}
+        headline={`${data.patient.name} health targets`}
       />
       {message ? (
         <section className={styles.metaStrip}>{message}</section>
@@ -535,7 +538,7 @@ export default function PortalPatientTargetsPage() {
         </section>
       ) : null}
       <div className={styles.carePlanFormIntro}>
-        <h2 className={styles.carePlanFormTitle}>Renal targets</h2>
+        <h2 className={styles.carePlanFormTitle}>Health targets</h2>
         <p className={styles.carePlanFormLead}>
           Review the daily monitoring targets and set clinician overrides where
           needed. Nutrition targets are managed in the renal nutrition profile.

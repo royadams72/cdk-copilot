@@ -385,7 +385,10 @@ export default function PortalPatientNutritionProfilePage() {
 
     const override: TargetDefinitionValue = {
       type: item.state.effective.type,
-      basis: item.state.effective.basis ?? null,
+      basis:
+        item.metric === "caloriesKcal"
+          ? "perDay"
+          : (item.state.effective.basis ?? null),
       high: draft.high.trim() ? parseNumberInput(draft.high) : null,
       low: draft.low.trim() ? parseNumberInput(draft.low) : null,
       value:

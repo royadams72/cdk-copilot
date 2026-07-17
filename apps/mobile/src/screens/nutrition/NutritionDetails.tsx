@@ -975,7 +975,7 @@ function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
     return `0 ${formatDisplayUnit(unit)}`;
   }
-  return `${Math.ceil(value ?? 0).toString()} ${formatDisplayUnit(unit)}`;
+  return `${Math.ceil(value ?? 0).toLocaleString("en-GB")} ${formatDisplayUnit(unit)}`;
 }
 
 function formatDisplayUnit(unit: string) {

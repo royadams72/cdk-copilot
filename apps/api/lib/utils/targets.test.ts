@@ -1,6 +1,8 @@
 import {
   buildDefaultTargetStates,
+  mapNutritionTargets,
   resolveTargetDefinitionForWeight,
+  resolveTargetStateForWeight,
 } from "./targets";
 
 describe("buildDefaultTargetStates", () => {
@@ -74,6 +76,60 @@ describe("resolveTargetDefinitionForWeight", () => {
       low: null,
       type: "max",
       value: 64,
+    });
+  });
+});
+
+describe("mapNutritionTargets", () => {
+  it("does not rescale an ordinary calorie target", () => {
+    expect(mapNutritionTargets({ caloriesKcal: 2525 })).toEqual({
+      caloriesKcal: 2525,
+    });
+  });
+
+  it("does not multiply a portal daily calorie override by weight", () => {
+    expect(
+      mapNutritionTargets(
+        {
+          caloriesKcal: {
+            effective: {
+              basis: "perKgPerDay",
+              high: 2000,
+              low: 1800,
+              type: "range",
+              value: null,
+            },
+            metric: "caloriesKcal",
+          },
+        },
+        102.5,
+      ),
+    ).toEqual({ caloriesKcal: 2000 });
+  });
+});
+
+describe("resolveTargetStateForWeight", () => {
+  it("keeps an existing large calorie override as a daily value", () => {
+    expect(
+      resolveTargetStateForWeight(
+        {
+          effective: {
+            basis: "perKgPerDay",
+            high: 2000,
+            low: 1800,
+            type: "range",
+            value: null,
+          },
+          metric: "caloriesKcal",
+        },
+        102.5,
+      )?.effective,
+    ).toEqual({
+      basis: "perDay",
+      high: 2000,
+      low: 1800,
+      type: "range",
+      value: null,
     });
   });
 });

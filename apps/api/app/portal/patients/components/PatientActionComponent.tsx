@@ -12,7 +12,7 @@ const actionHrefByLabel: Record<string, string> = {
   Messaging: "/messages",
   "Nutrition Data": "/nutrition",
   "Renal Nutrition Profile": "/nutrition-profile",
-  "Renal Targets": "/targets",
+  "Health Targets": "/targets",
   "Reviewed Trends": "/worsening-reviewed",
   "Worsening Trends": "#attention-needed",
 };

@@ -103,7 +103,7 @@ function StackedRadialChart({
   textColor,
 }: {
   centerLabel: string;
-  radials: Array<DashboardRadial & { color: string }>;
+  radials: (DashboardRadial & { color: string })[];
   trackColor: string;
   textColor: string;
 }) {
@@ -117,11 +117,13 @@ function StackedRadialChart({
           {radials.map((radial, index) => {
             const radius = maxRadius - index * (STACKED_STROKE + STACKED_GAP);
             if (radius <= STACKED_STROKE / 2) return null;
-            const circumference = 2 * Math.PI * radius;
-            const percent =
+            const rawPercent =
               radial.percent !== null && radial.percent !== undefined
-                ? clampValue(radial.percent, 0, 1)
+                ? Math.max(radial.percent, 0)
                 : 0;
+            const percent = Math.min(rawPercent, 1);
+            const overTargetPercent = clampValue(rawPercent - 1, 0, 1);
+            const overTargetColor = darkenHexColor(radial.color, 0.68);
             return (
               <React.Fragment key={radial.id}>
                 <Circle
@@ -151,6 +153,25 @@ function StackedRadialChart({
                     fill="transparent"
                   />
                 ) : null}
+                {overTargetPercent >= 0.999 ? (
+                  <Circle
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    stroke={overTargetColor}
+                    strokeWidth={STACKED_STROKE}
+                    fill="transparent"
+                  />
+                ) : overTargetPercent > 0 ? (
+                  <Path
+                    d={describeArc(center, center, radius, overTargetPercent)}
+                    stroke={overTargetColor}
+                    strokeWidth={STACKED_STROKE}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="transparent"
+                  />
+                ) : null}
               </React.Fragment>
             );
           })}
@@ -164,7 +185,18 @@ function StackedRadialChart({
 }
 
 function toDisplayPercent(value: number) {
-  return Math.round(clampValue(value, 0, 1) * 100);
+  return Math.round(Math.max(value, 0) * 100);
+}
+
+function darkenHexColor(color: string, factor: number) {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!match) return color;
+  const value = Number.parseInt(match[1], 16);
+  const channel = (shift: number) =>
+    Math.round(((value >> shift) & 0xff) * factor)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
 }
 
 function clampValue(value: number, min: number, max: number) {

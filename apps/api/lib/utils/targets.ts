@@ -352,15 +352,15 @@ export function resolveTargetStateForWeight(
   return {
     ...state,
     effective: resolveTargetDefinitionForWeight(
-      state.effective ?? null,
+      normalizeTargetDefinitionBasis(state.metric, state.effective ?? null),
       weightKg,
     ),
     override: resolveTargetDefinitionForWeight(
-      state.override ?? null,
+      normalizeTargetDefinitionBasis(state.metric, state.override ?? null),
       weightKg,
     ),
     recommended: resolveTargetDefinitionForWeight(
-      state.recommended ?? null,
+      normalizeTargetDefinitionBasis(state.metric, state.recommended ?? null),
       weightKg,
     ),
   };
@@ -376,7 +376,8 @@ export function resolveTargetValue(
   if (!isTargetStateLike(state)) {
     return null;
   }
-  const source = state.effective ?? state.override ?? state.recommended ?? null;
+  const rawSource = state.effective ?? state.override ?? state.recommended ?? null;
+  const source = normalizeTargetDefinitionBasis(state.metric, rawSource);
   if (source?.basis === "perKgPerDay" && (!weightKg || weightKg <= 0)) {
     return null;
   }
@@ -408,6 +409,24 @@ export function resolveTargetValue(
         : null;
   }
   return null;
+}
+
+function normalizeTargetDefinitionBasis(
+  metric: string | undefined,
+  definition: TargetDefinitionLike,
+) {
+  if (metric !== "caloriesKcal" || definition?.basis !== "perKgPerDay") {
+    return definition;
+  }
+  const amounts = [definition.value, definition.low, definition.high].filter(
+    (value): value is number => typeof value === "number",
+  );
+  // Calorie recommendations of 25–35 are genuinely per kg. Values in the
+  // hundreds or thousands came from the portal's daily-value override field
+  // and must not be multiplied by weight again.
+  return amounts.some((value) => value >= 500)
+    ? { ...definition, basis: "perDay" as const }
+    : definition;
 }
 
 const TARGET_ALIASES: Record<NutrientKey, string[]> = {

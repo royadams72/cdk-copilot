@@ -32,6 +32,17 @@ import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
+import { useGetMeasurementHistoryQuery } from "@/store/services/measurementsApi";
+
+const EXERCISE_DAILY_TARGET_MIN = 30;
+const EXERCISE_DAILY_TARGET_KCAL = 500;
+
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function healthProviderName() {
   return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
@@ -68,16 +79,20 @@ export default function Dashboard() {
     missingHealthPermissions,
     openAppSettings,
     openHealthAccessSettings,
-    percentOfGoal,
     requestAccess,
     requestBackgroundReadAccess,
     status: stepStatus,
+    stepSummary,
     stepsToday,
   } = useStepCount(10000);
   useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(
     stepStatus === "ready" || hasAnyMeasurementAccess,
   );
+  const {
+    data: exerciseHistory,
+    refetch: refetchExerciseHistory,
+  } = useGetMeasurementHistoryQuery("exercise");
   const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -102,7 +117,8 @@ export default function Dashboard() {
   const handleRefresh = useCallback(() => {
     refetch();
     void refetchCarePlans();
-  }, [refetch, refetchCarePlans]);
+    void refetchExerciseHistory();
+  }, [refetch, refetchCarePlans, refetchExerciseHistory]);
 
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {
@@ -147,33 +163,53 @@ export default function Dashboard() {
   }, [data]);
 
   const healthRadials = useMemo<DashboardRadial[]>(
-    () => [
-      {
-        id: "steps",
-        actual: stepsToday,
-        label: "Steps",
-        percent: percentOfGoal,
-        target: 10000,
-        unit: "steps",
-      },
-      {
-        id: "minutes-exercise",
-        actual: null,
-        label: "Minutes exercise",
-        percent: null,
-        target: 30,
-        unit: "min",
-      },
-      {
-        id: "calories-burned",
-        actual: null,
-        label: "Calories burned",
-        percent: null,
-        target: 500,
-        unit: "kcal",
-      },
-    ],
-    [percentOfGoal, stepsToday],
+    () => {
+      const todayExercise = exerciseHistory?.points.find(
+        (point) => point.date === localDateKey(new Date()),
+      );
+      const caloriesBurned =
+        typeof stepSummary?.caloriesKcal === "number"
+          ? Math.max(0, Math.round(stepSummary.caloriesKcal))
+          : null;
+      const exerciseMinutes =
+        typeof todayExercise?.value2 === "number"
+          ? Math.max(0, Math.round(todayExercise.value2))
+          : null;
+
+      return [
+        {
+          id: "steps",
+          actual: stepsToday,
+          label: "Steps",
+          percent: stepsToday === null ? null : stepsToday / 10000,
+          target: 10000,
+          unit: "steps",
+        },
+        {
+          id: "minutes-exercise",
+          actual: exerciseMinutes,
+          label: "Minutes exercise",
+          percent:
+            exerciseMinutes === null
+              ? null
+              : exerciseMinutes / EXERCISE_DAILY_TARGET_MIN,
+          target: EXERCISE_DAILY_TARGET_MIN,
+          unit: "min",
+        },
+        {
+          id: "calories-burned",
+          actual: caloriesBurned,
+          label: "Calories burned",
+          percent:
+            caloriesBurned === null
+              ? null
+              : caloriesBurned / EXERCISE_DAILY_TARGET_KCAL,
+          target: EXERCISE_DAILY_TARGET_KCAL,
+          unit: "kcal",
+        },
+      ];
+    },
+    [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday],
   );
 
   useEffect(() => {
