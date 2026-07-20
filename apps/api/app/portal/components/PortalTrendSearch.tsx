@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { usePortalAuthSession } from "@/apps/api/app/portal/portal-session-provider";
 import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
+import { focusFirstInvalidField } from "@/apps/api/lib/portal/focusFirstInvalidField";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { CKD_STAGE_VALUES } from "@ckd/core";
 
@@ -88,12 +89,10 @@ export function PortalTrendSearch() {
     setServerError(null);
 
     if (Object.keys(nextValidationErrors).length) {
-      requestAnimationFrame(() => {
-        (nextValidationErrors.metrics
-          ? metricsRef.current
-          : directionsRef.current
-        )?.focus();
-      });
+      focusFirstInvalidField([
+        nextValidationErrors.metrics ? metricsRef.current : null,
+        nextValidationErrors.directions ? directionsRef.current : null,
+      ]);
       return;
     }
 
@@ -201,10 +200,10 @@ export function PortalTrendSearch() {
                   checked={metrics.includes(value)}
                   onChange={() => {
                     toggle(value, metrics, setMetrics);
-                    setValidationErrors((current) => ({
-                      ...current,
-                      metrics: undefined,
-                    }));
+                    setValidationErrors((current) => {
+                      const { metrics: _metrics, ...remaining } = current;
+                      return remaining;
+                    });
                   }}
                   type="checkbox"
                 />{" "}
@@ -238,10 +237,10 @@ export function PortalTrendSearch() {
                   checked={directions.includes(value)}
                   onChange={() => {
                     toggle(value, directions, setDirections);
-                    setValidationErrors((current) => ({
-                      ...current,
-                      directions: undefined,
-                    }));
+                    setValidationErrors((current) => {
+                      const { directions: _directions, ...remaining } = current;
+                      return remaining;
+                    });
                   }}
                   type="checkbox"
                 />{" "}

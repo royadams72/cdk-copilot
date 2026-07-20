@@ -9,6 +9,7 @@ import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
+import { focusFirstInvalidField as focusFirstInvalidFormField } from "@/apps/api/lib/portal/focusFirstInvalidField";
 
 type IntakeDuration = "3" | "6" | "12";
 
@@ -418,23 +419,14 @@ export default function PortalAddPatientPage() {
     nextRowErrors: Record<string, RowFieldErrors>;
     currentRows: IntakeRow[];
   }) {
-    if (args.nextCareTeamError) {
-      document.getElementById("patient-care-team")?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      document.getElementById("patient-care-team")?.focus();
-      return;
-    }
-
-    if (args.nextFacilityError) {
-      document.getElementById("patient-facility")?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      document.getElementById("patient-facility")?.focus();
-      return;
-    }
+    const invalidTargets: Array<HTMLElement | null> = [
+      args.nextCareTeamError
+        ? document.getElementById("patient-care-team")
+        : null,
+      args.nextFacilityError
+        ? document.getElementById("patient-facility")
+        : null,
+    ];
 
     const fieldOrder: IntakeFieldKey[] = [
       "firstName",
@@ -450,12 +442,13 @@ export default function PortalAddPatientPage() {
       if (!errors) continue;
       for (const field of fieldOrder) {
         if (!errors[field]) continue;
-        const element = fieldRefs.current[getFieldRefKey(row.id, field)];
-        element?.scrollIntoView({ behavior: "smooth", block: "center" });
-        element?.focus();
-        return;
+        invalidTargets.push(
+          fieldRefs.current[getFieldRefKey(row.id, field)] ?? null,
+        );
       }
     }
+
+    focusFirstInvalidFormField(invalidTargets);
   }
 
   function validateClient(currentRows: IntakeRow[]) {
