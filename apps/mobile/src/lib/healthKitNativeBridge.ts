@@ -166,7 +166,11 @@ export async function readNativeHealthKitHeartRateEntriesForDate(
   );
 
   return (entries ?? []).map((entry) => ({
+    canDelete: false,
+    canEdit: false,
+    entryId: `healthkit:heart_rate:${entry.measuredAt}`,
     measuredAt: entry.measuredAt,
+    source: "provider" as const,
     value: entry.value,
     value2: entry.value2,
   }));

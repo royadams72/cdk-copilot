@@ -10,7 +10,7 @@ import {
   buildPortalPatientAccessMatch,
   buildPortalPatientStats,
   matchesPortalPatientAdvancedFilters,
-  mapPortalPatientListItemsWithWorsening,
+  mapPortalPatientListItems,
   sortPortalPatients,
 } from "@/apps/api/lib/portal/patients";
 import {
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
       .toArray();
 
     const allPatients = sortPortalPatients(
-      await mapPortalPatientListItemsWithWorsening(db, patients),
+      await mapPortalPatientListItems(db, patients),
     );
     const stats = buildPortalPatientStats(allPatients);
     const filteredPatients = allPatients.filter((patient) =>

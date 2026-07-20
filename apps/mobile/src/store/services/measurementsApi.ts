@@ -8,7 +8,6 @@ import type {
   MeasurementLatest,
   WeeklySleepSummaryResponse,
 } from "./types";
-import { syncWorseningTrendNotifications } from "@/lib/pushNotifications";
 
 export const measurementsApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -57,18 +56,6 @@ export const measurementsApi = appApi.injectEndpoints({
         method: "POST",
         url: "/api/measurements/create",
       }),
-      async onQueryStarted(arg, { queryFulfilled }) {
-        try {
-          await queryFulfilled;
-          if (arg.kind === "steps" || arg.kind === "weight") {
-            await syncWorseningTrendNotifications({
-              suppressImmediateAlerts: true,
-            });
-          }
-        } catch {
-          // Ignore sync follow-up errors; the measurement write itself is primary.
-        }
-      },
     }),
     updateMeasurement: builder.mutation<unknown, UpdateMeasurementArgs>({
       invalidatesTags: (_result, _error, arg) => [

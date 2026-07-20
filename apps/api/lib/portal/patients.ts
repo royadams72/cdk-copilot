@@ -28,11 +28,6 @@ import {
   getPrimaryAssignment,
   normalizeLifecycleStatusToMembershipStatus,
 } from "@/apps/api/lib/portal/patientLifecycle";
-import {
-  loadActivePortalWorseningItemsByPatientId,
-  syncPatientWorseningTrendSnapshots,
-} from "@/apps/api/lib/portal/worseningSnapshots";
-import { getActivePatientWorseningTrendAlerts } from "@/apps/api/lib/utils/worseningTrends";
 import type { HealthProfilesCurrentDoc } from "@/apps/api/lib/health-profiles/shared";
 
 type PortalHealthProfilesCurrentDoc = HealthProfilesCurrentDoc & {
@@ -279,7 +274,7 @@ export function mapPortalPatientDetail(raw: {
   };
 }
 
-export async function mapPortalPatientListItemsWithWorsening(
+export async function mapPortalPatientListItems(
   db: Db,
   raws: Array<{
     _id: ObjectId;
@@ -290,10 +285,6 @@ export async function mapPortalPatientListItemsWithWorsening(
     summary?: PortalPatientSummary | null;
   }>,
 ) {
-  const activeAlertsByPatientId = new Map<
-    string,
-    PatientWorseningTrendAlert[]
-  >();
   const reviewCarePlanHrefByPatientId = new Map<string, string>();
   const reviewRenalGuidanceHrefByPatientId = new Map<string, string>();
   const reviewDueCountByPatientId = new Map<string, number>();
@@ -387,29 +378,9 @@ export async function mapPortalPatientListItemsWithWorsening(
     );
   }
 
-  await Promise.all(
-    raws.map(async (raw) => {
-      const alerts = await getActivePatientWorseningTrendAlerts(db, {
-        patientId: raw._id,
-      });
-      await syncPatientWorseningTrendSnapshots(db, {
-        alerts,
-        patientId: raw._id,
-      });
-      activeAlertsByPatientId.set(raw._id.toHexString(), alerts);
-    }),
-  );
-
-  const activeItemsByPatientId =
-    await loadActivePortalWorseningItemsByPatientId(db, patientIds);
-
   return raws.map((raw) => ({
     ...mapPortalPatientListItem({
       ...raw,
-      activeAlerts:
-        activeAlertsByPatientId
-          .get(raw._id.toHexString())
-          ?.filter((alert) => alert.portalEscalationEligible) ?? [],
       renalGuidanceReviewDueCount:
         renalGuidanceReviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
       reviewCarePlanHref:
@@ -418,7 +389,7 @@ export async function mapPortalPatientListItemsWithWorsening(
       reviewRenalGuidanceHref:
         reviewRenalGuidanceHrefByPatientId.get(raw._id.toHexString()) ?? null,
     }),
-    worseningItems: activeItemsByPatientId.get(raw._id.toHexString()) ?? [],
+    worseningItems: [],
   }));
 }
 
@@ -598,14 +569,12 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       valueLabelSingular: " item due",
     },
     worsening: {
-      count: items.filter((item) =>
-        matchesPortalPatientFilter(item, "worsening"),
-      ).length,
-      detail:
-        "Repeated decline in nutrition, activity, weight or blood pressure.",
+      actionLabel: "Open search",
+      count: 0,
+      detail: "Clinician-selected comparison of recorded data.",
       icon: "/portal/icons/trend icon.png",
-      label: "Worsening trends",
-      tone: "warning",
+      label: "Advanced search",
+      tone: "accent",
     },
   };
 

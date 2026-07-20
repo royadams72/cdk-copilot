@@ -13,8 +13,6 @@ const actionHrefByLabel: Record<string, string> = {
   "Nutrition Data": "/nutrition",
   "Renal Nutrition Profile": "/nutrition-profile",
   "Health Targets": "/targets",
-  "Reviewed Trends": "/worsening-reviewed",
-  "Worsening Trends": "#attention-needed",
 };
 
 const PatientActionComponent = ({

@@ -9,10 +9,8 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 
 import {
-  markWorseningTrendViewed,
   syncAuthenticatedAppState,
   syncCarePlanReminderNotifications,
-  syncWorseningTrendNotifications,
 } from "@/lib/pushNotifications";
 import {
   hasAuthenticatedSessionReady,
@@ -108,25 +106,14 @@ export default function RootLayout() {
 
       const data = response.notification.request.content.data;
       const screen = data?.screen;
-      if (
-        typeof data?.trendId === "string" &&
-        typeof data?.trendKey === "string"
-      ) {
-        void markWorseningTrendViewed({
-          alertId: data.trendId,
-          key: data.trendKey as never,
-        });
-      }
-      if (typeof screen === "string" && screen.startsWith("/")) {
+      if (typeof screen === "string" && screen.startsWith("/") && !screen.startsWith("/worsening-check-in")) {
         router.replace(screen as never);
       }
       if (
         typeof data?.type === "string" &&
-        (data.type.startsWith("care-plan-") ||
-          data.type.startsWith("worsening-trend-"))
+        data.type.startsWith("care-plan-")
       ) {
         void syncCarePlanReminderNotifications();
-        void syncWorseningTrendNotifications();
       }
     }
 

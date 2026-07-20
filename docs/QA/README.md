@@ -11,7 +11,6 @@ This folder is the home for manual testing checklists, release verification note
 
 - [Portal membership and invite testing checklist](./portal/membership-invite-testing-checklist.md)
 - [Mobile authentication and membership testing checklist](./mobile/auth-membership-testing-checklist.md)
-- [Mobile worsening trends testing checklist](./mobile/worsening-trends-testing-checklist.md)
 
 ## Conventions
 

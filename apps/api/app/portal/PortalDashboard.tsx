@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { usePortalSession } from "@/apps/api/app/portal/portal-session-provider";
 import { PortalLoadingState } from "@/apps/api/app/portal/components/PortalLoadingState";
 import { PortalDialog } from "@/apps/api/app/portal/components/PortalDialog";
+import { PortalTrendSearch } from "@/apps/api/app/portal/components/PortalTrendSearch";
 import { readResponseMessage } from "@/apps/api/lib/http/response-message";
 import styles from "@/apps/api/app/portal/portal.module.css";
 import { getPortalSessionAuthHeaders } from "@/apps/api/lib/portal/session";
@@ -37,61 +38,15 @@ type PortalPatientsResponse = {
   };
 };
 
-type PortalNotifyPatientsResponse = {
-  data: {
-    attemptedPatients: number;
-    delivered: number;
-    failed: number;
-    notifiedPatientIds: string[];
-  };
-};
+type PortalNotifyPatientsResponse = { data: { attemptedPatients: number; delivered: number; failed: number; notifiedPatientIds: string[] } };
+type PortalReviewWorseningResponse = { data: { modifiedCount: number; reviewedPatientIds: string[] } };
+type ReviewComposerState = { episodeIds?: string[]; patientIds?: string[]; title: string } | null;
 
-type PortalReviewWorseningResponse = {
-  data: {
-    modifiedCount: number;
-    reviewedPatientIds: string[];
-  };
-};
-
-type ReviewComposerState = {
-  episodeIds?: string[];
-  patientIds?: string[];
-  title: string;
-} | null;
-
-const worseningFilterOptions: Array<{
-  label: string;
-  value: PortalWorseningKind;
-}> = [
-  { label: "All follow-up", value: "all" },
-  { label: "Blood pressure", value: "bloodPressure" },
-  { label: "Weight increase", value: "weightIncrease" },
-  { label: "Weight decrease", value: "weightDecrease" },
-  { label: "Symptoms", value: "symptoms" },
-  { label: "Activity", value: "activity" },
-  { label: "Nutrition", value: "nutrition" },
-];
-
-function matchesWorseningFilter(
-  patient: PortalPatientListItem,
-  filter: PortalWorseningKind,
-) {
-  if (filter === "all") {
-    return patient.worseningItems.length > 0;
-  }
-
-  return patient.worseningItems.some((item) => item.kind === filter);
+const worseningFilterOptions: Array<{ label: string; value: PortalWorseningKind }> = [];
+function matchesWorseningFilter(patient: PortalPatientListItem, filter: PortalWorseningKind) {
+  return filter === "all" ? patient.worseningItems.length > 0 : patient.worseningItems.some((item) => item.kind === filter);
 }
-
-function summarizeWorseningItems(items: PortalPatientWorseningItem[]) {
-  const labels = items.map((item) =>
-    item.daysActive > 1 ? `${item.label} (${item.daysActive}d)` : item.label,
-  );
-  if (labels.length <= 2) {
-    return labels.join(", ");
-  }
-  return `${labels.slice(0, 2).join(", ")}...`;
-}
+function summarizeWorseningItems(items: PortalPatientWorseningItem[]) { return items.map((item) => item.label).join(", "); }
 
 function normalizeReviewType(
   value: string | null,
@@ -128,22 +83,17 @@ function PortalDashboardContent() {
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [patientsError, setPatientsError] = useState<string | null>(null);
   const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([]);
-  const [selectedWorseningFilter, setSelectedWorseningFilter] =
-    useState<PortalWorseningKind>("all");
+  const [selectedWorseningFilter, setSelectedWorseningFilter] = useState<PortalWorseningKind>("all");
   const [selectedAction, setSelectedAction] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const [notifyComposerOpen, setNotifyComposerOpen] = useState(false);
   const [notifyTitle, setNotifyTitle] = useState("Check-in requested");
-  const [notifyBody, setNotifyBody] = useState(
-    "Your care team would like you to review your recent health information in CKD Copilot.",
-  );
-  const [reviewComposer, setReviewComposer] =
-    useState<ReviewComposerState>(null);
+  const [notifyBody, setNotifyBody] = useState("Your care team would like you to review your recent health information in CKD Copilot.");
+  const [reviewComposer, setReviewComposer] = useState<ReviewComposerState>(null);
   const [reviewNote, setReviewNote] = useState("");
-  const [detailsPatient, setDetailsPatient] =
-    useState<PortalPatientListItem | null>(null);
+  const [detailsPatient, setDetailsPatient] = useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
   const activeReviewType = normalizeReviewType(searchParams.get("reviewType"));
   const activeMembershipStatus = normalizePortalPatientMembershipStatusFilter(
@@ -167,7 +117,7 @@ function PortalDashboardContent() {
       if (submittedQuery.trim()) {
         params.set("q", submittedQuery.trim());
       }
-      if (activeFilter !== "all") {
+      if (activeFilter !== "all" && activeFilter !== "worsening") {
         params.set("filter", activeFilter);
       }
       if (activeMembershipStatus !== "active") {
@@ -222,23 +172,23 @@ function PortalDashboardContent() {
     }
 
     return [
-      { filter: "worsening" as const, ...stats.worsening },
+      {
+        filter: "worsening" as const,
+        actionLabel: "Open search",
+        count: null,
+        detail: "Choose recorded items and directions",
+        icon: "/portal/icons/trend icon.png",
+        label: "Advanced search",
+        tone: "accent" as const,
+        valueLabelPlural: "",
+        valueLabelSingular: "",
+      },
       { filter: "review" as const, ...stats.review },
       { filter: "disengaged" as const, ...stats.disengaged },
       { filter: "endingSoon" as const, ...stats.endingSoon },
     ];
   }, [stats]);
 
-  const worseningPatients = useMemo(
-    () =>
-      patients.filter((patient) =>
-        matchesWorseningFilter(
-          patient,
-          normalizePortalWorseningKind(selectedWorseningFilter),
-        ),
-      ),
-    [patients, selectedWorseningFilter],
-  );
   const carePlanReviewPatients = useMemo(
     () => patients.filter((patient) => patient.reviewDueCount > 0),
     [patients],
@@ -283,23 +233,6 @@ function PortalDashboardContent() {
     patients,
     renalGuidanceReviewPatients,
   ]);
-
-  const allVisibleWorseningSelected =
-    worseningPatients.length > 0 &&
-    worseningPatients.every((patient) =>
-      selectedPatientIds.includes(patient.id),
-    );
-
-  useEffect(() => {
-    setSelectedPatientIds((current) =>
-      current.filter((id) => patients.some((patient) => patient.id === id)),
-    );
-  }, [patients]);
-
-  useEffect(() => {
-    setActionMessage(null);
-    setActionError(null);
-  }, [activeFilter, selectedWorseningFilter]);
 
   if (status === "loading") {
     return (
@@ -540,8 +473,8 @@ function PortalDashboardContent() {
             <div className={styles.statCardBody}>
               <h2 className={styles.statTitle}>{card.label}</h2>
               <strong className={styles.statValue}>
-                {card.count}
-                {card.count === 1
+                {card.count ?? "Search"}
+                {card.count === null ? "" : card.count === 1
                   ? (card.valueLabelSingular ?? " patient")
                   : (card.valueLabelPlural ?? " patients")}
               </strong>
@@ -674,7 +607,9 @@ function PortalDashboardContent() {
         </section>
       ) : null}
       <section className={styles.panelSurface}>
-        {patientsError ? (
+        {activeFilter === "worsening" ? (
+          <PortalTrendSearch />
+        ) : patientsError ? (
           <div className={styles.emptyState}>
             <h2>Unable to load patients</h2>
             <p>{patientsError}</p>
@@ -686,115 +621,6 @@ function PortalDashboardContent() {
             <h2>No patients match this view</h2>
             <p>Try another search term or clear the active dashboard filter.</p>
           </div>
-        ) : activeFilter === "worsening" ? (
-          <>
-            <div className={styles.listHeaderRow}>
-              <span className={styles.listHeaderTitle}>
-                Self-management follow-up
-              </span>
-              <div className={styles.worseningToolbar}>
-                <select
-                  aria-label="Filter self-management follow-up items"
-                  className={styles.worseningSelect}
-                  onChange={(event) =>
-                    setSelectedWorseningFilter(
-                      normalizePortalWorseningKind(event.target.value),
-                    )
-                  }
-                  value={selectedWorseningFilter}
-                >
-                  {worseningFilterOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Self-management follow-up actions"
-                  className={styles.worseningSelect}
-                  disabled={actionPending}
-                  onChange={(event) =>
-                    void handleWorseningAction(event.target.value)
-                  }
-                  value={selectedAction}
-                >
-                  <option value="">Actions</option>
-                  <option value="notify">Notify patient(s)</option>
-                  <option value="reviewed">Mark as reviewed</option>
-                  <option value="care-plan">Create Care Plan</option>
-                </select>
-                <input
-                  aria-label="Select all visible patients"
-                  checked={allVisibleWorseningSelected}
-                  className={styles.worseningCheckbox}
-                  onChange={() => {
-                    setSelectedPatientIds((current) =>
-                      allVisibleWorseningSelected
-                        ? current.filter(
-                            (id) =>
-                              !worseningPatients.some(
-                                (patient) => patient.id === id,
-                              ),
-                          )
-                        : Array.from(
-                            new Set([
-                              ...current,
-                              ...worseningPatients.map((patient) => patient.id),
-                            ]),
-                          ),
-                    );
-                  }}
-                  type="checkbox"
-                />
-              </div>
-            </div>
-            {actionMessage ? (
-              <div className={styles.metaStrip}>{actionMessage}</div>
-            ) : null}
-            {actionError ? (
-              <div className={styles.emptyState}>
-                <p>{actionError}</p>
-              </div>
-            ) : null}
-            {worseningPatients.length === 0 ? (
-              <div className={styles.emptyState}>
-                <h2>No patients match this follow-up filter</h2>
-                <p>Try another follow-up category or clear the search term.</p>
-              </div>
-            ) : (
-              <div className={styles.patientList}>
-                {worseningPatients.map((patient) => (
-                  <div className={styles.worseningRow} key={patient.id}>
-                    <button
-                      className={styles.worseningPatientButton}
-                      onClick={() => setDetailsPatient(patient)}
-                      type="button"
-                    >
-                      <span className={styles.worseningPatientName}>
-                        {patient.name}
-                      </span>
-                      <span className={styles.worseningPatientMeta}>
-                        {patient.dateOfBirth ?? "DOB missing"}
-                        {patient.stage ? ` · Stage ${patient.stage}` : ""}
-                      </span>
-                    </button>
-                    <div className={styles.worseningSignalBlock}>
-                      <span className={styles.worseningSignalSummary}>
-                        {summarizeWorseningItems(patient.worseningItems)}
-                      </span>
-                    </div>
-                    <input
-                      aria-label={`Select ${patient.name}`}
-                      checked={selectedPatientIds.includes(patient.id)}
-                      className={styles.worseningCheckbox}
-                      onChange={() => togglePatientSelection(patient.id)}
-                      type="checkbox"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
         ) : (
           <>
             <div className={styles.listHeaderRow}>
@@ -882,185 +708,6 @@ function PortalDashboardContent() {
           </>
         )}
       </section>
-
-      {detailsPatient ? (
-        <PortalDialog
-          className={styles.worseningModalCard}
-          labelledBy="patient-details-dialog-title"
-          onClose={() => setDetailsPatient(null)}
-        >
-            <h2 className={styles.modalTitle} id="patient-details-dialog-title">{detailsPatient.name}</h2>
-            <p className={styles.modalCopy}>
-              {detailsPatient.dateOfBirth ?? "DOB missing"}
-              {detailsPatient.stage ? ` · Stage ${detailsPatient.stage}` : ""}
-            </p>
-            <div className={styles.worseningModalList}>
-              {detailsPatient.worseningItems.map((item) => (
-                <div
-                  className={styles.worseningModalItem}
-                  key={`${detailsPatient.id}-${item.kind}-${item.label}`}
-                >
-                  <strong>{item.label}</strong>
-                  <span>{item.detail}</span>
-                  <span>
-                    {item.daysActive > 1
-                      ? `Needs follow-up for ${item.daysActive} days`
-                      : "Detected today"}
-                    {item.patientResponseLabel
-                      ? ` · Patient said: ${item.patientResponseLabel}`
-                      : ""}
-                  </span>
-                  <div className={styles.warningActions}>
-                    <button
-                      className={styles.buttonSecondarySmall}
-                      onClick={() =>
-                        void handleReviewItem(detailsPatient.id, item.episodeId)
-                      }
-                      type="button"
-                    >
-                      Mark as reviewed
-                    </button>
-                    {item.href ? (
-                      <Link className={styles.tableLink} href={item.href}>
-                        Open related section
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className={styles.warningActions}>
-              <button
-                className={styles.buttonSecondarySmall}
-                onClick={() => setDetailsPatient(null)}
-                type="button"
-              >
-                Close
-              </button>
-              <button
-                className={styles.buttonPrimarySmall}
-                onClick={() =>
-                  router.push(`/portal/patients/${detailsPatient.id}`)
-                }
-                type="button"
-              >
-                Open patient
-              </button>
-            </div>
-        </PortalDialog>
-      ) : null}
-
-      {reviewComposer ? (
-        <PortalDialog
-          labelledBy="review-dialog-title"
-          onClose={() => {
-            if (!actionPending) {
-              setReviewComposer(null);
-            }
-          }}
-        >
-            <h2 className={styles.modalTitle} id="review-dialog-title">{reviewComposer.title}</h2>
-            <p className={styles.modalCopy}>
-              Add a short note so the reviewed history shows why this follow-up
-              item was cleared.
-            </p>
-            <div className={styles.worseningModalList}>
-              <label>
-                <span className={styles.listHeaderMeta}>Review note</span>
-                <textarea
-                  className={styles.inputField}
-                  maxLength={240}
-                  onChange={(event) => setReviewNote(event.target.value)}
-                  placeholder="Example: Patient contacted, self-managing, no further action today."
-                  rows={4}
-                  value={reviewNote}
-                />
-              </label>
-            </div>
-            <div className={styles.warningActions}>
-              <button
-                className={styles.buttonSecondarySmall}
-                disabled={actionPending}
-                onClick={() => setReviewComposer(null)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className={styles.buttonPrimarySmall}
-                disabled={actionPending || reviewNote.trim().length < 3}
-                onClick={() =>
-                  void submitReviewedNote({
-                    episodeIds: reviewComposer.episodeIds,
-                    patientIdForSingleEpisode:
-                      reviewComposer.patientIds?.length === 1
-                        ? reviewComposer.patientIds[0]
-                        : undefined,
-                    patientIds: reviewComposer.episodeIds?.length
-                      ? undefined
-                      : reviewComposer.patientIds,
-                  })
-                }
-                type="button"
-              >
-                {actionPending ? "Saving..." : "Mark as reviewed"}
-              </button>
-            </div>
-        </PortalDialog>
-      ) : null}
-
-      {notifyComposerOpen ? (
-        <PortalDialog
-          labelledBy="notify-dialog-title"
-          onClose={() => setNotifyComposerOpen(false)}
-        >
-            <h2 className={styles.modalTitle} id="notify-dialog-title">Notify patient(s)</h2>
-            <p className={styles.modalCopy}>
-              Send a custom push notification to {selectedPatientIds.length}{" "}
-              selected
-              {selectedPatientIds.length === 1 ? " patient" : " patients"} to
-              prompt app follow-up.
-            </p>
-            <div className={styles.worseningModalList}>
-              <label>
-                <span className={styles.listHeaderMeta}>Title</span>
-                <input
-                  className={styles.inputField}
-                  maxLength={80}
-                  onChange={(event) => setNotifyTitle(event.target.value)}
-                  value={notifyTitle}
-                />
-              </label>
-              <label>
-                <span className={styles.listHeaderMeta}>Message</span>
-                <textarea
-                  className={styles.inputField}
-                  maxLength={240}
-                  onChange={(event) => setNotifyBody(event.target.value)}
-                  rows={4}
-                  value={notifyBody}
-                />
-              </label>
-            </div>
-            <div className={styles.warningActions}>
-              <button
-                className={styles.buttonSecondarySmall}
-                onClick={() => setNotifyComposerOpen(false)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className={styles.buttonPrimarySmall}
-                disabled={actionPending || !notifyBody.trim()}
-                onClick={() => void handleSendCustomNotification()}
-                type="button"
-              >
-                Send
-              </button>
-            </div>
-        </PortalDialog>
-      ) : null}
 
       {warningOpen && isLeaderTab ? (
         <PortalDialog

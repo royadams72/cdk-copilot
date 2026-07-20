@@ -87,12 +87,6 @@ export default function PortalHeaderBar() {
           </button>
         </label>
 
-        <Link
-          className={styles.buttonSecondary}
-          href="/portal/advanced-search"
-        >
-          Advanced Search
-        </Link>
       </div>
 
       <div className={styles.actionCluster}>

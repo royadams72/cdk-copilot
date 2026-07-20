@@ -292,7 +292,11 @@ export async function readHealthConnectHeartRateEntriesForDate(date: Date) {
       return true;
     })
     .map((payload) => ({
+      canDelete: false,
+      canEdit: false,
+      entryId: `health-connect:heart_rate:${payload.measuredAt}:${payload.bpm}`,
       measuredAt: payload.measuredAt,
+      source: "provider" as const,
       value: payload.bpm,
       value2: null,
     }));

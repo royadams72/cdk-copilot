@@ -1261,7 +1261,7 @@
 
 .portalButtonRow {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--portal-space-2);
 }
 
