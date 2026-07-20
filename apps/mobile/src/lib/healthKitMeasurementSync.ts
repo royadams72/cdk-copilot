@@ -29,7 +29,6 @@ import {
   stepSyncEventSource,
   updateServerHealthConnectSyncState,
 } from "@/lib/healthConnectSyncCommon";
-import { syncWorseningTrendNotifications } from "@/lib/pushNotifications";
 import type { CreateMeasurementArgs } from "@/store/services/types";
 
 const HEALTHKIT_PROVIDER = {
@@ -117,23 +116,22 @@ export async function readHealthKitHourlyStepsForDate(date: Date) {
 function toHealthKitHeartRatePayloads(
   entries: Awaited<ReturnType<typeof readNativeHealthKitHeartRateEntriesForDate>>,
 ) {
-  return entries
-    .filter(
-      (entry): entry is { measuredAt: string; value: number; value2: number | null } =>
-        typeof entry.measuredAt === "string" &&
-        typeof entry.value === "number" &&
-        Number.isFinite(entry.value),
-    )
-    .map(
-      (entry): Extract<CreateMeasurementArgs, { kind: "heart_rate" }> => ({
+  return entries.flatMap((entry) => {
+    if (typeof entry.value !== "number" || !Number.isFinite(entry.value)) {
+      return [];
+    }
+
+    return [
+      {
         bpm: Math.round(entry.value),
         externalRecordId: `healthkit:apple.healthkit:heart_rate:${entry.measuredAt}`,
         kind: "heart_rate",
         measuredAt: entry.measuredAt,
         provider: HEALTHKIT_PROVIDER,
         source: "provider",
-      }),
-    );
+      } satisfies Extract<CreateMeasurementArgs, { kind: "heart_rate" }>,
+    ];
+  });
 }
 
 function toHealthKitBloodPressurePayloads(
@@ -367,7 +365,6 @@ export async function syncTodayHealthKitSteps(
 
     await createMeasurementDirect(payload);
     invalidateMeasurementCaches("steps");
-    await syncWorseningTrendNotifications();
     healthKitRuntimeState.lastSyncedStepSlotKey = slotKey;
     await updateServerHealthConnectSyncState(recordLatestSyncedAt([payload], "steps") ?? {});
   } finally {

@@ -8,7 +8,6 @@ export default function DashboardLayout() {
       <Stack.Screen name="care-plans" />
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="meds-labs" />
-      <Stack.Screen name="worsening-check-in" />
     </Stack>
   );
 }

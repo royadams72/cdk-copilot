@@ -21,7 +21,6 @@ import {
   stepSyncEventSource,
 } from "@/lib/healthConnectSyncCommon";
 import { healthConnectRuntimeState } from "@/lib/healthConnectSyncState";
-import { syncWorseningTrendNotifications } from "@/lib/pushNotifications";
 
 function stepSyncSlotKey(date: Date) {
   const dateKey = localDateKey(date);
@@ -126,7 +125,6 @@ export async function syncTodayStepMeasurement(
       sync: buildHealthConnectStepSyncMeta(dateKey, "provisional"),
     });
     invalidateMeasurementCaches("steps");
-    await syncWorseningTrendNotifications();
     healthConnectRuntimeState.lastSyncedStepSlotKey = slotKey;
     await logHealthConnectEvent({
       event: "steps-sync-success",

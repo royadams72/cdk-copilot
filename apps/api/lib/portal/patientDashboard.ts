@@ -484,13 +484,11 @@ export function buildPortalPatientDashboard(input: {
       "Health Data",
       "Labs",
       "Care Plans",
-      "Worsening Trends",
       "Health Targets",
       "Medication Profile",
       "Renal Nutrition Profile",
       "Diagnoses",
       "Messaging",
-      "Reviewed Trends",
     ],
     highlights: buildHighlights({
       activeCarePlan,

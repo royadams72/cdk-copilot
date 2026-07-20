@@ -32,16 +32,21 @@ export const TargetMetricState = z
   .object({
     derivedFrom: TargetDerivedFrom.nullable().optional(),
     domain: TargetDomain,
+    careTeamTarget: TargetDefinition.nullable().optional(),
+    careTeamTargetMeta: TargetOverrideMeta.nullable().optional(),
     effective: TargetDefinition,
     metric: z.string().min(1),
     override: TargetDefinition.nullable().optional(),
     overrideMeta: TargetOverrideMeta.nullable().optional(),
+    personalGoal: TargetDefinition.nullable().optional(),
+    personalGoalMeta: TargetOverrideMeta.nullable().optional(),
     recommended: TargetDefinition,
     unit: z.string().min(1),
   })
   .strict()
   .superRefine((v, ctx) => {
-    const effectiveSource = v.override ?? v.recommended;
+    const effectiveSource =
+      v.careTeamTarget ?? v.personalGoal ?? v.override ?? v.recommended;
     if (JSON.stringify(v.effective) !== JSON.stringify(effectiveSource)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

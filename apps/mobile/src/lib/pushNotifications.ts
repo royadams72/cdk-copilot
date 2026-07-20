@@ -197,8 +197,16 @@ export async function syncAuthenticatedAppState() {
     syncPushToken(),
     syncCarePlanReminderNotifications(),
     syncSleepReminderNotification(),
-    syncWorseningTrendNotifications(),
+    disableWorseningTrendNotifications(),
   ]);
+}
+
+export async function disableWorseningTrendNotifications() {
+  await cancelWorseningTrendNotifications();
+  await secureStorage.removeItem(WORSENING_TREND_ALERT_STATE_KEY).catch(
+    () => undefined,
+  );
+  deliveredWorseningAlertIdsInSession.clear();
 }
 
 async function cancelCarePlanReminderNotifications() {

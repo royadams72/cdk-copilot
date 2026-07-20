@@ -236,6 +236,16 @@ export type TargetDefinitionValue = {
 };
 
 export type TargetItem = {
+  careTeamTarget?: TargetDefinitionValue | null;
+  careTeamTargetMeta?: {
+    reason?: string | null;
+    setAt: string;
+    setBy: {
+      actorType: "user" | "clinician" | "system";
+      displayName?: string | null;
+      principalId: string;
+    };
+  } | null;
   derivedFrom?: {
     matchedAt?: string;
     ruleId: string;
@@ -247,6 +257,16 @@ export type TargetItem = {
   metric: string;
   override?: TargetDefinitionValue | null;
   overrideMeta?: {
+    reason?: string | null;
+    setAt: string;
+    setBy: {
+      actorType: "user" | "clinician" | "system";
+      displayName?: string | null;
+      principalId: string;
+    };
+  } | null;
+  personalGoal?: TargetDefinitionValue | null;
+  personalGoalMeta?: {
     reason?: string | null;
     setAt: string;
     setBy: {

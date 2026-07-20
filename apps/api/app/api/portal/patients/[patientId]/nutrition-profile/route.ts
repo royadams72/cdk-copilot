@@ -33,20 +33,26 @@ type TargetDefinitionValue = {
   value?: number | null;
 };
 
+type TargetMeta = {
+  reason?: string | null;
+  setAt: Date;
+  setBy: {
+    actorType: "user" | "clinician" | "system";
+    displayName?: string | null;
+    principalId: string;
+  };
+} | null;
+
 type TargetMetricState = {
+  careTeamTarget?: TargetDefinitionValue | null;
+  careTeamTargetMeta?: TargetMeta;
   domain: "renal" | "lifestyle";
   effective: TargetDefinitionValue;
   metric: string;
   override?: TargetDefinitionValue | null;
-  overrideMeta?: {
-    reason?: string | null;
-    setAt: Date;
-    setBy: {
-      actorType: "user" | "clinician" | "system";
-      displayName?: string | null;
-      principalId: string;
-    };
-  } | null;
+  overrideMeta?: TargetMeta;
+  personalGoal?: TargetDefinitionValue | null;
+  personalGoalMeta?: TargetMeta;
   recommended: TargetDefinitionValue;
   unit: string;
 };
@@ -235,6 +241,14 @@ export async function GET(
         label: humanizeMetric(metric),
         metric,
         state: {
+          careTeamTarget: state.careTeamTarget ?? null,
+          careTeamTargetMeta: state.careTeamTargetMeta
+            ? {
+                reason: state.careTeamTargetMeta.reason ?? null,
+                setAt: state.careTeamTargetMeta.setAt.toISOString(),
+                setBy: state.careTeamTargetMeta.setBy,
+              }
+            : null,
           effective: state.effective,
           override: state.override ?? null,
           overrideMeta: state.overrideMeta
@@ -242,6 +256,14 @@ export async function GET(
                 reason: state.overrideMeta.reason ?? null,
                 setAt: state.overrideMeta.setAt.toISOString(),
                 setBy: state.overrideMeta.setBy,
+              }
+            : null,
+          personalGoal: state.personalGoal ?? null,
+          personalGoalMeta: state.personalGoalMeta
+            ? {
+                reason: state.personalGoalMeta.reason ?? null,
+                setAt: state.personalGoalMeta.setAt.toISOString(),
+                setBy: state.personalGoalMeta.setBy,
               }
             : null,
           recommended: state.recommended,
