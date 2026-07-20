@@ -15,9 +15,14 @@ export type TargetDefinitionLike = {
 } | null;
 
 export type TargetStateLike = {
+  careTeamTarget?: TargetDefinitionLike;
   effective?: TargetDefinitionLike;
   metric?: string;
   override?: TargetDefinitionLike;
+  overrideMeta?: {
+    setBy?: { actorType?: "user" | "clinician" | "system" };
+  } | null;
+  personalGoal?: TargetDefinitionLike;
   recommended?: TargetDefinitionLike;
 } | null;
 
@@ -76,6 +81,8 @@ type TargetDefinitionValue = {
 };
 
 type SeedTargetMetricState = {
+  careTeamTarget?: TargetDefinitionValue | null;
+  careTeamTargetMeta?: null;
   derivedFrom?: {
     matchedAt?: Date;
     ruleId: string;
@@ -94,6 +101,8 @@ type SeedTargetMetricState = {
       principalId: string;
     };
   } | null;
+  personalGoal?: TargetDefinitionValue | null;
+  personalGoalMeta?: null;
   recommended: TargetDefinitionValue;
   unit: string;
 };
@@ -189,10 +198,14 @@ export function buildDefaultTargetStates(now = new Date()) {
             version: item.derivedFrom.version,
           },
           domain: item.domain,
+          careTeamTarget: null,
+          careTeamTargetMeta: null,
           effective: cloneDefinition(recommended),
           metric: item.metric,
           override: null,
           overrideMeta: null,
+          personalGoal: null,
+          personalGoalMeta: null,
           recommended,
           unit: item.unit,
         } satisfies SeedTargetMetricState,
@@ -349,14 +362,36 @@ export function resolveTargetStateForWeight(
   weightKg: number | null,
 ) {
   if (!state) return state;
+  const legacyCareTeamTarget =
+    state.overrideMeta?.setBy?.actorType === "clinician"
+      ? (state.override ?? null)
+      : null;
+  const legacyPersonalGoal =
+    state.overrideMeta?.setBy?.actorType === "user"
+      ? (state.override ?? null)
+      : null;
   return {
     ...state,
+    careTeamTarget: resolveTargetDefinitionForWeight(
+      normalizeTargetDefinitionBasis(
+        state.metric,
+        state.careTeamTarget ?? legacyCareTeamTarget,
+      ),
+      weightKg,
+    ),
     effective: resolveTargetDefinitionForWeight(
       normalizeTargetDefinitionBasis(state.metric, state.effective ?? null),
       weightKg,
     ),
     override: resolveTargetDefinitionForWeight(
       normalizeTargetDefinitionBasis(state.metric, state.override ?? null),
+      weightKg,
+    ),
+    personalGoal: resolveTargetDefinitionForWeight(
+      normalizeTargetDefinitionBasis(
+        state.metric,
+        state.personalGoal ?? legacyPersonalGoal,
+      ),
       weightKg,
     ),
     recommended: resolveTargetDefinitionForWeight(

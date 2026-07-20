@@ -184,7 +184,7 @@ function buildRangeOptions(
 }
 
 function buildPickerOptions(item: TargetItem): PickerOption[] {
-  const selected = item.override ?? item.recommended;
+  const selected = item.personalGoal ?? item.recommended;
   const options =
     selected.type === "range"
       ? buildRangeOptions(item, selected)
@@ -198,7 +198,7 @@ function buildPickerOptions(item: TargetItem): PickerOption[] {
   return [
     {
       key: "__recommended__",
-      label: `Use recommended • ${describeDefinition(item.recommended, item.metric, item.unit)}`,
+      label: `Use general reference • ${describeDefinition(item.recommended, item.metric, item.unit)}`,
       mode: "clear",
     },
     ...deduped,
@@ -206,7 +206,9 @@ function buildPickerOptions(item: TargetItem): PickerOption[] {
 }
 
 function getSelectedOptionKey(item: TargetItem) {
-  return item.override ? serialiseOption(item.override) : "__recommended__";
+  return item.personalGoal
+    ? serialiseOption(item.personalGoal)
+    : "__recommended__";
 }
 
 export default function TargetsScreen() {
@@ -233,7 +235,7 @@ export default function TargetsScreen() {
   const [savingMetric, setSavingMetric] = useState<string | null>(null);
   const [screenError, setScreenError] = useState<string | null>(null);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
   const title =
     typeof titleParam === "string" && titleParam.trim()
       ? titleParam
@@ -324,11 +326,13 @@ export default function TargetsScreen() {
       <View style={{ gap: 4 }}>
         <ThemedText type="title">{title}</ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
-          Adjust the current target using the selector on each card.
+          General references are educational starting points, not personalised
+          clinical advice. You can set a separate personal goal; a care-team
+          target, when present, remains unchanged.
         </ThemedText>
         {typeof data?.weightKg === "number" ? (
           <ThemedText style={{ opacity: 0.6 }}>
-            Weight-based recommendations use {Math.round(data.weightKg)} kg.
+            Weight-based references use {Math.round(data.weightKg)} kg.
           </ThemedText>
         ) : items.some(
             (item) =>
@@ -390,7 +394,12 @@ export default function TargetsScreen() {
                 <ThemedText style={{ opacity: 0.6 }}>{item.unit}</ThemedText>
               </View>
               <ThemedText style={{ opacity: 0.75 }}>
-                Current: {describeDefinition(item.effective, item.metric, item.unit)}
+                {item.careTeamTarget
+                  ? "Care-team target"
+                  : item.personalGoal
+                    ? "Personal goal"
+                    : "General reference"}
+                : {describeDefinition(item.effective, item.metric, item.unit)}
               </ThemedText>
               <View
                 style={{
@@ -435,13 +444,22 @@ export default function TargetsScreen() {
                   {isItemSaving
                     ? "Saving..."
                     : hasChanged
-                      ? "Save target"
+                      ? "Save personal goal"
                       : "Saved"}
                 </ThemedText>
               </TouchableOpacity>
               <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                Recommended: {describeDefinition(item.recommended, item.metric, item.unit)}
+                General reference: {describeDefinition(item.recommended, item.metric, item.unit)}
               </ThemedText>
+              {item.careTeamTarget ? (
+                <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
+                  Set by {item.careTeamTargetMeta?.setBy.displayName || "your care team"}
+                  {item.careTeamTargetMeta?.setAt
+                    ? ` on ${new Date(item.careTeamTargetMeta.setAt).toLocaleDateString()}`
+                    : ""}
+                  . Your selector above changes only your separate personal goal.
+                </ThemedText>
+              ) : null}
             </View>
           </Card>
         );

@@ -25,7 +25,19 @@ type TargetDefinitionValue = {
   value?: number | null;
 };
 
+type TargetMeta = {
+  reason?: string | null;
+  setAt: Date;
+  setBy: {
+    actorType: "user" | "clinician" | "system";
+    displayName?: string | null;
+    principalId: string;
+  };
+} | null;
+
 type TargetMetricState = {
+  careTeamTarget?: TargetDefinitionValue | null;
+  careTeamTargetMeta?: TargetMeta;
   derivedFrom?: {
     matchedAt?: Date;
     ruleId: string;
@@ -35,15 +47,9 @@ type TargetMetricState = {
   effective: TargetDefinitionValue;
   metric: string;
   override?: TargetDefinitionValue | null;
-  overrideMeta?: {
-    reason?: string | null;
-    setAt: Date;
-    setBy: {
-      actorType: "user" | "clinician" | "system";
-      displayName?: string | null;
-      principalId: string;
-    };
-  } | null;
+  overrideMeta?: TargetMeta;
+  personalGoal?: TargetDefinitionValue | null;
+  personalGoalMeta?: TargetMeta;
   recommended: TargetDefinitionValue;
   unit: string;
 };
@@ -111,6 +117,14 @@ export async function GET(
         label: humanizeMetric(metric),
         metric,
         state: {
+          careTeamTarget: state.careTeamTarget ?? null,
+          careTeamTargetMeta: state.careTeamTargetMeta
+            ? {
+                reason: state.careTeamTargetMeta.reason ?? null,
+                setAt: state.careTeamTargetMeta.setAt.toISOString(),
+                setBy: state.careTeamTargetMeta.setBy,
+              }
+            : null,
           effective: state.effective,
           override: state.override ?? null,
           overrideMeta: state.overrideMeta
@@ -118,6 +132,14 @@ export async function GET(
                 reason: state.overrideMeta.reason ?? null,
                 setAt: state.overrideMeta.setAt.toISOString(),
                 setBy: state.overrideMeta.setBy,
+              }
+            : null,
+          personalGoal: state.personalGoal ?? null,
+          personalGoalMeta: state.personalGoalMeta
+            ? {
+                reason: state.personalGoalMeta.reason ?? null,
+                setAt: state.personalGoalMeta.setAt.toISOString(),
+                setBy: state.personalGoalMeta.setBy,
               }
             : null,
           recommended: state.recommended,
@@ -202,35 +224,54 @@ export async function PATCH(
 
     const now = new Date();
     const actor = actorResult.data;
-    const nextOverride = clearOverride ? null : overrideResult.data;
-    const nextEffective = nextOverride ?? existingState.recommended;
+    const legacyCareTeamTarget =
+      existingState.overrideMeta?.setBy.actorType === "clinician"
+        ? (existingState.override ?? null)
+        : null;
+    const legacyPersonalGoal =
+      existingState.overrideMeta?.setBy.actorType === "user"
+        ? (existingState.override ?? null)
+        : null;
+    const personalGoal = existingState.personalGoal ?? legacyPersonalGoal;
+    const personalGoalMeta =
+      existingState.personalGoalMeta ??
+      (legacyPersonalGoal ? existingState.overrideMeta : null);
+    const existingCareTeamTarget =
+      existingState.careTeamTarget ?? legacyCareTeamTarget;
+    const nextCareTeamTarget = clearOverride ? null : overrideResult.data;
+    const careTeamTargetMeta = clearOverride
+      ? null
+      : { reason, setAt: now, setBy: actor };
+    const nextEffective =
+      nextCareTeamTarget ?? personalGoal ?? existingState.recommended;
+    const nextOverride = nextCareTeamTarget ?? personalGoal;
+    const nextOverrideMeta = nextCareTeamTarget
+      ? careTeamTargetMeta
+      : personalGoalMeta;
     const eventType = clearOverride
       ? "manual_target_removed"
       : "clinician_changed_target";
 
     if (
-      definitionsEqual(existingState.override, nextOverride) &&
-      definitionsEqual(existingState.effective, nextEffective)
+      definitionsEqual(existingCareTeamTarget, nextCareTeamTarget)
     ) {
       return ok({ metric, updated: false });
     }
 
     const nextState: TargetMetricState = {
       ...existingState,
+      careTeamTarget: nextCareTeamTarget,
+      careTeamTargetMeta,
       effective: nextEffective,
       override: nextOverride,
-      overrideMeta: clearOverride
-        ? null
-        : {
-            reason,
-            setAt: now,
-            setBy: actor,
-          },
+      overrideMeta: nextOverrideMeta,
+      personalGoal,
+      personalGoalMeta,
     };
 
     await ledgerCollection.insertOne({
-      after: nextEffective,
-      before: existingState.effective ?? null,
+      after: nextCareTeamTarget ?? nextEffective,
+      before: existingCareTeamTarget,
       createdAt: now,
       createdBy: actor,
       derivedFrom: existingState.derivedFrom ?? null,

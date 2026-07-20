@@ -19,7 +19,19 @@ type TargetDefinitionValue = {
   value?: number | null;
 };
 
+type TargetMeta = {
+  reason?: string | null;
+  setAt: Date;
+  setBy: {
+    actorType: "user" | "clinician" | "system";
+    displayName?: string | null;
+    principalId: string;
+  };
+} | null;
+
 type TargetMetricState = {
+  careTeamTarget?: TargetDefinitionValue | null;
+  careTeamTargetMeta?: TargetMeta;
   derivedFrom?: {
     matchedAt?: Date;
     ruleId: string;
@@ -29,15 +41,9 @@ type TargetMetricState = {
   effective: TargetDefinitionValue;
   metric: string;
   override?: TargetDefinitionValue | null;
-  overrideMeta?: {
-    reason?: string | null;
-    setAt: Date;
-    setBy: {
-      actorType: "user" | "clinician" | "system";
-      displayName?: string | null;
-      principalId: string;
-    };
-  } | null;
+  overrideMeta?: TargetMeta;
+  personalGoal?: TargetDefinitionValue | null;
+  personalGoalMeta?: TargetMeta;
   recommended: TargetDefinitionValue;
   unit: string;
 };
@@ -147,15 +153,37 @@ export async function PATCH(req: NextRequest) {
     const actor = actorResult.data;
 
     const now = new Date();
-    const nextOverride = clearOverride ? null : overrideResult.data;
-    const nextEffective = nextOverride ?? existingState.recommended;
+    const legacyCareTeamTarget =
+      existingState.overrideMeta?.setBy.actorType === "clinician"
+        ? (existingState.override ?? null)
+        : null;
+    const legacyPersonalGoal =
+      existingState.overrideMeta?.setBy.actorType === "user"
+        ? (existingState.override ?? null)
+        : null;
+    const careTeamTarget =
+      existingState.careTeamTarget ?? legacyCareTeamTarget;
+    const careTeamTargetMeta =
+      existingState.careTeamTargetMeta ??
+      (legacyCareTeamTarget ? existingState.overrideMeta : null);
+    const existingPersonalGoal =
+      existingState.personalGoal ?? legacyPersonalGoal;
+    const nextPersonalGoal = clearOverride ? null : overrideResult.data;
+    const personalGoalMeta = clearOverride
+      ? null
+      : { reason, setAt: now, setBy: actor };
+    const nextEffective =
+      careTeamTarget ?? nextPersonalGoal ?? existingState.recommended;
+    const nextOverride = careTeamTarget ?? nextPersonalGoal;
+    const nextOverrideMeta = careTeamTarget
+      ? careTeamTargetMeta
+      : personalGoalMeta;
     const eventType = clearOverride
       ? "manual_target_removed"
       : "user_changed_target";
 
     if (
-      definitionsEqual(existingState.override, nextOverride) &&
-      definitionsEqual(existingState.effective, nextEffective)
+      definitionsEqual(existingPersonalGoal, nextPersonalGoal)
     ) {
       return ok({
         metric,
@@ -166,20 +194,18 @@ export async function PATCH(req: NextRequest) {
 
     const nextState: TargetMetricState = {
       ...existingState,
+      careTeamTarget,
+      careTeamTargetMeta,
       effective: nextEffective,
       override: nextOverride,
-      overrideMeta: clearOverride
-        ? null
-        : {
-            reason,
-            setAt: now,
-            setBy: actor,
-          },
+      overrideMeta: nextOverrideMeta,
+      personalGoal: nextPersonalGoal,
+      personalGoalMeta,
     };
 
     await ledgerCollection.insertOne({
-      after: nextEffective,
-      before: existingState.effective ?? null,
+      after: nextPersonalGoal ?? nextEffective,
+      before: existingPersonalGoal,
       createdAt: now,
       createdBy: actor,
       derivedFrom: existingState.derivedFrom ?? null,

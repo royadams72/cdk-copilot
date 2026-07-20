@@ -14,7 +14,6 @@ import type {
 } from "@ckd/core/server";
 import {
   findTargetsCurrentDoc,
-  getMappedNutritionTargets,
   resolveTargetValue,
   type TargetsCurrentDoc,
   type TargetStateLike,
@@ -989,8 +988,6 @@ export async function getActivePatientWorseningTrendAlerts(
     bloodPressurePoints,
     systolicTarget,
     symptomHistoryEntries,
-    nutritionEntries,
-    nutritionTargets,
   ] = await Promise.all([
     loadActiveWorseningTrendStates(db, input.patientId),
     loadDailyStepsPoints(db, input.patientId, now),
@@ -1003,8 +1000,6 @@ export async function getActivePatientWorseningTrendAlerts(
       "systolic_mmhg",
     ]),
     loadSymptomHistoryEntries(db, input.patientId, now),
-    loadNutritionEntries(db, input.patientId, now),
-    getMappedNutritionTargets(db, input.patientId),
   ]);
 
   const stepsEvaluation = evaluateStepsDeclineTrend({
@@ -1059,14 +1054,6 @@ export async function getActivePatientWorseningTrendAlerts(
   const symptomsAlertId = symptomsEvaluation.triggered
     ? getEpisodeIdForKey("symptoms_worsening")
     : null;
-  const nutritionEvaluation = evaluateNutritionWorsening({
-    entries: nutritionEntries,
-    now,
-    targets: nutritionTargets,
-  });
-  const nutritionAlertId = nutritionEvaluation.triggered
-    ? getEpisodeIdForKey("nutrition_worsening")
-    : null;
   const existingStepsState = activeStatesByKey.get("steps_decline");
   const stepsStillBelowTarget =
     stepsEvaluation.targetValue !== null &&
@@ -1092,7 +1079,6 @@ export async function getActivePatientWorseningTrendAlerts(
       weightDecreaseAlertId,
       bloodPressureAlertId,
       symptomsAlertId,
-      nutritionAlertId,
     ].filter((value): value is string => Boolean(value)),
   );
   const candidateAlerts: RawWorseningTrendAlert[] = [];
@@ -1266,26 +1252,6 @@ export async function getActivePatientWorseningTrendAlerts(
       repeatUntil: null,
       screen: buildCheckInScreenPath(symptomsAlertId, "symptoms_worsening"),
       title: "More symptoms reported",
-    });
-  }
-
-  if (nutritionEvaluation.triggered && nutritionAlertId) {
-    const portalEscalationEligible =
-      nutritionEvaluation.breachDaysFourteen >= 12;
-    candidateAlerts.push({
-      body: "Your meal pattern has been over target on most logged days this week. Review meals and your care-plan tasks.",
-      checkInResponseCode: null,
-      checkInResponseLabel: null,
-      checkInSubmittedAt: null,
-      detail: `Nutrition targets were exceeded on 3 of 4 tracked nutrients across ${nutritionEvaluation.breachDaysRecent} of the last 7 logged days.`,
-      detectedAt: new Date().toISOString(),
-      key: "nutrition_worsening",
-      level: portalEscalationEligible ? "level_3_escalate" : "level_1_nudge",
-      portalEscalationEligible,
-      repeatAtLocalTime: null,
-      repeatUntil: null,
-      screen: "/nutrition-details",
-      title: "Nutrition worsening",
     });
   }
 

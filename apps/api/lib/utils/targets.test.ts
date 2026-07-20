@@ -22,6 +22,7 @@ describe("buildDefaultTargetStates", () => {
     ]);
 
     expect(targets.steps_per_day).toMatchObject({
+      careTeamTarget: null,
       derivedFrom: {
         matchedAt: now,
         ruleId: "steps-per-day-adults-under-60",
@@ -31,6 +32,7 @@ describe("buildDefaultTargetStates", () => {
       effective: { basis: "perDay", type: "min", value: 8000 },
       metric: "steps_per_day",
       override: null,
+      personalGoal: null,
       recommended: { basis: "perDay", type: "min", value: 8000 },
       unit: "steps/day",
     });
@@ -109,6 +111,35 @@ describe("mapNutritionTargets", () => {
 });
 
 describe("resolveTargetStateForWeight", () => {
+  it("maps legacy patient and clinician overrides into separate target roles", () => {
+    const personalGoal = { basis: "perDay" as const, type: "max" as const, value: 2100 };
+    const careTeamTarget = { basis: "perDay" as const, type: "max" as const, value: 1900 };
+
+    expect(
+      resolveTargetStateForWeight(
+        {
+          effective: personalGoal,
+          metric: "sodiumMg",
+          override: personalGoal,
+          overrideMeta: { setBy: { actorType: "user" } },
+        },
+        null,
+      )?.personalGoal,
+    ).toEqual(personalGoal);
+
+    expect(
+      resolveTargetStateForWeight(
+        {
+          effective: careTeamTarget,
+          metric: "sodiumMg",
+          override: careTeamTarget,
+          overrideMeta: { setBy: { actorType: "clinician" } },
+        },
+        null,
+      )?.careTeamTarget,
+    ).toEqual(careTeamTarget);
+  });
+
   it("keeps an existing large calorie override as a daily value", () => {
     expect(
       resolveTargetStateForWeight(

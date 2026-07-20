@@ -4,7 +4,8 @@ This document defines the `targets_current` MongoDB collection.
 
 Purpose:
 
-- Stores the **currently active (effective)** targets for a patient.
+- Stores the displayed reference, patient personal goal, or care-team target for
+  a patient.
 - Read-optimised for dashboards, calculations, and comparisons.
 - Reflects the resolved state after:
   - guideline-based recommendation
@@ -22,10 +23,16 @@ This collection should always be updated together with a corresponding
 
 - One document per `{ orgId, patientId }`
 - Deterministic structure per metric
-- Clear separation between:
-  - `recommended`
-  - `override`
-  - `effective`
+- `recommended` is retained as the storage key for backward compatibility, but
+  represents a **general reference**, not a personalised recommendation.
+- `personalGoal` and `personalGoalMeta` store a patient-owned goal.
+- `careTeamTarget` and `careTeamTargetMeta` store a clinician/dietitian-owned
+  target.
+- `effective` resolves in this order: care-team target, personal goal, general
+  reference.
+- The legacy `override` and `overrideMeta` fields mirror the effective non-reference
+  value for backward compatibility.
+- Patient and care-team values can coexist; neither update path deletes the other.
 - Explicit rule lineage (`derivedFrom`)
 
 ---
@@ -91,6 +98,11 @@ targets while still using one target pipeline:
 
 - `renal` for CKD and renal nutrition targets
 - `lifestyle` for goals like steps/day or sleep duration
+
+The `recommended` field name is legacy. User interfaces and API consumers must
+describe it as a `General reference`. A system-seeded reference must not be
+represented as personalised clinical advice or used to generate automatic
+nutrition-worsening notifications.
 
 ---
 

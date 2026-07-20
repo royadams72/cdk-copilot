@@ -24,18 +24,28 @@ type TargetDefinitionValue = {
   value?: number | null;
 };
 
+type TargetMetaView = {
+  reason?: string | null;
+  setAt: string;
+  setBy: {
+    actorType: "user" | "clinician" | "system";
+    displayName?: string | null;
+    principalId: string;
+  };
+} | null;
+
 type TargetItem = {
   domain: "renal" | "lifestyle";
   label: string;
   metric: string;
   state: {
+    careTeamTarget: TargetDefinitionValue | null;
+    careTeamTargetMeta: TargetMetaView;
     effective: TargetDefinitionValue;
     override: TargetDefinitionValue | null;
-    overrideMeta: {
-      reason?: string | null;
-      setAt: string;
-      setBy: { principalId: string };
-    } | null;
+    overrideMeta: TargetMetaView;
+    personalGoal: TargetDefinitionValue | null;
+    personalGoalMeta: TargetMetaView;
     recommended: TargetDefinitionValue;
     unit: string;
   };
@@ -434,12 +444,24 @@ export default function PortalPatientNutritionProfilePage() {
                       ...currentItem,
                       state: {
                         ...currentItem.state,
+                        careTeamTarget: override,
+                        careTeamTargetMeta: {
+                          reason: draft.reason.trim() || null,
+                          setAt: new Date().toISOString(),
+                          setBy: {
+                            actorType: "clinician",
+                            principalId: "portal-clinician",
+                          },
+                        },
                         effective: override,
                         override,
                         overrideMeta: {
                           reason: draft.reason.trim() || null,
                           setAt: new Date().toISOString(),
-                          setBy: { principalId: "portal-clinician" },
+                          setBy: {
+                            actorType: "clinician",
+                            principalId: "portal-clinician",
+                          },
                         },
                       },
                     }
@@ -490,7 +512,11 @@ export default function PortalPatientNutritionProfilePage() {
 
       setTargetDrafts((current) => ({
         ...current,
-        [item.metric]: buildDraftState(item, item.state.recommended, ""),
+        [item.metric]: buildDraftState(
+          item,
+          item.state.personalGoal ?? item.state.recommended,
+          item.state.personalGoalMeta?.reason ?? "",
+        ),
       }));
       setData((current) =>
         current
@@ -502,9 +528,14 @@ export default function PortalPatientNutritionProfilePage() {
                       ...currentItem,
                       state: {
                         ...currentItem.state,
-                        effective: currentItem.state.recommended,
-                        override: null,
-                        overrideMeta: null,
+                        careTeamTarget: null,
+                        careTeamTargetMeta: null,
+                        effective:
+                          currentItem.state.personalGoal ??
+                          currentItem.state.recommended,
+                        override: currentItem.state.personalGoal ?? null,
+                        overrideMeta:
+                          currentItem.state.personalGoalMeta ?? null,
                       },
                     }
                   : currentItem,
@@ -854,11 +885,16 @@ export default function PortalPatientNutritionProfilePage() {
                 <div className={styles.portalFormSectionItem} key={item.metric}>
                   <strong>{item.label}</strong>
                   <span>
-                    Recommended:{" "}
+                    General reference:{" "}
                     {formatDefinition(item.state.recommended, item.state.unit)}
                   </span>
                   <span>
-                    Current:{" "}
+                    {item.state.overrideMeta?.setBy.actorType === "clinician"
+                      ? "Care-team target"
+                      : item.state.overrideMeta?.setBy.actorType === "user"
+                        ? "Patient personal goal"
+                        : "Displayed reference"}
+                    :{" "}
                     {formatDefinition(item.state.effective, item.state.unit)}
                   </span>
                   <div className={styles.carePlanFormGroup}>
@@ -951,7 +987,7 @@ export default function PortalPatientNutritionProfilePage() {
                       onClick={() => void clearMetric(item)}
                       type="button"
                     >
-                      Clear override
+                      Clear care-team target
                     </button>
                     <button
                       className={styles.buttonPrimarySmall}
