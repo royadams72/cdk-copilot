@@ -431,8 +431,8 @@ export function matchesPortalPatientFilter(
   filter: PortalPatientFilter,
 ) {
   switch (filter) {
-    case "worsening":
-      return item.worseningItems.length > 0;
+    case "search":
+      return true;
     case "review":
       return item.reviewDueCount > 0 || item.renalGuidanceReviewDueCount > 0;
     case "disengaged":
@@ -568,7 +568,7 @@ export function buildPortalPatientStats(items: PortalPatientListItem[]) {
       valueLabelPlural: " items due",
       valueLabelSingular: " item due",
     },
-    worsening: {
+    search: {
       actionLabel: "Open search",
       count: 0,
       detail: "Clinician-selected comparison of recorded data.",

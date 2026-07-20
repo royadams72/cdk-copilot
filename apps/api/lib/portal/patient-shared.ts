@@ -19,7 +19,7 @@ type CarePlanTaskStatusValue = z.infer<typeof TaskStatus>;
 
 export const PORTAL_PATIENT_FILTERS = [
   "all",
-  "worsening",
+  "search",
   "review",
   "disengaged",
   "endingSoon",
@@ -73,10 +73,10 @@ export type PortalPatientListItem = {
   lastContactAt: string | null;
   membershipStatus: PortalPatientMembershipStatus;
   name: string;
+  renalGuidanceReviewDueCount: number;
   reviewCarePlanHref: string | null;
   reviewDueCount: number;
   reviewRenalGuidanceHref: string | null;
-  renalGuidanceReviewDueCount: number;
   stage: string | null;
   worseningItems: PortalPatientWorseningItem[];
 };

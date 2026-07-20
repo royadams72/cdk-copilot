@@ -6,7 +6,11 @@ import { ObjectId } from "mongodb";
 import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { bad, ok } from "@/apps/api/lib/http/responses";
-import { buildPortalPatientAccessMatch } from "@/apps/api/lib/portal/patients";
+import {
+  buildPortalPatientAccessMatch,
+  getPortalPatientMembershipStatus,
+  type PortalPatientAssignment,
+} from "@/apps/api/lib/portal/patients";
 import { COLLECTIONS } from "@ckd/core/server";
 
 const METRICS = ["weight", "bloodPressure", "symptoms", "steps", "nutrition"] as const;
@@ -16,6 +20,7 @@ type Direction = (typeof DIRECTIONS)[number];
 
 type PatientDoc = {
   _id: ObjectId;
+  assignments?: PortalPatientAssignment[];
   pii?: { dateOfBirth?: Date | string; email?: string; firstName?: string; lastName?: string } | null;
   stage?: string | null;
 };
@@ -54,6 +59,7 @@ export async function POST(req: NextRequest) {
       : [];
     const days = [7, 14, 30, 60, 90].includes(Number(body?.days)) ? Number(body?.days) : 30;
     const matchMode = body?.matchMode === "all" ? "all" : "any";
+    const membershipStatus = body?.membershipStatus === "all" ? "all" : "active";
     const query = typeof body?.query === "string" ? body.query.trim().toLowerCase() : "";
     const stage = typeof body?.stage === "string" ? body.stage.trim() : "";
     const dateOfBirth = typeof body?.dateOfBirth === "string" ? body.dateOfBirth.trim() : "";
@@ -65,13 +71,19 @@ export async function POST(req: NextRequest) {
     const patients = await db.collection(COLLECTIONS.Patients).aggregate<PatientDoc>([
       { $match: buildPortalPatientAccessMatch(caller) },
       { $lookup: { as: "pii", foreignField: "patientId", from: COLLECTIONS.UsersPII, localField: "_id" } },
-      { $project: { pii: { $arrayElemAt: ["$pii", 0] }, stage: 1 } },
+      { $project: { assignments: 1, pii: { $arrayElemAt: ["$pii", 0] }, stage: 1 } },
     ]).toArray();
     const scopedPatients = patients.filter((patient) => {
       const parsedDob = patient.pii?.dateOfBirth ? new Date(patient.pii.dateOfBirth) : null;
       const dob = parsedDob && !Number.isNaN(parsedDob.getTime()) ? parsedDob.toISOString().slice(0, 10) : "";
       const text = `${displayName(patient)} ${patient.pii?.email ?? ""}`.toLowerCase();
-      return (!query || text.includes(query)) && (!stage || patient.stage === stage) && (!dateOfBirth || dob === dateOfBirth);
+      return (
+        (!query || text.includes(query)) &&
+        (!stage || patient.stage === stage) &&
+        (!dateOfBirth || dob === dateOfBirth) &&
+        (membershipStatus === "all" ||
+          getPortalPatientMembershipStatus(patient.assignments) === "active")
+      );
     });
     const patientIds = scopedPatients.map((patient) => patient._id);
     const now = new Date();

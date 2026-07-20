@@ -23,7 +23,6 @@ import type {
 import {
   normalizePortalPatientFilter,
   normalizePortalPatientMembershipStatusFilter,
-  normalizePortalWorseningKind,
 } from "@/apps/api/lib/portal/patient-shared";
 
 type PortalPatientsResponse = {
@@ -38,15 +37,22 @@ type PortalPatientsResponse = {
   };
 };
 
-type PortalNotifyPatientsResponse = { data: { attemptedPatients: number; delivered: number; failed: number; notifiedPatientIds: string[] } };
-type PortalReviewWorseningResponse = { data: { modifiedCount: number; reviewedPatientIds: string[] } };
-type ReviewComposerState = { episodeIds?: string[]; patientIds?: string[]; title: string } | null;
-
-const worseningFilterOptions: Array<{ label: string; value: PortalWorseningKind }> = [];
-function matchesWorseningFilter(patient: PortalPatientListItem, filter: PortalWorseningKind) {
-  return filter === "all" ? patient.worseningItems.length > 0 : patient.worseningItems.some((item) => item.kind === filter);
-}
-function summarizeWorseningItems(items: PortalPatientWorseningItem[]) { return items.map((item) => item.label).join(", "); }
+type PortalNotifyPatientsResponse = {
+  data: {
+    attemptedPatients: number;
+    delivered: number;
+    failed: number;
+    notifiedPatientIds: string[];
+  };
+};
+type PortalReviewWorseningResponse = {
+  data: { modifiedCount: number; reviewedPatientIds: string[] };
+};
+type ReviewComposerState = {
+  episodeIds?: string[];
+  patientIds?: string[];
+  title: string;
+} | null;
 
 function normalizeReviewType(
   value: string | null,
@@ -83,17 +89,21 @@ function PortalDashboardContent() {
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [patientsError, setPatientsError] = useState<string | null>(null);
   const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([]);
-  const [selectedWorseningFilter, setSelectedWorseningFilter] = useState<PortalWorseningKind>("all");
+  // const [selectedWorseningFilter, setSelectedWorseningFilter] = useState<PortalWorseningKind>("all");
   const [selectedAction, setSelectedAction] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const [notifyComposerOpen, setNotifyComposerOpen] = useState(false);
   const [notifyTitle, setNotifyTitle] = useState("Check-in requested");
-  const [notifyBody, setNotifyBody] = useState("Your care team would like you to review your recent health information in CKD Copilot.");
-  const [reviewComposer, setReviewComposer] = useState<ReviewComposerState>(null);
+  const [notifyBody, setNotifyBody] = useState(
+    "Your care team would like you to review your recent health information in CKD Copilot.",
+  );
+  const [reviewComposer, setReviewComposer] =
+    useState<ReviewComposerState>(null);
   const [reviewNote, setReviewNote] = useState("");
-  const [detailsPatient, setDetailsPatient] = useState<PortalPatientListItem | null>(null);
+  const [detailsPatient, setDetailsPatient] =
+    useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
   const activeReviewType = normalizeReviewType(searchParams.get("reviewType"));
   const activeMembershipStatus = normalizePortalPatientMembershipStatusFilter(
@@ -117,7 +127,7 @@ function PortalDashboardContent() {
       if (submittedQuery.trim()) {
         params.set("q", submittedQuery.trim());
       }
-      if (activeFilter !== "all" && activeFilter !== "worsening") {
+      if (activeFilter !== "all" && activeFilter !== "search") {
         params.set("filter", activeFilter);
       }
       if (activeMembershipStatus !== "active") {
@@ -173,10 +183,10 @@ function PortalDashboardContent() {
 
     return [
       {
-        filter: "worsening" as const,
         actionLabel: "Open search",
         count: null,
         detail: "Choose recorded items and directions",
+        filter: "search" as const,
         icon: "/portal/icons/trend icon.png",
         label: "Advanced search",
         tone: "accent" as const,
@@ -256,209 +266,6 @@ function PortalDashboardContent() {
 
   const authenticatedSession = session;
 
-  async function handleWorseningAction(value: string) {
-    setSelectedAction(value);
-    setActionError(null);
-    setActionMessage(null);
-
-    if (!value) {
-      return;
-    }
-
-    if (!selectedPatientIds.length) {
-      setActionError("Select one or more patients first.");
-      setSelectedAction("");
-      return;
-    }
-
-    if (value === "care-plan") {
-      if (selectedPatientIds.length !== 1) {
-        setActionError(
-          "Create care plan is available for one patient at a time.",
-        );
-        setSelectedAction("");
-        return;
-      }
-
-      router.push(`/portal/patients/${selectedPatientIds[0]}/care-plans/add`);
-      return;
-    }
-
-    if (value === "notify") {
-      setNotifyComposerOpen(true);
-      setSelectedAction("");
-      return;
-    }
-
-    if (value === "reviewed") {
-      setReviewNote("");
-      setReviewComposer({
-        patientIds: selectedPatientIds,
-        title:
-          selectedPatientIds.length === 1
-            ? "Mark patient follow-up as reviewed"
-            : "Mark follow-up items as reviewed",
-      });
-      setSelectedAction("");
-    }
-  }
-
-  async function submitReviewedNote(input: {
-    episodeIds?: string[];
-    patientIdForSingleEpisode?: string;
-    patientIds?: string[];
-  }) {
-    setActionError(null);
-    setActionMessage(null);
-    setActionPending(true);
-
-    try {
-      const response = await fetch("/api/portal/worsening-trends/review", {
-        body: JSON.stringify({
-          ...(input.episodeIds?.length ? { episodeIds: input.episodeIds } : {}),
-          note: reviewNote.trim(),
-          ...(input.patientIds?.length ? { patientIds: input.patientIds } : {}),
-        }),
-        headers: {
-          ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
-          "content-type": "application/json",
-        },
-        method: "POST",
-      });
-
-      const body = (await response.json().catch(() => null)) as
-        | PortalReviewWorseningResponse
-        | { error?: { message?: string } }
-        | null;
-
-      if (!response.ok || !body || !("data" in body)) {
-        throw new Error(
-          body && "error" in body
-            ? body.error?.message
-            : "Unable to mark follow-up items as reviewed",
-        );
-      }
-
-      if (input.episodeIds?.length && input.patientIdForSingleEpisode) {
-        const episodeIds = new Set(input.episodeIds);
-        setPatients((current) =>
-          current.map((patient) =>
-            patient.id === input.patientIdForSingleEpisode
-              ? {
-                  ...patient,
-                  worseningItems: patient.worseningItems.filter(
-                    (item) => !episodeIds.has(item.episodeId),
-                  ),
-                }
-              : patient,
-          ),
-        );
-        setDetailsPatient((current) =>
-          current && current.id === input.patientIdForSingleEpisode
-            ? {
-                ...current,
-                worseningItems: current.worseningItems.filter(
-                  (item) => !episodeIds.has(item.episodeId),
-                ),
-              }
-            : current,
-        );
-      } else if (input.patientIds?.length) {
-        const patientIds = new Set(input.patientIds);
-        setPatients((current) =>
-          current.map((patient) =>
-            patientIds.has(patient.id)
-              ? { ...patient, worseningItems: [] }
-              : patient,
-          ),
-        );
-        setSelectedPatientIds([]);
-      }
-
-      setActionMessage(
-        body.data.modifiedCount === 1
-          ? "Marked 1 follow-up item as reviewed."
-          : `Marked ${body.data.modifiedCount} follow-up items as reviewed.`,
-      );
-      setReviewComposer(null);
-      setReviewNote("");
-    } catch (error) {
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : "Unable to mark follow-up items as reviewed",
-      );
-    } finally {
-      setActionPending(false);
-    }
-  }
-
-  function handleReviewItem(patientId: string, episodeId: string) {
-    setReviewNote("");
-    setReviewComposer({
-      episodeIds: [episodeId],
-      patientIds: [patientId],
-      title: "Mark follow-up item as reviewed",
-    });
-  }
-
-  async function handleSendCustomNotification() {
-    if (!selectedPatientIds.length) {
-      setActionError("Select one or more patients first.");
-      setNotifyComposerOpen(false);
-      return;
-    }
-
-    setActionPending(true);
-    setActionError(null);
-    setActionMessage(null);
-
-    try {
-      const response = await fetch("/api/portal/patients/notify", {
-        body: JSON.stringify({
-          body: notifyBody.trim() || undefined,
-          patientIds: selectedPatientIds,
-          title: notifyTitle.trim() || undefined,
-        }),
-        headers: {
-          ...getPortalSessionAuthHeaders(authenticatedSession.jwt),
-          "content-type": "application/json",
-        },
-        method: "POST",
-      });
-
-      const body = (await response.json().catch(() => null)) as
-        | PortalNotifyPatientsResponse
-        | { error?: { message?: string } }
-        | null;
-
-      if (!response.ok || !body || !("data" in body)) {
-        throw new Error(readResponseMessage(body, "Unable to notify patients"));
-      }
-
-      setActionMessage(
-        body.data.failed
-          ? `Notified ${body.data.delivered} patient(s); ${body.data.failed} could not be delivered.`
-          : `Notified ${body.data.delivered} patient(s).`,
-      );
-      setNotifyComposerOpen(false);
-    } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : "Unable to notify patients",
-      );
-    } finally {
-      setActionPending(false);
-    }
-  }
-
-  function togglePatientSelection(patientId: string) {
-    setSelectedPatientIds((current) =>
-      current.includes(patientId)
-        ? current.filter((id) => id !== patientId)
-        : [...current, patientId],
-    );
-  }
-
   return (
     <div className={styles.detailLayout}>
       <h1 className={styles.visuallyHidden}>Patient dashboard</h1>
@@ -474,9 +281,11 @@ function PortalDashboardContent() {
               <h2 className={styles.statTitle}>{card.label}</h2>
               <strong className={styles.statValue}>
                 {card.count ?? "Search"}
-                {card.count === null ? "" : card.count === 1
-                  ? (card.valueLabelSingular ?? " patient")
-                  : (card.valueLabelPlural ?? " patients")}
+                {card.count === null
+                  ? ""
+                  : card.count === 1
+                    ? (card.valueLabelSingular ?? " patient")
+                    : (card.valueLabelPlural ?? " patients")}
               </strong>
               {card.filter === "review" ? (
                 <div className={styles.statDetailLines}>
@@ -533,6 +342,9 @@ function PortalDashboardContent() {
                   }
                 } else {
                   params.set("filter", card.filter);
+                  if (card.filter === "search") {
+                    params.delete("membershipStatus");
+                  }
                   if (card.filter === "review") {
                     params.set("reviewType", "all");
                   }
@@ -557,7 +369,7 @@ function PortalDashboardContent() {
           </article>
         ))}
       </section>
-      {!patientsLoading ? (
+      {!patientsLoading && activeFilter !== "search" ? (
         <section className={styles.metaStrip}>
           <span>
             Showing
@@ -607,7 +419,7 @@ function PortalDashboardContent() {
         </section>
       ) : null}
       <section className={styles.panelSurface}>
-        {activeFilter === "worsening" ? (
+        {activeFilter === "search" ? (
           <PortalTrendSearch />
         ) : patientsError ? (
           <div className={styles.emptyState}>
@@ -714,27 +526,29 @@ function PortalDashboardContent() {
           className={styles.modalWarning}
           labelledBy="session-warning-dialog-title"
         >
-            <h2 className={styles.modalTitle} id="session-warning-dialog-title">Session warning</h2>
-            <p className={styles.modalCopy}>
-              No activity has been detected for 18 minutes. Interact with the
-              portal to keep the session alive.
-            </p>
-            <div className={styles.warningActions}>
-              <button
-                className={styles.buttonSecondarySmall}
-                onClick={clearWarning}
-                type="button"
-              >
-                Stay signed in
-              </button>
-              <button
-                className={styles.buttonPrimarySmall}
-                onClick={() => logout("manual")}
-                type="button"
-              >
-                Log out now
-              </button>
-            </div>
+          <h2 className={styles.modalTitle} id="session-warning-dialog-title">
+            Session warning
+          </h2>
+          <p className={styles.modalCopy}>
+            No activity has been detected for 18 minutes. Interact with the
+            portal to keep the session alive.
+          </p>
+          <div className={styles.warningActions}>
+            <button
+              className={styles.buttonSecondarySmall}
+              onClick={clearWarning}
+              type="button"
+            >
+              Stay signed in
+            </button>
+            <button
+              className={styles.buttonPrimarySmall}
+              onClick={() => logout("manual")}
+              type="button"
+            >
+              Log out now
+            </button>
+          </div>
         </PortalDialog>
       ) : null}
     </div>
