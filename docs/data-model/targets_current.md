@@ -34,6 +34,8 @@ This collection should always be updated together with a corresponding
   value for backward compatibility.
 - Patient and care-team values can coexist; neither update path deletes the other.
 - Explicit rule lineage (`derivedFrom`)
+- Numeric renal nutrition targets used by the renal nutrition profile are stored
+  here rather than in a separate nutrition-profile collection.
 
 ---
 
@@ -103,6 +105,11 @@ The `recommended` field name is legacy. User interfaces and API consumers must
 describe it as a `General reference`. A system-seeded reference must not be
 represented as personalised clinical advice or used to generate automatic
 nutrition-worsening notifications.
+
+Renal nutrition profile storage split:
+
+- descriptive profile fields live in `health_profiles_current`
+- numeric renal nutrition targets live in `targets_current`
 
 ---
 

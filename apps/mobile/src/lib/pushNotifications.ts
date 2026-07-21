@@ -44,25 +44,6 @@ type ApiEnvelope<T> = {
   ok?: boolean;
 };
 
-type WorseningTrendDebugResponse = {
-  activeAlerts?: PatientWorseningTrendAlert[];
-  checkIns?: Array<{
-    alertId?: string;
-    key?: string;
-    responseCode?: string;
-    responseLabel?: string;
-    submittedAt?: string;
-  }>;
-  states?: Array<{
-    episodeId?: string;
-    firstDetectedAt?: string;
-    key?: string;
-    lastDetectedAt?: string;
-    status?: string;
-    viewedAt?: string | null;
-  }>;
-};
-
 type WorseningTrendViewedArgs = {
   alertId: string;
   key: PatientWorseningTrendAlert["key"];
@@ -577,51 +558,6 @@ function unwrapApiData<T>(raw: unknown, fallback: T): T {
   return raw as T;
 }
 
-async function logWorseningTrendDebugSnapshot() {
-  if (!__DEV__) {
-    return;
-  }
-
-  try {
-    const res = await authFetch(`${API}/api/worsening-trends/debug`);
-    if (!res.ok) {
-      console.log("[worsening][debug] request failed", { status: res.status });
-      return;
-    }
-
-    const raw =
-      (await res.json().catch(() => null)) as
-        | ApiEnvelope<WorseningTrendDebugResponse>
-        | WorseningTrendDebugResponse
-        | null;
-    const data = unwrapApiData<WorseningTrendDebugResponse>(raw, {});
-    console.log("[worsening][debug] snapshot", {
-      activeAlerts: (data.activeAlerts ?? []).map((item) => ({
-        detectedAt: item.detectedAt,
-        id: item.id,
-        key: item.key,
-        viewedAt: item.viewedAt ?? null,
-      })),
-      checkIns: (data.checkIns ?? []).map((item) => ({
-        alertId: item.alertId,
-        key: item.key,
-        responseCode: item.responseCode,
-        submittedAt: item.submittedAt,
-      })),
-      states: (data.states ?? []).map((item) => ({
-        episodeId: item.episodeId,
-        firstDetectedAt: item.firstDetectedAt,
-        key: item.key,
-        lastDetectedAt: item.lastDetectedAt,
-        status: item.status,
-        viewedAt: item.viewedAt ?? null,
-      })),
-    });
-  } catch (error) {
-    console.log("[worsening][debug] snapshot failed", error);
-  }
-}
-
 function nextMorningDate(baseIso: string | null) {
   const now = new Date();
   const next = baseIso ? new Date(baseIso) : new Date();
@@ -830,7 +766,6 @@ export async function syncWorseningTrendNotifications(
     const data = unwrapApiData<PatientWorseningTrendAlertsResponse>(raw, {
       items: [],
     });
-    await logWorseningTrendDebugSnapshot();
     console.log("[worsening] active response", {
       itemCount: data.items?.length ?? 0,
       items: (data.items ?? []).map((item) => ({
