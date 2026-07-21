@@ -391,15 +391,8 @@ export type CarePlanDetailResponse = {
   activity: CarePlanActivityEvent[];
 };
 export type WeeklySleepSummary = {
-  advice: string[];
   averageLoggedDurationMin: number | null;
-  hasEnoughSleep: boolean;
-  humanMessage: string;
   loggedDays: number;
-  manualLoggingOnly: boolean;
-  nightsBelowTarget: number;
-  splitNights: number;
-  targetDurationMin: number;
   weekEnd: string;
   weekStart: string;
   weeklyAverageDurationMin: number;

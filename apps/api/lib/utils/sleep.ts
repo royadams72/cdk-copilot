@@ -2,7 +2,6 @@ import { COLLECTIONS } from "@ckd/core/server";
 import type { Db, ObjectId } from "mongodb";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const SLEEP_TARGET_MIN = 8 * 60;
 export const DEFAULT_SLEEP_REMINDER_HOUR = 8;
 
 type SleepSource = "patient" | "device" | "api" | "provider";
@@ -41,15 +40,8 @@ type SleepDayAggregate = {
 };
 
 export type WeeklySleepSummary = {
-  advice: string[];
   averageLoggedDurationMin: number | null;
-  hasEnoughSleep: boolean;
-  humanMessage: string;
   loggedDays: number;
-  manualLoggingOnly: boolean;
-  nightsBelowTarget: number;
-  splitNights: number;
-  targetDurationMin: number;
   weekEnd: string;
   weeklyAverageDurationMin: number;
   weekStart: string;
@@ -205,87 +197,6 @@ function listRecentDayKeys(referenceDate: Date, timeZone: string, days: number) 
   return keys;
 }
 
-function buildSleepAdvice(input: {
-  loggedDays: number;
-  manualLoggingOnly: boolean;
-  nightsBelowTarget: number;
-  splitNights: number;
-  weeklyAverageDurationMin: number;
-}) {
-  const advice: string[] = [];
-
-  if (input.loggedDays === 0) {
-    return [
-      "Log your sleep each morning so the app can spot patterns across the week.",
-      "Aim for a consistent lights-out and wake-up time, even on weekends.",
-    ];
-  }
-
-  if (input.weeklyAverageDurationMin < 6 * 60) {
-    advice.push(
-      "Protect a longer sleep window by moving bedtime 30 to 60 minutes earlier for the next week.",
-    );
-  } else if (input.weeklyAverageDurationMin < SLEEP_TARGET_MIN) {
-    advice.push(
-      "A small extension usually helps here. Try adding 15 to 30 minutes to your sleep window each night.",
-    );
-  }
-
-  if (input.nightsBelowTarget >= 3) {
-    advice.push(
-      "Keep your wake-up time steady and reduce late caffeine, heavy meals, and screen time in the last hour before bed.",
-    );
-  }
-
-  if (input.splitNights >= 2) {
-    advice.push(
-      "Your sleep was split on multiple nights. A calmer pre-bed routine and limiting overnight disruptions may help consolidate it.",
-    );
-  }
-
-  if (input.manualLoggingOnly) {
-    advice.push(
-      "Because sleep is being logged manually, record it in the morning so the weekly summary stays complete.",
-    );
-  }
-
-  if (!advice.length) {
-    advice.push(
-      "Keep the same sleep schedule this week. Consistency is the main thing to protect when you are already near target.",
-    );
-  }
-
-  return advice.slice(0, 3);
-}
-
-function buildHumanMessage(input: {
-  averageLoggedDurationMin: number | null;
-  hasEnoughSleep: boolean;
-  loggedDays: number;
-  nightsBelowTarget: number;
-  weeklyAverageDurationMin: number;
-}) {
-  if (input.loggedDays === 0) {
-    return "No sleep was logged in the last 7 days, so there is not enough data to judge your weekly sleep yet.";
-  }
-
-  const weeklyHours = (input.weeklyAverageDurationMin / 60).toFixed(1);
-  const loggedHours =
-    input.averageLoggedDurationMin !== null
-      ? (input.averageLoggedDurationMin / 60).toFixed(1)
-      : null;
-
-  if (input.hasEnoughSleep) {
-    return `You averaged ${weeklyHours} hours of sleep across the week and were close to target on most nights.`;
-  }
-
-  if (loggedHours) {
-    return `You averaged ${loggedHours} hours on logged nights (${weeklyHours} hours across the full week), with ${input.nightsBelowTarget} nights below the 8 hour target.`;
-  }
-
-  return `You averaged ${weeklyHours} hours of sleep across the week, which is below the 8 hour target.`;
-}
-
 export async function getWeeklySleepSummary(
   db: Db,
   patientId: ObjectId,
@@ -335,36 +246,9 @@ export async function getWeeklySleepSummary(
   const averageLoggedDurationMin = loggedDays
     ? Math.round(totalDurationMin / loggedDays)
     : null;
-  const nightsBelowTarget = weekAggregates.filter(
-    (item) => item.durationMin < SLEEP_TARGET_MIN,
-  ).length;
-  const splitNights = weekAggregates.filter((item) => item.segments > 1).length;
-  const manualLoggingOnly = docs.every((doc) => doc.source !== "provider");
-  const hasEnoughSleep = weeklyAverageDurationMin >= SLEEP_TARGET_MIN;
-  const advice = buildSleepAdvice({
-    loggedDays,
-    manualLoggingOnly,
-    nightsBelowTarget,
-    splitNights,
-    weeklyAverageDurationMin,
-  });
-
   return {
-    advice,
     averageLoggedDurationMin,
-    hasEnoughSleep,
-    humanMessage: buildHumanMessage({
-      averageLoggedDurationMin,
-      hasEnoughSleep,
-      loggedDays,
-      nightsBelowTarget,
-      weeklyAverageDurationMin,
-    }),
     loggedDays,
-    manualLoggingOnly,
-    nightsBelowTarget,
-    splitNights,
-    targetDurationMin: SLEEP_TARGET_MIN,
     weekEnd,
     weekStart,
     weeklyAverageDurationMin,

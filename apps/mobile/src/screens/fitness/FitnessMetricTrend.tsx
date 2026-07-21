@@ -1199,11 +1199,10 @@ export default function FitnessMetricTrend() {
         [
           `${summary.weekStart} to ${summary.weekEnd}`,
           `Weekly average: ${formatSleepHours(summary.weeklyAverageDurationMin)}`,
+          summary.averageLoggedDurationMin !== null
+            ? `Logged-night average: ${formatSleepHours(summary.averageLoggedDurationMin)}`
+            : "",
           `Logged days: ${summary.loggedDays}/7`,
-          `Below target: ${summary.nightsBelowTarget}`,
-          summary.splitNights > 0 ? `Split nights: ${summary.splitNights}` : "",
-          "",
-          summary.humanMessage,
         ]
           .filter(Boolean)
           .join("\n"),
@@ -1308,25 +1307,19 @@ export default function FitnessMetricTrend() {
               <ThemedText style={{ opacity: 0.72 }}>
                 {weeklySleepSummary.weekStart} to {weeklySleepSummary.weekEnd}
               </ThemedText>
-              <ThemedText style={{ opacity: 0.82 }}>
-                {weeklySleepSummary.humanMessage}
-              </ThemedText>
               <ThemedText style={{ opacity: 0.72 }}>
                 Weekly average:{" "}
                 {formatSleepHours(weeklySleepSummary.weeklyAverageDurationMin)}{" "}
                 • Logged days: {weeklySleepSummary.loggedDays}/7
               </ThemedText>
-              <ThemedText style={{ opacity: 0.72 }}>
-                Nights below target: {weeklySleepSummary.nightsBelowTarget}
-                {weeklySleepSummary.splitNights > 0
-                  ? ` • Split nights: ${weeklySleepSummary.splitNights}`
-                  : ""}
-              </ThemedText>
-              {weeklySleepSummary.advice.map((item) => (
-                <ThemedText key={item} style={{ opacity: 0.78 }}>
-                  • {item}
+              {weeklySleepSummary.averageLoggedDurationMin !== null ? (
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Logged-night average:{" "}
+                  {formatSleepHours(
+                    weeklySleepSummary.averageLoggedDurationMin,
+                  )}
                 </ThemedText>
-              ))}
+              ) : null}
             </View>
           </Card>
         ) : null}
