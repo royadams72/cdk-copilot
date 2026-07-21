@@ -95,51 +95,62 @@ export default function PortalPatientMessagesPage() {
       <PortalPatientSubpageHeader
         backHref={`/portal/patients/${params.patientId}`}
         backLabel="Back to patient"
-        headline={`Message ${patientName}`}
+        headline={`Notify ${patientName}`}
       />
-      {message ? <section className={styles.metaStrip} role="status">{message}</section> : null}
+      <div className={styles.carePlanFormIntro}>
+        <h2 className={styles.carePlanFormTitle}>Notify patient</h2>
+        <p className={styles.carePlanFormLead}>
+          Send a single push notification to {patientName} from the care team.
+        </p>
+      </div>
+      {message ? (
+        <p className={styles.portalValidationSuccess} role="status">
+          {message}
+        </p>
+      ) : null}
       {error ? (
-        <section className={styles.emptyState} role="alert">
-          <p>{error}</p>
-        </section>
+        <p className={styles.portalServerError} role="alert">
+          {error}
+        </p>
       ) : null}
       <section className={styles.panelSurface}>
-        <div className={styles.listHeaderRow}>
-          <span className={styles.listHeaderTitle}>Notify patient</span>
-        </div>
         <form
-          className={styles.worseningModalList}
+          className={styles.portalFormShellWide}
           onSubmit={(event) => {
             event.preventDefault();
             void handleSend();
           }}
         >
-          <label>
-            <span className={styles.listHeaderMeta}>Title</span>
+          <label className={styles.carePlanFormGroup}>
+            <span className={styles.carePlanFieldLabel}>Title</span>
             <input
-              className={styles.inputField}
+              className={styles.carePlanInput}
               maxLength={80}
               onChange={(event) => setTitle(event.target.value)}
+              placeholder="E.g. Please review your recent readings"
               value={title}
             />
             <span className={styles.dataScreenCaption}>
-              Up to 80 characters.
+              Up to 80 characters. Keep it short so it reads clearly in the
+              notification tray.
             </span>
           </label>
-          <label>
-            <span className={styles.listHeaderMeta}>Message</span>
+          <label className={styles.carePlanFormGroup}>
+            <span className={styles.carePlanFieldLabel}>Message</span>
             <textarea
-              className={styles.inputField}
+              className={styles.carePlanTextarea}
               maxLength={240}
               onChange={(event) => setBody(event.target.value)}
+              placeholder="Explain what the patient should review or do next."
               rows={5}
               value={body}
             />
             <span className={styles.dataScreenCaption}>
-              Up to 240 characters. The patient receives this as a push notification.
+              Up to 240 characters. The patient receives this as a push
+              notification in the app.
             </span>
           </label>
-          <div className={styles.warningActions}>
+          <div className={styles.portalActionRowEnd}>
             <button
               className={styles.buttonPrimarySmall}
               disabled={sending || !title.trim() || !body.trim()}

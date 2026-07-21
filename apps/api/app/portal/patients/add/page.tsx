@@ -413,7 +413,7 @@ export default function PortalAddPatientPage() {
     return nextErrors;
   }
 
-  function focusFirstInvalidField(args: {
+  function focusFirstInvalidPatientInviteField(args: {
     nextCareTeamError: string | null;
     nextFacilityError: string | null;
     nextRowErrors: Record<string, RowFieldErrors>;
@@ -466,7 +466,7 @@ export default function PortalAddPatientPage() {
       Object.keys(nextRowErrors).length > 0;
 
     if (hasErrors) {
-      focusFirstInvalidField({
+      focusFirstInvalidPatientInviteField({
         currentRows,
         nextCareTeamError,
         nextFacilityError,

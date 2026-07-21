@@ -17,8 +17,6 @@ import type {
   PortalPatientListItem,
   PortalPatientMembershipStatusFilter,
   PortalPatientStat,
-  PortalPatientWorseningItem,
-  PortalWorseningKind,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
   normalizePortalPatientFilter,
@@ -44,9 +42,6 @@ type PortalNotifyPatientsResponse = {
     failed: number;
     notifiedPatientIds: string[];
   };
-};
-type PortalReviewWorseningResponse = {
-  data: { modifiedCount: number; reviewedPatientIds: string[] };
 };
 type ReviewComposerState = {
   episodeIds?: string[];
@@ -88,22 +83,6 @@ function PortalDashboardContent() {
   const [totalPatients, setTotalPatients] = useState(0);
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [patientsError, setPatientsError] = useState<string | null>(null);
-  const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([]);
-  // const [selectedWorseningFilter, setSelectedWorseningFilter] = useState<PortalWorseningKind>("all");
-  const [selectedAction, setSelectedAction] = useState("");
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionPending, setActionPending] = useState(false);
-  const [notifyComposerOpen, setNotifyComposerOpen] = useState(false);
-  const [notifyTitle, setNotifyTitle] = useState("Check-in requested");
-  const [notifyBody, setNotifyBody] = useState(
-    "Your care team would like you to review your recent health information in CKD Copilot.",
-  );
-  const [reviewComposer, setReviewComposer] =
-    useState<ReviewComposerState>(null);
-  const [reviewNote, setReviewNote] = useState("");
-  const [detailsPatient, setDetailsPatient] =
-    useState<PortalPatientListItem | null>(null);
   const activeFilter = normalizePortalPatientFilter(searchParams.get("filter"));
   const activeReviewType = normalizeReviewType(searchParams.get("reviewType"));
   const activeMembershipStatus = normalizePortalPatientMembershipStatusFilter(
@@ -273,7 +252,6 @@ function PortalDashboardContent() {
         {statCards.map((card) => (
           <article
             className={styles.statCard}
-            data-active={activeFilter === card.filter}
             data-tone={card.tone}
             key={card.label}
           >

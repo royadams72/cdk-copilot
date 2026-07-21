@@ -24,7 +24,6 @@
         "analysisMode",
         "loggedDays",
         "findings",
-        "suggestions",
         "humanMessage",
         "generatedAt",
         "createdAt",
@@ -75,21 +74,6 @@
                     }
                   }
                 }
-              }
-            }
-          }
-        },
-        "suggestions": {
-          "bsonType": "array",
-          "items": {
-            "bsonType": "object",
-            "required": ["fromFood", "reason", "alternatives"],
-            "properties": {
-              "fromFood": { "bsonType": "string" },
-              "reason": { "bsonType": "string" },
-              "alternatives": {
-                "bsonType": "array",
-                "items": { "bsonType": "string" }
               }
             }
           }

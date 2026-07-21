@@ -7,11 +7,8 @@ import {
 import { type Document, ObjectId } from "mongodb";
 import type { Db } from "mongodb";
 import { COLLECTIONS } from "@ckd/core/server";
-import type { PatientWorseningTrendAlert } from "@ckd/core";
 import { formatDisplayDob, toIsoDate } from "@/apps/api/lib/format/date";
 import {
-  buildPortalWorseningHref,
-  mapTrendKeyToPortalKind,
   normalizePortalPatientFilter,
   normalizePortalPatientMembershipStatusFilter,
   type PortalPatientAdvancedFilters,
@@ -21,7 +18,6 @@ import {
   type PortalPatientMembershipStatus,
   type PortalPatientMembershipStatusFilter,
   type PortalPatientStat,
-  type PortalPatientWorseningItem,
 } from "@/apps/api/lib/portal/patient-shared";
 import {
   derivePatientLifecycleStatus,
@@ -172,47 +168,8 @@ function normalizeName(pii: PortalPatientPii) {
   return fullName || "Patient record";
 }
 
-function buildPortalPatientWorseningItems(raw: {
-  activeAlerts?: PatientWorseningTrendAlert[];
-  patientId: string;
-}): PortalPatientWorseningItem[] {
-  if (raw.activeAlerts?.length) {
-    return raw.activeAlerts.map((alert) => {
-      const firstDetectedAt = alert.firstDetectedAt
-        ? new Date(alert.firstDetectedAt)
-        : null;
-      const daysActive =
-        firstDetectedAt && !Number.isNaN(firstDetectedAt.getTime())
-          ? Math.max(
-              1,
-              Math.floor(
-                (Date.now() - firstDetectedAt.getTime()) / MS_PER_DAY,
-              ) + 1,
-            )
-          : 1;
-
-      return {
-        daysActive,
-        detail: alert.detail ?? alert.body,
-        episodeId: alert.id,
-        firstDetectedAt: alert.firstDetectedAt ?? null,
-        href: buildPortalWorseningHref(raw.patientId, alert.key),
-        kind: mapTrendKeyToPortalKind(alert.key),
-        label: alert.title,
-        level: alert.level,
-        patientResponseLabel: alert.checkInResponseLabel ?? null,
-        portalEscalationEligible: alert.portalEscalationEligible,
-        reviewedAt: null,
-        viewedAt: alert.viewedAt ?? null,
-      };
-    });
-  }
-  return [];
-}
-
 export function mapPortalPatientListItem(raw: {
   _id: ObjectId;
-  activeAlerts?: PatientWorseningTrendAlert[];
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
@@ -242,16 +199,11 @@ export function mapPortalPatientListItem(raw: {
     reviewDueCount: raw.reviewDueCount ?? 0,
     reviewRenalGuidanceHref: raw.reviewRenalGuidanceHref ?? null,
     stage: raw.stage ?? null,
-    worseningItems: buildPortalPatientWorseningItems({
-      activeAlerts: raw.activeAlerts ?? [],
-      patientId: raw._id.toHexString(),
-    }),
   };
 }
 
 export function mapPortalPatientDetail(raw: {
   _id: ObjectId;
-  activeAlerts?: PatientWorseningTrendAlert[];
   assignments?: PortalPatientAssignment[];
   flags?: string[];
   pii?: PortalPatientPii | null;
@@ -378,8 +330,8 @@ export async function mapPortalPatientListItems(
     );
   }
 
-  return raws.map((raw) => ({
-    ...mapPortalPatientListItem({
+  return raws.map((raw) =>
+    mapPortalPatientListItem({
       ...raw,
       renalGuidanceReviewDueCount:
         renalGuidanceReviewDueCountByPatientId.get(raw._id.toHexString()) ?? 0,
@@ -389,8 +341,7 @@ export async function mapPortalPatientListItems(
       reviewRenalGuidanceHref:
         reviewRenalGuidanceHrefByPatientId.get(raw._id.toHexString()) ?? null,
     }),
-    worseningItems: [],
-  }));
+  );
 }
 
 function hasFlag(item: PortalPatientListItem, terms: string[]) {

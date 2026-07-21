@@ -62,9 +62,6 @@ const OBJECT_ID_PATIENT_COLLECTIONS = [
   COLLECTIONS.UsersClinical,
   COLLECTIONS.UsersPII,
   COLLECTIONS.WeeklyNutritionInsights,
-  COLLECTIONS.WorseningTrendCheckIns,
-  COLLECTIONS.WorseningTrendSnapshots,
-  COLLECTIONS.WorseningTrendStates,
 ] as const;
 
 const STRING_PATIENT_COLLECTIONS = [

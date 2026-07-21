@@ -41,9 +41,6 @@ export const FoodTaxonomySnapshot = z
     normalizedName: z.string().min(1),
     majorGroup: TaxonomyMajorGroup,
     subGroup: z.string().nullable().default(null),
-    swapGroup: z.string().nullable().default(null),
-    primarySwapGroup: z.string().nullable().default(null),
-    secondarySwapGroups: z.array(z.string()).default([]),
     tags: z.array(z.string()).default([]),
     inferredFrom: FoodTaxonomyInferredFrom,
   })

@@ -1,6 +1,6 @@
 # health_profiles_current
 
-**Purpose:** Current effective structured health profile state for the patient. This is the fast-read projection for structured allergies, dietary preferences, and terminology-backed conditions.
+**Purpose:** Current effective structured health profile state for the patient. This is the fast-read projection for structured allergies, dietary preferences, terminology-backed conditions, and the descriptive parts of the renal nutrition profile.
 
 ## Why this exists
 
@@ -32,6 +32,11 @@
   - `value.kind` · `"dietary_preference"`
   - `value.dietaryPreference.key` · enum
   - `value.dietaryPreference.label` · string
+- `dietaryRestrictions[]`
+  - `entryId` · string
+  - `value.kind` · `"dietary_restriction"`
+  - `value.dietaryRestriction.key` · string|null
+  - `value.dietaryRestriction.label` · string
 - `conditions[]`
   - `entryId` · string
   - `value.kind` · `"condition"`
@@ -40,6 +45,10 @@
   - `value.condition.label` · string
   - `value.condition.status` · `active|inactive|resolved|unknown`
   - `value.condition.notes` · string|null
+- `renalDietGuidance` · string|null
+- `fluidLimitLitres` · number|null
+- `notesFromDietitian` · string|null
+- `reviewDueDate` · Date|null
 - `createdAt` · Date
 - `updatedAt` · Date
 - `createdBy` · actor
@@ -62,6 +71,8 @@ Actor shape:
 
 - `health_profiles_ledger` is the audit history source.
 - `health_profiles_current` is the read-optimized projection.
+- Renal nutrition profile descriptive fields are stored here alongside the
+  structured health profile state.
 - If a discrepancy is ever found, the ledger should be treated as the canonical history and the current projection should be rebuilt from it.
 
 ## Routes

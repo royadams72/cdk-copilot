@@ -1,6 +1,6 @@
 # weekly_nutrition_insights
 
-**Purpose:** Stored weekly nutrition findings and swap suggestions generated from `nutrition_ledger`, targets, and `food_swap_rules`.
+**Purpose:** Stored weekly nutrition findings generated from `nutrition_ledger` and targets.
 
 ## Shape
 
@@ -18,10 +18,6 @@
   - `target` · number
   - `topFoods[]` · top 2-3 contributors
   - `topContributors[]` · `{ food, nutrientAmount, contribution }`
-- `suggestions[]`
-  - `fromFood` · string
-  - `reason` · `phosphorus|potassium|sodium|protein|calories`
-  - `alternatives[]` · same-role lower-risk foods
 - `humanMessage` · short user-facing summary
 - `generatedAt` · Date
 - `createdAt` · Date
@@ -39,12 +35,9 @@
 5. For breached metrics, compute each food contribution:
    `foodContribution = (nutrient_from_food / total_nutrient) * 100`
 6. Keep the top 2-3 contributors.
-7. Read each contributor's stored taxonomy.
-8. Rank `primarySwapGroup` and `secondarySwapGroups` by nutrient relevance.
-9. Map the best available `swapGroup + nutrientFocus` through `food_swap_rules`.
-10. Suggest alternatives in the same food role.
-11. Read primary goal context from `patient_goals_current`.
-12. Use AI only to turn the already-determined findings into a short human-friendly message.
+7. Use each contributor's stored taxonomy for its canonical display name.
+8. Read primary goal context from `patient_goals_current`.
+9. Use AI only to turn the already-determined findings into a short human-friendly message.
 
 ## Sparse logging behavior
 

@@ -15,14 +15,6 @@
       "name": "byNormalizedName"
     },
     {
-      "key": { "majorGroup": 1, "subGroup": 1, "swapGroup": 1 },
-      "name": "byMajorSubSwap"
-    },
-    {
-      "key": { "swapGroup": 1 },
-      "name": "bySwapGroup"
-    },
-    {
       "key": { "tags": 1 },
       "name": "byTags"
     }
@@ -65,12 +57,6 @@
           ]
         },
         "subGroup": { "bsonType": ["string", "null"] },
-        "swapGroup": { "bsonType": ["string", "null"] },
-        "primarySwapGroup": { "bsonType": ["string", "null"] },
-        "secondarySwapGroups": {
-          "bsonType": "array",
-          "items": { "bsonType": "string" }
-        },
         "tags": {
           "bsonType": "array",
           "items": { "bsonType": "string" }
