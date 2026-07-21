@@ -25,7 +25,6 @@ Use these for layout, component, and styling reference:
 - `/portal/reference/Patient page.png`
 - `/portal/reference/Nutrition data.png`
 - `/portal/reference/Care Plan.png`
-- `/portal/reference/actions and filter for worsening trends.png`
 - `/portal/reference/diagnoses multi select.png`
 - `/portal/reference/date adding patient.png`
 - `/portal/reference/frequency to measure care plan.png`

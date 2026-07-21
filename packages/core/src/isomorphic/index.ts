@@ -28,5 +28,4 @@ export { CKD_STAGE_VALUES, CKDStage } from "./schemas/common";
 export * from "./schemas/edamam_responses";
 export * from "./constants/onboardingSteps";
 export * from "./constants/scopes";
-export * from "./constants/worseningTrends";
 export * from "../shared/common";

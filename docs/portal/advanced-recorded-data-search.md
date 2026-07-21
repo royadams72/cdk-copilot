@@ -1,6 +1,6 @@
 # Advanced recorded-data search
 
-The portal dashboard contains a clinician-initiated search for factual changes in recorded data. It replaces the former worsening-trend alert and follow-up workflow.
+The portal dashboard contains a clinician-initiated search for factual changes in recorded data.
 
 ## Behaviour
 
@@ -13,7 +13,3 @@ The portal dashboard contains a clinician-initiated search for factual changes i
 - Opening a result takes the clinician to the patient record for interpretation.
 
 The initial nutrition comparison uses average calories per recorded entry. Symptom comparison uses average recorded severity; blood pressure uses average systolic pressure. These labels must remain visible so users understand what was compared.
-
-## Removal boundary
-
-The patient worsening check-in screen, active/viewed/check-in endpoints, portal review endpoints, reviewed-trend pages and measurement-triggered notification sync have been removed. On authenticated app startup, legacy scheduled worsening notifications are cancelled and their local state is cleared. Historical database collections are not deleted.

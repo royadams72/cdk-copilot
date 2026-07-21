@@ -2,7 +2,6 @@ import {
   CarePlanActivityType,
   CarePlanSource,
   CarePlanStatus,
-  type PatientWorseningTrendAlert,
   TaskFreq,
   TaskStatus,
 } from "@ckd/core";
@@ -78,46 +77,7 @@ export type PortalPatientListItem = {
   reviewDueCount: number;
   reviewRenalGuidanceHref: string | null;
   stage: string | null;
-  worseningItems: PortalPatientWorseningItem[];
 };
-
-export const PORTAL_WORSENING_KINDS = [
-  "all",
-  "activity",
-  "bloodPressure",
-  "labs",
-  "nutrition",
-  "symptoms",
-  "weightDecrease",
-  "weightIncrease",
-] as const;
-
-export type PortalWorseningKind = (typeof PORTAL_WORSENING_KINDS)[number];
-
-export type PortalPatientWorseningItem = {
-  daysActive: number;
-  detail: string;
-  episodeId: string;
-  firstDetectedAt: string | null;
-  href: string | null;
-  kind: Exclude<PortalWorseningKind, "all"> | "general";
-  label: string;
-  level:
-    | "level_1_nudge"
-    | "level_2_check_in"
-    | "level_3_escalate"
-    | "level_3_high_priority";
-  patientResponseLabel: string | null;
-  portalEscalationEligible: boolean;
-  reviewedAt?: string | null;
-  reviewedByName?: string | null;
-  reviewedByPrincipalId?: string | null;
-  reviewedByRole?: string | null;
-  reviewedNote?: string | null;
-  viewedAt: string | null;
-};
-
-export type PortalWorseningSnapshotKey = PatientWorseningTrendAlert["key"];
 
 export type PortalPatientDetail = PortalPatientListItem & {
   assignments: Array<{
@@ -221,48 +181,6 @@ export const PORTAL_HEALTH_METRICS = [
 ] as const;
 
 export type PortalHealthMetric = (typeof PORTAL_HEALTH_METRICS)[number];
-
-export function mapTrendKeyToPortalKind(
-  key: PortalWorseningSnapshotKey,
-): PortalPatientWorseningItem["kind"] {
-  switch (key) {
-    case "blood_pressure_up":
-      return "bloodPressure";
-    case "labs_worsening":
-      return "labs";
-    case "steps_decline":
-      return "activity";
-    case "symptoms_worsening":
-      return "symptoms";
-    case "nutrition_worsening":
-      return "nutrition";
-    case "weight_decrease":
-      return "weightDecrease";
-    case "weight_increase":
-      return "weightIncrease";
-  }
-}
-
-export function buildPortalWorseningHref(
-  patientId: string,
-  key: PortalWorseningSnapshotKey,
-) {
-  switch (key) {
-    case "blood_pressure_up":
-      return `/portal/patients/${patientId}/health?metric=blood_pressure`;
-    case "labs_worsening":
-      return `/portal/patients/${patientId}/labs`;
-    case "weight_decrease":
-    case "weight_increase":
-      return `/portal/patients/${patientId}/health?metric=weight`;
-    case "symptoms_worsening":
-      return `/portal/patients/${patientId}/health?metric=symptoms`;
-    case "nutrition_worsening":
-      return `/portal/patients/${patientId}/nutrition`;
-    case "steps_decline":
-      return `/portal/patients/${patientId}`;
-  }
-}
 
 export type PortalPatientHealthMonth = {
   isSelected: boolean;
@@ -528,14 +446,6 @@ export function normalizePortalPatientMembershipStatusFilter(
   )
     ? (value as PortalPatientMembershipStatusFilter)
     : "active";
-}
-
-export function normalizePortalWorseningKind(
-  value: string | null | undefined,
-): PortalWorseningKind {
-  return PORTAL_WORSENING_KINDS.includes(value as PortalWorseningKind)
-    ? (value as PortalWorseningKind)
-    : "all";
 }
 
 export function normalizePortalNutritionFilter(

@@ -106,7 +106,7 @@ export default function RootLayout() {
 
       const data = response.notification.request.content.data;
       const screen = data?.screen;
-      if (typeof screen === "string" && screen.startsWith("/") && !screen.startsWith("/worsening-check-in")) {
+      if (typeof screen === "string" && screen.startsWith("/")) {
         router.replace(screen as never);
       }
       if (

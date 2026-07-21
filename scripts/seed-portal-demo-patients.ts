@@ -39,7 +39,7 @@ type DemoPatientConfig = {
   startingWeightKg: number;
   systolicBase: number;
   diastolicBase: number;
-  worsening: boolean;
+  adverseTrend: boolean;
 };
 
 const DEMO_PATIENTS: DemoPatientConfig[] = [
@@ -55,7 +55,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     email: "portal-demo-patient-1@eden-grafix.co.uk",
     facilityId: FACILITY_ID,
     firstName: "Aisha",
-    flags: ["worsening-trend", "review-due", "access-ending-soon"],
+    flags: ["review-due", "access-ending-soon"],
     heightCm: 163,
     lastContactDaysAgo: 5,
     lastName: "Rahman",
@@ -71,7 +71,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     startingWeightKg: 82.4,
     systolicBase: 148,
     diastolicBase: 92,
-    worsening: true,
+    adverseTrend: true,
   },
   {
     accessEndsInDays: null,
@@ -98,7 +98,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     startingWeightKg: 91.2,
     systolicBase: 136,
     diastolicBase: 84,
-    worsening: false,
+    adverseTrend: false,
   },
   {
     accessEndsInDays: 11,
@@ -125,7 +125,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     startingWeightKg: 74.8,
     systolicBase: 124,
     diastolicBase: 78,
-    worsening: false,
+    adverseTrend: false,
   },
   {
     accessEndsInDays: null,
@@ -139,7 +139,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     email: "portal-demo-patient-4@eden-grafix.co.uk",
     facilityId: FACILITY_ID,
     firstName: "Graham",
-    flags: ["review-due", "worsening-trend"],
+    flags: ["review-due"],
     heightCm: 179,
     lastContactDaysAgo: 6,
     lastName: "Ellis",
@@ -155,7 +155,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     startingWeightKg: 86.1,
     systolicBase: 152,
     diastolicBase: 88,
-    worsening: true,
+    adverseTrend: true,
   },
   {
     accessEndsInDays: null,
@@ -185,7 +185,7 @@ const DEMO_PATIENTS: DemoPatientConfig[] = [
     startingWeightKg: 67.5,
     systolicBase: 130,
     diastolicBase: 82,
-    worsening: false,
+    adverseTrend: false,
   },
 ];
 
@@ -450,7 +450,7 @@ function buildFoodEntry(
   patientId: ObjectId,
   dayOffset: number,
   mealType: "breakfast" | "lunch" | "dinner" | "snack",
-  worsening: boolean,
+  adverseTrend: boolean,
 ) {
   const eatenAt = new Date(daysAgo(dayOffset));
   eatenAt.setHours(
@@ -466,7 +466,7 @@ function buildFoodEntry(
     0,
   );
 
-  const multiplier = worsening && dayOffset < 20 ? 1.18 : 1;
+  const multiplier = adverseTrend && dayOffset < 20 ? 1.18 : 1;
 
   const items = FOOD_LIBRARY[mealType].map((template, itemIndex) => {
     const nutrients = {
@@ -568,7 +568,7 @@ function buildWeightMeasurement(
 ) {
   const measuredAt = daysAgo(56 - weekIndex * 7);
   measuredAt.setHours(7, 30, 0, 0);
-  const delta = config.worsening ? weekIndex * 0.35 : weekIndex * -0.08;
+  const delta = config.adverseTrend ? weekIndex * 0.35 : weekIndex * -0.08;
   return {
     createdAt: measuredAt,
     createdBy: principalId,
@@ -592,11 +592,11 @@ function buildBloodPressureMeasurement(
 ) {
   const measuredAt = daysAgo(dayOffset);
   measuredAt.setHours(9, 15, 0, 0);
-  const worseningFactor = config.worsening && dayOffset < 20 ? 8 : 0;
+  const adverseTrendFactor = config.adverseTrend && dayOffset < 20 ? 8 : 0;
   return {
     createdAt: measuredAt,
     createdBy: principalId,
-    diastolicMmHg: config.diastolicBase + (dayOffset % 3) + Math.round(worseningFactor / 4),
+    diastolicMmHg: config.diastolicBase + (dayOffset % 3) + Math.round(adverseTrendFactor / 4),
     kind: "blood_pressure",
     measuredAt,
     orgId: ORG_ID,
@@ -604,7 +604,7 @@ function buildBloodPressureMeasurement(
     pulseBpm: 72 + (dayOffset % 6),
     receivedAt: measuredAt,
     source: "patient",
-    systolicMmHg: config.systolicBase + (dayOffset % 5) + worseningFactor,
+    systolicMmHg: config.systolicBase + (dayOffset % 5) + adverseTrendFactor,
     updatedAt: measuredAt,
     updatedBy: principalId,
   };
@@ -772,7 +772,7 @@ async function run() {
           },
         ],
         ckdStage: config.ckdStage,
-        contraindications: config.worsening ? ["Monitor sodium intake"] : [],
+        contraindications: config.adverseTrend ? ["Monitor sodium intake"] : [],
         createdAt,
         createdBy: SEED_NAMESPACE,
         diagnoses: [
@@ -807,7 +807,7 @@ async function run() {
                 ? "snack"
                 : "dinner";
         nutritionDocs.push(
-          buildFoodEntry(patientId, dayOffset, mealType, config.worsening),
+          buildFoodEntry(patientId, dayOffset, mealType, config.adverseTrend),
         );
       }
       if (nutritionDocs.length > 0) {

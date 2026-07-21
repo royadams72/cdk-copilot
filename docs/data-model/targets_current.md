@@ -104,7 +104,7 @@ targets while still using one target pipeline:
 The `recommended` field name is legacy. User interfaces and API consumers must
 describe it as a `General reference`. A system-seeded reference must not be
 represented as personalised clinical advice or used to generate automatic
-nutrition-worsening notifications.
+nutrition notifications.
 
 Renal nutrition profile storage split:
 

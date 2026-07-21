@@ -41,7 +41,6 @@ Static assets should live in `apps/api/public/portal`.
 ### 3. Main clinician dashboard
 
 - stat panels:
-  - worsening trends this month
   - missing data / disengaged
   - access ending soon
   - care plan review due

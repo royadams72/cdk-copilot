@@ -491,10 +491,10 @@ export default function PortalPatientMembershipPage() {
             <p>No membership history yet.</p>
           </div>
         ) : (
-          <div className={styles.worseningModalList}>
+          <div className={styles.historyList}>
             {events.map((event, index) => (
               <div
-                className={styles.worseningModalItem}
+                className={styles.historyItem}
                 key={`${event.createdAt}-${event.action}-${index}`}
               >
                 <strong>{formatActionLabel(event.action)}</strong>
