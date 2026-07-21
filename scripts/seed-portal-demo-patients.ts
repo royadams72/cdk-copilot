@@ -206,7 +206,6 @@ type FoodTemplate = {
   };
   quantity: number;
   subGroup: string | null;
-  swapGroup: string | null;
   tags: string[];
   unit: string;
 };
@@ -230,7 +229,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "breakfast cereal",
-      swapGroup: "oats",
       tags: ["breakfast", "wholegrain"],
       unit: "bowl",
     },
@@ -251,7 +249,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "berries",
-      swapGroup: "berries",
       tags: ["fruit"],
       unit: "portion",
     },
@@ -274,7 +271,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "wrap",
-      swapGroup: "sandwiches",
       tags: ["lunch", "protein"],
       unit: "wrap",
     },
@@ -295,7 +291,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "pome fruit",
-      swapGroup: "fresh-fruit",
       tags: ["fruit"],
       unit: "medium",
     },
@@ -318,7 +313,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "fish",
-      swapGroup: "lean-protein",
       tags: ["protein", "omega3"],
       unit: "fillet",
     },
@@ -339,7 +333,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "rice",
-      swapGroup: "grains",
       tags: ["carb"],
       unit: "portion",
     },
@@ -360,7 +353,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "green vegetables",
-      swapGroup: "vegetables",
       tags: ["veg"],
       unit: "portion",
     },
@@ -383,7 +375,6 @@ const FOOD_LIBRARY: Record<string, FoodTemplate[]> = {
       },
       quantity: 1,
       subGroup: "crackers",
-      swapGroup: "snacks",
       tags: ["snack"],
       unit: "packet",
     },
@@ -501,12 +492,9 @@ function buildFoodEntry(
         },
         majorGroup: template.majorGroup,
         normalizedName: template.name.toLowerCase(),
-        primarySwapGroup: template.swapGroup,
-        secondarySwapGroups: [],
         source: "seed",
         sourceFoodId: template.foodId,
         subGroup: template.subGroup,
-        swapGroup: template.swapGroup,
         tags: template.tags,
         taxonomyKey: `${template.majorGroup}:${template.foodId}`,
       },

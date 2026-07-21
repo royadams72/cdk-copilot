@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import {
-  TFoodTaxonomyDocument,
   TWeeklyNutritionAnalysisMode,
   TPatientGoalCode,
   TWeeklyNutritionGoal,
@@ -20,106 +19,16 @@ type NutrientReason = "phosphorus" | "potassium" | "sodium" | "protein" | "calor
 type NutrientMetricKey = "phosphorusMg" | "potassiumMg" | "sodiumMg" | "proteinG" | "caloriesKcal";
 
 type FoodContribution = {
-  alternatives: string[];
-  availableSwapGroups: string[];
   contribution: number;
   food: string;
   nutrientAmount: number;
-  nutrientReason: NutrientReason;
-  primarySwapGroup: string | null;
-  secondarySwapGroups: string[];
-};
-
-type FoodSwapRuleDoc = {
-  candidateSwapGroups?: string[];
-  isActive?: boolean;
-  nutrientFocus?: NutrientReason;
-  notes?: string | null;
-  swapGroup?: string;
-  updatedAt?: Date;
 };
 
 const OPENAI_SUMMARY_MODEL = "gpt-4.1-mini";
 const CONTRIBUTOR_LIMIT = 3;
 
-const DEFAULT_SWAP_GROUP_FOODS: Record<string, string[]> = {
-  cream_cheese_spread: ["cream cheese"],
-  egg: ["egg"],
-  fresh_fish: ["cod", "haddock"],
-  fresh_poultry: ["chicken breast", "turkey"],
-  fruit: ["apple", "berries"],
-  low_phosphate_soft_drink: ["lemonade", "clear soda"],
-  low_phosphorus_spread: ["jam", "honey"],
-  lower_calorie_dessert: ["yoghurt", "fruit salad"],
-  lower_phosphorus_yoghurt: ["greek-style yoghurt", "plain yoghurt"],
-  plain_pasta: ["plain pasta", "pasta with tomato sauce"],
-  popcorn: ["plain popcorn"],
-  plain_crackers: ["plain crackers", "rice cakes"],
-  soft_cheese: ["ricotta", "cottage cheese"],
-  unsalted_snack: ["unsalted popcorn", "rice cakes"],
-  water: ["water"],
-  water_flavoured: ["sparkling water", "flavoured water"],
-};
-
-const SWAP_GROUP_NUTRIENT_RELEVANCE: Partial<
-  Record<NutrientReason, Partial<Record<string, number>>>
-> = {
-  calories: {
-    cola_soft_drink: 3,
-    crisps: 3,
-    dessert: 3,
-    hard_cheese: 2,
-    nut_butter: 2,
-    nuts_and_seeds: 2,
-    pasta: 2,
-    red_meat: 2,
-    soft_drink: 3,
-  },
-  phosphorus: {
-    bacon: 2,
-    cola_soft_drink: 3,
-    fresh_fish: 2,
-    hard_cheese: 3,
-    nut_butter: 3,
-    nuts_and_seeds: 3,
-    processed_meat: 2,
-    red_meat: 2,
-    sausage: 2,
-    shellfish: 2,
-    soft_cheese: 2,
-  },
-  potassium: {
-    fruit: 2,
-    nut_butter: 2,
-    nuts_and_seeds: 2,
-    vegetable: 2,
-  },
-  protein: {
-    egg: 3,
-    fresh_fish: 3,
-    fresh_poultry: 3,
-    hard_cheese: 1,
-    nuts_and_seeds: 1,
-    processed_meat: 2,
-    red_meat: 3,
-    shellfish: 3,
-    soft_cheese: 1,
-  },
-  sodium: {
-    bacon: 3,
-    cola_soft_drink: 1,
-    crisps: 3,
-    hard_cheese: 3,
-    mixed_meal: 1,
-    processed_meat: 3,
-    sausage: 3,
-    soft_drink: 2,
-    soft_cheese: 2,
-  },
-};
-
 function toWeeklyNutritionInsight(value: Record<string, unknown>) {
-  const { _id: _ignored, ...doc } = value;
+  const { _id: _ignored, suggestions: _legacySuggestions, ...doc } = value;
   return WeeklyNutritionInsight.parse(doc);
 }
 
@@ -232,48 +141,9 @@ function getNutrientValue(
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function getItemSwapGroups(item: NutritionEntryDoc["items"][number]) {
-  const primarySwapGroup =
-    item.taxonomy?.primarySwapGroup ?? item.taxonomy?.swapGroup ?? null;
-  const secondarySwapGroups = Array.isArray(item.taxonomy?.secondarySwapGroups)
-    ? item.taxonomy.secondarySwapGroups.filter(
-        (group): group is string => Boolean(group && group !== primarySwapGroup),
-      )
-    : [];
-  return {
-    availableSwapGroups: [
-      ...new Set(
-        [primarySwapGroup, ...secondarySwapGroups].filter(
-          (group): group is string => Boolean(group),
-        ),
-      ),
-    ],
-    primarySwapGroup,
-    secondarySwapGroups,
-  };
-}
-
-function rankContributorSwapGroups(contributor: FoodContribution) {
-  return [...contributor.availableSwapGroups].sort((left, right) => {
-    const leftScore =
-      (left === contributor.primarySwapGroup ? 1 : 0) +
-      (SWAP_GROUP_NUTRIENT_RELEVANCE[contributor.nutrientReason]?.[left] ?? 0);
-    const rightScore =
-      (right === contributor.primarySwapGroup ? 1 : 0) +
-      (SWAP_GROUP_NUTRIENT_RELEVANCE[contributor.nutrientReason]?.[right] ?? 0);
-
-    if (rightScore !== leftScore) {
-      return rightScore - leftScore;
-    }
-    return contributor.availableSwapGroups.indexOf(left) -
-      contributor.availableSwapGroups.indexOf(right);
-  });
-}
-
 function collectTopContributors(
   entries: NutritionEntryDoc[],
   nutrientKey: NutrientMetricKey,
-  nutrientReason: NutrientReason,
 ): FoodContribution[] {
   const total = entries.reduce((sum, entry) => {
     return (
@@ -292,11 +162,8 @@ function collectTopContributors(
   const buckets = new Map<
     string,
     {
-      availableSwapGroups: string[];
       canonicalName: string;
       nutrientAmount: number;
-      primarySwapGroup: string | null;
-      secondarySwapGroups: string[];
     }
   >();
 
@@ -305,27 +172,11 @@ function collectTopContributors(
       const amount = getNutrientValue(item, nutrientKey);
       if (amount <= 0) continue;
       const key = contributionKey(item);
-      const swapGroups = getItemSwapGroups(item);
       const bucket = buckets.get(key) ?? {
-        availableSwapGroups: swapGroups.availableSwapGroups,
         canonicalName: item.taxonomy?.canonicalName ?? item.name ?? "Logged food",
         nutrientAmount: 0,
-        primarySwapGroup: swapGroups.primarySwapGroup,
-        secondarySwapGroups: swapGroups.secondarySwapGroups,
       };
       bucket.nutrientAmount += amount;
-      bucket.availableSwapGroups = [
-        ...new Set([
-          ...bucket.availableSwapGroups,
-          ...swapGroups.availableSwapGroups,
-        ]),
-      ];
-      bucket.secondarySwapGroups = [
-        ...new Set([
-          ...bucket.secondarySwapGroups,
-          ...swapGroups.secondarySwapGroups,
-        ]),
-      ];
       buckets.set(key, bucket);
     }
   }
@@ -334,73 +185,10 @@ function collectTopContributors(
     .sort((a, b) => b.nutrientAmount - a.nutrientAmount)
     .slice(0, CONTRIBUTOR_LIMIT)
     .map((bucket) => ({
-      alternatives: [],
-      availableSwapGroups: bucket.availableSwapGroups,
       contribution: round((bucket.nutrientAmount / total) * 100),
       food: bucket.canonicalName,
       nutrientAmount: round(bucket.nutrientAmount),
-      nutrientReason,
-      primarySwapGroup: bucket.primarySwapGroup,
-      secondarySwapGroups: bucket.secondarySwapGroups,
     }));
-}
-
-async function resolveAlternatives(
-  db: Db,
-  contributor: FoodContribution,
-): Promise<string[]> {
-  if (contributor.availableSwapGroups.length === 0) {
-    return [];
-  }
-
-  const swapRules = getCollection<FoodSwapRuleDoc>(db, COLLECTIONS.FoodSwapRules);
-  const taxonomyCollection = getCollection<TFoodTaxonomyDocument>(
-    db,
-    COLLECTIONS.FoodTaxonomy,
-  );
-  let candidateGroups: string[] = [];
-
-  for (const swapGroup of rankContributorSwapGroups(contributor)) {
-    const rule = await swapRules.findOne(
-      {
-        isActive: true,
-        nutrientFocus: contributor.nutrientReason,
-        swapGroup,
-      },
-      { sort: { updatedAt: -1 } },
-    );
-    candidateGroups = rule?.candidateSwapGroups ?? [];
-    if (candidateGroups.length > 0) {
-      break;
-    }
-  }
-
-  if (candidateGroups.length === 0) {
-    return [];
-  }
-
-  const alternatives = new Set<string>();
-  const taxonomyMatches = await taxonomyCollection
-    .find(
-      { swapGroup: { $in: candidateGroups } },
-      { projection: { canonicalName: 1, swapGroup: 1 }, sort: { updatedAt: -1 } },
-    )
-    .limit(12)
-    .toArray();
-
-  for (const doc of taxonomyMatches) {
-    if (doc.canonicalName) {
-      alternatives.add(doc.canonicalName);
-    }
-  }
-
-  for (const group of candidateGroups) {
-    for (const food of DEFAULT_SWAP_GROUP_FOODS[group] ?? []) {
-      alternatives.add(food);
-    }
-  }
-
-  return Array.from(alternatives).slice(0, 3);
 }
 
 function buildFallbackHumanMessage(summary: {
@@ -408,7 +196,6 @@ function buildFallbackHumanMessage(summary: {
   findings: TWeeklyNutritionInsight["findings"];
   goal: TWeeklyNutritionGoal;
   loggedDays: number;
-  suggestions: TWeeklyNutritionInsight["suggestions"];
 }) {
   const parts: string[] = [];
 
@@ -430,18 +217,6 @@ function buildFallbackHumanMessage(summary: {
     );
   }
 
-  for (const suggestion of summary.suggestions) {
-    parts.push(
-      `A simple change would be to replace ${suggestion.fromFood} with ${suggestion.alternatives.join(
-        " or ",
-      )}.`,
-    );
-  }
-
-  if (summary.goal === "weight_loss") {
-    parts.push("For weight loss, aim for lower-calorie swaps without changing the role that food plays in your meals.");
-  }
-
   return parts.join(" ").trim() || "Your weekly nutrition summary is ready.";
 }
 
@@ -450,7 +225,6 @@ async function buildHumanMessage(summary: {
   findings: TWeeklyNutritionInsight["findings"];
   goal: TWeeklyNutritionGoal;
   loggedDays: number;
-  suggestions: TWeeklyNutritionInsight["suggestions"];
 }) {
   if (!process.env.OPENAI_API_KEY) {
     return buildFallbackHumanMessage(summary);
@@ -460,10 +234,11 @@ async function buildHumanMessage(summary: {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const prompt = [
       "Write a short, human-friendly weekly nutrition summary.",
-      "Do not invent findings or suggestions.",
+      "Do not invent findings.",
+      "Do not give advice, recommendations, alternatives, substitutions, or food swaps.",
       "Use the provided goal only as tone/context.",
       "Keep it to 2-4 sentences.",
-      "Mention the top food contributors and suggested swaps plainly.",
+      "Mention the top food contributors plainly.",
       "The actual and target values are average daily amounts across the completed week, not single-day values.",
       "If analysisMode is logged_day_average, make clear the interpretation is based on logged days only.",
       "If analysisMode is insufficient_data, do not give nutrient advice and explain there were too few logged days for a reliable weekly interpretation.",
@@ -509,7 +284,6 @@ export async function generateWeeklyNutritionInsight(
         : "insufficient_data";
 
   const findings: TWeeklyNutritionInsight["findings"] = [];
-  const suggestions: TWeeklyNutritionInsight["suggestions"] = [];
 
   const phosphorusTarget = nutritionTargets.phosphorusMg;
   const sodiumTarget = nutritionTargets.sodiumMg;
@@ -584,7 +358,6 @@ export async function generateWeeklyNutritionInsight(
       const topContributors = collectTopContributors(
         entries,
         check.metricKey,
-        check.nutrientReason,
       );
       findings.push({
         type: check.findingType,
@@ -598,34 +371,14 @@ export async function generateWeeklyNutritionInsight(
           nutrientAmount: item.nutrientAmount,
         })),
       });
-
-      for (const contributor of topContributors.slice(0, 3)) {
-        const alternatives = await resolveAlternatives(db, contributor);
-        if (alternatives.length === 0) continue;
-        suggestions.push({
-          fromFood: contributor.food,
-          reason: contributor.nutrientReason,
-          alternatives,
-        });
-      }
     }
   }
-
-  const dedupedSuggestions = suggestions.filter((suggestion, index, list) => {
-    return (
-      list.findIndex(
-        (item) =>
-          item.fromFood === suggestion.fromFood && item.reason === suggestion.reason,
-      ) === index
-    );
-  });
 
   const humanMessage = await buildHumanMessage({
     analysisMode,
     findings,
     goal,
     loggedDays,
-    suggestions: dedupedSuggestions,
   });
 
   return WeeklyNutritionInsight.parse({
@@ -636,7 +389,6 @@ export async function generateWeeklyNutritionInsight(
     goal,
     loggedDays,
     findings,
-    suggestions: dedupedSuggestions,
     humanMessage,
     generatedAt: new Date(),
     createdAt: new Date(),

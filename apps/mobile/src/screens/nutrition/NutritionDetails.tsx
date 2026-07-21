@@ -467,12 +467,6 @@ export default function NutritionDetails() {
                     onPress: () =>
                       router.push("/(nutrition)/monthly-nutrition" as never),
                   },
-                  {
-                    id: "weekly-swap-tester",
-                    label: "Test weekly swaps",
-                    onPress: () =>
-                      router.push("/(nutrition)/weekly-swap-tester"),
-                  },
                 ]}
               />
             </View>

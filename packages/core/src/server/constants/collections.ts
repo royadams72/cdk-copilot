@@ -27,7 +27,6 @@ export const COLLECTIONS = {
   HealthConnectEventLogs: "health_connect_event_logs",
   ExerciseReference: "exercise_reference",
   HealthConnectSyncState: "health_connect_sync_state",
-  FoodSwapRules: "food_swap_rules",
   FoodTaxonomy: "food_taxonomy",
   HealthProfilesCurrent: "health_profiles_current",
   HealthProfilesLedger: "health_profiles_ledger",

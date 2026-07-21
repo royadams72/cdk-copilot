@@ -13,10 +13,7 @@ import type { Db } from "mongodb";
 type TaxonomyRuleResult = {
   inferredFrom?: Partial<TFoodTaxonomySnapshot["inferredFrom"]>;
   majorGroup?: TTaxonomyMajorGroup;
-  primarySwapGroup?: string | null;
-  secondarySwapGroups?: string[];
   subGroup?: string | null;
-  swapGroup?: string | null;
   tags?: string[];
 };
 
@@ -32,15 +29,6 @@ const NUT_BUTTER_REGEX = new RegExp(
 );
 const NUTS_AND_SEEDS_REGEX =
   /\b(peanut|peanuts|almond|almonds|cashew|cashews|walnut|walnuts|hazelnut|hazelnuts|pistachio|pistachios|mixed nuts)\b/i;
-const PASTA_REGEX =
-  /\b(pasta|spaghetti|penne|macaroni|linguine|tagliatelle|fettuccine)\b/i;
-const CHEESE_COMPONENT_REGEX =
-  /\b(cheese|cheddar|parmesan|mozzarella|gruyere|pecorino)\b/i;
-const RED_MEAT_COMPONENT_REGEX =
-  /\b(beef|mince|minced beef|minced meat|bolognese|bolognaise|meatball|meatballs)\b/i;
-const FISH_COMPONENT_REGEX = /\b(tuna|salmon|cod|haddock)\b/i;
-const POULTRY_COMPONENT_REGEX = /\b(chicken|turkey)\b/i;
-
 function detectNutButter(name: string) {
   if (!name) return false;
   return NUT_BUTTER_REGEX.test(name.toLowerCase());
@@ -55,7 +43,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "dairy",
       subGroup: "cheese",
-      swapGroup: "hard_cheese",
       tags: ["dairy"],
     },
     test: /\bcheddar\b|\bparmesan\b|\bred leicester\b|\bstilton\b/i,
@@ -64,7 +51,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "dairy",
       subGroup: "soft_cheese",
-      swapGroup: "soft_cheese",
       tags: ["dairy"],
     },
     test: /\bcream cheese\b|\bricotta\b|\bcottage cheese\b/i,
@@ -73,7 +59,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "protein",
       subGroup: "processed_meat",
-      swapGroup: "bacon",
       tags: ["animal_protein", "processed_food"],
     },
     test: /\bbacon\b/i,
@@ -82,7 +67,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "protein",
       subGroup: "processed_meat",
-      swapGroup: "sausage",
       tags: ["animal_protein", "processed_food"],
     },
     test: /\bsausage\b|\bsausages\b/i,
@@ -91,7 +75,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "protein",
       subGroup: "shellfish",
-      swapGroup: "shellfish",
       tags: ["animal_protein"],
     },
     test: /\bprawn\b|\bprawns\b|\bshrimp\b/i,
@@ -100,7 +83,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "protein",
       subGroup: "poultry",
-      swapGroup: "fresh_poultry",
       tags: ["animal_protein"],
     },
     test: /\bchicken\b|\bturkey\b/i,
@@ -109,7 +91,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "protein",
       subGroup: "fish",
-      swapGroup: "fresh_fish",
       tags: ["animal_protein"],
     },
     test: /\bsalmon\b|\btuna\b|\bcod\b|\bhaddock\b/i,
@@ -118,7 +99,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "protein",
       subGroup: "egg",
-      swapGroup: "egg",
       tags: ["animal_protein"],
     },
     test: /\begg\b/i,
@@ -127,7 +107,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "grain",
       subGroup: "pasta",
-      swapGroup: "pasta",
     },
     test: /\bpasta\b|\bspaghetti\b|\bpenne\b|\bmacaroni\b/i,
   },
@@ -135,7 +114,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "grain",
       subGroup: "bread",
-      swapGroup: "nuts_and_seeds",
     },
     test: /\bbread\b|\broll\b|\btoast\b|\bbagel\b/i,
   },
@@ -143,7 +121,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "grain",
       subGroup: "bread",
-      swapGroup: "bread",
     },
     test: /\bbread\b|\broll\b|\btoast\b|\bbagel\b/i,
   },
@@ -151,7 +128,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "grain",
       subGroup: "rice",
-      swapGroup: "rice",
     },
     test: /\brice\b/i,
   },
@@ -159,7 +135,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "drink",
       subGroup: "soft_drink",
-      swapGroup: "cola_soft_drink",
       tags: ["sweetened_drink"],
     },
     test: /\bcola\b/i,
@@ -168,7 +143,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "drink",
       subGroup: "soft_drink",
-      swapGroup: "soft_drink",
       tags: ["sweetened_drink"],
     },
     test: /\blemonade\b|\bsoft drink\b|\bfizzy drink\b|\bsoda\b/i,
@@ -177,7 +151,6 @@ const EXACT_NAME_RULES: Array<{ result: TaxonomyRuleResult; test: RegExp }> = [
     result: {
       majorGroup: "snack",
       subGroup: "savoury_snack",
-      swapGroup: "crisps",
     },
     test: /\bcrisps\b|\bpotato chips\b/i,
   },
@@ -190,7 +163,6 @@ const KEYWORD_RULES: KeywordRule[] = [
     result: {
       majorGroup: "fruit_veg",
       subGroup: "fruit",
-      swapGroup: "fruit",
     },
   },
   {
@@ -208,7 +180,6 @@ const KEYWORD_RULES: KeywordRule[] = [
     result: {
       majorGroup: "fruit_veg",
       subGroup: "vegetable",
-      swapGroup: "vegetable",
     },
   },
   {
@@ -217,7 +188,6 @@ const KEYWORD_RULES: KeywordRule[] = [
     result: {
       majorGroup: "mixed",
       subGroup: "mixed_dish",
-      swapGroup: "mixed_meal",
     },
   },
   {
@@ -226,21 +196,9 @@ const KEYWORD_RULES: KeywordRule[] = [
     result: {
       majorGroup: "dessert",
       subGroup: "sweet_food",
-      swapGroup: "dessert",
     },
   },
 ];
-
-const DEFAULT_SWAP_GROUP_BY_SUBGROUP: Partial<Record<string, string>> = {
-  bread: "bread",
-  fish: "fresh_fish",
-  fruit: "fruit",
-  pasta: "pasta",
-  poultry: "fresh_poultry",
-  rice: "rice",
-  soft_drink: "soft_drink",
-  vegetable: "vegetable",
-};
 
 function uniqueStrings(values: Array<string | null | undefined>) {
   return [
@@ -253,7 +211,13 @@ function uniqueStrings(values: Array<string | null | undefined>) {
 }
 
 function toFoodTaxonomyDocument(value: Record<string, unknown>) {
-  const { _id: _ignored, ...doc } = value;
+  const {
+    _id: _ignored,
+    primarySwapGroup: _legacyPrimarySwapGroup,
+    secondarySwapGroups: _legacySecondarySwapGroups,
+    swapGroup: _legacySwapGroup,
+    ...doc
+  } = value;
   return FoodTaxonomyDocument.parse(doc);
 }
 
@@ -287,22 +251,8 @@ function mergeRuleResults(
       ]),
     },
     majorGroup: current.majorGroup ?? incoming.majorGroup,
-    primarySwapGroup:
-      current.primarySwapGroup !== undefined
-        ? current.primarySwapGroup
-        : current.swapGroup !== undefined
-          ? current.swapGroup
-          : incoming.primarySwapGroup !== undefined
-            ? incoming.primarySwapGroup
-            : incoming.swapGroup,
-    secondarySwapGroups: uniqueStrings([
-      ...(current.secondarySwapGroups ?? []),
-      ...(incoming.secondarySwapGroups ?? []),
-    ]),
     subGroup:
       current.subGroup !== undefined ? current.subGroup : incoming.subGroup,
-    swapGroup:
-      current.swapGroup !== undefined ? current.swapGroup : incoming.swapGroup,
     tags: uniqueStrings([...(current.tags ?? []), ...(incoming.tags ?? [])]),
   };
 }
@@ -317,11 +267,7 @@ function shouldRepairExistingTaxonomy(
 
   return (
     (existing.majorGroup === "other" && inferred.majorGroup !== "other") ||
-    (!existing.subGroup && !!inferred.subGroup) ||
-    (!existing.swapGroup && !!inferred.swapGroup) ||
-    (!existing.primarySwapGroup && !!inferred.primarySwapGroup) ||
-    (existing.secondarySwapGroups?.length ?? 0) <
-      inferred.secondarySwapGroups.length
+    (!existing.subGroup && !!inferred.subGroup)
   );
 }
 
@@ -338,7 +284,6 @@ function inferFromExactName(
       {
         majorGroup: "protein",
         subGroup: "spread",
-        swapGroup: "nut_butter",
         tags: ["high_fat", "phosphorus_dense"],
       },
       {
@@ -351,7 +296,6 @@ function inferFromExactName(
       {
         majorGroup: "protein",
         subGroup: "nuts_and_seeds",
-        swapGroup: "nuts_and_seeds",
         tags: ["high_fat", "phosphorus_dense"],
       },
       {
@@ -392,49 +336,6 @@ function inferFromKeywords(
   }
 
   return Object.keys(result).length > 0 ? result : null;
-}
-
-function inferMixedDishSwapGroups(
-  item: Pick<TFoodItemEntry, "name">,
-): TaxonomyRuleResult | null {
-  const text = item.name ?? "";
-
-  if (!PASTA_REGEX.test(text)) {
-    return null;
-  }
-
-  const secondarySwapGroups: string[] = [];
-  const keywordRules: string[] = [];
-
-  if (CHEESE_COMPONENT_REGEX.test(text)) {
-    secondarySwapGroups.push("hard_cheese");
-    keywordRules.push("pasta_dish_cheese");
-  }
-  if (RED_MEAT_COMPONENT_REGEX.test(text)) {
-    secondarySwapGroups.push("red_meat");
-    keywordRules.push("pasta_dish_red_meat");
-  }
-  if (FISH_COMPONENT_REGEX.test(text)) {
-    secondarySwapGroups.push("fresh_fish");
-    keywordRules.push("pasta_dish_fish");
-  }
-  if (POULTRY_COMPONENT_REGEX.test(text)) {
-    secondarySwapGroups.push("fresh_poultry");
-    keywordRules.push("pasta_dish_poultry");
-  }
-
-  if (secondarySwapGroups.length === 0) {
-    return null;
-  }
-
-  return {
-    inferredFrom: { keywordRules },
-    majorGroup: "mixed",
-    primarySwapGroup: "pasta",
-    secondarySwapGroups: uniqueStrings(secondarySwapGroups),
-    subGroup: "pasta_dish",
-    tags: ["mixed_dish"],
-  };
 }
 
 function inferNutrientTags(
@@ -489,7 +390,6 @@ function fallbackRule(item: Pick<TFoodItemEntry, "name">): TaxonomyRuleResult {
     return {
       majorGroup: "dessert",
       subGroup: "sweet_food",
-      swapGroup: "dessert",
     };
   }
 
@@ -502,14 +402,12 @@ function fallbackRule(item: Pick<TFoodItemEntry, "name">): TaxonomyRuleResult {
     return {
       majorGroup: "mixed",
       subGroup: "mixed_dish",
-      swapGroup: "mixed_meal",
     };
   }
 
   return {
     majorGroup: "other",
     subGroup: null,
-    swapGroup: null,
   };
 }
 
@@ -558,24 +456,12 @@ export function inferFoodTaxonomy(
     item.foodId?.trim() || item.uid?.trim() || normalizeKeyPart(canonicalName);
 
   let result: TaxonomyRuleResult = {};
-  result = mergeRuleResults(result, inferMixedDishSwapGroups(item));
   result = mergeRuleResults(result, inferFromExactName(item));
   result = mergeRuleResults(result, inferFromKeywords(item));
   result = mergeRuleResults(result, inferNutrientTags(item));
   result = mergeRuleResults(result, fallbackRule(item));
 
   const subGroup = result.subGroup ?? null;
-  const primarySwapGroup =
-    result.primarySwapGroup ??
-    result.swapGroup ??
-    (subGroup ? (DEFAULT_SWAP_GROUP_BY_SUBGROUP[subGroup] ?? subGroup) : null);
-  const secondarySwapGroups = uniqueStrings(
-    (result.secondarySwapGroups ?? []).filter(
-      (group) => group && group !== primarySwapGroup,
-    ),
-  );
-  const swapGroup = result.swapGroup ?? primarySwapGroup;
-
   return {
     canonicalName,
     inferredFrom: {
@@ -591,12 +477,9 @@ export function inferFoodTaxonomy(
     },
     majorGroup: result.majorGroup ?? "other",
     normalizedName,
-    primarySwapGroup,
-    secondarySwapGroups,
     source,
     sourceFoodId,
     subGroup,
-    swapGroup,
     tags: uniqueStrings(result.tags ?? []),
     taxonomyKey: buildFoodTaxonomyKey({
       normalizedName,

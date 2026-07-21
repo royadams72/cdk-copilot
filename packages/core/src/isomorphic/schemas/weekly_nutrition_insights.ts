@@ -30,14 +30,6 @@ export const WeeklyNutritionFinding = z
   })
   .strict();
 
-export const WeeklyNutritionSuggestion = z
-  .object({
-    fromFood: z.string().min(1),
-    reason: z.enum(["phosphorus", "potassium", "sodium", "protein", "calories"]),
-    alternatives: z.array(z.string()).min(1),
-  })
-  .strict();
-
 export const WeeklyNutritionInsight = z
   .object({
     patientId: objectIdHex,
@@ -47,7 +39,6 @@ export const WeeklyNutritionInsight = z
     analysisMode: WeeklyNutritionAnalysisMode,
     loggedDays: z.number().int().min(0).max(7),
     findings: z.array(WeeklyNutritionFinding).default([]),
-    suggestions: z.array(WeeklyNutritionSuggestion).default([]),
     humanMessage: z.string().min(1),
     generatedAt: z.coerce.date(),
     createdAt: z.coerce.date(),
@@ -60,7 +51,4 @@ export type TWeeklyNutritionAnalysisMode = z.infer<
   typeof WeeklyNutritionAnalysisMode
 >;
 export type TWeeklyNutritionFinding = z.infer<typeof WeeklyNutritionFinding>;
-export type TWeeklyNutritionSuggestion = z.infer<
-  typeof WeeklyNutritionSuggestion
->;
 export type TWeeklyNutritionInsight = z.infer<typeof WeeklyNutritionInsight>;
