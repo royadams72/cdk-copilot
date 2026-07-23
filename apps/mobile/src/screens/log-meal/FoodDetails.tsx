@@ -3,6 +3,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Picker } from "@react-native-picker/picker";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  findPreferredCountMeasure,
+  formatCountMeasureLabelForFood,
+} from "@ckd/core";
 import type { TEdamamMeasure } from "@ckd/core";
 import type { TNutrientEstimate } from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
 
@@ -257,7 +261,10 @@ export default function FoodDetails() {
 
               <Text style={logMealStyles.helperText}>
                 {portionConfig.servingWeight
-                  ? `1 serving = ${formatNumber(portionConfig.servingWeight)} g`
+                  ? `1 ${formatCountMeasureLabelForFood(
+                      portionConfig.servingLabel,
+                      selectedFood.name,
+                    )} = ${formatNumber(portionConfig.servingWeight)} g`
                   : "Serving weight is not available for this food yet."}
               </Text>
             </View>
@@ -587,7 +594,8 @@ function createMeasureLookup(measures: TEdamamMeasure[]) {
 }
 
 function findServingMeasure(measuresByLabel: Map<string, TEdamamMeasure>) {
-  return measuresByLabel.get("serving");
+  const measures = Array.from(measuresByLabel.values());
+  return findPreferredCountMeasure(measures) ?? measuresByLabel.get("serving");
 }
 
 function findFirstNonDirectMeasure(measures: TEdamamMeasure[]) {
