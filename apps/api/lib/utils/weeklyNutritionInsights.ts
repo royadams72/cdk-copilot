@@ -26,6 +26,16 @@ type FoodContribution = {
 
 const OPENAI_SUMMARY_MODEL = "gpt-4.1-mini";
 const CONTRIBUTOR_LIMIT = 3;
+const OPENAI_SUMMARY_ATTEMPT_LIMIT = 3;
+const BANNED_SUMMARY_PATTERNS = [
+  /\btry\b/i,
+  /\binstead\b/i,
+  /\bswap\b/i,
+  /\bswaps\b/i,
+  /\breplace\b/i,
+  /\breplaces\b/i,
+  /\breplacing\b/i,
+] as const;
 
 function toWeeklyNutritionInsight(value: Record<string, unknown>) {
   const { _id: _ignored, suggestions: _legacySuggestions, ...doc } = value;
@@ -220,6 +230,20 @@ function buildFallbackHumanMessage(summary: {
   return parts.join(" ").trim() || "Your weekly nutrition summary is ready.";
 }
 
+function getWeeklyNutritionSummaryGuardIssue(text: string) {
+  for (const pattern of BANNED_SUMMARY_PATTERNS) {
+    const match = text.match(pattern);
+    if (match?.[0]) {
+      return `Contains banned wording: "${match[0]}"`;
+    }
+  }
+  return null;
+}
+
+function isValidWeeklyNutritionSummary(text: string) {
+  return !getWeeklyNutritionSummaryGuardIssue(text);
+}
+
 async function buildHumanMessage(summary: {
   analysisMode: TWeeklyNutritionAnalysisMode;
   findings: TWeeklyNutritionInsight["findings"];
@@ -232,10 +256,11 @@ async function buildHumanMessage(summary: {
 
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const prompt = [
+    const basePrompt = [
       "Write a short, human-friendly weekly nutrition summary.",
       "Do not invent findings.",
       "Do not give advice, recommendations, alternatives, substitutions, or food swaps.",
+      'Do not use the words "try", "instead", "swap", or "replace", including simple variants.',
       "Use the provided goal only as tone/context.",
       "Keep it to 2-4 sentences.",
       "Mention the top food contributors plainly.",
@@ -245,13 +270,35 @@ async function buildHumanMessage(summary: {
       JSON.stringify(summary),
     ].join("\n");
 
-    const response = await openai.responses.create({
-      input: prompt,
-      model: OPENAI_SUMMARY_MODEL,
-    });
+    let lastValidText: string | null = null;
 
-    const text = response.output_text?.trim();
-    return text || buildFallbackHumanMessage(summary);
+    for (let attempt = 0; attempt < OPENAI_SUMMARY_ATTEMPT_LIMIT; attempt += 1) {
+      const prompt: string =
+        attempt === 0
+          ? basePrompt
+          : [
+              basePrompt,
+              `Your previous answer failed validation. ${getWeeklyNutritionSummaryGuardIssue(lastValidText ?? "") ?? "Do not use banned wording."}`,
+              "Regenerate the full summary and comply exactly.",
+            ].join("\n\n");
+
+      const response = await openai.responses.create({
+        input: prompt,
+        model: OPENAI_SUMMARY_MODEL,
+      });
+
+      const text = response.output_text?.trim();
+      if (!text) {
+        continue;
+      }
+
+      lastValidText = text;
+      if (isValidWeeklyNutritionSummary(text)) {
+        return text;
+      }
+    }
+
+    return buildFallbackHumanMessage(summary);
   } catch {
     return buildFallbackHumanMessage(summary);
   }
