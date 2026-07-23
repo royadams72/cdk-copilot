@@ -331,6 +331,10 @@ function scoreHint(
     if (label.includes(term)) score -= 35;
   }
 
+  if (!/\bshells?\b/.test(normalizedQuery) && /\bshells?\b/.test(normalizedLabel)) {
+    score -= 220;
+  }
+
   if (query.includes("chicken")) {
     if (label.includes("chicken")) score += 30;
     else score -= 90;
