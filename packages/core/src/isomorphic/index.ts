@@ -24,6 +24,7 @@ export * from "./schemas/targets";
 export * from "./schemas/users_pii";
 export * from "./schemas/users_accounts";
 export * from "./schemas/users_clinical";
+export * from "./foodMeasures";
 export { CKD_STAGE_VALUES, CKDStage } from "./schemas/common";
 export * from "./schemas/edamam_responses";
 export * from "./constants/onboardingSteps";

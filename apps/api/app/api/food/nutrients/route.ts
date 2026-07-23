@@ -2,6 +2,7 @@ import { requireUser, SessionUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
+  findPreferredCountMeasure,
   ROLES,
   TEdamamFoodMeasure,
   TEdamamMeasure,
@@ -379,6 +380,14 @@ function resolveMeasureInfo(ingredient: TEdamamNutritionLookupItem) {
   if (normalizedUnit) {
     const explicit = findMeasure([normalizedUnit]);
     if (explicit) return resolveMeasure(explicit);
+  }
+
+  const preferredCountMeasure = findPreferredCountMeasure(
+    measures,
+    ingredient.foodName ?? ingredient.originalText,
+  );
+  if (preferredCountMeasure) {
+    return resolveMeasure(preferredCountMeasure);
   }
 
   if (shouldPreferServing(ingredient)) {

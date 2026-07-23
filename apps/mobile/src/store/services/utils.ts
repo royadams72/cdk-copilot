@@ -1,4 +1,5 @@
 import {
+  findPreferredCountMeasure,
   TEdamamMeasure,
   TEdamamNutritionLookupItem,
   TFoodItem,
@@ -108,6 +109,15 @@ function getMeasureInfo(
     const match = findMeasure([effectiveUnit]);
     if (match) return resolveMeasure(match);
   }
+
+  const preferredCountMeasure = findPreferredCountMeasure(
+    measures,
+    foodName ?? originalText,
+  );
+  if (preferredCountMeasure) {
+    return resolveMeasure(preferredCountMeasure);
+  }
+
   if (shouldPreferServing(quantity, effectiveUnit, normalizedOriginal)) {
     const servingMeasure = findMeasure(["serving"]);
     if (servingMeasure) return resolveMeasure(servingMeasure);
