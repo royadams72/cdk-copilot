@@ -1,5 +1,6 @@
-import { Pressable, Text } from "react-native";
-import { styles } from "../styles";
+import { AppButton, type AppButtonProps } from "@/components/ui/button";
+
+export { AppButton } from "@/components/ui/button";
 
 export function PrimaryButton({
   label,
@@ -10,21 +11,7 @@ export function PrimaryButton({
   label: string;
   onPress: () => void;
 }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        styles.primaryButton,
-        pressed && !disabled ? styles.primaryButtonPressed : null,
-        disabled ? styles.buttonDisabled : null,
-      ]}
-    >
-      <Text style={styles.primaryButtonText}>{label}</Text>
-    </Pressable>
-  );
+  return <AppButton label={label} onPress={onPress} disabled={disabled} variant="primary" />;
 }
 
 export function SecondaryButton({
@@ -36,21 +23,7 @@ export function SecondaryButton({
   label: string;
   onPress: () => void;
 }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        styles.secondaryButton,
-        pressed && !disabled ? styles.secondaryButtonPressed : null,
-        disabled ? styles.buttonDisabled : null,
-      ]}
-    >
-      <Text style={styles.secondaryButtonText}>{label}</Text>
-    </Pressable>
-  );
+  return <AppButton label={label} onPress={onPress} disabled={disabled} variant="secondary" />;
 }
 
 export function TertiaryDangerButton({
@@ -62,19 +35,7 @@ export function TertiaryDangerButton({
   label: string;
   onPress: () => void;
 }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        styles.tertiaryDangerButton,
-        pressed && !disabled ? styles.tertiaryDangerButtonPressed : null,
-        disabled ? styles.buttonDisabled : null,
-      ]}
-    >
-      <Text style={styles.tertiaryDangerButtonText}>{label}</Text>
-    </Pressable>
-  );
+  return <AppButton label={label} onPress={onPress} disabled={disabled} variant="danger" />;
 }
+
+export type ButtonProps = AppButtonProps;

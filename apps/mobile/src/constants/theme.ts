@@ -5,13 +5,80 @@
 
 import { Platform } from "react-native";
 
-const tintColorLight = "#0a7ea4";
-const tintColorDark = "#fff";
+export const palette = {
+  purple: "#8B5CF6",
+  purpleDark: "#7C3AED",
+  green: "#10B981",
+  greenDark: "#047857",
+  red: "#FF4545",
+  redDark: "#B91C1C",
+  yellow: "#FFD600",
+  orange: "#F97316",
+  blue: "#38BDF8",
+  cyan: "#22D3EE",
+  ink: "#111827",
+  slate: "#475569",
+  muted: "#64748B",
+  border: "#CBD5E1",
+  panel: "#E5E7EB",
+  canvas: "#DCE6FF",
+  surface: "#FFFFFF",
+  black: "#000000",
+} as const;
+
+export const theme = {
+  colors: {
+    background: palette.canvas,
+    surface: palette.surface,
+    surfaceMuted: "#F8FAFC",
+    text: palette.ink,
+    textSecondary: palette.slate,
+    textMuted: palette.muted,
+    border: palette.border,
+    borderSubtle: "rgba(148,163,184,0.35)",
+    overlay: "rgba(15,23,42,0.55)",
+    primary: palette.purple,
+    primaryPressed: palette.purpleDark,
+    onPrimary: palette.surface,
+    success: palette.green,
+    successDark: palette.greenDark,
+    successSoft: "rgba(16,185,129,0.16)",
+    warning: palette.yellow,
+    warningDark: "#854D0E",
+    warningSoft: "rgba(250,204,21,0.18)",
+    danger: palette.red,
+    dangerDark: palette.redDark,
+    dangerSoft: "rgba(255,69,69,0.14)",
+    info: "#2563EB",
+    infoDark: "#1E3A8A",
+    infoSoft: "rgba(37,99,235,0.14)",
+    control: palette.panel,
+    controlPressed: "#D1D5DB",
+    disabled: "#D1D5DB",
+    disabledText: palette.muted,
+    chart: {
+      calories: palette.green,
+      protein: palette.purple,
+      phosphorus: palette.orange,
+      potassium: palette.blue,
+      sodium: palette.cyan,
+      target: "#6366F1",
+      grid: "rgba(148,163,184,0.28)",
+    },
+  },
+  spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 },
+  radii: { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 },
+  controls: { compactHeight: 36, height: 48, touchTarget: 44 },
+  charts: { compactHeight: 144, radialSize: 172 },
+} as const;
+
+const tintColorLight = theme.colors.primary;
+const tintColorDark = palette.surface;
 
 export const Colors = {
   light: {
-    text: "#11181C",
-    background: "#fff",
+    text: theme.colors.text,
+    background: theme.colors.background,
     tint: tintColorLight,
     icon: "#687076",
     tabIconDefault: "#687076",

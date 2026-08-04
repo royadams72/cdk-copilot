@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import {
   Controller,
   type Resolver,
@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
 import { useRouter } from "expo-router";
-import { PrimaryButton } from "../components/Buttons";
+import { AppButton, PrimaryButton } from "../components/Buttons";
 import { DateField } from "../components/DateField";
 import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
@@ -244,9 +244,9 @@ export default function MedicationsForm({
             />
 
             {fields.length > 1 && (
-              <Button
-                color="#b91c1c"
-                title="Remove medication"
+              <AppButton
+                label="Remove medication"
+                variant="danger"
                 onPress={() => remove(index)}
               />
             )}
@@ -254,8 +254,9 @@ export default function MedicationsForm({
         );
       })}
 
-      <Button
-        title="Add medication"
+      <AppButton
+        label="Add medication"
+        variant="outline"
         onPress={() => append({ ...emptyMedication })}
       />
 

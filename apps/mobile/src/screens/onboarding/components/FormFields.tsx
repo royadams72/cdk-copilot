@@ -5,11 +5,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   type TextInputProps,
   View,
 } from "react-native";
-import { PLACEHOLDER_COLOR, styles } from "../styles";
+import { TextField } from "@/components/ui/form-field";
+import { styles } from "../styles";
 import { PrimaryButton, SecondaryButton } from "./Buttons";
 
 function FieldMessage({ error }: { error?: string }) {
@@ -28,19 +28,7 @@ export function LabeledInput({
   label: string;
   multiline?: boolean;
 } & TextInputProps) {
-  return (
-    <View style={styles.fieldBlock}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        {...props}
-        multiline={multiline}
-        placeholder={label}
-        placeholderTextColor={PLACEHOLDER_COLOR}
-        style={[styles.input, multiline ? styles.multilineInput : null, style]}
-      />
-      <FieldMessage error={error} />
-    </View>
-  );
+  return <TextField {...props} label={label} error={error} multiline={multiline} style={style} />;
 }
 
 export function PickerField({

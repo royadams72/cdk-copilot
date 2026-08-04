@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Text, View } from "react-native";
+import { Section as AppSection } from "@/components/ui/section";
 
 export function Section({
   title,
@@ -17,15 +17,15 @@ export function Section({
   title: string;
 }) {
   return (
-    <View style={{ gap: 12 }}>
-      <Text style={{ fontWeight: "700" }}>{title}</Text>
-      {description ? <Text style={{ color: "#555" }}>{description}</Text> : null}
-      {React.Children.count(children) === 0 ? (
-        <Text style={{ color: "#555" }}>{emptyLabel}</Text>
-      ) : (
-        children
-      )}
-      {addLabel ? <Button title={addLabel} onPress={onAdd} /> : null}
-    </View>
+    <AppSection
+      actionLabel={addLabel}
+      description={description}
+      emptyLabel={emptyLabel}
+      onAction={onAdd}
+      title={title}
+      variant="plain"
+    >
+      {React.Children.count(children) > 0 ? children : undefined}
+    </AppSection>
   );
 }
