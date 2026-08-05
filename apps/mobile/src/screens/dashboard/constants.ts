@@ -7,7 +7,7 @@ export const STACKED_COLORS = [
   theme.colors.chart.phosphorus,
   theme.colors.chart.potassium,
   theme.colors.chart.sodium,
-  theme.colors.warning,
+  theme.colors.chart.ratio,
 ];
 
 export const LAB_CONFIG = [

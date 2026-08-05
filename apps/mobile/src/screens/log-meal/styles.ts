@@ -1,11 +1,12 @@
 import { StyleSheet } from "react-native";
+import { theme } from "@/constants/theme";
 
 export const logMealStyles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
   contentContainer: {
-    paddingBottom: 180,
+    paddingBottom: theme.spacing.lg,
   },
   contentScroll: {
     flex: 1,
@@ -14,9 +15,9 @@ export const logMealStyles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: "#f8fafc",
+    backgroundColor: theme.colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: theme.colors.border,
     marginBottom: 16,
   },
   controlField: {
@@ -26,7 +27,7 @@ export const logMealStyles = StyleSheet.create({
   controlLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#475569",
+    color: theme.colors.textSecondary,
   },
   controlRow: {
     flexDirection: "row",
@@ -34,30 +35,26 @@ export const logMealStyles = StyleSheet.create({
   },
   emptyState: {
     borderRadius: 18,
-    backgroundColor: "#f8fafc",
+    backgroundColor: theme.colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: theme.colors.border,
     padding: 18,
     gap: 6,
   },
   emptyText: {
-    color: "#64748b",
+    color: theme.colors.textMuted,
     fontSize: 14,
   },
   emptyTitle: {
-    color: "#0f172a",
+    color: theme.colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   fixedFooter: {
-    position: "absolute",
-    left: 15,
-    right: 15,
-    bottom: 15,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: theme.colors.border,
     padding: 12,
     gap: 10,
   },
@@ -66,26 +63,29 @@ export const logMealStyles = StyleSheet.create({
     paddingBottom: 12,
   },
   footerDangerButton: {
-    backgroundColor: "#dc2626",
+    backgroundColor: theme.colors.danger,
   },
   footerPrimaryButton: {
     minHeight: 48,
     borderRadius: 16,
-    backgroundColor: "#0f766e",
+    backgroundColor: theme.colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   footerPrimaryButtonText: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
   footerPrimaryInlineButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: theme.colors.primary,
   },
   footerRow: {
     flexDirection: "row",
     gap: 10,
+  },
+  footerButtonCell: {
+    flex: 1,
   },
   footerSecondaryButton: {
     flex: 1,
@@ -93,14 +93,14 @@ export const logMealStyles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#e2e8f0",
+    backgroundColor: theme.colors.control,
   },
   footerSecondaryButtonText: {
-    color: "#0f172a",
+    color: theme.colors.text,
     fontWeight: "700",
   },
   footerSecondaryButtonTextLight: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
     fontWeight: "700",
   },
   listCard: {
@@ -120,52 +120,52 @@ export const logMealStyles = StyleSheet.create({
   dateText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#475569",
+    color: theme.colors.panelHeader,
   },
   dateButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(99,102,241,0.15)",
+    backgroundColor: theme.colors.infoSoft,
   },
   dateButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1f2937",
+    color: theme.colors.text,
   },
   logButton: {
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#1e90ff",
+    backgroundColor: theme.colors.info,
     marginBottom: 10,
   },
   logButtonText: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
     fontSize: 16,
     fontWeight: "600",
   },
   searchButton: {
     minWidth: 104,
     borderRadius: 14,
-    backgroundColor: "#0f766e",
+    backgroundColor: theme.colors.primary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
   },
   searchButtonText: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
     fontWeight: "700",
   },
   searchErrorBanner: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#fecaca",
-    backgroundColor: "#fef2f2",
+    borderColor: theme.colors.danger,
+    backgroundColor: theme.colors.dangerSoft,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   searchErrorText: {
-    color: "#b91c1c",
+    color: theme.colors.dangerDark,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -174,9 +174,16 @@ export const logMealStyles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: theme.colors.border,
     paddingHorizontal: 14,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
+  },
+  searchField: { flex: 1 },
+  searchPanel: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.md,
+    gap: theme.spacing.md,
+    padding: theme.spacing.md,
   },
   searchWrap: {
     flexDirection: "row",
@@ -195,34 +202,34 @@ export const logMealStyles = StyleSheet.create({
     flex: 1,
     minHeight: 42,
     borderRadius: 999,
-    backgroundColor: "#e2e8f0",
+    backgroundColor: theme.colors.control,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
   },
   tabButtonActive: {
-    backgroundColor: "#111827",
+    backgroundColor: theme.colors.primary,
   },
   tabButtonText: {
-    color: "#0f172a",
+    color: theme.colors.text,
     fontSize: 13,
     fontWeight: "700",
   },
   tabButtonTextActive: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
   },
   tabRow: {
     flexDirection: "row",
     gap: 8,
   },
   toast: {
-    backgroundColor: "#111827",
+    backgroundColor: theme.colors.text,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 999,
   },
   toastText: {
-    color: "#fff",
+    color: theme.colors.surface,
     fontWeight: "700",
   },
   toastWrap: {
@@ -234,7 +241,7 @@ export const logMealStyles = StyleSheet.create({
   },
   helperText: {
     fontSize: 13,
-    color: "#64748b",
+    color: theme.colors.copy,
   },
   estimateBanner: {
     flexDirection: "row",
@@ -242,14 +249,14 @@ export const logMealStyles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: "#fffbeb",
+    backgroundColor: theme.colors.warningSoft,
     borderBottomWidth: 1,
-    borderBottomColor: "#fde68a",
+    borderBottomColor: theme.colors.warning,
   },
   estimateBannerText: {
     flex: 1,
     fontSize: 13,
-    color: "#92400e",
+    color: theme.colors.warningDark,
     fontWeight: "600",
   },
   estimateIconButton: {
@@ -265,14 +272,14 @@ export const logMealStyles = StyleSheet.create({
   nutrientList: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: theme.colors.border,
     overflow: "hidden",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
   },
   nutrientLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#334155",
+    color: theme.colors.textSecondary,
   },
   nutrientRow: {
     flexDirection: "row",
@@ -281,30 +288,30 @@ export const logMealStyles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: theme.colors.border,
   },
   nutrientValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0f172a",
+    color: theme.colors.text,
   },
   pickerShell: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: theme.colors.border,
     overflow: "hidden",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.42)",
+    backgroundColor: theme.colors.overlay,
     justifyContent: "center",
     padding: 20,
   },
   modalCard: {
     maxHeight: "78%",
     borderRadius: 20,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
     padding: 18,
     gap: 14,
   },
@@ -318,7 +325,7 @@ export const logMealStyles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: "700",
-    color: "#0f172a",
+    color: theme.colors.text,
   },
   modalCloseButton: {
     width: 32,
@@ -326,12 +333,12 @@ export const logMealStyles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: theme.colors.surfaceMuted,
   },
   modalWarning: {
     fontSize: 13,
     lineHeight: 18,
-    color: "#92400e",
+    color: theme.colors.warningDark,
     fontWeight: "600",
   },
   modalBody: {
@@ -340,32 +347,32 @@ export const logMealStyles = StyleSheet.create({
   modalRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: theme.colors.border,
     gap: 4,
   },
   modalIngredient: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0f172a",
+    color: theme.colors.text,
   },
   modalFormula: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#334155",
+    color: theme.colors.textSecondary,
   },
   modalMatchedFood: {
     fontSize: 12,
-    color: "#64748b",
+    color: theme.colors.textMuted,
   },
   modalEmptyText: {
     fontSize: 14,
-    color: "#475569",
+    color: theme.colors.textSecondary,
   },
   modalMissingText: {
     marginTop: 12,
     fontSize: 13,
     lineHeight: 18,
-    color: "#92400e",
+    color: theme.colors.warningDark,
     fontWeight: "600",
   },
 });

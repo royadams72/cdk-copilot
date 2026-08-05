@@ -1,26 +1,30 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
 
 import { theme } from "@/constants/theme";
 
 export function FormField({
   children,
+  containerStyle,
   description,
   error,
   label,
   required = false,
 }: {
   children: ReactNode;
+  containerStyle?: ViewStyle;
   description?: string;
   error?: string;
-  label: string;
+  label?: string;
   required?: boolean;
 }) {
   return (
-    <View style={styles.block}>
-      <Text style={styles.label}>
-        {label}{required ? <Text style={styles.required}> *</Text> : null}
-      </Text>
+    <View style={[styles.block, containerStyle]}>
+      {label ? (
+        <Text style={styles.label}>
+          {label}{required ? <Text style={styles.required}> *</Text> : null}
+        </Text>
+      ) : null}
       {description ? <Text style={styles.description}>{description}</Text> : null}
       {children}
       {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
@@ -30,20 +34,25 @@ export function FormField({
 
 export function TextField({
   description,
+  containerStyle,
   error,
   label,
   multiline,
   required,
+  hideLabel = false,
   style,
   ...props
 }: TextInputProps & {
   description?: string;
+  containerStyle?: ViewStyle;
   error?: string;
+  hideLabel?: boolean;
   label: string;
   required?: boolean;
 }) {
   return (
-    <FormField label={label} description={description} error={error} required={required}>
+    <View style={containerStyle}>
+      <FormField label={hideLabel ? undefined : label} description={description} error={error} required={required}>
       <TextInput
         accessibilityLabel={label}
         placeholder={props.placeholder ?? label}
@@ -52,7 +61,8 @@ export function TextField({
         multiline={multiline}
         style={[styles.input, multiline && styles.multiline, error && styles.inputError, style]}
       />
-    </FormField>
+      </FormField>
+    </View>
   );
 }
 

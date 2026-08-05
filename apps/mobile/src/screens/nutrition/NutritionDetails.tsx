@@ -458,17 +458,13 @@ export default function NutritionDetails() {
                         pathname: "/targets",
                       }),
                   },
-                  {
-                    id: "monthly-nutrition",
-                    label: "Monthly nutrition",
-                    onPress: () =>
-                      router.push("/(nutrition)/monthly-nutrition" as never),
-                  },
                 ]}
               />
             </View>
           </View>
-          <ThemedText type="title">Nutrition</ThemedText>
+          <ThemedText type="title" style={NutritionStyles.screenTitle}>
+            Nutrition
+          </ThemedText>
           <ThemedText style={NutritionStyles.helperText}>
             Track how your meals contribute to renal targets.
           </ThemedText>
@@ -476,13 +472,21 @@ export default function NutritionDetails() {
 
         {hasError && (
           <Card>
-            <ThemedText type="defaultSemiBold">
+            <ThemedText
+              type="defaultSemiBold"
+              style={NutritionStyles.panelTitle}
+            >
               We couldn&apos;t refresh your nutrition data
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               {errorMessage}
             </ThemedText>
-            <AppButton label="Retry" onPress={handleRefresh} variant="outline" size="compact" />
+            <AppButton
+              label="Retry"
+              onPress={handleRefresh}
+              variant="outline"
+              size="compact"
+            />
           </Card>
         )}
 
@@ -498,7 +502,10 @@ export default function NutritionDetails() {
               return (
                 <>
                   <View style={NutritionStyles.cardHeader}>
-                    <ThemedText type="defaultSemiBold">
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={NutritionStyles.panelTitle}
+                    >
                       Weekly nutrition alert
                     </ThemedText>
                     <ThemedText style={NutritionStyles.helperText}>
@@ -537,25 +544,54 @@ export default function NutritionDetails() {
           <>
             <Card>
               <View style={NutritionStyles.cardHeader}>
-                <ThemedText type="defaultSemiBold">Nutrition intake</ThemedText>
-                <ThemedText style={NutritionStyles.helperText}>
-                  Since{" "}
-                  {new Date(
-                    trendData?.dailySeries[0]?.date ?? Date.now(),
-                  ).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </ThemedText>
+                <View
+                  style={[
+                    NutritionStyles.chartLegend,
+                    NutritionStyles.chartLegendHeader,
+                  ]}
+                >
+                  <View>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={NutritionStyles.panelTitle}
+                    >
+                      Nutrition intake
+                    </ThemedText>
+                    <ThemedText style={NutritionStyles.helperText}>
+                      For the last 30 Days
+                    </ThemedText>
+                  </View>
+                  <AppButton
+                    label={"See Monthly"}
+                    onPress={() =>
+                      router.push("/(nutrition)/monthly-nutrition" as never)
+                    }
+                    variant="primary"
+                    size="compact"
+                  />
+                </View>
               </View>
+
               <View style={NutritionStyles.chartLegend}>
-                <ThemedText style={NutritionStyles.legendMetric}>
-                  {metricConfig.label}
+                <ThemedText style={NutritionStyles.legendMetricText}>
+                  <ThemedText
+                    style={[
+                      NutritionStyles.legendMetric,
+                      { color: metricConfig.color },
+                    ]}
+                  >
+                    {metricConfig.label}
+                  </ThemedText>
+                  <ThemedText style={NutritionStyles.legendSelectedValue}>
+                    {" "}
+                    {formatChartValue(selectedMetricValue, metricConfig.unit)}
+                  </ThemedText>
                 </ThemedText>
-                <ThemedText style={NutritionStyles.legendValue}>
-                  {formatChartValue(selectedMetricValue, metricConfig.unit)}
-                </ThemedText>
+                {chartTarget !== null ? (
+                  <ThemedText style={NutritionStyles.legendTargetValue}>
+                    Target {formatChartValue(chartTarget, metricConfig.unit)}
+                  </ThemedText>
+                ) : null}
               </View>
               <View style={NutritionStyles.chartWrap}>
                 <ScrollView
@@ -639,20 +675,47 @@ export default function NutritionDetails() {
                   </View>
                 </ScrollView>
               </View>
-              {chartTarget !== null ? (
-                <View style={NutritionStyles.targetBadge}>
-                  <ThemedText style={NutritionStyles.targetBadgeText}>
-                    Target {formatChartValue(chartTarget, metricConfig.unit)}
-                  </ThemedText>
-                </View>
-              ) : null}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={NutritionStyles.metricScroll}
+                contentContainerStyle={NutritionStyles.metricRow}
+              >
+                {NUTRITION_METRICS.map((metric) => {
+                  const isActive = metric.id === metricConfig.id;
+                  const isPhosphorusProteinRatio =
+                    metric.id === "phosphorus-protein-ratio";
+                  return (
+                    <AppButton
+                      key={metric.id}
+                      label={metric.label}
+                      onPress={() => setSelectedMetricId(metric.id)}
+                      variant="secondary"
+                      size="compact"
+                      backgroundColor={isActive ? metric.color : undefined}
+                      textColor={
+                        isActive && !isPhosphorusProteinRatio
+                          ? theme.colors.onPrimary
+                          : theme.colors.text
+                      }
+                    />
+                  );
+                })}
+              </ScrollView>
               {selectedPoint && (
                 <ThemedText style={NutritionStyles.helperText}>
                   Showing {formatFullDate(selectedPoint.date)}
                 </ThemedText>
               )}
             </Card>
-
+            {mealsForDay.length ? (
+              <AppButton
+                label="Edit meals for this day"
+                onPress={() => setIsEditModalOpen(true)}
+                variant="primary"
+                size="compact"
+              />
+            ) : null}
             {selectedPoint ? (
               <AccordionCard
                 title="Daily totals"
@@ -676,31 +739,6 @@ export default function NutritionDetails() {
               </AccordionCard>
             ) : null}
 
-            <View style={NutritionStyles.metricRow}>
-              {NUTRITION_METRICS.map((metric) => {
-                const isActive = metric.id === metricConfig.id;
-                return (
-                  <AppButton
-                    key={metric.id}
-                    label={metric.label}
-                    onPress={() => setSelectedMetricId(metric.id)}
-                    variant="secondary"
-                    size="compact"
-                    backgroundColor={isActive ? metric.color : undefined}
-                    textColor={isActive ? theme.colors.onPrimary : theme.colors.text}
-                  />
-                );
-              })}
-            </View>
-
-            {mealsForDay.length ? (
-              <AppButton
-                label="Edit meals for this day"
-                onPress={() => setIsEditModalOpen(true)}
-                variant="secondary"
-                size="compact"
-              />
-            ) : null}
             {showAddForSelectedDay && selectedPoint ? (
               <AppButton
                 label="Add food for this day"
@@ -734,7 +772,10 @@ export default function NutritionDetails() {
           </>
         ) : !hasError ? (
           <Card>
-            <ThemedText type="defaultSemiBold">
+            <ThemedText
+              type="defaultSemiBold"
+              style={NutritionStyles.panelTitle}
+            >
               No meals logged this week
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
@@ -752,7 +793,12 @@ export default function NutritionDetails() {
       >
         <View style={NutritionStyles.modalBackdrop}>
           <View style={NutritionStyles.modalCard}>
-            <ThemedText type="defaultSemiBold">Log your meal?</ThemedText>
+            <ThemedText
+              type="defaultSemiBold"
+              style={NutritionStyles.panelTitle}
+            >
+              Log your meal?
+            </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               {showAddForSelectedDay && selectedPoint
                 ? `Add foods for ${formatFullDate(selectedPoint.date)}.`
@@ -804,7 +850,12 @@ export default function NutritionDetails() {
       >
         <View style={NutritionStyles.modalBackdrop}>
           <View style={NutritionStyles.modalCard}>
-            <ThemedText type="defaultSemiBold">Edit meals</ThemedText>
+            <ThemedText
+              type="defaultSemiBold"
+              style={NutritionStyles.panelTitle}
+            >
+              Edit meals
+            </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               Select a meal to edit what you logged.
             </ThemedText>
@@ -930,9 +981,9 @@ function buildRatioFromTotals(
 
 function formatChartValue(value: number | null | undefined, unit: string) {
   if (!Number.isFinite(value ?? NaN)) {
-    return `0 ${formatDisplayUnit(unit)}`;
+    return `0\u00A0${formatDisplayUnit(unit)}`;
   }
-  return `${Math.ceil(value ?? 0).toLocaleString("en-GB")} ${formatDisplayUnit(unit)}`;
+  return `${Math.ceil(value ?? 0).toLocaleString("en-GB")}\u00A0${formatDisplayUnit(unit)}`;
 }
 
 function formatDisplayUnit(unit: string) {

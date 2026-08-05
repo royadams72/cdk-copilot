@@ -23,7 +23,7 @@ export const palette = {
   redDark: "#B91C1C",
   slate: "#475569",
   surface: "#FFFFFF",
-  yellow: "#FFD600",
+  yellow: "#f7cf00",
 } as const;
 
 export const theme = {
@@ -33,6 +33,8 @@ export const theme = {
     surface: palette.surface,
     surfaceMuted: "#F8FAFC",
     text: palette.ink,
+    copy: palette.muted,
+    panelHeader: "#5B5B5B",
     textSecondary: palette.slate,
     textMuted: palette.muted,
     border: palette.border,
@@ -63,6 +65,7 @@ export const theme = {
       phosphorus: palette.orange,
       potassium: palette.blue,
       sodium: palette.cyan,
+      ratio: palette.yellow,
       target: "#6366F1",
       grid: "rgba(148,163,184,0.28)",
     },

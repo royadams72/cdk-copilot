@@ -20,6 +20,19 @@ export const NutritionStyles = StyleSheet.create({
   chartInner: {
     position: "relative",
   },
+  chartLegend: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing.sm,
+  },
+  chartLegendHeader: {
+    marginBottom: theme.spacing.sm,
+  },
+  chartLegendRight: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
   chartTouchLayer: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -29,20 +42,6 @@ export const NutritionStyles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: "transparent",
-  },
-  chartLegend: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  chartLegendRight: {
-    alignItems: "flex-end",
-    gap: 2,
-  },
-  legendTarget: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.chart.target,
   },
   chartWrap: {
     marginTop: 8,
@@ -89,11 +88,34 @@ export const NutritionStyles = StyleSheet.create({
   },
   helperText: {
     fontSize: 13,
-    opacity: 0.7,
+    color: theme.colors.copy,
   },
   legendMetric: {
     fontSize: 16,
     fontWeight: "600",
+    color: theme.colors.panelHeader,
+  },
+  legendMetricText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 21,
+    minWidth: 0,
+  },
+  legendSelectedValue: {
+    color: theme.colors.copy,
+    fontSize: 13,
+    lineHeight: 21,
+  },
+  legendTarget: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.chart.target,
+  },
+  legendTargetValue: {
+    color: theme.colors.panelHeader,
+    flexShrink: 0,
+    fontSize: 13,
+    fontWeight: "700",
   },
   legendValue: {
     fontSize: 16,
@@ -153,33 +175,11 @@ export const NutritionStyles = StyleSheet.create({
   },
   metricRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
+    paddingRight: theme.spacing.lg,
   },
-  monthlyChartFrame: {
-    position: "relative",
-  },
-  monthlyChartTouchLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  monthlyChartTouchTarget: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    backgroundColor: "transparent",
-  },
-  monthlyChartWrap: {
-    marginTop: 8,
-    alignItems: "center",
-  },
-  monthlyFoodRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.borderSubtle,
+  metricScroll: {
+    flexGrow: 0,
   },
   modalActions: {
     gap: 10,
@@ -223,6 +223,31 @@ export const NutritionStyles = StyleSheet.create({
   modalScroll: {
     maxHeight: 420,
   },
+  monthlyChartFrame: {
+    position: "relative",
+  },
+  monthlyChartTouchLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  monthlyChartTouchTarget: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    backgroundColor: "transparent",
+  },
+  monthlyChartWrap: {
+    marginTop: 8,
+    alignItems: "center",
+  },
+  monthlyFoodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.borderSubtle,
+  },
   navButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -236,6 +261,9 @@ export const NutritionStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  panelTitle: {
+    color: theme.colors.panelHeader,
   },
   retryButton: {
     marginTop: 8,
@@ -252,13 +280,16 @@ export const NutritionStyles = StyleSheet.create({
     flex: 1,
     padding: 15,
   },
+  screenTitle: {
+    color: theme.colors.text,
+  },
   summaryGrid: {
     gap: 12,
     marginTop: 4,
   },
   summaryLabel: {
     fontSize: 14,
-    opacity: 0.75,
+    color: theme.colors.copy,
   },
   summaryRow: {
     flexDirection: "row",

@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { ThemedText } from "@/components/themed-text";
+import { AppButton } from "@/components/ui/button";
+import { theme } from "@/constants/theme";
 
 type FoodCardAction = {
   label: string;
@@ -42,24 +44,20 @@ export function FoodCard({
         {actions.length ? (
           <View style={styles.actions}>
             {actions.map((action) => (
-              <Pressable
+              <AppButton
                 key={`${action.label}-${action.variant ?? "ghost"}`}
-                style={[
-                  styles.actionButton,
-                  action.variant === "danger" && styles.actionDanger,
-                  action.variant === "primary" && styles.actionPrimary,
-                ]}
+                label={action.label}
                 onPress={action.onPress}
-              >
-                <ThemedText
-                  style={[
-                    styles.actionText,
-                    action.variant !== "ghost" && styles.actionTextLight,
-                  ]}
-                >
-                  {action.label}
-                </ThemedText>
-              </Pressable>
+                size="compact"
+                style={styles.actionButton}
+                variant={
+                  action.variant === "danger"
+                    ? "danger"
+                    : action.variant === "primary"
+                      ? "success"
+                      : "outline"
+                }
+              />
             ))}
           </View>
         ) : null}
@@ -70,7 +68,7 @@ export function FoodCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(148,163,184,0.2)",
+    backgroundColor: theme.colors.control,
     borderRadius: 22,
     padding: 16,
     flexDirection: "row",
@@ -89,39 +87,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
+    color: theme.colors.panelHeader,
   },
   subtitle: {
     fontSize: 14,
-    color: "#4b5563",
+    color: theme.colors.copy,
   },
   description: {
     fontSize: 13,
-    color: "#6b7280",
+    color: theme.colors.copy,
   },
   actions: {
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 8,
   },
   actionButton: {
-    backgroundColor: "#cbd5e1",
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    minWidth: 62,
-    alignItems: "center",
-  },
-  actionDanger: {
-    backgroundColor: "#dc2626",
-  },
-  actionPrimary: {
-    backgroundColor: "#0f766e",
-  },
-  actionText: {
-    color: "#0f172a",
-    fontWeight: "700",
-  },
-  actionTextLight: {
-    color: "#fff",
+    width: 96,
   },
 });

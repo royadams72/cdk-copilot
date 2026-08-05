@@ -166,7 +166,10 @@ export const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 13,
-    opacity: 0.7,
+    color: theme.colors.copy,
+  },
+  panelTitle: {
+    color: theme.colors.panelHeader,
   },
   labLabel: {
     fontSize: 16,

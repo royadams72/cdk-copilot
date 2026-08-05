@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Link } from "expo-router";
 
 import { theme } from "@/constants/theme";
@@ -25,6 +25,7 @@ export type AppButtonProps = {
   loading?: boolean;
   onPress?: () => void;
   size?: "compact" | "standard" | "large";
+  style?: StyleProp<ViewStyle>;
   testID?: string;
   textColor?: string;
   variant?: ButtonVariant;
@@ -42,6 +43,7 @@ export function AppButton({
   loading = false,
   onPress,
   size = "standard",
+  style,
   testID,
   textColor,
   variant = "primary",
@@ -63,6 +65,7 @@ export function AppButton({
         fullWidth && styles.fullWidth,
         pressed && !inactive && styles[`${variant}Pressed`],
         inactive && styles.disabled,
+        style,
       ]}
     >
       <View style={styles.content}>
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
   fullWidth: { alignSelf: "stretch" },
   primary: { backgroundColor: theme.colors.primary },
   primaryPressed: { backgroundColor: theme.colors.primaryPressed },
-  secondary: { backgroundColor: theme.colors.control },
+  secondary: { backgroundColor: theme.colors.control, borderColor: theme.colors.textMuted, borderWidth: 1 },
   secondaryPressed: { backgroundColor: theme.colors.controlPressed },
   outline: { backgroundColor: theme.colors.surface, borderColor: theme.colors.textMuted, borderWidth: 1 },
   outlinePressed: { backgroundColor: theme.colors.surfaceMuted },

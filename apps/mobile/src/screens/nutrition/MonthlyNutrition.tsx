@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  ScrollView,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -149,7 +150,7 @@ export default function MonthlyNutrition() {
               size="compact"
             />
           </View>
-          <ThemedText type="title">Monthly nutrition</ThemedText>
+          <ThemedText type="title" style={NutritionStyles.screenTitle}>Monthly nutrition</ThemedText>
           <ThemedText style={NutritionStyles.helperText}>
             Review monthly nutrient averages and the foods driving them.
           </ThemedText>
@@ -157,7 +158,7 @@ export default function MonthlyNutrition() {
 
         {error ? (
           <Card>
-            <ThemedText type="defaultSemiBold">
+            <ThemedText type="defaultSemiBold" style={NutritionStyles.panelTitle}>
               We couldn&apos;t refresh your monthly nutrition data
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
@@ -169,31 +170,12 @@ export default function MonthlyNutrition() {
 
         <Card>
           <View style={NutritionStyles.cardHeader}>
-            <ThemedText type="defaultSemiBold">
+            <ThemedText type="defaultSemiBold" style={NutritionStyles.panelTitle}>
               {data?.summaryTitle ?? "Monthly nutrition"}
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               Tap a month to inspect the foods behind that period.
             </ThemedText>
-          </View>
-          <View style={NutritionStyles.metricRow}>
-            {MONTHLY_METRICS.map((metric) => {
-              const active = metric.key === selectedFilter;
-              return (
-                <AppButton
-                  key={metric.id}
-                  label={metric.label}
-                  onPress={() => {
-                    setSelectedFilter(metric.key);
-                    setSelectedMonthOverride(undefined);
-                  }}
-                  variant="secondary"
-                  size="compact"
-                  backgroundColor={active ? metric.color : undefined}
-                  textColor={active ? theme.colors.onPrimary : theme.colors.text}
-                />
-              );
-            })}
           </View>
           <View style={NutritionStyles.monthlyChartWrap}>
             <View style={NutritionStyles.monthlyChartFrame}>
@@ -283,11 +265,35 @@ export default function MonthlyNutrition() {
               </ThemedText>
             </View>
           </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={NutritionStyles.metricScroll}
+            contentContainerStyle={NutritionStyles.metricRow}
+          >
+            {MONTHLY_METRICS.map((metric) => {
+              const active = metric.key === selectedFilter;
+              return (
+                <AppButton
+                  key={metric.id}
+                  label={metric.label}
+                  onPress={() => {
+                    setSelectedFilter(metric.key);
+                    setSelectedMonthOverride(undefined);
+                  }}
+                  variant="secondary"
+                  size="compact"
+                  backgroundColor={active ? metric.color : undefined}
+                  textColor={active ? theme.colors.onPrimary : theme.colors.text}
+                />
+              );
+            })}
+          </ScrollView>
         </Card>
 
         <Card>
           <View style={NutritionStyles.cardHeader}>
-            <ThemedText type="defaultSemiBold">
+            <ThemedText type="defaultSemiBold" style={NutritionStyles.panelTitle}>
               {data?.tableTitle ?? "Top foods"}
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
