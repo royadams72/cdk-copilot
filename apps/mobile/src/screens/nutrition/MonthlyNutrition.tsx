@@ -3,8 +3,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  ScrollView,
-  TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -22,18 +21,22 @@ import type {
   MonthlyNutritionFilter,
   MonthlyNutritionFoodRow,
 } from "@/store/services/types";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { theme } from "@/constants/theme";
 
-const CHART_HEIGHT = 240;
-const CHART_PADDING = { bottom: 36, left: 16, right: 16, top: 20 } as const;
-const MONTHLY_CHART_WIDTH = 360;
+const CHART_HEIGHT = theme.charts.compactHeight;
+const CHART_PADDING = { bottom: 28, left: 16, right: 16, top: 12 } as const;
 const MONTHLY_METRICS = NUTRITION_METRICS.filter(
   (metric) => metric.key !== "phosphorus_protein_ratio",
-) as Array<
+) as (
   (typeof NUTRITION_METRICS)[number] & { key: MonthlyNutritionFilter }
->;
+)[];
 
 export default function MonthlyNutrition() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const monthlyChartWidth = Math.min(Math.max(screenWidth - 80, 240), 360);
   const [selectedFilter, setSelectedFilter] = useState<MonthlyNutritionFilter>(
     "phosphorusMg",
   );
@@ -83,7 +86,7 @@ export default function MonthlyNutrition() {
       ...stats.map((item) => item.value),
       selectedTarget ?? 0,
     );
-    const innerWidth = MONTHLY_CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+    const innerWidth = monthlyChartWidth - CHART_PADDING.left - CHART_PADDING.right;
     const innerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
     const slotWidth = innerWidth / Math.max(stats.length, 1);
     const barWidth = Math.max(14, slotWidth * 0.55);
@@ -103,7 +106,7 @@ export default function MonthlyNutrition() {
         y,
       };
     });
-  }, [data?.monthlyStats, selectedTarget]);
+  }, [data?.monthlyStats, monthlyChartWidth, selectedTarget]);
 
   const selectedTargetY = useMemo(() => {
     if (!selectedTarget || !chartBars.length) {
@@ -130,9 +133,8 @@ export default function MonthlyNutrition() {
   }
 
   return (
-    <View style={NutritionStyles.screen}>
-      <ScrollView
-        style={NutritionStyles.container}
+    <AppScreen
+        padded={false}
         contentContainerStyle={NutritionStyles.content}
         refreshControl={
           <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} />
@@ -140,13 +142,12 @@ export default function MonthlyNutrition() {
       >
         <View style={NutritionStyles.header}>
           <View style={NutritionStyles.navRow}>
-            <TouchableOpacity
-              accessibilityRole="button"
+            <AppButton
+              label="Back"
               onPress={() => router.back()}
-              style={NutritionStyles.navButton}
-            >
-              <ThemedText style={NutritionStyles.navButtonText}>‹ Back</ThemedText>
-            </TouchableOpacity>
+              variant="secondary"
+              size="compact"
+            />
           </View>
           <ThemedText type="title">Monthly nutrition</ThemedText>
           <ThemedText style={NutritionStyles.helperText}>
@@ -157,17 +158,12 @@ export default function MonthlyNutrition() {
         {error ? (
           <Card>
             <ThemedText type="defaultSemiBold">
-              We couldn't refresh your monthly nutrition data
+              We couldn&apos;t refresh your monthly nutrition data
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               {errorMessage}
             </ThemedText>
-            <TouchableOpacity
-              style={NutritionStyles.retryButton}
-              onPress={() => refetch()}
-            >
-              <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
-            </TouchableOpacity>
+            <AppButton label="Retry" onPress={() => refetch()} variant="outline" size="compact" />
           </Card>
         ) : null}
 
@@ -184,38 +180,30 @@ export default function MonthlyNutrition() {
             {MONTHLY_METRICS.map((metric) => {
               const active = metric.key === selectedFilter;
               return (
-                <TouchableOpacity
+                <AppButton
                   key={metric.id}
+                  label={metric.label}
                   onPress={() => {
                     setSelectedFilter(metric.key);
                     setSelectedMonthOverride(undefined);
                   }}
-                  style={[
-                    NutritionStyles.metricButton,
-                    active && { backgroundColor: metric.color },
-                  ]}
-                >
-                  <ThemedText
-                    style={[
-                      NutritionStyles.metricButtonText,
-                      active && NutritionStyles.metricButtonTextActive,
-                    ]}
-                  >
-                    {metric.label}
-                  </ThemedText>
-                </TouchableOpacity>
+                  variant="secondary"
+                  size="compact"
+                  backgroundColor={active ? metric.color : undefined}
+                  textColor={active ? theme.colors.onPrimary : theme.colors.text}
+                />
               );
             })}
           </View>
           <View style={NutritionStyles.monthlyChartWrap}>
             <View style={NutritionStyles.monthlyChartFrame}>
-              <Svg width={MONTHLY_CHART_WIDTH} height={CHART_HEIGHT}>
+              <Svg width={monthlyChartWidth} height={CHART_HEIGHT}>
                 <Line
                   x1={CHART_PADDING.left}
                   y1={CHART_HEIGHT - CHART_PADDING.bottom}
-                  x2={MONTHLY_CHART_WIDTH - CHART_PADDING.right}
+                  x2={monthlyChartWidth - CHART_PADDING.right}
                   y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                  stroke="rgba(100,116,139,0.6)"
+                  stroke={theme.colors.border}
                   strokeWidth={1}
                 />
                 {chartBars.map((bar) => (
@@ -226,7 +214,7 @@ export default function MonthlyNutrition() {
                     width={bar.barWidth}
                     height={Math.max(bar.barHeight, 2)}
                     rx={4}
-                    fill={bar.isSelected ? "#F59E0B" : activeMetric.color}
+                    fill={bar.isSelected ? theme.colors.warning : activeMetric.color}
                   />
                 ))}
                 {selectedTargetY !== null ? (
@@ -234,17 +222,17 @@ export default function MonthlyNutrition() {
                     <Line
                       x1={CHART_PADDING.left}
                       y1={selectedTargetY}
-                      x2={MONTHLY_CHART_WIDTH - CHART_PADDING.right}
+                      x2={monthlyChartWidth - CHART_PADDING.right}
                       y2={selectedTargetY}
-                      stroke="rgba(99,102,241,0.95)"
+                      stroke={theme.colors.chart.target}
                       strokeWidth={1.5}
                     />
                     <SvgText
-                      x={MONTHLY_CHART_WIDTH - CHART_PADDING.right}
+                      x={monthlyChartWidth - CHART_PADDING.right}
                       y={selectedTargetY - 6}
                       textAnchor="end"
                       fontSize={11}
-                      fill="#4F46E5"
+                      fill={theme.colors.chart.target}
                     >
                       Target
                     </SvgText>
@@ -257,7 +245,7 @@ export default function MonthlyNutrition() {
                     y={CHART_HEIGHT - 10}
                     textAnchor="middle"
                     fontSize={10}
-                    fill="#475569"
+                    fill={theme.colors.textSecondary}
                   >
                     {bar.label}
                   </SvgText>
@@ -317,8 +305,7 @@ export default function MonthlyNutrition() {
             ) : null}
           </View>
         </Card>
-      </ScrollView>
-    </View>
+    </AppScreen>
   );
 }
 

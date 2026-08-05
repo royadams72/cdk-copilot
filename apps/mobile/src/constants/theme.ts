@@ -6,27 +6,28 @@
 import { Platform } from "react-native";
 
 export const palette = {
-  purple: "#8B5CF6",
-  purpleDark: "#7C3AED",
+  black: "#000000",
+  blue: "#38BDF8",
+  border: "#CBD5E1",
+  canvas: "#DCE6FF",
+  cyan: "#22D3EE",
   green: "#10B981",
   greenDark: "#047857",
+  ink: "#111827",
+  muted: "#64748B",
+  orange: "#F97316",
+  panel: "#E5E7EB",
+  purple: "#8B5CF6",
+  purpleDark: "#7C3AED",
   red: "#FF4545",
   redDark: "#B91C1C",
-  yellow: "#FFD600",
-  orange: "#F97316",
-  blue: "#38BDF8",
-  cyan: "#22D3EE",
-  ink: "#111827",
   slate: "#475569",
-  muted: "#64748B",
-  border: "#CBD5E1",
-  panel: "#E5E7EB",
-  canvas: "#DCE6FF",
   surface: "#FFFFFF",
-  black: "#000000",
+  yellow: "#FFD600",
 } as const;
 
 export const theme = {
+  charts: { compactHeight: 144, radialSize: 152 },
   colors: {
     background: palette.canvas,
     surface: palette.surface,
@@ -66,24 +67,15 @@ export const theme = {
       grid: "rgba(148,163,184,0.28)",
     },
   },
-  spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 },
-  radii: { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 },
   controls: { compactHeight: 36, height: 48, touchTarget: 44 },
-  charts: { compactHeight: 144, radialSize: 172 },
+  radii: { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 },
+  spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 },
 } as const;
 
 const tintColorLight = theme.colors.primary;
 const tintColorDark = palette.surface;
 
 export const Colors = {
-  light: {
-    text: theme.colors.text,
-    background: theme.colors.background,
-    tint: tintColorLight,
-    icon: "#687076",
-    tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
-  },
   dark: {
     text: "#ECEDEE",
     background: "#151718",
@@ -91,6 +83,14 @@ export const Colors = {
     icon: "#9BA1A6",
     tabIconDefault: "#9BA1A6",
     tabIconSelected: tintColorDark,
+  },
+  light: {
+    text: theme.colors.text,
+    background: theme.colors.background,
+    tint: tintColorLight,
+    icon: "#687076",
+    tabIconDefault: "#687076",
+    tabIconSelected: tintColorLight,
   },
 };
 
@@ -106,16 +106,16 @@ export const Fonts = Platform.select({
     mono: "ui-monospace",
   },
   default: {
+    mono: "monospace",
+    rounded: "normal",
     sans: "normal",
     serif: "serif",
-    rounded: "normal",
-    mono: "monospace",
   },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
+    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
     rounded:
       "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    serif: "Georgia, 'Times New Roman', serif",
   },
 });

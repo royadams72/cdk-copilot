@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { theme } from "@/constants/theme";
 
 export const NutritionStyles = StyleSheet.create({
   addMealsButton: {
@@ -6,11 +7,11 @@ export const NutritionStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "#8B5CF6",
+    backgroundColor: theme.colors.primary,
   },
   addMealsButtonText: {
     fontWeight: "600",
-    color: "#fff",
+    color: theme.colors.onPrimary,
   },
   cardHeader: {
     marginBottom: 8,
@@ -41,7 +42,7 @@ export const NutritionStyles = StyleSheet.create({
   legendTarget: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#4F46E5",
+    color: theme.colors.chart.target,
   },
   chartWrap: {
     marginTop: 8,
@@ -51,20 +52,19 @@ export const NutritionStyles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 40,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   editMealsButton: {
     alignSelf: "flex-start",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(99,102,241,0.15)",
+    backgroundColor: theme.colors.infoSoft,
   },
   editMealsButtonText: {
     fontWeight: "600",
-    color: "#1f2937",
+    color: theme.colors.text,
   },
   foodAmount: {
     fontWeight: "700",
@@ -110,16 +110,16 @@ export const NutritionStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "#8B5CF6",
+    backgroundColor: theme.colors.primary,
   },
   logButtonText: {
     fontWeight: "600",
-    color: "#fff",
+    color: theme.colors.onPrimary,
   },
   mealEditHint: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#4C1D95",
+    color: theme.colors.primaryPressed,
   },
   mealItemsText: {
     fontSize: 12,
@@ -136,20 +136,20 @@ export const NutritionStyles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: "rgba(148,163,184,0.2)",
+    backgroundColor: theme.colors.control,
   },
   metricButton: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(148,163,184,0.25)",
+    backgroundColor: theme.colors.control,
   },
   metricButtonText: {
     fontWeight: "600",
-    color: "#111827",
+    color: theme.colors.text,
   },
   metricButtonTextActive: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
   },
   metricRow: {
     flexDirection: "row",
@@ -179,7 +179,7 @@ export const NutritionStyles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(148,163,184,0.25)",
+    borderBottomColor: theme.colors.borderSubtle,
   },
   modalActions: {
     gap: 10,
@@ -187,7 +187,7 @@ export const NutritionStyles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.6)",
+    backgroundColor: theme.colors.overlay,
     justifyContent: "center",
     padding: 24,
   },
@@ -197,24 +197,24 @@ export const NutritionStyles = StyleSheet.create({
     alignItems: "center",
   },
   modalButtonDelete: {
-    backgroundColor: "#dc2626",
+    backgroundColor: theme.colors.danger,
   },
   modalButtonGhost: {
-    backgroundColor: "rgba(148,163,184,0.25)",
+    backgroundColor: theme.colors.control,
   },
   modalButtonPrimary: {
-    backgroundColor: "#8B5CF6",
+    backgroundColor: theme.colors.primary,
   },
   modalButtonTextGhost: {
     fontWeight: "600",
-    color: "#111827",
+    color: theme.colors.text,
   },
   modalButtonTextPrimary: {
-    color: "#fff",
+    color: theme.colors.onPrimary,
     fontWeight: "600",
   },
   modalCard: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
     borderRadius: 20,
     maxHeight: "80%",
     padding: 20,
@@ -227,7 +227,7 @@ export const NutritionStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(148,163,184,0.25)",
+    backgroundColor: theme.colors.control,
   },
   navButtonText: {
     fontWeight: "600",
@@ -243,7 +243,7 @@ export const NutritionStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(99,102,241,0.15)",
+    backgroundColor: theme.colors.infoSoft,
   },
   retryText: {
     fontWeight: "600",
@@ -272,7 +272,7 @@ export const NutritionStyles = StyleSheet.create({
   targetBadge: {
     alignSelf: "flex-end",
     marginTop: -24,
-    backgroundColor: "rgba(99,102,241,0.12)",
+    backgroundColor: theme.colors.infoSoft,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
@@ -280,6 +280,6 @@ export const NutritionStyles = StyleSheet.create({
   targetBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#4C1D95",
+    color: theme.colors.primaryPressed,
   },
 });

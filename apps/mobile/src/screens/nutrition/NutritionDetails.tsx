@@ -2,12 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Modal,
   Pressable,
   RefreshControl,
   ScrollView,
-  TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import type { ScrollView as ScrollViewType } from "react-native";
@@ -44,14 +43,18 @@ import type {
   NutritionDailyPoint,
 } from "../dashboard/types";
 import { AccordionCard } from "../dashboard/components/AccordionCard";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { theme } from "@/constants/theme";
 
-const CHART_HEIGHT = 240;
-const CHART_PADDING = { bottom: 40, left: 40, right: 20, top: 20 } as const;
-const CHART_VIEWPORT_WIDTH = Math.min(Dimensions.get("window").width - 64, 420);
-const POINT_GAP = 56;
+const CHART_HEIGHT = theme.charts.compactHeight;
+const CHART_PADDING = { bottom: 28, left: 32, right: 16, top: 12 } as const;
+const POINT_GAP = 48;
 
 export default function NutritionDetails() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const chartViewportWidth = Math.min(Math.max(screenWidth - 64, 240), 420);
   const dispatch = useAppDispatch();
   const chartRequestDays = 7;
   const [deleteMealData] = useDeleteMealDataMutation();
@@ -69,7 +72,7 @@ export default function NutritionDetails() {
   const isLoadingMoreRef = useRef(false);
   const pendingScrollWidthRef = useRef<number | null>(null);
   const prefetchArmedRef = useRef(true);
-  const contentWidthRef = useRef(CHART_VIEWPORT_WIDTH);
+  const contentWidthRef = useRef(chartViewportWidth);
   const scrollOffsetRef = useRef(0);
   const shouldScrollToEndRef = useRef(true);
   const errorMessage = toQueryErrorMessage(
@@ -231,18 +234,18 @@ export default function NutritionDetails() {
 
   const chartContentWidth = useMemo(() => {
     if (!chartSeries.length) {
-      return CHART_VIEWPORT_WIDTH;
+      return chartViewportWidth;
     }
     const effectiveWidth =
       chartSeries.length > 1
         ? (chartSeries.length - 1) * POINT_GAP
-        : CHART_VIEWPORT_WIDTH / 2;
+        : chartViewportWidth / 2;
     const innerWidth = Math.max(
-      CHART_VIEWPORT_WIDTH - (CHART_PADDING.left + CHART_PADDING.right),
+      chartViewportWidth - (CHART_PADDING.left + CHART_PADDING.right),
       effectiveWidth,
     );
     return innerWidth + CHART_PADDING.left + CHART_PADDING.right;
-  }, [chartSeries.length]);
+  }, [chartSeries.length, chartViewportWidth]);
 
   const chartPoints = useMemo(() => {
     if (!chartSeries.length) return [];
@@ -279,14 +282,14 @@ export default function NutritionDetails() {
 
     if (shouldScrollToEndRef.current) {
       shouldScrollToEndRef.current = false;
-      const nextOffset = Math.max(chartContentWidth - CHART_VIEWPORT_WIDTH, 0);
+      const nextOffset = Math.max(chartContentWidth - chartViewportWidth, 0);
       scrollOffsetRef.current = nextOffset;
       chartScrollRef.current.scrollTo({
         animated: false,
         x: nextOffset,
       });
     }
-  }, [chartContentWidth, chartSeries.length]);
+  }, [chartContentWidth, chartSeries.length, chartViewportWidth]);
 
   useEffect(() => {
     if (!chartSeries.length) return;
@@ -416,9 +419,9 @@ export default function NutritionDetails() {
   }
 
   return (
-    <View style={NutritionStyles.screen}>
-      <ScrollView
-        style={NutritionStyles.container}
+    <>
+      <AppScreen
+        padded={false}
         contentContainerStyle={NutritionStyles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -426,26 +429,20 @@ export default function NutritionDetails() {
       >
         <View style={NutritionStyles.header}>
           <View style={NutritionStyles.navRow}>
-            <TouchableOpacity
-              accessibilityRole="button"
+            <AppButton
+              label="Back"
               onPress={() => router.replace(APP_ROUTES.dashboard)}
-              style={NutritionStyles.navButton}
-            >
-              <ThemedText style={NutritionStyles.navButtonText}>
-                ‹ Back
-              </ThemedText>
-            </TouchableOpacity>
+              variant="secondary"
+              size="compact"
+            />
             <View
               style={{ alignItems: "center", flexDirection: "row", gap: 10 }}
             >
-              <TouchableOpacity
-                style={NutritionStyles.logButton}
+              <AppButton
+                label="Log meal"
                 onPress={() => openLogMealModal(false)}
-              >
-                <ThemedText style={NutritionStyles.logButtonText}>
-                  Log meal
-                </ThemedText>
-              </TouchableOpacity>
+                size="compact"
+              />
               <HeaderOverflowMenu
                 accessibilityLabel="Open nutrition actions"
                 items={[
@@ -480,17 +477,12 @@ export default function NutritionDetails() {
         {hasError && (
           <Card>
             <ThemedText type="defaultSemiBold">
-              We couldn't refresh your nutrition data
+              We couldn&apos;t refresh your nutrition data
             </ThemedText>
             <ThemedText style={NutritionStyles.helperText}>
               {errorMessage}
             </ThemedText>
-            <TouchableOpacity
-              style={NutritionStyles.retryButton}
-              onPress={handleRefresh}
-            >
-              <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
-            </TouchableOpacity>
+            <AppButton label="Retry" onPress={handleRefresh} variant="outline" size="compact" />
           </Card>
         )}
 
@@ -584,8 +576,8 @@ export default function NutritionDetails() {
                       width={chartContentWidth}
                       height={CHART_HEIGHT}
                       padding={CHART_PADDING}
-                      lineColor="#CBD5F5"
-                      labelColor="#1F2937"
+                      lineColor={theme.colors.border}
+                      labelColor={theme.colors.text}
                       gridRatios={[0.25, 0.5, 0.75]}
                       selectedIndex={selectedPointIndex}
                       onSelectIndex={(index) => {
@@ -597,7 +589,7 @@ export default function NutritionDetails() {
                           ? [
                               {
                                 id: "nutrition-target",
-                                color: "rgba(99,102,241,0.85)",
+                                color: theme.colors.chart.target,
                                 y: targetLineOffset,
                               },
                             ]
@@ -688,46 +680,33 @@ export default function NutritionDetails() {
               {NUTRITION_METRICS.map((metric) => {
                 const isActive = metric.id === metricConfig.id;
                 return (
-                  <TouchableOpacity
+                  <AppButton
                     key={metric.id}
+                    label={metric.label}
                     onPress={() => setSelectedMetricId(metric.id)}
-                    style={[
-                      NutritionStyles.metricButton,
-                      isActive && { backgroundColor: metric.color },
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        NutritionStyles.metricButtonText,
-                        isActive && NutritionStyles.metricButtonTextActive,
-                      ]}
-                    >
-                      {metric.label}
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant="secondary"
+                    size="compact"
+                    backgroundColor={isActive ? metric.color : undefined}
+                    textColor={isActive ? theme.colors.onPrimary : theme.colors.text}
+                  />
                 );
               })}
             </View>
 
             {mealsForDay.length ? (
-              <TouchableOpacity
-                style={NutritionStyles.editMealsButton}
+              <AppButton
+                label="Edit meals for this day"
                 onPress={() => setIsEditModalOpen(true)}
-              >
-                <ThemedText style={NutritionStyles.editMealsButtonText}>
-                  Edit meals for this day
-                </ThemedText>
-              </TouchableOpacity>
+                variant="secondary"
+                size="compact"
+              />
             ) : null}
             {showAddForSelectedDay && selectedPoint ? (
-              <TouchableOpacity
-                style={NutritionStyles.addMealsButton}
+              <AppButton
+                label="Add food for this day"
                 onPress={() => openLogMealModal(true)}
-              >
-                <ThemedText style={NutritionStyles.addMealsButtonText}>
-                  Add food for this day
-                </ThemedText>
-              </TouchableOpacity>
+                size="compact"
+              />
             ) : null}
             <AccordionCard
               title={highlightTitle}
@@ -764,7 +743,7 @@ export default function NutritionDetails() {
             </ThemedText>
           </Card>
         ) : null}
-      </ScrollView>
+      </AppScreen>
       <Modal
         transparent
         animationType="fade"
@@ -781,12 +760,10 @@ export default function NutritionDetails() {
             </ThemedText>
             <View style={NutritionStyles.modalActions}>
               {mealTypes.map((mealType) => (
-                <TouchableOpacity
+                <AppButton
                   key={mealType.value}
-                  style={[
-                    NutritionStyles.modalButton,
-                    NutritionStyles.modalButtonPrimary,
-                  ]}
+                  label={mealType.label}
+                  fullWidth
                   onPress={() => {
                     const selectedDayParam =
                       showAddForSelectedDay && selectedDayKey
@@ -807,23 +784,14 @@ export default function NutritionDetails() {
                         : "/(log-meal)/log-meal",
                     );
                   }}
-                >
-                  <ThemedText style={NutritionStyles.modalButtonTextPrimary}>
-                    {mealType.label}
-                  </ThemedText>
-                </TouchableOpacity>
+                />
               ))}
-              <TouchableOpacity
-                style={[
-                  NutritionStyles.modalButton,
-                  NutritionStyles.modalButtonGhost,
-                ]}
+              <AppButton
+                label="Not now"
+                fullWidth
+                variant="secondary"
                 onPress={() => setIsLogModalOpen(false)}
-              >
-                <ThemedText style={NutritionStyles.modalButtonTextGhost}>
-                  Not now
-                </ThemedText>
-              </TouchableOpacity>
+              />
             </View>
           </View>
         </View>
@@ -902,21 +870,16 @@ export default function NutritionDetails() {
                 />
               ))}
             </ScrollView>
-            <TouchableOpacity
-              style={[
-                NutritionStyles.modalButton,
-                NutritionStyles.modalButtonGhost,
-              ]}
+            <AppButton
+              label="Close"
+              fullWidth
+              variant="secondary"
               onPress={() => setIsEditModalOpen(false)}
-            >
-              <ThemedText style={NutritionStyles.modalButtonTextGhost}>
-                Close
-              </ThemedText>
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 

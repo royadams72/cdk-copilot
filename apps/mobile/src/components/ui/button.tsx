@@ -15,6 +15,7 @@ export type ButtonVariant =
 
 export type AppButtonProps = {
   accessibilityLabel?: string;
+  backgroundColor?: string;
   disabled?: boolean;
   fullWidth?: boolean;
   href?: string;
@@ -25,11 +26,13 @@ export type AppButtonProps = {
   onPress?: () => void;
   size?: "compact" | "standard" | "large";
   testID?: string;
+  textColor?: string;
   variant?: ButtonVariant;
 };
 
 export function AppButton({
   accessibilityLabel,
+  backgroundColor,
   disabled = false,
   fullWidth = false,
   href,
@@ -40,6 +43,7 @@ export function AppButton({
   onPress,
   size = "standard",
   testID,
+  textColor,
   variant = "primary",
 }: AppButtonProps) {
   const inactive = disabled || loading;
@@ -55,14 +59,15 @@ export function AppButton({
         styles.base,
         styles[size],
         styles[variant],
+        backgroundColor ? { backgroundColor } : null,
         fullWidth && styles.fullWidth,
         pressed && !inactive && styles[`${variant}Pressed`],
         inactive && styles.disabled,
       ]}
     >
       <View style={styles.content}>
-        {loading ? <ActivityIndicator color={textColors[variant]} size="small" /> : iconBefore}
-        <Text style={[styles.label, styles[`${size}Label`], { color: textColors[variant] }]}>
+        {loading ? <ActivityIndicator color={textColor ?? textColors[variant]} size="small" /> : iconBefore}
+        <Text style={[styles.label, styles[`${size}Label`], { color: textColor ?? textColors[variant] }]}>
           {label}
         </Text>
         {!loading ? iconAfter : null}

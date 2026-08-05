@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   View,
 } from "react-native";
 
@@ -33,6 +32,8 @@ import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMe
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { useGetMeasurementHistoryQuery } from "@/store/services/measurementsApi";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
 
 const EXERCISE_DAILY_TARGET_MIN = 30;
 const EXERCISE_DAILY_TARGET_KCAL = 500;
@@ -89,19 +90,18 @@ export default function Dashboard() {
   useSyncHealthConnectMeasurements(
     stepStatus === "ready" || hasAnyMeasurementAccess,
   );
-  const {
-    data: exerciseHistory,
-    refetch: refetchExerciseHistory,
-  } = useGetMeasurementHistoryQuery("exercise");
-  const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
-  const {
-    data: carePlanData,
-    refetch: refetchCarePlans,
-  } = useGetCarePlansQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: exerciseHistory, refetch: refetchExerciseHistory } =
+    useGetMeasurementHistoryQuery("exercise");
+  const { data: pendingEngagement } = useGetPendingPatientEngagementQuery(
+    undefined,
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
+  const { data: carePlanData, refetch: refetchCarePlans } =
+    useGetCarePlansQuery(undefined, {
+      refetchOnMountOrArgChange: true,
+    });
   const [openPatientEngagement, { isLoading: isOpeningEngagement }] =
     useOpenPatientEngagementMutation();
   const [showCarePlanBanner, setShowCarePlanBanner] = useState(false);
@@ -123,9 +123,12 @@ export default function Dashboard() {
   const handleTriggerBackgroundTask = useCallback(() => {
     void (async () => {
       try {
-        const triggered = await getCurrentHealthSyncProvider()?.triggerBackgroundSyncNow();
+        const triggered =
+          await getCurrentHealthSyncProvider()?.triggerBackgroundSyncNow();
         Alert.alert(
-          triggered ? "Background task triggered" : "Background task unavailable",
+          triggered
+            ? "Background task triggered"
+            : "Background task unavailable",
           triggered
             ? `The ${healthProviderName()} background sync path was triggered for testing.`
             : "Background task testing is unavailable on this build or device.",
@@ -142,7 +145,8 @@ export default function Dashboard() {
   const handleOpenEngagement = useCallback(() => {
     if (!pendingEngagement?.key) return;
 
-    const title = pendingEngagement.metadata?.copy?.title ?? "Achievement unlocked";
+    const title =
+      pendingEngagement.metadata?.copy?.title ?? "Achievement unlocked";
     const body =
       pendingEngagement.metadata?.copy?.body ??
       "You earned a new patient engagement achievement.";
@@ -162,55 +166,52 @@ export default function Dashboard() {
     return describeRange(data.nutrition.range);
   }, [data]);
 
-  const healthRadials = useMemo<DashboardRadial[]>(
-    () => {
-      const todayExercise = exerciseHistory?.points.find(
-        (point) => point.date === localDateKey(new Date()),
-      );
-      const caloriesBurned =
-        typeof stepSummary?.caloriesKcal === "number"
-          ? Math.max(0, Math.round(stepSummary.caloriesKcal))
-          : null;
-      const exerciseMinutes =
-        typeof todayExercise?.value2 === "number"
-          ? Math.max(0, Math.round(todayExercise.value2))
-          : null;
+  const healthRadials = useMemo<DashboardRadial[]>(() => {
+    const todayExercise = exerciseHistory?.points.find(
+      (point) => point.date === localDateKey(new Date()),
+    );
+    const caloriesBurned =
+      typeof stepSummary?.caloriesKcal === "number"
+        ? Math.max(0, Math.round(stepSummary.caloriesKcal))
+        : null;
+    const exerciseMinutes =
+      typeof todayExercise?.value2 === "number"
+        ? Math.max(0, Math.round(todayExercise.value2))
+        : null;
 
-      return [
-        {
-          id: "steps",
-          actual: stepsToday,
-          label: "Steps",
-          percent: stepsToday === null ? null : stepsToday / 10000,
-          target: 10000,
-          unit: "steps",
-        },
-        {
-          id: "minutes-exercise",
-          actual: exerciseMinutes,
-          label: "Minutes exercise",
-          percent:
-            exerciseMinutes === null
-              ? null
-              : exerciseMinutes / EXERCISE_DAILY_TARGET_MIN,
-          target: EXERCISE_DAILY_TARGET_MIN,
-          unit: "min",
-        },
-        {
-          id: "calories-burned",
-          actual: caloriesBurned,
-          label: "Calories burned",
-          percent:
-            caloriesBurned === null
-              ? null
-              : caloriesBurned / EXERCISE_DAILY_TARGET_KCAL,
-          target: EXERCISE_DAILY_TARGET_KCAL,
-          unit: "kcal",
-        },
-      ];
-    },
-    [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday],
-  );
+    return [
+      {
+        id: "steps",
+        actual: stepsToday,
+        label: "Steps",
+        percent: stepsToday === null ? null : stepsToday / 10000,
+        target: 10000,
+        unit: "steps",
+      },
+      {
+        id: "minutes-exercise",
+        actual: exerciseMinutes,
+        label: "Exercise",
+        percent:
+          exerciseMinutes === null
+            ? null
+            : exerciseMinutes / EXERCISE_DAILY_TARGET_MIN,
+        target: EXERCISE_DAILY_TARGET_MIN,
+        unit: "min",
+      },
+      {
+        id: "calories-burned",
+        actual: caloriesBurned,
+        label: "Calories burned",
+        percent:
+          caloriesBurned === null
+            ? null
+            : caloriesBurned / EXERCISE_DAILY_TARGET_KCAL,
+        target: EXERCISE_DAILY_TARGET_KCAL,
+        unit: "kcal",
+      },
+    ];
+  }, [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday]);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,7 +226,8 @@ export default function Dashboard() {
       const stored = await getLastViewedCarePlanAt();
       if (!stored) {
         const recentlyUpdated =
-          Date.now() - new Date(latest.updatedAt).getTime() < 1000 * 60 * 60 * 72;
+          Date.now() - new Date(latest.updatedAt).getTime() <
+          1000 * 60 * 60 * 72;
         if (!cancelled) setShowCarePlanBanner(recentlyUpdated);
         return;
       }
@@ -256,8 +258,8 @@ export default function Dashboard() {
   const showBlockingError = !!error && !data;
 
   return (
-    <ScrollView
-      style={styles.container}
+    <AppScreen
+      padded={false}
       contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -281,9 +283,7 @@ export default function Dashboard() {
 
           {data?.membership.computedStatus === "endingSoon" ? (
             <Card style={styles.membershipNoticeCard}>
-              <ThemedText type="defaultSemiBold">
-                Access ending soon
-              </ThemedText>
+              <ThemedText type="defaultSemiBold">Access ending soon</ThemedText>
               <ThemedText style={styles.helperText}>
                 {data.membership.endsAt
                   ? `Your access is due to end on ${formatMembershipEndDate(
@@ -292,7 +292,8 @@ export default function Dashboard() {
                   : "Your current access window is due to end soon."}
               </ThemedText>
               <ThemedText style={styles.helperText}>
-                Keep following your care plan and contact your clinic if you think your access should continue.
+                Keep following your care plan and contact your clinic if you
+                think your access should continue.
               </ThemedText>
             </Card>
           ) : null}
@@ -303,14 +304,21 @@ export default function Dashboard() {
                 {carePlanData.latestUpdatedPlan.reviewDue
                   ? "Care plan review due"
                   : carePlanData.latestUpdatedPlan.status === "completed"
-                  ? "Care plan completed"
-                  : "New care plan update"}
+                    ? "Care plan completed"
+                    : "New care plan update"}
               </ThemedText>
               <ThemedText style={styles.helperText}>
                 {carePlanData.latestUpdatedPlan.title}
               </ThemedText>
-              <Pressable
-                style={[styles.primaryActionButton, styles.carePlanViewButton]}
+              <AppButton
+                label={
+                  carePlanData.latestUpdatedPlan.reviewDue
+                    ? "Review now"
+                    : carePlanData.latestUpdatedPlan.status === "completed"
+                      ? "Review completion"
+                      : "View care plan"
+                }
+                size="compact"
                 onPress={() =>
                   router.push(
                     (carePlanData.latestUpdatedPlan?.reviewDue
@@ -318,15 +326,7 @@ export default function Dashboard() {
                       : `/(dashboard)/care-plan?id=${carePlanData.latestUpdatedPlan!.id}`) as never,
                   )
                 }
-              >
-                <ThemedText style={styles.primaryActionText}>
-                  {carePlanData.latestUpdatedPlan.reviewDue
-                    ? "Review now"
-                    : carePlanData.latestUpdatedPlan.status === "completed"
-                    ? "Review completion"
-                    : "View care plan"}
-                </ThemedText>
-              </Pressable>
+              />
             </Card>
           ) : null}
 
@@ -334,7 +334,11 @@ export default function Dashboard() {
 
           {carePlanData?.latestActivePlan ? (
             <Card
-              style={carePlanData.latestActivePlan.reviewDue ? styles.carePlanReviewCard : undefined}
+              style={
+                carePlanData.latestActivePlan.reviewDue
+                  ? styles.carePlanReviewCard
+                  : undefined
+              }
             >
               <ThemedText type="defaultSemiBold">Care plan</ThemedText>
               <ThemedText style={styles.helperText}>
@@ -349,16 +353,22 @@ export default function Dashboard() {
               </ThemedText>
               {carePlanData.latestActivePlan.reviewDue ? (
                 <ThemedText style={styles.helperText}>
-                  Your care team would like a quick check-in on how this plan is going.
+                  Your care team would like a quick check-in on how this plan is
+                  going.
                 </ThemedText>
               ) : null}
-              <Pressable
-                style={[
+              <AppButton
+                label={
                   carePlanData.latestActivePlan.reviewDue
-                    ? styles.primaryActionButton
-                    : styles.secondaryActionButton,
-                  styles.carePlanViewButton,
-                ]}
+                    ? "Review care plan"
+                    : "All care plans"
+                }
+                size="compact"
+                variant={
+                  carePlanData.latestActivePlan.reviewDue
+                    ? "primary"
+                    : "secondary"
+                }
                 onPress={() =>
                   router.push(
                     (carePlanData.latestActivePlan?.reviewDue
@@ -366,38 +376,27 @@ export default function Dashboard() {
                       : "/(dashboard)/care-plans") as never,
                   )
                 }
-              >
-                <ThemedText
-                  style={
-                    carePlanData.latestActivePlan.reviewDue
-                      ? styles.primaryActionText
-                      : styles.secondaryActionText
-                  }
-                >
-                  {carePlanData.latestActivePlan.reviewDue ? "Review care plan" : "All care plans"}
-                </ThemedText>
-              </Pressable>
+              />
             </Card>
           ) : null}
 
           {pendingEngagement ? (
             <Card>
               <ThemedText type="defaultSemiBold">
-                {pendingEngagement.metadata?.copy?.title ?? "Achievement unlocked"}
+                {pendingEngagement.metadata?.copy?.title ??
+                  "Achievement unlocked"}
               </ThemedText>
               <ThemedText style={styles.helperText}>
                 {pendingEngagement.metadata?.copy?.body ??
                   "You earned a new engagement milestone."}
               </ThemedText>
-              <Pressable
+              <AppButton
+                label={isOpeningEngagement ? "Opening..." : "View achievement"}
                 disabled={isOpeningEngagement}
-                style={styles.primaryActionButton}
+                loading={isOpeningEngagement}
                 onPress={handleOpenEngagement}
-              >
-                <ThemedText style={styles.primaryActionText}>
-                  {isOpeningEngagement ? "Opening..." : "View achievement"}
-                </ThemedText>
-              </Pressable>
+                size="compact"
+              />
             </Card>
           ) : null}
 
@@ -408,9 +407,7 @@ export default function Dashboard() {
                 onPress={() => router.push(APP_ROUTES.nutritionDetails)}
               >
                 <StackedRadialsCard
-                  centerLabel="Nutrition"
                   radials={data.nutrition.radials}
-                  subtitle="Today's intake"
                   title="Nutrition"
                 />
               </Pressable>
@@ -420,12 +417,7 @@ export default function Dashboard() {
               style={styles.selectableCard}
               onPress={() => router.push("/(fitness)/fitness-details")}
             >
-              <StackedRadialsCard
-                centerLabel="Health"
-                radials={healthRadials}
-                subtitle={healthSubtitle}
-                title="Health"
-              />
+              <StackedRadialsCard radials={healthRadials} title="Health" />
             </Pressable>
 
             {stepStatus !== "idle" &&
@@ -443,8 +435,15 @@ export default function Dashboard() {
                 {(stepStatus === "permission-required" ||
                   stepStatus === "permission-denied" ||
                   hasMissingHealthPermissions) && (
-                  <Pressable
-                    style={styles.primaryActionButton}
+                  <AppButton
+                    label={
+                      hasMissingHealthPermissions
+                        ? `Allow more ${healthProviderName()} access`
+                        : Platform.OS === "ios"
+                          ? "Check Apple Health access"
+                          : "Allow step access"
+                    }
+                    size="compact"
                     onPress={() => {
                       void (async () => {
                         const result = await requestAccess();
@@ -459,38 +458,30 @@ export default function Dashboard() {
                             "The Apple Health prompt still has not completed. You can try the prompt again, open the Health app for CKD Copilot sharing, or open normal app settings.",
                             [
                               {
-                                text: "Try again",
                                 onPress: () => {
                                   void requestAccess();
                                 },
+                                text: "Try again",
                               },
                               {
-                                text: "Open Health app",
                                 onPress: () => {
                                   void openHealthAccessSettings();
                                 },
+                                text: "Open Health app",
                               },
                               {
-                                text: "Open Settings",
                                 onPress: () => {
                                   void openAppSettings();
                                 },
+                                text: "Open Settings",
                               },
-                              { text: "Cancel", style: "cancel" },
+                              { style: "cancel", text: "Cancel" },
                             ],
                           );
                         }
                       })();
                     }}
-                  >
-                    <ThemedText style={styles.primaryActionText}>
-                      {hasMissingHealthPermissions
-                          ? `Allow more ${healthProviderName()} access`
-                          : Platform.OS === "ios"
-                            ? "Check Apple Health access"
-                            : "Allow step access"}
-                    </ThemedText>
-                  </Pressable>
+                  />
                 )}
               </Card>
             ) : null}
@@ -505,18 +496,17 @@ export default function Dashboard() {
                     ? "Enable Apple Health background delivery if you want steps, exercise, sleep, heart rate, and blood pressure to sync when the app is not open. If health access was previously denied, also review CKD Copilot in the Health app and iPhone Settings."
                     : "Allow background Health access if you want steps, exercise, sleep, heart rate, and blood pressure to sync when the app is not open."}
                 </ThemedText>
-                <Pressable
-                  style={styles.primaryActionButton}
+                <AppButton
+                  label={
+                    Platform.OS === "ios"
+                      ? "Enable background health sync"
+                      : "Allow background health access"
+                  }
+                  size="compact"
                   onPress={() => {
                     void requestBackgroundReadAccess();
                   }}
-                >
-                  <ThemedText style={styles.primaryActionText}>
-                    {Platform.OS === "ios"
-                      ? "Enable background health sync"
-                      : "Allow background health access"}
-                  </ThemedText>
-                </Pressable>
+                />
                 {__DEV__ ? (
                   <ThemedText style={styles.helperText}>
                     Debug: background read permission is missing.
@@ -531,20 +521,18 @@ export default function Dashboard() {
                   Dev: Background sync
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
-                  Trigger the native background sync path immediately for testing.
+                  Trigger the native background sync path immediately for
+                  testing.
                 </ThemedText>
                 <ThemedText style={styles.helperText}>
                   Background read permission:{" "}
                   {backgroundReadGranted ? "granted" : "missing"}
                 </ThemedText>
-                <Pressable
-                  style={styles.primaryActionButton}
+                <AppButton
+                  label="Run background sync now"
                   onPress={handleTriggerBackgroundTask}
-                >
-                  <ThemedText style={styles.primaryActionText}>
-                    Run background sync now
-                  </ThemedText>
-                </Pressable>
+                  size="compact"
+                />
               </Card>
             ) : null}
 
@@ -565,7 +553,7 @@ export default function Dashboard() {
           </>
         </>
       )}
-    </ScrollView>
+    </AppScreen>
   );
 }
 
@@ -593,18 +581,26 @@ function InlineError({ message }: { message: string }) {
   );
 }
 
-function getHealthSubtitle(stepStatus: ReturnType<typeof useStepCount>["status"]) {
+function getHealthSubtitle(
+  stepStatus: ReturnType<typeof useStepCount>["status"],
+) {
   switch (stepStatus) {
     case "ready":
       return "Today's step total";
     case "permission-required":
-      return Platform.OS === "ios" ? "Connect Apple Health" : "Connect Health Connect";
+      return Platform.OS === "ios"
+        ? "Connect Apple Health"
+        : "Connect Health Connect";
     case "permission-denied":
       return "Step access denied";
     case "health-connect-unavailable":
-      return Platform.OS === "ios" ? "Apple Health unavailable" : "Health Connect unavailable";
+      return Platform.OS === "ios"
+        ? "Apple Health unavailable"
+        : "Health Connect unavailable";
     case "health-connect-update-required":
-      return Platform.OS === "ios" ? "Update Apple Health access" : "Update Health Connect";
+      return Platform.OS === "ios"
+        ? "Update Apple Health access"
+        : "Update Health Connect";
     case "error":
       return "Couldn't load step data";
     default:
