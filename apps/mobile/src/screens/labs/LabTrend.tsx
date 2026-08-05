@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 
@@ -8,6 +8,11 @@ import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileShortDayMonth } from "@/lib/format/date";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
+import { NutritionStyles } from "../nutrition/styles";
 
 type TrendPoint = {
   takenAt: string | null;
@@ -22,6 +27,7 @@ function asNumber(value: number | string): number | null {
 
 export default function LabTrend() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const params = useLocalSearchParams<{ code?: string; unit?: string; name?: string }>();
   const code = typeof params.code === "string" ? params.code : "";
   const unit = typeof params.unit === "string" ? params.unit : "";
@@ -71,14 +77,14 @@ export default function LabTrend() {
           label: formatMobileShortDayMonth(point.takenAt),
           value: asNumber(point.value),
         }))
-        .filter((point) => point.value !== null) as Array<{ label: string; value: number }>,
+        .filter((point) => point.value !== null) as { label: string; value: number }[],
     [points],
   );
 
   const chart = useMemo(() => {
-    const width = 320;
-    const height = 180;
-    const pad = 24;
+    const width = Math.min(Math.max(screenWidth - 72, 240), 360);
+    const height = theme.charts.compactHeight;
+    const pad = 22;
     if (numericPoints.length === 0) {
       return { circles: [], polyline: "", width, height, xTicks: [], yMax: 0, yMin: 0 };
     }
@@ -108,16 +114,14 @@ export default function LabTrend() {
       yMax,
       yMin,
     };
-  }, [numericPoints]);
+  }, [numericPoints, screenWidth]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
-        <TouchableOpacity onPress={() => router.replace("/(labs)/labs-history")}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title">{name}</ThemedText>
-        <ThemedText style={{ opacity: 0.72 }}>
+    <>
+      <AppScreen>
+        <AppButton label="Back" onPress={() => router.replace("/(labs)/labs-history")} variant="secondary" size="compact" />
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>{name}</ThemedText>
+        <ThemedText style={{ color: theme.colors.copy }}>
           {unit ? `Values in ${unit}` : "Value history"}
         </ThemedText>
 
@@ -129,22 +133,14 @@ export default function LabTrend() {
         ) : numericPoints.length === 0 ? (
           <ThemedText style={{ opacity: 0.7 }}>No numeric history available.</ThemedText>
         ) : (
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: "rgba(148,163,184,0.35)",
-              borderRadius: 12,
-              padding: 12,
-              gap: 10,
-            }}
-          >
+          <Section title="Reading trend">
             <Svg width={chart.width} height={chart.height}>
               <Line
                 x1={24}
                 y1={chart.height - 24}
                 x2={chart.width - 24}
                 y2={chart.height - 24}
-                stroke="rgba(100,116,139,0.6)"
+                stroke={theme.colors.border}
                 strokeWidth={1}
               />
               <Line
@@ -152,22 +148,22 @@ export default function LabTrend() {
                 y1={24}
                 x2={24}
                 y2={chart.height - 24}
-                stroke="rgba(100,116,139,0.6)"
+                stroke={theme.colors.border}
                 strokeWidth={1}
               />
               <Polyline
                 points={chart.polyline}
                 fill="none"
-                stroke="#1D4ED8"
+                stroke={theme.colors.primary}
                 strokeWidth={2.5}
               />
               {chart.circles.map((coord, index) => (
-                <Circle key={`${coord.x}-${coord.y}-${index}`} cx={coord.x} cy={coord.y} r={3.5} fill="#1D4ED8" />
+                <Circle key={`${coord.x}-${coord.y}-${index}`} cx={coord.x} cy={coord.y} r={3.5} fill={theme.colors.primary} />
               ))}
-              <SvgText x={6} y={28} fontSize={11} fill="#475569">
+              <SvgText x={4} y={26} fontSize={11} fill={theme.colors.copy}>
                 {chart.yMax.toFixed(1)}
               </SvgText>
-              <SvgText x={6} y={chart.height - 24} fontSize={11} fill="#475569">
+              <SvgText x={4} y={chart.height - 22} fontSize={11} fill={theme.colors.copy}>
                 {chart.yMin.toFixed(1)}
               </SvgText>
               {chart.xTicks.map((tick, index) => (
@@ -176,16 +172,16 @@ export default function LabTrend() {
                   x={tick.x}
                   y={chart.height - 8}
                   fontSize={10}
-                  fill="#475569"
+                  fill={theme.colors.copy}
                   textAnchor="middle"
                 >
                   {tick.label}
                 </SvgText>
               ))}
             </Svg>
-          </View>
+          </Section>
         )}
-      </ScrollView>
+      </AppScreen>
 
       <FeedbackModal
         mode="error"
@@ -194,6 +190,6 @@ export default function LabTrend() {
         message={errorMessage}
         onClose={() => setShowErrorModal(false)}
       />
-    </View>
+    </>
   );
 }

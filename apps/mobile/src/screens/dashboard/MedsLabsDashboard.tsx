@@ -2,8 +2,6 @@ import { useCallback } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -21,6 +19,8 @@ import {
 import { useGetSymptomsQuery } from "@/store/services/symptomsApi";
 import { Card } from "./components/Card";
 import { NutritionStyles } from "../nutrition/styles";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
 
 export default function MedsLabsDashboard() {
   const router = useRouter();
@@ -61,33 +61,26 @@ export default function MedsLabsDashboard() {
       return (
         <Card>
           <ThemedText type="defaultSemiBold">
-            We couldn't refresh your nutrition data
+            We couldn&apos;t refresh your medication and lab data
           </ThemedText>
           <ThemedText style={styles.helperText}>{errorMessage}</ThemedText>
-          <TouchableOpacity
-            style={NutritionStyles.retryButton}
-            onPress={handleRefresh}
-          >
-            <ThemedText style={NutritionStyles.retryText}>Retry</ThemedText>
-          </TouchableOpacity>
+          <AppButton label="Retry" onPress={handleRefresh} variant="outline" size="compact" />
         </Card>
       );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
+    <AppScreen
+      padded={false}
       contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <TouchableOpacity onPress={() => router.back()}>
-        <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-      </TouchableOpacity>
+      <AppButton label="Back" onPress={() => router.back()} variant="secondary" size="compact" />
 
       <View style={styles.header}>
-        <ThemedText type="title">Meds/Labs dashboard</ThemedText>
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>Meds/Labs dashboard</ThemedText>
         <ThemedText style={styles.subtleText}>
           Summary of your medication and lab status.
         </ThemedText>
@@ -113,7 +106,7 @@ export default function MedsLabsDashboard() {
       )}
 
       <Card>
-        <ThemedText type="defaultSemiBold">Symptoms</ThemedText>
+        <ThemedText type="defaultSemiBold" style={styles.panelTitle}>Symptoms</ThemedText>
         <ThemedText style={styles.helperText}>
           {symptomData?.activeSymptoms.length
             ? `${symptomData.activeSymptoms.length} active symptom${symptomData.activeSymptoms.length === 1 ? "" : "s"} logged`
@@ -127,13 +120,12 @@ export default function MedsLabsDashboard() {
             ).toLocaleDateString("en-GB")}
           </ThemedText>
         ) : null}
-        <TouchableOpacity
-          style={styles.primaryActionButton}
+        <AppButton
+          label="Track symptoms"
           onPress={() => router.push("/(symptoms)/symptoms" as never)}
-        >
-          <ThemedText style={styles.primaryActionText}>Track symptoms</ThemedText>
-        </TouchableOpacity>
+          size="compact"
+        />
       </Card>
-    </ScrollView>
+    </AppScreen>
   );
 }

@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -16,8 +13,13 @@ import { API } from "@/constants/api";
 import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
-import { useAppDispatch } from "@/store/hooks";
 import { LAB_DEFINITIONS } from "./labDefs";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { TextField } from "@/components/ui/form-field";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
+import { NutritionStyles } from "../nutrition/styles";
 
 type LabFormItem = {
   code: string;
@@ -30,13 +32,13 @@ type LabFormItem = {
 };
 
 type CurrentLabResponse = {
-  items: Array<{
+  items: {
     code: string;
     name: string;
     takenAt: string | null;
     unit: string | null;
     value: number | string;
-  }>;
+  }[];
 };
 
 function buildDefaultLabs(baseDate: Date) {
@@ -53,7 +55,6 @@ function buildDefaultLabs(baseDate: Date) {
 
 export default function AddLabs() {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const params = useLocalSearchParams<{ mode?: string; takenAt?: string }>();
   const isEdit = params.mode === "edit";
   const editTakenAt =
@@ -208,23 +209,22 @@ export default function AddLabs() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
-      >
-        <TouchableOpacity
+    <>
+      <AppScreen keyboardAware>
+        <AppButton
+          label="Back"
+          variant="secondary"
+          size="compact"
           onPress={() =>
             router.replace(
               isEdit ? "/(labs)/labs-history?mode=edit" : "/(dashboard)/meds-labs",
             )
           }
-        >
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title">
+        />
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
           {isEdit ? "Edit labs" : "Add lab results"}
         </ThemedText>
-        <ThemedText style={{ opacity: 0.72 }}>
+        <ThemedText style={{ color: theme.colors.copy }}>
           {isEdit && editTakenAt
             ? `Editing labs for ${formatMobileUkInputDate(new Date(editTakenAt))}.`
             : "Enter values for the labs you want to submit."}
@@ -238,103 +238,61 @@ export default function AddLabs() {
         ) : (
           <>
             {labs.map((lab, index) => (
-              <View
+              <Section
                 key={lab.code}
-                style={{
-                  borderColor: "rgba(148,163,184,0.35)",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  gap: 8,
-                  padding: 12,
-                }}
+                title={lab.name}
               >
-                <ThemedText style={{ fontWeight: "700" }}>
-                  {lab.name}
-                </ThemedText>
                 <View
                   style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
                 >
                   <ThemedText style={{ opacity: 0.8 }}>
                     Taken: {formatMobileUkInputDate(lab.takenAt)}
                   </ThemedText>
-                  <TouchableOpacity
+                  <AppButton
+                    label="Set date"
                     onPress={() => setShowDateIndex(index)}
-                    style={{
-                      borderColor: "rgba(30,58,138,0.35)",
-                      borderRadius: 999,
-                      borderWidth: 1,
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                    }}
-                  >
-                    <ThemedText style={{ color: "#1E3A8A", fontWeight: "700" }}>
-                      Set date
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant="outline"
+                    size="compact"
+                  />
                 </View>
-                <TextInput
+                <TextField
+                  label={`${lab.name} value`}
                   keyboardType={Platform.select({
                     android: "numeric",
                     ios: "numbers-and-punctuation",
                   })}
                   onChangeText={(value) => updateLab(index, { value })}
                   placeholder={`Enter ${lab.name} value`}
-                  style={{
-                    borderColor: "rgba(148,163,184,0.45)",
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                  }}
                   value={lab.value}
                 />
-                <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
+                <ThemedText style={{ fontSize: 12, color: theme.colors.copy }}>
                   {lab.unit}
                 </ThemedText>
-              </View>
+              </Section>
             ))}
 
             {isEdit ? (
-              <View style={{ gap: 6 }}>
-                <ThemedText style={{ fontWeight: "700" }}>
-                  Reason for edit
-                </ThemedText>
-                <TextInput
+              <View>
+                <TextField
+                  label="Reason for edit"
                   multiline
                   onChangeText={setReason}
                   placeholder="Required"
-                  style={{
-                    borderColor: "rgba(148,163,184,0.45)",
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    minHeight: 84,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    textAlignVertical: "top",
-                  }}
                   value={reason}
                 />
               </View>
             ) : null}
 
-            <TouchableOpacity
+            <AppButton
+              label={saving ? "Saving..." : isEdit ? "Save labs" : "Add labs"}
               disabled={saving}
+              loading={saving}
+              fullWidth
               onPress={submit}
-              style={{
-                alignItems: "center",
-                backgroundColor: "rgba(16,185,129,0.18)",
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-              }}
-            >
-              <ThemedText style={{ color: "#065F46", fontWeight: "700" }}>
-                {saving ? "Saving..." : isEdit ? "Save labs" : "Add labs"}
-              </ThemedText>
-            </TouchableOpacity>
+            />
           </>
         )}
-      </ScrollView>
+      </AppScreen>
 
       {showDateIndex !== null ? (
         <DateTimePicker
@@ -361,6 +319,6 @@ export default function AddLabs() {
         title="Labs error"
         visible={showErrorModal}
       />
-    </View>
+    </>
   );
 }
