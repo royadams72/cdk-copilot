@@ -102,7 +102,12 @@ export default function MedicationHistory() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <AppButton label="Back" onPress={() => router.back()} variant="secondary" size="compact" />
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(dashboard)/meds-labs")}
+          variant="secondary"
+          size="compact"
+        />
         <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication history</ThemedText>
         <ThemedText style={{ color: theme.colors.copy }}>
           Select a medication to view full status and edit history.

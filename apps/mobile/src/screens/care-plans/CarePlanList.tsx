@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
-  ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -12,8 +11,12 @@ import { ThemedText } from "@/components/themed-text";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { useGetCarePlansQuery } from "@/store/services/carePlanApi";
-import { Card } from "@/screens/dashboard/components/Card";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
+import { NutritionStyles } from "@/screens/nutrition/styles";
 
 function formatStatus(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -45,34 +48,30 @@ export default function CarePlanList() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+    <AppScreen
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <TouchableOpacity onPress={() => router.back()}>
-        <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-      </TouchableOpacity>
+      <AppButton label="Back" onPress={() => router.replace("/(dashboard)/dashboard")} variant="secondary" size="compact" />
 
-      <View style={styles.header}>
-        <ThemedText type="title">Care plans</ThemedText>
-        <ThemedText style={styles.subtleText}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>Care plans</ThemedText>
+        <ThemedText style={{ color: theme.colors.copy }}>
           Active and completed care plans linked to your account.
         </ThemedText>
       </View>
 
       {error && !data ? (
-        <Card>
-          <ThemedText type="defaultSemiBold">Care plans unavailable</ThemedText>
-          <ThemedText style={styles.helperText}>{errorMessage}</ThemedText>
-        </Card>
+        <Section title="Care plans unavailable">
+          <ThemedText style={{ color: theme.colors.copy }}>{errorMessage}</ThemedText>
+          <AppButton label="Retry" onPress={handleRefresh} variant="outline" size="compact" />
+        </Section>
       ) : null}
 
       {data?.items?.length ? (
         data.items.map((plan) => (
-          <TouchableOpacity
+          <Pressable
             key={plan.id}
             onPress={() =>
               router.push(
@@ -82,7 +81,7 @@ export default function CarePlanList() {
               )
             }
           >
-            <Card style={plan.reviewDue ? styles.carePlanReviewCard : undefined}>
+            <Section style={plan.reviewDue ? styles.carePlanReviewCard : undefined}>
               <View style={styles.carePlanTaskHeader}>
                 <ThemedText type="defaultSemiBold">{plan.title}</ThemedText>
                 <ThemedText style={styles.carePlanTaskMeta}>
@@ -102,17 +101,16 @@ export default function CarePlanList() {
                 Activated {formatMobileDate(plan.activatedAt)} · Updated{" "}
                 {formatMobileDate(plan.updatedAt)}
               </ThemedText>
-            </Card>
-          </TouchableOpacity>
+            </Section>
+          </Pressable>
         ))
       ) : (
-        <Card>
-          <ThemedText type="defaultSemiBold">No care plans yet</ThemedText>
-          <ThemedText style={styles.helperText}>
+        <Section title="No care plans yet">
+          <ThemedText style={{ color: theme.colors.copy }}>
             Your care team has not linked any care plans to your account yet.
           </ThemedText>
-        </Card>
+        </Section>
       )}
-    </ScrollView>
+    </AppScreen>
   );
 }

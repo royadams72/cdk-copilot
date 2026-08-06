@@ -54,7 +54,12 @@ export default function MedicationDetail() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <AppButton label="Back" onPress={() => router.back()} variant="secondary" size="compact" />
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(medications)/medication-history")}
+          variant="secondary"
+          size="compact"
+        />
         <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication detail</ThemedText>
 
         {medication ? (

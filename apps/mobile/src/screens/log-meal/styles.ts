@@ -6,7 +6,8 @@ export const logMealStyles = StyleSheet.create({
     opacity: 0.5,
   },
   contentContainer: {
-    paddingBottom: theme.spacing.lg,
+    flexGrow: 1,
+    paddingBottom: theme.spacing.sm,
   },
   contentScroll: {
     flex: 1,
@@ -62,6 +63,14 @@ export const logMealStyles = StyleSheet.create({
     gap: 12,
     paddingBottom: 12,
   },
+  infoPanel: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.md,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
   footerDangerButton: {
     backgroundColor: theme.colors.danger,
   },
@@ -105,6 +114,22 @@ export const logMealStyles = StyleSheet.create({
   },
   listCard: {
     marginBottom: 10,
+  },
+  listPanel: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    flex: 1,
+    gap: theme.spacing.sm,
+    minHeight: 180,
+    overflow: "hidden",
+    padding: theme.spacing.md,
+  },
+  listPanelTitle: {
+    color: theme.colors.panelHeader,
+    fontSize: 18,
+    fontWeight: "700",
   },
   detailsWrap: {
     gap: 16,
@@ -340,6 +365,9 @@ export const logMealStyles = StyleSheet.create({
     lineHeight: 18,
     color: theme.colors.warningDark,
     fontWeight: "600",
+  },
+  normalList: {
+    gap: theme.spacing.sm,
   },
   modalBody: {
     maxHeight: 360,

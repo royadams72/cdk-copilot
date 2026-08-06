@@ -10,7 +10,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
-import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { LAB_DEFINITIONS } from "./labDefs";
@@ -199,7 +198,7 @@ export default function AddLabs() {
       }
 
       // dispatch(fetchDashboard({ scope: "today" }));
-      router.replace(APP_ROUTES.dashboard);
+      router.replace("/(dashboard)/meds-labs");
     } catch (err: any) {
       setErrorMessage(err?.message ?? "Failed to save labs");
       setShowErrorModal(true);

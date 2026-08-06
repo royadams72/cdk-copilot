@@ -77,7 +77,12 @@ export default function MedsLabsDashboard() {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <AppButton label="Back" onPress={() => router.back()} variant="secondary" size="compact" />
+      <AppButton
+        label="Back"
+        onPress={() => router.replace("/(dashboard)/dashboard")}
+        variant="secondary"
+        size="compact"
+      />
 
       <View style={styles.header}>
         <ThemedText type="title" style={NutritionStyles.screenTitle}>Meds/Labs dashboard</ThemedText>

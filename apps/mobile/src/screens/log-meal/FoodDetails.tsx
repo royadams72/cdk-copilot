@@ -384,28 +384,35 @@ export default function FoodDetails() {
           </View>
         ) : null}
 
-        {foods &&
-          foods.map(
-            (food) =>
-              food && (
-                <FoodCard
-                  key={food.uid}
-                  title={buildDisplayFoodName(food.name, food.brand)}
-                  subtitle={formatQuantitySummary(food.quantity, food.unit)}
-                  description={buildKnownNutrientSummary(food)}
-                  onPress={() =>
-                    dispatch(
-                      setActiveItem({
-                        foodId: food.foodId,
-                        groupId: food.groupId,
-                        uid: food.uid,
-                      }),
-                    )
-                  }
-                  style={logMealStyles.listCard}
-                />
-              ),
-          )}
+        {foods?.length ? (
+          <Section
+            title="Other matching foods"
+            description="Select another result to update the food details above."
+          >
+            <View style={logMealStyles.normalList}>
+              {foods.map(
+                (food) =>
+                  food && (
+                    <FoodCard
+                      key={food.uid}
+                      title={buildDisplayFoodName(food.name, food.brand)}
+                      subtitle={formatQuantitySummary(food.quantity, food.unit)}
+                      description={buildKnownNutrientSummary(food)}
+                      onPress={() =>
+                        dispatch(
+                          setActiveItem({
+                            foodId: food.foodId,
+                            groupId: food.groupId,
+                            uid: food.uid,
+                          }),
+                        )
+                      }
+                    />
+                  ),
+              )}
+            </View>
+          </Section>
+        ) : null}
       </AppScreen>
 
       <Modal

@@ -527,16 +527,23 @@ export default function LogMeal() {
             ))}
           </View>
         </View>
-        <ThemedText style={logMealStyles.helperText}>
-          Search one food at a time with an amount, like &quot;100g of
-          carrots&quot; or &quot;50g of rice&quot;.
-        </ThemedText>
+        <View style={logMealStyles.infoPanel}>
+          <ThemedText style={logMealStyles.helperText}>
+            Search one food at a time with an amount, like &quot;100g of
+            carrots&quot; or &quot;50g of rice&quot;.
+          </ThemedText>
+        </View>
       </View>
 
-      <ScrollView
-        style={logMealStyles.contentScroll}
-        contentContainerStyle={logMealStyles.contentContainer}
-      >
+      <View style={logMealStyles.listPanel}>
+        <ThemedText style={logMealStyles.listPanelTitle}>
+          {activeTab === "current" ? "Current meal" : "Saved foods"}
+        </ThemedText>
+        <ScrollView
+          nestedScrollEnabled
+          style={logMealStyles.contentScroll}
+          contentContainerStyle={logMealStyles.contentContainer}
+        >
         {activeTab === "current" ? (
           <View style={logMealStyles.section}>
             {items.length ? (
@@ -629,7 +636,8 @@ export default function LogMeal() {
           </View>
         ) : null}
 
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <View style={logMealStyles.fixedFooter}>
         {editingEntryId ? (

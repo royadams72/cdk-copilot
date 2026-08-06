@@ -1,10 +1,7 @@
 import { useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
-  ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,8 +14,12 @@ import {
   useGetCarePlanByIdQuery,
   useUpdateCarePlanTaskStatusMutation,
 } from "@/store/services/carePlanApi";
-import { Card } from "@/screens/dashboard/components/Card";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
+import { NutritionStyles } from "@/screens/nutrition/styles";
 
 function formatStatus(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -73,52 +74,45 @@ export default function CarePlanDetail() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+    <AppScreen
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <TouchableOpacity onPress={() => router.back()}>
-        <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-      </TouchableOpacity>
+      <AppButton label="Back" onPress={() => router.replace("/(dashboard)/care-plans")} variant="secondary" size="compact" />
 
       {!carePlanId || !data ? (
-        <Card>
-          <ThemedText type="defaultSemiBold">Care plan unavailable</ThemedText>
-          <ThemedText style={styles.helperText}>
+        <Section title="Care plan unavailable">
+          <ThemedText style={{ color: theme.colors.copy }}>
             {carePlanId ? errorMessage : "No care plan was selected."}
           </ThemedText>
-        </Card>
+          <AppButton label="Return to care plans" onPress={() => router.replace("/(dashboard)/care-plans")} variant="outline" size="compact" />
+        </Section>
       ) : (
         <>
-          <View style={styles.header}>
-            <ThemedText type="title">{data.title}</ThemedText>
+          <View style={{ gap: theme.spacing.xs }}>
+            <ThemedText type="title" style={NutritionStyles.screenTitle}>{data.title}</ThemedText>
             <ThemedText style={styles.carePlanStatusText}>
               {data.reviewDue ? "Review due" : formatStatus(data.status)}
             </ThemedText>
           </View>
 
           {data.reviewDue ? (
-            <Card style={styles.carePlanReviewCard}>
-              <ThemedText type="defaultSemiBold">Review ready</ThemedText>
+            <Section title="Review ready" style={styles.carePlanReviewCard}>
               <ThemedText style={styles.helperText}>
                 Your care team wants a quick update on whether this plan is working for you.
               </ThemedText>
-              <Pressable
-                style={styles.primaryActionButton}
+              <AppButton
+                label="Review care plan"
                 onPress={() =>
                   router.push(`/(dashboard)/care-plan-review?id=${carePlanId}` as never)
                 }
-              >
-                <ThemedText style={styles.primaryActionText}>Review care plan</ThemedText>
-              </Pressable>
-            </Card>
+                size="compact"
+              />
+            </Section>
           ) : null}
 
-          <Card>
-            <ThemedText type="defaultSemiBold">Plan summary</ThemedText>
+          <Section title="Plan summary">
             <View style={styles.carePlanSummaryGrid}>
               <View style={styles.carePlanSummaryCell}>
                 <ThemedText style={styles.carePlanMetaLabel}>Associated diagnoses</ThemedText>
@@ -173,13 +167,9 @@ export default function CarePlanDetail() {
                 <ThemedText style={styles.carePlanBodyText}>{data.notes}</ThemedText>
               </View>
             ) : null}
-          </Card>
+          </Section>
 
-          <Card>
-            <ThemedText type="defaultSemiBold">Recent activity</ThemedText>
-            <ThemedText style={styles.helperText}>
-              Changes made by you or your care team on this plan.
-            </ThemedText>
+          <Section title="Recent activity" description="Changes made by you or your care team on this plan.">
             {data.activity?.length ? (
               data.activity.map((event) => (
                 <View key={event.id} style={styles.carePlanListRow}>
@@ -202,10 +192,9 @@ export default function CarePlanDetail() {
             ) : (
               <ThemedText style={styles.helperText}>No recent activity recorded.</ThemedText>
             )}
-          </Card>
+          </Section>
 
-          <Card>
-            <ThemedText type="defaultSemiBold">People involved in this plan</ThemedText>
+          <Section title="People involved in this plan">
             <View style={styles.carePlanSummaryGrid}>
               <View style={styles.carePlanSummaryCell}>
                 <ThemedText style={styles.carePlanMetaLabel}>Created by</ThemedText>
@@ -228,11 +217,9 @@ export default function CarePlanDetail() {
                 )}
               </View>
             </View>
-          </Card>
+          </Section>
 
-          <Card>
-            <ThemedText type="defaultSemiBold">Goals</ThemedText>
-            <ThemedText style={styles.helperText}>Goals linked to this care plan.</ThemedText>
+          <Section title="Goals" description="Goals linked to this care plan.">
             {data.goals.length ? (
               data.goals.map((goal) => (
                 <View key={goal.id} style={styles.carePlanListRow}>
@@ -245,13 +232,9 @@ export default function CarePlanDetail() {
             ) : (
               <ThemedText style={styles.helperText}>No goals recorded.</ThemedText>
             )}
-          </Card>
+          </Section>
 
-          <Card>
-            <ThemedText type="defaultSemiBold">Tasks</ThemedText>
-            <ThemedText style={styles.helperText}>
-              Daily, weekly, or once-off actions to support your plan.
-            </ThemedText>
+          <Section title="Tasks" description="Daily, weekly, or once-off actions to support your plan.">
             {data.tasks.length ? (
               data.tasks.map((task) => (
                 <View key={task.id} style={styles.carePlanListRow}>
@@ -267,7 +250,8 @@ export default function CarePlanDetail() {
                     </ThemedText>
                   ) : null}
                   {data.status === "active" ? (
-                    <TouchableOpacity
+                    <AppButton
+                      label={task.status === "done" ? "Mark as open" : "Mark as done"}
                       disabled={isUpdatingTask}
                       onPress={() =>
                         void handleTaskAction(
@@ -276,20 +260,18 @@ export default function CarePlanDetail() {
                           task.label,
                         )
                       }
-                    >
-                      <ThemedText style={styles.carePlanTaskAction}>
-                        {task.status === "done" ? "Mark as open" : "Mark as done"}
-                      </ThemedText>
-                    </TouchableOpacity>
+                      variant={task.status === "done" ? "secondary" : "success"}
+                      size="compact"
+                    />
                   ) : null}
                 </View>
               ))
             ) : (
               <ThemedText style={styles.helperText}>No tasks recorded.</ThemedText>
             )}
-          </Card>
+          </Section>
         </>
       )}
-    </ScrollView>
+    </AppScreen>
   );
 }
