@@ -1,14 +1,7 @@
 import React from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  View,
-  type ViewStyle,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text, View, type ViewStyle } from "react-native";
 
+import { AppScreen } from "@/components/app-screen";
 import { styles } from "@/screens/onboarding/styles";
 
 export function OnboardingFormScreen({
@@ -22,21 +15,8 @@ export function OnboardingFormScreen({
   subtitle?: string;
   title?: string;
 }) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.screenContent,
-          { paddingBottom: Math.max(insets.bottom, 20) + 36 },
-          contentContainerStyle,
-        ]}
-      >
+    <AppScreen keyboardAware contentContainerStyle={[styles.screenContent, contentContainerStyle]}>
         {title || subtitle ? (
           <View style={styles.header}>
             {title ? <Text style={styles.title}>{title}</Text> : null}
@@ -44,7 +24,6 @@ export function OnboardingFormScreen({
           </View>
         ) : null}
         {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </AppScreen>
   );
 }

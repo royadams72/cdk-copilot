@@ -39,7 +39,7 @@ export function AccordionCard({
         style={styles.accordionHeader}
       >
         <View style={styles.accordionHeaderCopy}>
-          <ThemedText type="defaultSemiBold">{title}</ThemedText>
+          <ThemedText type="defaultSemiBold" style={styles.panelTitle}>{title}</ThemedText>
           <ThemedText style={styles.helperText}>{subtitle}</ThemedText>
         </View>
         <ThemedText

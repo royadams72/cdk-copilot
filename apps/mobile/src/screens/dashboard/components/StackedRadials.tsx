@@ -1,9 +1,8 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { DashboardRadial } from "../types";
 import { ThemedText } from "@/components/themed-text";
 import React from "react";
-import { View, useWindowDimensions } from "react-native";
-import Svg, { G, Circle, Path } from "react-native-svg";
+import { useWindowDimensions, View } from "react-native";
+import Svg, { Circle, G, Path } from "react-native-svg";
 import { styles } from "../styles";
 import { Card } from "./Card";
 import {
@@ -12,23 +11,23 @@ import {
   STACKED_SIZE,
   STACKED_STROKE,
 } from "../constants";
+import { theme } from "@/constants/theme";
 
 export function StackedRadialsCard({
   radials,
   title = "Diet",
-  subtitle = "Weekly intake",
-  centerLabel = "Intake",
+  subtitle,
+  centerLabel,
 }: {
   centerLabel?: string;
   radials: DashboardRadial[];
   subtitle?: string;
   title?: string;
 }) {
-  const theme = useColorScheme() ?? "light";
   const { width } = useWindowDimensions();
   const isCompactLayout = width < 430;
-  const trackColor = theme === "light" ? "#E5E7EB" : "rgba(255,255,255,0.2)";
-  const textColor = theme === "light" ? "#111827" : "#F5F5F5";
+  const trackColor = theme.colors.control;
+  const textColor = theme.colors.text;
   const decorated = radials.map((radial, index) => ({
     ...radial,
     color: STACKED_COLORS[index % STACKED_COLORS.length],
@@ -38,7 +37,9 @@ export function StackedRadialsCard({
     <Card style={styles.stackedRadialCard}>
       <View style={styles.stackedHeader}>
         <ThemedText type="defaultSemiBold">{title}</ThemedText>
-        <ThemedText style={styles.subtleText}>{subtitle}</ThemedText>
+        {subtitle && (
+          <ThemedText style={styles.subtleText}>{subtitle}</ThemedText>
+        )}
       </View>
       <View
         style={[
@@ -53,16 +54,25 @@ export function StackedRadialsCard({
           ]}
         >
           {decorated.map((radial) => (
-            <View key={radial.id} style={styles.legendRow}>
+            <View
+              key={radial.id}
+              style={[
+                styles.legendRow,
+                isCompactLayout && styles.legendRowCompact,
+              ]}
+            >
               <View
                 style={[styles.legendDot, { backgroundColor: radial.color }]}
               />
               <View style={styles.legendCopy}>
-                <ThemedText style={styles.legendLabel}>
-                  {radial.label}
-                </ThemedText>
-                <ThemedText style={styles.legendSubtext}>
-                  {legendValue(radial)}
+                <ThemedText style={styles.legendText}>
+                  <ThemedText style={styles.legendLabel}>
+                    {radial.label}
+                  </ThemedText>
+                  <ThemedText style={styles.legendSubtext}>
+                    {" "}
+                    {legendValue(radial)}
+                  </ThemedText>
                 </ThemedText>
               </View>
             </View>
@@ -102,10 +112,10 @@ function StackedRadialChart({
   trackColor,
   textColor,
 }: {
-  centerLabel: string;
+  centerLabel?: string;
   radials: (DashboardRadial & { color: string })[];
-  trackColor: string;
   textColor: string;
+  trackColor: string;
 }) {
   const maxRadius = STACKED_SIZE / 2 - STACKED_STROKE / 2;
   const center = STACKED_SIZE / 2;
@@ -177,9 +187,11 @@ function StackedRadialChart({
           })}
         </G>
       </Svg>
-      <ThemedText style={[styles.centerLabel, { color: textColor }]}>
-        {centerLabel}
-      </ThemedText>
+      {centerLabel && (
+        <ThemedText style={[styles.centerLabel, { color: textColor }]}>
+          {centerLabel}
+        </ThemedText>
+      )}
     </View>
   );
 }

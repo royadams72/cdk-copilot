@@ -1,13 +1,16 @@
-import { Modal, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppButton } from "@/components/ui/button";
+import { theme } from "@/constants/theme";
 
-type Mode = "error" | "info" | "success";
+type Mode = "error" | "info" | "success" | "warning";
 
-const tone: Record<Mode, { bg: string; text: string }> = {
-  error: { bg: "rgba(239,68,68,0.16)", text: "#991B1B" },
-  info: { bg: "rgba(59,130,246,0.16)", text: "#1E3A8A" },
-  success: { bg: "rgba(16,185,129,0.16)", text: "#065F46" },
+const tone: Record<Mode, { bg: string; text: string; button: "danger" | "primary" | "success" }> = {
+  error: { bg: theme.colors.dangerSoft, text: theme.colors.dangerDark, button: "danger" },
+  info: { bg: theme.colors.infoSoft, text: theme.colors.infoDark, button: "primary" },
+  success: { bg: theme.colors.successSoft, text: theme.colors.successDark, button: "success" },
+  warning: { bg: theme.colors.warningSoft, text: theme.colors.warningDark, button: "primary" },
 };
 
 export function FeedbackModal({
@@ -28,31 +31,14 @@ export function FeedbackModal({
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(15,23,42,0.48)",
-          justifyContent: "center",
-          padding: 20,
-        }}
+        style={modalStyles.backdrop}
       >
         <View
-          style={{
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.35)",
-            backgroundColor: "#fff",
-            padding: 16,
-            gap: 10,
-          }}
+          accessibilityViewIsModal
+          style={modalStyles.card}
         >
           <View
-            style={{
-              alignSelf: "flex-start",
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 999,
-              backgroundColor: tone[mode].bg,
-            }}
+            style={[modalStyles.badge, { backgroundColor: tone[mode].bg }]}
           >
             <ThemedText style={{ color: tone[mode].text, fontWeight: "700" }}>
               {mode.toUpperCase()}
@@ -60,21 +46,30 @@ export function FeedbackModal({
           </View>
           <ThemedText type="defaultSemiBold">{title}</ThemedText>
           <ThemedText>{message}</ThemedText>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              alignSelf: "flex-end",
-              marginTop: 4,
-              borderRadius: 10,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              backgroundColor: "rgba(15,23,42,0.12)",
-            }}
-          >
-            <ThemedText style={{ fontWeight: "600" }}>{actionLabel}</ThemedText>
-          </TouchableOpacity>
+          <View style={modalStyles.actions}>
+            <AppButton label={actionLabel} onPress={onClose} variant={tone[mode].button} />
+          </View>
         </View>
       </View>
     </Modal>
   );
 }
+
+export function ErrorModal(props: Omit<React.ComponentProps<typeof FeedbackModal>, "mode">) {
+  return <FeedbackModal {...props} mode="error" />;
+}
+
+export function SuccessModal(props: Omit<React.ComponentProps<typeof FeedbackModal>, "mode">) {
+  return <FeedbackModal {...props} mode="success" />;
+}
+
+export function WarningModal(props: Omit<React.ComponentProps<typeof FeedbackModal>, "mode">) {
+  return <FeedbackModal {...props} mode="warning" />;
+}
+
+const modalStyles = StyleSheet.create({
+  backdrop: { backgroundColor: theme.colors.overlay, flex: 1, justifyContent: "center", padding: theme.spacing.xl },
+  card: { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderSubtle, borderRadius: theme.radii.xl, borderWidth: 1, gap: theme.spacing.md, padding: theme.spacing.lg },
+  badge: { alignSelf: "flex-start", borderRadius: theme.radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  actions: { alignItems: "flex-end", marginTop: theme.spacing.xs },
+});

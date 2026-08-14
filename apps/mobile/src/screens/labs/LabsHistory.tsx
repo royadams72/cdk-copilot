@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
-  TouchableOpacity,
+  Pressable,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -12,6 +11,11 @@ import { ThemedText } from "@/components/themed-text";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileDate } from "@/lib/format/date";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
+import { NutritionStyles } from "../nutrition/styles";
 
 type HistoryLab = {
   id: string;
@@ -73,17 +77,13 @@ export default function LabsHistory() {
   }, [isEditMode]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 24 }}
-      >
-        <TouchableOpacity onPress={() => router.replace("/(dashboard)/meds-labs")}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title">
+    <>
+      <AppScreen>
+        <AppButton label="Back" onPress={() => router.replace("/(dashboard)/meds-labs")} variant="secondary" size="compact" />
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
           {isEditMode ? "Edit Labs results" : "Labs history"}
         </ThemedText>
-        <ThemedText style={{ opacity: 0.72 }}>
+        <ThemedText style={{ color: theme.colors.copy }}>
           {isEditMode
             ? "Select a date to edit that day's lab list."
             : "Select a lab to view your reading trend."}
@@ -95,15 +95,7 @@ export default function LabsHistory() {
             <ThemedText>Loading history...</ThemedText>
           </View>
         ) : (
-          <View
-            style={{
-              borderColor: "rgba(148,163,184,0.35)",
-              borderRadius: 12,
-              borderWidth: 1,
-              gap: 8,
-              padding: 12,
-            }}
-          >
+          <Section title={isEditMode ? "Lab dates" : "Lab results"}>
             {isEditMode ? (
               dateGroups.length === 0 ? (
                 <ThemedText style={{ opacity: 0.7 }}>
@@ -117,7 +109,7 @@ export default function LabsHistory() {
                     .join(", ");
                   const moreCount = Math.max(0, group.itemCount - 3);
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={group.date}
                       onPress={() =>
                         router.push(
@@ -125,7 +117,7 @@ export default function LabsHistory() {
                         )
                       }
                       style={{
-                        borderTopColor: "rgba(148,163,184,0.25)",
+                        borderTopColor: theme.colors.borderSubtle,
                         borderTopWidth: 1,
                         gap: 2,
                         paddingTop: 8,
@@ -141,7 +133,7 @@ export default function LabsHistory() {
                         {preview}
                         {moreCount > 0 ? ` +${moreCount} more` : ""}
                       </ThemedText>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })
               )
@@ -151,7 +143,7 @@ export default function LabsHistory() {
               </ThemedText>
             ) : (
               items.map((item) => (
-                <TouchableOpacity
+                <Pressable
                   key={`${item.code}-${item.unit ?? ""}`}
                   onPress={() =>
                     router.push(
@@ -159,7 +151,7 @@ export default function LabsHistory() {
                     )
                   }
                   style={{
-                    borderTopColor: "rgba(148,163,184,0.25)",
+                    borderTopColor: theme.colors.borderSubtle,
                     borderTopWidth: 1,
                     gap: 2,
                     paddingTop: 8,
@@ -174,12 +166,12 @@ export default function LabsHistory() {
                   <ThemedText style={{ fontSize: 13, opacity: 0.75 }}>
                     {formatMobileDate(item.takenAt, { fallback: "Unknown" })}
                   </ThemedText>
-                </TouchableOpacity>
+                </Pressable>
               ))
             )}
-          </View>
+          </Section>
         )}
-      </ScrollView>
+      </AppScreen>
 
       <FeedbackModal
         mode="error"
@@ -188,6 +180,6 @@ export default function LabsHistory() {
         message={errorMessage}
         onClose={() => setShowErrorModal(false)}
       />
-    </View>
+    </>
   );
 }

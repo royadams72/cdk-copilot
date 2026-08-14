@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
+  Pressable,
   View,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -14,7 +12,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { API } from "@/constants/api";
-import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 
@@ -28,6 +25,12 @@ import {
   useLazySearchMedicationQuery,
   useUpdateMedicationMutation,
 } from "@/store/services/medicationApi";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { FormField, TextField, formControlStyles } from "@/components/ui/form-field";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
+import { NutritionStyles } from "../nutrition/styles";
 
 const ROUTE_OPTIONS = ["", "oral", "iv", "subcutaneous", "topical", "inhaled"];
 const FORM_OPTIONS = [
@@ -214,13 +217,13 @@ export default function AddMedication() {
       try {
         const res = await searchMedication({ limit: 8, query }).unwrap();
         setSuggestions(res.items ?? []);
-      } catch (err) {
+      } catch {
         setSuggestions([]);
       }
     }, 280);
 
     return () => clearTimeout(handle);
-  }, [name]);
+  }, [name, searchMedication]);
 
   function isDetailEditComparedToOriginal(
     nextDose: string,
@@ -321,7 +324,7 @@ export default function AddMedication() {
         }
       }
 
-      router.replace(APP_ROUTES.dashboard);
+      router.replace("/(dashboard)/meds-labs");
     } catch (err: any) {
       setErrorMessage(err?.message ?? "Failed to save medication");
       setShowErrorModal(true);
@@ -347,27 +350,32 @@ export default function AddMedication() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 28 }}
-      >
+    <>
+      <AppScreen keyboardAware>
         <View style={{ gap: 4 }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-          </TouchableOpacity>
-          <ThemedText type="title">Medications</ThemedText>
+          <AppButton
+            label="Back"
+            onPress={() => router.replace("/(dashboard)/meds-labs")}
+            variant="secondary"
+            size="compact"
+          />
+          <ThemedText type="title" style={NutritionStyles.screenTitle}>Medications</ThemedText>
           {isEditMode ? (
-            <ThemedText style={{ opacity: 0.7 }}>
+            <ThemedText style={{ color: theme.colors.copy }}>
               Edit the medication below, or set it to paused, stopped, or
               completed.
             </ThemedText>
           ) : (
-            <ThemedText style={{ opacity: 0.7 }}>
+            <ThemedText style={{ color: theme.colors.copy }}>
               Name, dose and start date are required.
             </ThemedText>
           )}
         </View>
 
+        <Section
+          title={isEditMode ? "Medication details" : "Add medication"}
+          description="Enter the prescribed medication details below."
+        >
         {isEditMode ? (
           <View>
             <ThemedText>Status actions</ThemedText>
@@ -383,28 +391,13 @@ export default function AddMedication() {
                 const optionStatus = option as MedicationStatus;
                 const selected = status === optionStatus;
                 return (
-                  <TouchableOpacity
+                  <AppButton
                     key={optionStatus}
+                    label={optionStatus}
                     onPress={() => handleStatusPick(optionStatus)}
-                    style={{
-                      backgroundColor: selected
-                        ? "rgba(15,23,42,0.88)"
-                        : "rgba(148,163,184,0.2)",
-                      borderRadius: 999,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                    }}
-                  >
-                    <ThemedText
-                      style={{
-                        color: selected ? "#fff" : "#111827",
-                        fontWeight: "700",
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {optionStatus}
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant={selected ? "primary" : "secondary"}
+                    size="compact"
+                  />
                 );
               })}
             </View>
@@ -412,8 +405,8 @@ export default function AddMedication() {
         ) : null}
 
         <View>
-          <ThemedText>Name</ThemedText>
-          <TextInput
+          <TextField
+            label="Name"
             value={name}
             onChangeText={(value) => {
               setName(value);
@@ -421,13 +414,6 @@ export default function AddMedication() {
             }}
             placeholder="Start typing medication name"
             autoCapitalize="words"
-            style={{
-              borderColor: "rgba(148,163,184,0.5)",
-              borderRadius: 10,
-              borderWidth: 1,
-              marginTop: 6,
-              padding: 10,
-            }}
           />
           {isSearchFetching ? (
             <View
@@ -439,7 +425,7 @@ export default function AddMedication() {
               }}
             >
               <ActivityIndicator size="small" />
-              <ThemedText style={{ opacity: 0.7 }}>
+              <ThemedText style={{ color: theme.colors.copy }}>
                 Searching drugs...
               </ThemedText>
             </View>
@@ -447,14 +433,14 @@ export default function AddMedication() {
           {canShowSuggestions ? (
             <View
               style={{
-                borderColor: "rgba(148,163,184,0.35)",
+                borderColor: theme.colors.borderSubtle,
                 borderRadius: 10,
                 borderWidth: 1,
                 marginTop: 8,
               }}
             >
               {suggestions.map((item) => (
-                <TouchableOpacity
+                <Pressable
                   key={item.id}
                   onPress={() => {
                     setName(item.displayName);
@@ -464,7 +450,7 @@ export default function AddMedication() {
                     setSuggestions([]);
                   }}
                   style={{
-                    borderBottomColor: "rgba(148,163,184,0.22)",
+                    borderBottomColor: theme.colors.borderSubtle,
                     borderBottomWidth: 1,
                     paddingHorizontal: 10,
                     paddingVertical: 9,
@@ -473,26 +459,18 @@ export default function AddMedication() {
                   <ThemedText style={{ fontWeight: "600" }}>
                     {item.displayName}
                   </ThemedText>
-                  <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
+                  <ThemedText style={{ fontSize: 12, color: theme.colors.copy }}>
                     {[item.form, item.route].filter(Boolean).join(" · ") ||
                       "No form/route"}
                   </ThemedText>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           ) : null}
         </View>
 
-        <View>
-          <ThemedText>Route</ThemedText>
-          <View
-            style={{
-              borderColor: "rgba(148,163,184,0.5)",
-              borderRadius: 10,
-              borderWidth: 1,
-              marginTop: 6,
-            }}
-          >
+        <FormField label="Route">
+          <View style={formControlStyles.shell}>
             <Picker selectedValue={route} onValueChange={setRoute}>
               {ROUTE_OPTIONS.map((option) => (
                 <Picker.Item
@@ -503,18 +481,10 @@ export default function AddMedication() {
               ))}
             </Picker>
           </View>
-        </View>
+        </FormField>
 
-        <View>
-          <ThemedText>Form</ThemedText>
-          <View
-            style={{
-              borderColor: "rgba(148,163,184,0.5)",
-              borderRadius: 10,
-              borderWidth: 1,
-              marginTop: 6,
-            }}
-          >
+        <FormField label="Form">
+          <View style={formControlStyles.shell}>
             <Picker selectedValue={form} onValueChange={setForm}>
               {FORM_OPTIONS.map((option) => (
                 <Picker.Item
@@ -525,29 +495,25 @@ export default function AddMedication() {
               ))}
             </Picker>
           </View>
-        </View>
+        </FormField>
 
         <View>
           <ThemedText>Dose</ThemedText>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
-            <TextInput
+            <TextField
+              label="Dose amount"
+              hideLabel
               value={doseAmount}
               onChangeText={(value) =>
                 setDoseAmount(value.replace(/[^0-9.]/g, ""))
               }
               placeholder="e.g. 50"
               keyboardType="decimal-pad"
-              style={{
-                borderColor: "rgba(148,163,184,0.5)",
-                borderRadius: 10,
-                borderWidth: 1,
-                flex: 1,
-                padding: 10,
-              }}
+              containerStyle={{ flex: 1 }}
             />
             <View
               style={{
-                borderColor: "rgba(148,163,184,0.5)",
+                borderColor: theme.colors.border,
                 borderRadius: 10,
                 borderWidth: 1,
                 flex: 1,
@@ -563,36 +529,22 @@ export default function AddMedication() {
         </View>
 
         <View>
-          <ThemedText>Frequency</ThemedText>
-          <TextInput
+          <TextField
+            label="Frequency"
             value={frequency}
             onChangeText={setFrequency}
             onBlur={() => setFrequency(normaliseFrequency(frequency))}
             placeholder="e.g. three times daily"
-            style={{
-              borderColor: "rgba(148,163,184,0.5)",
-              borderRadius: 10,
-              borderWidth: 1,
-              marginTop: 6,
-              padding: 10,
-            }}
           />
         </View>
 
         <View>
-          <ThemedText>Start date</ThemedText>
-          <TouchableOpacity
+          <ThemedText style={{ color: theme.colors.text, fontWeight: "600" }}>Start date</ThemedText>
+          <AppButton
+            label={formatMobileUkInputDate(startAt)}
             onPress={() => setShowStartDatePicker(true)}
-            style={{
-              borderColor: "rgba(148,163,184,0.5)",
-              borderRadius: 10,
-              borderWidth: 1,
-              marginTop: 6,
-              padding: 10,
-            }}
-          >
-            <ThemedText>{formatMobileUkInputDate(startAt)}</ThemedText>
-          </TouchableOpacity>
+            variant="outline"
+          />
           {showStartDatePicker ? (
             <View style={{ marginTop: 8 }}>
               <DateTimePicker
@@ -609,18 +561,12 @@ export default function AddMedication() {
                 }}
               />
               {Platform.OS === "ios" ? (
-                <TouchableOpacity
+                <AppButton
+                  label="Done"
                   onPress={() => setShowStartDatePicker(false)}
-                  style={{
-                    alignItems: "center",
-                    backgroundColor: "rgba(148,163,184,0.2)",
-                    borderRadius: 10,
-                    marginTop: 8,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <ThemedText style={{ fontWeight: "600" }}>Done</ThemedText>
-                </TouchableOpacity>
+                  variant="secondary"
+                  fullWidth
+                />
               ) : null}
             </View>
           ) : null}
@@ -628,47 +574,26 @@ export default function AddMedication() {
 
         {isEditMode ? (
           <View>
-            <ThemedText>Reason for edit</ThemedText>
-            <TextInput
+            <TextField
+              label="Reason for edit"
               value={editReason}
               onChangeText={setEditReason}
               placeholder="Required when changing medication details"
               multiline
               numberOfLines={3}
-              style={{
-                borderColor: "rgba(148,163,184,0.5)",
-                borderRadius: 10,
-                borderWidth: 1,
-                marginTop: 6,
-                minHeight: 86,
-                padding: 10,
-                textAlignVertical: "top",
-              }}
             />
           </View>
         ) : null}
 
-        <TouchableOpacity
+        <AppButton
+          label={submitting ? "Saving..." : isEditMode ? "Save changes" : "Save medication"}
           onPress={handleSubmit}
           disabled={submitting}
-          style={{
-            alignItems: "center",
-            backgroundColor: submitting
-              ? "rgba(15,23,42,0.3)"
-              : "rgba(15,23,42,0.9)",
-            borderRadius: 12,
-            paddingVertical: 12,
-          }}
-        >
-          <ThemedText style={{ color: "#fff", fontWeight: "700" }}>
-            {submitting
-              ? "Saving..."
-              : isEditMode
-                ? "Save changes"
-                : "Save medication"}
-          </ThemedText>
-        </TouchableOpacity>
-      </ScrollView>
+          loading={submitting}
+          fullWidth
+        />
+        </Section>
+      </AppScreen>
 
       <FeedbackModal
         mode="error"
@@ -685,6 +610,6 @@ export default function AddMedication() {
         message="This status will remove the medication from your dashboard. You can still view it in medication history."
         onClose={() => setShowStatusInfoModal(false)}
       />
-    </View>
+    </>
   );
 }

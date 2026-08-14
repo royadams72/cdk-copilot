@@ -1,10 +1,11 @@
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { Card } from "./Card";
 import { styles } from "../styles";
 import { formatDateShort } from "../utils";
 import { DashboardData } from "../types";
+import { AppButton } from "@/components/ui/button";
 
 type MedicationSummary = DashboardData["medications"];
 
@@ -21,7 +22,7 @@ export function MedicationCard({
 }) {
   return (
     <Card>
-      <ThemedText type="defaultSemiBold">Medications</ThemedText>
+      <ThemedText type="defaultSemiBold" style={styles.panelTitle}>Medications</ThemedText>
       <ThemedText style={styles.helperText}>
         {medications.activeCount} active of {medications.totalCount} total
       </ThemedText>
@@ -31,12 +32,12 @@ export function MedicationCard({
           <View key={med.id} style={styles.medSummaryRow}>
             <View style={styles.medSummaryHeaderRow}>
               <ThemedText style={styles.medSummaryTitle}>{med.name}</ThemedText>
-              <TouchableOpacity
-                style={styles.medEditButton}
+              <AppButton
+                label="Edit"
                 onPress={() => onEdit(med.id)}
-              >
-                <ThemedText style={styles.medEditButtonText}>Edit</ThemedText>
-              </TouchableOpacity>
+                variant="outline"
+                size="compact"
+              />
             </View>
             <ThemedText style={styles.medSummaryMeta}>
               {[med.dose, med.frequency].filter(Boolean).join(" · ") ||
@@ -54,12 +55,8 @@ export function MedicationCard({
       )}
 
       <View style={styles.medActionsRow}>
-        <TouchableOpacity style={styles.primaryActionButton} onPress={onAdd}>
-          <ThemedText style={styles.primaryActionText}>Add medication</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryActionButton} onPress={onHistory}>
-          <ThemedText style={styles.secondaryActionText}>Med history</ThemedText>
-        </TouchableOpacity>
+        <AppButton label="Add medication" onPress={onAdd} size="compact" />
+        <AppButton label="Med history" onPress={onHistory} variant="secondary" size="compact" />
       </View>
     </Card>
   );

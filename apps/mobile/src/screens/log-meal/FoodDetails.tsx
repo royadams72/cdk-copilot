@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Picker } from "@react-native-picker/picker";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, Text, Pressable, View } from "react-native";
 import {
   findPreferredCountMeasure,
   formatCountMeasureLabelForFood,
@@ -10,7 +10,6 @@ import {
 import type { TEdamamMeasure } from "@ckd/core";
 import type { TNutrientEstimate } from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
 
-import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
@@ -26,9 +25,13 @@ import {
   setPortion,
 } from "@/store/slices/logMealSlice";
 
-import { NutritionStyles } from "../nutrition/styles";
 import { typeStyles } from "../styles";
 import { logMealStyles } from "./styles";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { FormField } from "@/components/ui/form-field";
+import { theme } from "@/constants/theme";
 import {
   buildNutritionRequestKey,
   filterUnreservedNutritionKeys,
@@ -205,9 +208,8 @@ export default function FoodDetails() {
   );
 
   return (
-    <View style={NutritionStyles.container}>
-      <ScrollView
-        style={logMealStyles.screenScroll}
+    <>
+      <AppScreen
         contentContainerStyle={logMealStyles.screenContent}
       >
         {selectedFood && groupInfo && portionConfig ? (
@@ -216,10 +218,9 @@ export default function FoodDetails() {
               {buildDisplayFoodName(selectedFood.name, selectedFood.brand)}
             </Text>
 
-            <View style={logMealStyles.controlCard}>
+            <Section variant="group">
               <View style={logMealStyles.controlRow}>
-                <View style={logMealStyles.controlField}>
-                  <Text style={logMealStyles.controlLabel}>Unit</Text>
+                <FormField label="Unit" containerStyle={logMealStyles.controlField}>
                   <View style={logMealStyles.pickerShell}>
                     <Picker
                       selectedValue={portionConfig.mode}
@@ -238,10 +239,9 @@ export default function FoodDetails() {
                       ))}
                     </Picker>
                   </View>
-                </View>
+                </FormField>
 
-                <View style={logMealStyles.controlField}>
-                  <Text style={logMealStyles.controlLabel}>Amount</Text>
+                <FormField label="Amount" containerStyle={logMealStyles.controlField}>
                   <View style={logMealStyles.pickerShell}>
                     <Picker
                       selectedValue={String(portionConfig.quantity)}
@@ -256,7 +256,7 @@ export default function FoodDetails() {
                       ))}
                     </Picker>
                   </View>
-                </View>
+                </FormField>
               </View>
 
               <Text style={logMealStyles.helperText}>
@@ -267,13 +267,13 @@ export default function FoodDetails() {
                     )} = ${formatNumber(portionConfig.servingWeight)} g`
                   : "Serving weight is not available for this food yet."}
               </Text>
-            </View>
+            </Section>
 
             <View style={logMealStyles.nutrientList}>
               {estimate?.warning ? (
                 <View style={logMealStyles.estimateBanner}>
                   <MaterialIcons
-                    color="#b45309"
+                    color={theme.colors.warningDark}
                     name="info-outline"
                     size={18}
                   />
@@ -300,17 +300,18 @@ export default function FoodDetails() {
                       {estimatedKeys.includes(
                         key as "phosphorusMg" | "potassiumMg",
                       ) ? (
-                        <TouchableOpacity
+                        <Pressable
                           accessibilityLabel={`View ${formatNutrientLabel(key)} estimate`}
+                          accessibilityRole="button"
                           onPress={() => setActiveEstimateNutrientKey(key)}
                           style={logMealStyles.estimateIconButton}
                         >
                           <MaterialIcons
-                            color="#0f766e"
+                            color={theme.colors.primary}
                             name="info-outline"
                             size={18}
                           />
-                        </TouchableOpacity>
+                        </Pressable>
                       ) : null}
                     </View>
                     <Text style={logMealStyles.nutrientValue}>
@@ -327,11 +328,9 @@ export default function FoodDetails() {
                 ))}
             </View>
 
-            <TouchableOpacity
-              style={[
-                NutritionStyles.modalButton,
-                NutritionStyles.modalButtonPrimary,
-              ]}
+            <AppButton
+              label={editingEntryId ? "Update food" : "Add food"}
+              fullWidth
               onPress={() => {
                 if (
                   selectedFood &&
@@ -381,37 +380,40 @@ export default function FoodDetails() {
                   `/(log-meal)/log-meal?tab=current${dayParam}`,
                 );
               }}
-            >
-              <ThemedText style={NutritionStyles.modalButtonTextPrimary}>
-                {editingEntryId ? "Update food" : "Add food"}
-              </ThemedText>
-            </TouchableOpacity>
+            />
           </View>
         ) : null}
 
-        {foods &&
-          foods.map(
-            (food) =>
-              food && (
-                <FoodCard
-                  key={food.uid}
-                  title={buildDisplayFoodName(food.name, food.brand)}
-                  subtitle={formatQuantitySummary(food.quantity, food.unit)}
-                  description={buildKnownNutrientSummary(food)}
-                  onPress={() =>
-                    dispatch(
-                      setActiveItem({
-                        foodId: food.foodId,
-                        groupId: food.groupId,
-                        uid: food.uid,
-                      }),
-                    )
-                  }
-                  style={logMealStyles.listCard}
-                />
-              ),
-          )}
-      </ScrollView>
+        {foods?.length ? (
+          <Section
+            title="Other matching foods"
+            description="Select another result to update the food details above."
+          >
+            <View style={logMealStyles.normalList}>
+              {foods.map(
+                (food) =>
+                  food && (
+                    <FoodCard
+                      key={food.uid}
+                      title={buildDisplayFoodName(food.name, food.brand)}
+                      subtitle={formatQuantitySummary(food.quantity, food.unit)}
+                      description={buildKnownNutrientSummary(food)}
+                      onPress={() =>
+                        dispatch(
+                          setActiveItem({
+                            foodId: food.foodId,
+                            groupId: food.groupId,
+                            uid: food.uid,
+                          }),
+                        )
+                      }
+                    />
+                  ),
+              )}
+            </View>
+          </Section>
+        ) : null}
+      </AppScreen>
 
       <Modal
         animationType="fade"
@@ -427,12 +429,12 @@ export default function FoodDetails() {
                   ? `${formatNutrientLabel(activeEstimateNutrientKey)} estimate`
                   : "Estimate"}
               </Text>
-              <TouchableOpacity
+              <AppButton
+                label="Close"
                 onPress={() => setActiveEstimateNutrientKey(null)}
-                style={logMealStyles.modalCloseButton}
-              >
-                <MaterialIcons color="#475569" name="close" size={20} />
-              </TouchableOpacity>
+                size="compact"
+                variant="secondary"
+              />
             </View>
 
             {estimate?.warning ? (
@@ -482,7 +484,7 @@ export default function FoodDetails() {
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 

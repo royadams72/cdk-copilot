@@ -4,9 +4,6 @@ import {
   Alert,
   Pressable,
   RefreshControl,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,8 +15,13 @@ import {
   useGetCarePlanByIdQuery,
   useSubmitCarePlanReviewMutation,
 } from "@/store/services/carePlanApi";
-import { Card } from "@/screens/dashboard/components/Card";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { TextField } from "@/components/ui/form-field";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
+import { NutritionStyles } from "@/screens/nutrition/styles";
 
 const REVIEW_OPTIONS = [
   {
@@ -107,59 +109,61 @@ export default function CarePlanReview() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+    <AppScreen
+      keyboardAware
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <TouchableOpacity onPress={() => router.back()}>
-        <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-      </TouchableOpacity>
+      <AppButton
+        label="Back"
+        onPress={() =>
+          router.replace(
+            carePlanId
+              ? `/(dashboard)/care-plan?id=${carePlanId}`
+              : "/(dashboard)/care-plans",
+          )
+        }
+        variant="secondary"
+        size="compact"
+      />
 
       {!carePlanId || !data ? (
-        <Card>
-          <ThemedText type="defaultSemiBold">Review unavailable</ThemedText>
-          <ThemedText style={styles.helperText}>
+        <Section title="Review unavailable">
+          <ThemedText style={{ color: theme.colors.copy }}>
             {carePlanId ? errorMessage : "No care plan was selected."}
           </ThemedText>
-        </Card>
+          <AppButton label="Return to care plans" onPress={() => router.replace("/(dashboard)/care-plans")} variant="outline" size="compact" />
+        </Section>
       ) : !data.reviewDue ? (
-        <Card>
-          <ThemedText type="defaultSemiBold">Review not needed right now</ThemedText>
+        <Section title="Review not needed right now">
           <ThemedText style={styles.helperText}>
             This care plan was already reviewed on {formatMobileDate(data.reviewedAt)}.
           </ThemedText>
-          <Pressable
-            style={[styles.secondaryActionButton, styles.carePlanViewButton]}
+          <AppButton
+            label="Open care plan"
             onPress={() => router.replace(`/(dashboard)/care-plan?id=${carePlanId}` as never)}
-          >
-            <ThemedText style={styles.secondaryActionText}>Open care plan</ThemedText>
-          </Pressable>
-        </Card>
+            variant="outline"
+            size="compact"
+          />
+        </Section>
       ) : (
         <>
-          <View style={styles.header}>
-            <ThemedText type="title">Review care plan</ThemedText>
-            <ThemedText style={styles.subtleText}>{data.title}</ThemedText>
+          <View style={{ gap: theme.spacing.xs }}>
+            <ThemedText type="title" style={NutritionStyles.screenTitle}>Review care plan</ThemedText>
+            <ThemedText style={{ color: theme.colors.copy }}>{data.title}</ThemedText>
           </View>
 
-          <Card style={styles.carePlanReviewCard}>
-            <ThemedText type="defaultSemiBold">Quick check-in</ThemedText>
+          <Section title="Quick check-in" style={styles.carePlanReviewCard}>
             <ThemedText style={styles.helperText}>
               Select anything that feels true for you. Your care team will see this at the next review.
             </ThemedText>
             <ThemedText style={styles.helperText}>
               Next review was due {formatMobileDate(data.nextReviewAt)}.
             </ThemedText>
-          </Card>
+          </Section>
 
-          <Card>
-            <ThemedText type="defaultSemiBold">How is this plan going?</ThemedText>
-            <ThemedText style={styles.helperText}>
-              You can tick more than one answer.
-            </ThemedText>
+          <Section title="How is this plan going?" description="You can tick more than one answer.">
             {REVIEW_OPTIONS.map((option) => {
               const selected = selectedOptions.includes(option.id);
               return (
@@ -183,47 +187,37 @@ export default function CarePlanReview() {
                 </Pressable>
               );
             })}
-          </Card>
+          </Section>
 
-          <Card>
-            <ThemedText type="defaultSemiBold">Anything else to add?</ThemedText>
-            <ThemedText style={styles.helperText}>
-              Optional. Tell us what is working well or what is hard to follow.
-            </ThemedText>
-            <TextInput
+          <Section title="Anything else to add?" description="Optional. Tell us what is working well or what is hard to follow.">
+            <TextField
+              label="Note for your care team"
+              hideLabel
               multiline
               placeholder="Add a short note for your care team"
-              placeholderTextColor="#94A3B8"
-              style={styles.multilineInput}
-              textAlignVertical="top"
+              numberOfLines={4}
               value={note}
               onChangeText={setNote}
             />
-          </Card>
+          </Section>
 
           <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable
-              style={[styles.secondaryActionButton, styles.carePlanViewButton]}
+            <AppButton
+              label="Skip for now"
               onPress={() => router.replace(`/(dashboard)/care-plan?id=${carePlanId}` as never)}
-            >
-              <ThemedText style={styles.secondaryActionText}>Skip for now</ThemedText>
-            </Pressable>
-            <Pressable
+              variant="secondary"
+              style={{ flex: 1 }}
+            />
+            <AppButton
+              label="Send review"
               disabled={!canSubmit}
-              style={[
-                styles.primaryActionButton,
-                styles.carePlanViewButton,
-                !canSubmit ? { opacity: 0.5 } : undefined,
-              ]}
+              loading={isSubmitting}
               onPress={() => void handleSubmit()}
-            >
-              <ThemedText style={styles.primaryActionText}>
-                {isSubmitting ? "Saving..." : "Send review"}
-              </ThemedText>
-            </Pressable>
+              style={{ flex: 1 }}
+            />
           </View>
         </>
       )}
-    </ScrollView>
+    </AppScreen>
   );
 }

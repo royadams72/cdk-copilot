@@ -1,22 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
-  TouchableOpacity,
+  Pressable,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
 import { formatMobileDate } from "@/lib/format/date";
-import type { MedicationHistoryItem, MedicationHistoryResponse } from "./types";
+import type { MedicationHistoryItem } from "./types";
 import { useGetMedicationHistoryQuery } from "@/store/services/medicationApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { NutritionStyles } from "../nutrition/styles";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
 
 function MedicationList({
   items,
@@ -26,54 +27,43 @@ function MedicationList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <View
-      style={{
-        borderColor: "rgba(148,163,184,0.35)",
-        borderRadius: 12,
-        borderWidth: 1,
-        gap: 8,
-        padding: 12,
-      }}
-    >
-      <ThemedText type="defaultSemiBold">
-        All medications ({items.length})
-      </ThemedText>
+    <Section title={`All medications (${items.length})`}>
       {items.length ? (
         items.map((item) => (
-          <TouchableOpacity
+          <Pressable
             key={item.id}
             onPress={() => onSelect(item.id)}
             style={{
-              borderTopColor: "rgba(148,163,184,0.25)",
+              borderTopColor: theme.colors.borderSubtle,
               borderTopWidth: 1,
               gap: 2,
               paddingTop: 8,
             }}
           >
             <ThemedText style={{ fontWeight: "700" }}>{item.name}</ThemedText>
-            <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
+            <ThemedText style={{ fontSize: 13, color: theme.colors.copy }}>
               {[item.dose, item.frequency].filter(Boolean).join(" · ") ||
                 "Dose/frequency not set"}
             </ThemedText>
-            <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
+            <ThemedText style={{ fontSize: 13, color: theme.colors.copy }}>
               Current status: {item.status}
             </ThemedText>
-            <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
+            <ThemedText style={{ fontSize: 13, color: theme.colors.copy }}>
               Updated {formatMobileDate(item.updatedAt, { fallback: "Unknown date" })}
             </ThemedText>
             {item.latestReason ? (
-              <ThemedText style={{ fontSize: 13, opacity: 0.78 }}>
+              <ThemedText style={{ fontSize: 13, color: theme.colors.copy }}>
                 Reason: {item.latestReason}
               </ThemedText>
             ) : null}
-          </TouchableOpacity>
+          </Pressable>
         ))
       ) : (
         <ThemedText style={{ opacity: 0.7 }}>
           No records in this section.
         </ThemedText>
       )}
-    </View>
+    </Section>
   );
 }
 
@@ -106,18 +96,20 @@ export default function MedicationHistory() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
+    <>
+      <AppScreen
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title">Medication history</ThemedText>
-        <ThemedText style={{ opacity: 0.72 }}>
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(dashboard)/meds-labs")}
+          variant="secondary"
+          size="compact"
+        />
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication history</ThemedText>
+        <ThemedText style={{ color: theme.colors.copy }}>
           Select a medication to view full status and edit history.
         </ThemedText>
 
@@ -129,7 +121,7 @@ export default function MedicationHistory() {
             }
           />
         )}
-      </ScrollView>
+      </AppScreen>
 
       <FeedbackModal
         mode="error"
@@ -138,6 +130,6 @@ export default function MedicationHistory() {
         message={errorMessage}
         onClose={() => setShowErrorModal(false)}
       />
-    </View>
+    </>
   );
 }

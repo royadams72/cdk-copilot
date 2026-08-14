@@ -5,6 +5,7 @@ import Svg, {
   Polyline,
   Text as SvgText,
 } from "react-native-svg";
+import { theme } from "@/constants/theme";
 
 export type TrendLinePadding = {
   bottom: number;
@@ -72,8 +73,8 @@ function segmentPoints(points: TrendLinePoint[]) {
 export function TrendLineChart({
   gridRatios = [],
   height,
-  labelColor = "#475569",
-  lineColor = "rgba(100,116,139,0.6)",
+  labelColor = theme.colors.textSecondary,
+  lineColor = theme.colors.border,
   onSelectIndex,
   padding,
   selectedIndex = null,
@@ -116,7 +117,7 @@ export function TrendLineChart({
               x2={width - padding.right}
               y1={y}
               y2={y}
-              stroke="rgba(148,163,184,0.28)"
+              stroke={theme.colors.chart.grid}
               strokeWidth={1}
             />
           );
@@ -161,8 +162,8 @@ export function TrendLineChart({
                 cx={point.x}
                 cy={point.y}
                 r={4}
-                fill={activeSelected === point.index ? line.color : "#fff"}
-                stroke={activeSelected === point.index ? "#fff" : line.color}
+                fill={activeSelected === point.index ? line.color : theme.colors.surface}
+                stroke={activeSelected === point.index ? theme.colors.surface : line.color}
                 strokeWidth={2}
                 opacity={
                   activeSelected === null || activeSelected === point.index

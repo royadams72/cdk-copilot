@@ -1,10 +1,12 @@
 import { ThemedText } from "@/components/themed-text";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 
 import { LAB_CONFIG } from "../../dashboard/constants";
 import { Card } from "../../dashboard/components/Card";
 import { LabSummary } from "../../dashboard/types";
 import { formatDateShort, formatDecimal } from "../../dashboard/utils";
+import { AppButton } from "@/components/ui/button";
+import { theme } from "@/constants/theme";
 
 function resolveRange(
   lab: LabSummary | null,
@@ -87,7 +89,7 @@ export function LabsCard({
 
   return (
     <Card>
-      <ThemedText type="defaultSemiBold">Latest labs</ThemedText>
+      <ThemedText type="defaultSemiBold" style={{ color: theme.colors.panelHeader }}>Latest labs</ThemedText>
       {displayLabs.map((lab, index) => {
         const config =
           LAB_CONFIG.find((item) =>
@@ -127,7 +129,7 @@ export function LabsCard({
             key={`${lab.id ?? lab.code ?? "lab"}-${lab.takenAt ?? "no-date"}-${index}`}
             style={{
               borderTopWidth: 1,
-              borderColor: "rgba(148,163,184,0.35)",
+              borderColor: theme.colors.borderSubtle,
               paddingTop: 12,
               paddingBottom: 10,
               gap: 8,
@@ -162,17 +164,17 @@ export function LabsCard({
                     borderRadius: 8,
                     overflow: "hidden",
                     borderWidth: 1,
-                    borderColor: "rgba(146,64,14,0.35)",
+                    borderColor: theme.colors.warning,
                     backgroundColor: isOutOfRange
-                      ? "rgba(234,179,8,0.18)"
-                      : "rgba(16,185,129,0.16)",
+                      ? theme.colors.warningSoft
+                      : theme.colors.successSoft,
                   }}
                 >
                   <View
                     style={{
                       paddingHorizontal: 10,
                       paddingVertical: 6,
-                      backgroundColor: isOutOfRange ? "#A16207" : "#047857",
+                      backgroundColor: isOutOfRange ? theme.colors.warningDark : theme.colors.successDark,
                     }}
                   >
                     <ThemedText style={{ color: "white", fontWeight: "700" }}>
@@ -181,7 +183,7 @@ export function LabsCard({
                   </View>
                   {!!status && (
                     <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
-                      <ThemedText style={{ fontWeight: "700", color: "#6B4F00" }}>
+                      <ThemedText style={{ fontWeight: "700", color: theme.colors.warningDark }}>
                         {status}
                       </ThemedText>
                     </View>
@@ -199,21 +201,21 @@ export function LabsCard({
                   height: 10,
                   borderRadius: 999,
                   overflow: "hidden",
-                  backgroundColor: "rgba(148,163,184,0.2)",
+                  backgroundColor: theme.colors.control,
                   flexDirection: "row",
                 }}
               >
-                <View style={{ width: `${lowPct}%`, backgroundColor: "#D4AF37" }} />
+                <View style={{ width: `${lowPct}%`, backgroundColor: theme.colors.warning }} />
                 <View
                   style={{
                     width: `${Math.max(0, highPct - lowPct)}%`,
-                    backgroundColor: "#2F9E44",
+                    backgroundColor: theme.colors.success,
                   }}
                 />
                 <View
                   style={{
                     width: `${Math.max(0, 100 - highPct)}%`,
-                    backgroundColor: "#D4AF37",
+                    backgroundColor: theme.colors.warning,
                   }}
                 />
               </View>
@@ -232,7 +234,7 @@ export function LabsCard({
                     borderTopWidth: 9,
                     borderLeftColor: "transparent",
                     borderRightColor: "transparent",
-                    borderTopColor: "#334155",
+                    borderTopColor: theme.colors.textSecondary,
                   }}
                 />
               )}
@@ -262,48 +264,9 @@ export function LabsCard({
         <ThemedText style={{ opacity: 0.7 }}>No recent lab results yet.</ThemedText>
       ) : null}
       <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <TouchableOpacity
-          onPress={onAdd}
-          style={{
-            alignSelf: "flex-start",
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 10,
-            backgroundColor: "rgba(16,185,129,0.16)",
-          }}
-        >
-          <ThemedText style={{ fontWeight: "700", color: "#065F46" }}>
-            Add lab results
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onEdit}
-          style={{
-            alignSelf: "flex-start",
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 10,
-            backgroundColor: "rgba(59,130,246,0.15)",
-          }}
-        >
-          <ThemedText style={{ fontWeight: "700", color: "#1E3A8A" }}>
-            Edit
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onHistory}
-          style={{
-            alignSelf: "flex-start",
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 10,
-            backgroundColor: "rgba(245,158,11,0.18)",
-          }}
-        >
-          <ThemedText style={{ fontWeight: "700", color: "#92400E" }}>
-            Labs history
-          </ThemedText>
-        </TouchableOpacity>
+        <AppButton label="Add lab results" onPress={onAdd} size="compact" />
+        <AppButton label="Edit" onPress={onEdit} variant="outline" size="compact" />
+        <AppButton label="Labs history" onPress={onHistory} variant="secondary" size="compact" />
       </View>
     </Card>
   );

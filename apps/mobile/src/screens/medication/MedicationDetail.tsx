@@ -1,22 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
 import { FeedbackModal } from "@/components/feedback-modal";
-import { API } from "@/constants/api";
-import { authFetch } from "@/lib/authFetch";
 import { formatMobileDate } from "@/lib/format/date";
-import type { MedicationDetail } from "./types";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { useGetMedicationByIdQuery } from "@/store/services/medicationApi";
 import { NutritionStyles } from "../nutrition/styles";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
 
 export default function MedicationDetail() {
   const router = useRouter();
@@ -49,17 +48,19 @@ export default function MedicationDetail() {
     );
   }
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 24 }}
+    <>
+      <AppScreen
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title">Medication detail</ThemedText>
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(medications)/medication-history")}
+          variant="secondary"
+          size="compact"
+        />
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication detail</ThemedText>
 
         {medication ? (
           <>
@@ -81,34 +82,16 @@ export default function MedicationDetail() {
               </ThemedText>
             </View>
 
-            <TouchableOpacity
+            <AppButton
+              label="Edit medication"
               onPress={() =>
                 router.push(`/(medications)/add-medication?id=${medication.id}`)
               }
-              style={{
-                alignSelf: "flex-start",
-                borderColor: "rgba(37,99,235,0.45)",
-                borderRadius: 10,
-                borderWidth: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <ThemedText style={{ fontWeight: "700" }}>
-                Edit medication
-              </ThemedText>
-            </TouchableOpacity>
+              variant="outline"
+              size="compact"
+            />
 
-            <View
-              style={{
-                borderColor: "rgba(148,163,184,0.35)",
-                borderRadius: 12,
-                borderWidth: 1,
-                gap: 8,
-                padding: 12,
-              }}
-            >
-              <ThemedText type="defaultSemiBold">Activity history</ThemedText>
+            <Section title="Activity history">
               {medication.editHistory?.length ? (
                 medication.editHistory
                   .slice()
@@ -117,7 +100,7 @@ export default function MedicationDetail() {
                     <View
                       key={`${event.at ?? "event"}-${idx}`}
                       style={{
-                        borderTopColor: "rgba(148,163,184,0.25)",
+                        borderTopColor: theme.colors.borderSubtle,
                         borderTopWidth: 1,
                         gap: 2,
                         paddingTop: 8,
@@ -153,14 +136,14 @@ export default function MedicationDetail() {
                   No history recorded.
                 </ThemedText>
               )}
-            </View>
+            </Section>
           </>
         ) : (
           <ThemedText style={{ opacity: 0.7 }}>
             Medication not found.
           </ThemedText>
         )}
-      </ScrollView>
+      </AppScreen>
 
       <FeedbackModal
         mode="error"
@@ -169,6 +152,6 @@ export default function MedicationDetail() {
         message={errorMessage}
         onClose={() => setShowErrorModal(false)}
       />
-    </View>
+    </>
   );
 }

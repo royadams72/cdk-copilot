@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -12,7 +9,11 @@ import { useRouter } from "expo-router";
 import { DateTimeModal } from "@/components/date-time-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
 import { ThemedText } from "@/components/themed-text";
-import { scrollToTop } from "@/lib/scrollTo";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { FormField, TextField } from "@/components/ui/form-field";
+import { Section } from "@/components/ui/section";
+import { theme } from "@/constants/theme";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useCreateSymptomMutation,
@@ -21,11 +22,10 @@ import {
 } from "@/store/services/symptomsApi";
 import type {
   SymptomCurrent,
-  SymptomHistoryEvent,
 } from "@/store/services/types";
 
-import { Card } from "../dashboard/components/Card";
 import { styles } from "../dashboard/styles";
+import { NutritionStyles } from "../nutrition/styles";
 
 type PickerField = "startedAt" | null;
 
@@ -51,7 +51,6 @@ function symptomMetaLine(item: SymptomCurrent) {
 
 export default function SymptomsScreen() {
   const router = useRouter();
-  const scrollViewRef = useRef<ScrollView | null>(null);
   const { data, error, isFetching, isLoading, refetch } = useGetSymptomsQuery();
   const [createSymptom, { isLoading: isCreating }] = useCreateSymptomMutation();
   const [updateSymptom, { isLoading: isUpdating }] = useUpdateSymptomMutation();
@@ -79,12 +78,6 @@ export default function SymptomsScreen() {
   const saving = isCreating || isUpdating;
   const refreshing = isFetching && !!data;
 
-  const timeline = useMemo(
-    () =>
-      (data?.history ?? []).map((event: SymptomHistoryEvent) => event.after),
-    [data?.history],
-  );
-
   useEffect(() => {
     if (!editing) return;
     setPrefillSource(null);
@@ -111,7 +104,6 @@ export default function SymptomsScreen() {
   function beginEditing(source: SymptomCurrent) {
     setPrefillSource(null);
     setEditing(source);
-    scrollToTop(scrollViewRef);
   }
 
   function startPrefilledReport(source: SymptomCurrent) {
@@ -124,7 +116,6 @@ export default function SymptomsScreen() {
     setTriggersText(source.triggers.join(", "));
     setStartedAt(source.startedAt ? new Date(source.startedAt) : null);
     setPickerField(null);
-    scrollToTop(scrollViewRef);
   }
 
   async function onSubmit() {
@@ -196,22 +187,23 @@ export default function SymptomsScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.container}
-        contentContainerStyle={styles.content}
+    <>
+      <AppScreen
+        keyboardAware
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refetch} />
         }
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(dashboard)/meds-labs")}
+          variant="secondary"
+          size="compact"
+        />
 
-        <View style={styles.header}>
-          <ThemedText type="title">Symptoms</ThemedText>
-          <ThemedText style={styles.helperText}>
+        <View style={{ gap: theme.spacing.xs }}>
+          <ThemedText type="title" style={NutritionStyles.screenTitle}>Symptoms</ThemedText>
+          <ThemedText style={{ color: theme.colors.copy }}>
             Log symptoms in a structured way so your care team can review them.
           </ThemedText>
         </View>
@@ -226,53 +218,32 @@ export default function SymptomsScreen() {
         ) : null}
 
         {!loading && error ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">
-              We couldn't load your symptoms
-            </ThemedText>
-            <ThemedText style={styles.helperText}>{currentError}</ThemedText>
-            <TouchableOpacity
-              style={styles.primaryActionButton}
-              onPress={() => refetch()}
-            >
-              <ThemedText style={styles.primaryActionText}>Retry</ThemedText>
-            </TouchableOpacity>
-          </Card>
+          <Section title="We couldn't load your symptoms">
+            <ThemedText style={{ color: theme.colors.copy }}>{currentError}</ThemedText>
+            <AppButton label="Retry" onPress={() => refetch()} />
+          </Section>
         ) : null}
 
-        <Card>
-          <ThemedText type="defaultSemiBold">
-            {editing
+        <Section
+          title={editing
               ? `Update ${editing.name}`
               : prefillSource
                 ? `Report ${prefillSource.name} again`
                 : "Log a symptom"}
-          </ThemedText>
-          <ThemedText style={styles.helperText}>
-            {editing
+          description={editing
               ? "Update the current symptom entry."
               : prefillSource
                 ? "This form is prefilled from a previous symptom report."
                 : "Severity uses a simple 1 to 5 scale."}
-          </ThemedText>
+        >
 
-          <View style={{ gap: 8 }}>
-            <ThemedText style={{ fontWeight: "600" }}>Symptom name</ThemedText>
-            <TextInput
+            <TextField
+              label="Symptom name"
               editable={!editing}
               onChangeText={setName}
               placeholder="e.g. nausea"
-              style={{
-                borderColor: "#CBD5E1",
-                borderRadius: 10,
-                borderWidth: 1,
-                opacity: editing ? 0.6 : 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
               value={name}
             />
-          </View>
 
           <View style={{ gap: 8 }}>
             <ThemedText style={{ fontWeight: "600" }}>Severity</ThemedText>
@@ -280,24 +251,13 @@ export default function SymptomsScreen() {
               {severityOptions.map((option) => {
                 const selected = severity === option;
                 return (
-                  <TouchableOpacity
+                  <AppButton
                     key={option}
+                    label={`${option}/5`}
                     onPress={() => setSeverity(option)}
-                    style={{
-                      backgroundColor: selected
-                        ? "rgba(59,130,246,0.16)"
-                        : "rgba(148,163,184,0.12)",
-                      borderColor: selected ? "#2563EB" : "transparent",
-                      borderRadius: 999,
-                      borderWidth: 1,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                    }}
-                  >
-                    <ThemedText style={{ fontWeight: "700" }}>
-                      {option}/5
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant={selected ? "primary" : "secondary"}
+                    size="compact"
+                  />
                 );
               })}
             </View>
@@ -309,123 +269,70 @@ export default function SymptomsScreen() {
               {statusOptions.map((option) => {
                 const selected = status === option;
                 return (
-                  <TouchableOpacity
+                  <AppButton
                     key={option}
+                    label={option}
                     onPress={() => setStatus(option)}
-                    style={{
-                      backgroundColor: selected
-                        ? "rgba(16,185,129,0.16)"
-                        : "rgba(148,163,184,0.12)",
-                      borderColor: selected ? "#10B981" : "transparent",
-                      borderRadius: 999,
-                      borderWidth: 1,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                    }}
-                  >
-                    <ThemedText
-                      style={{ fontWeight: "700", textTransform: "capitalize" }}
-                    >
-                      {option}
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant={selected ? "success" : "secondary"}
+                    size="compact"
+                  />
                 );
               })}
             </View>
           </View>
 
-          <View style={{ gap: 8 }}>
-            <ThemedText style={{ fontWeight: "600" }}>Started at</ThemedText>
-            <TouchableOpacity
+          <FormField label="Started at">
+            <AppButton
+              label={formatDateTime(startedAt)}
               onPress={() => setPickerField("startedAt")}
-              style={{
-                borderColor: "#CBD5E1",
-                borderRadius: 10,
-                borderWidth: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <ThemedText>{formatDateTime(startedAt)}</ThemedText>
-            </TouchableOpacity>
-          </View>
+              variant="outline"
+              fullWidth
+            />
+          </FormField>
 
-          <View style={{ gap: 8 }}>
-            <ThemedText style={{ fontWeight: "600" }}>Triggers</ThemedText>
-            <TextInput
+            <TextField
+              label="Triggers"
               onChangeText={setTriggersText}
               placeholder="e.g. after dialysis, walking"
-              style={{
-                borderColor: "#CBD5E1",
-                borderRadius: 10,
-                borderWidth: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
               value={triggersText}
             />
-          </View>
 
-          <View style={{ gap: 8 }}>
-            <ThemedText style={{ fontWeight: "600" }}>Note</ThemedText>
-            <TextInput
+            <TextField
+              label="Note"
               multiline
               onChangeText={setNote}
               placeholder="Optional detail for your care team"
-              style={{
-                borderColor: "#CBD5E1",
-                borderRadius: 10,
-                borderWidth: 1,
-                minHeight: 96,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                textAlignVertical: "top",
-              }}
+              numberOfLines={4}
               value={note}
             />
-          </View>
 
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity
+            <AppButton
+              label={editing ? "Update symptom" : prefillSource ? "Save new report" : "Save symptom"}
               disabled={saving}
               onPress={onSubmit}
-              style={[
-                styles.primaryActionButton,
-                saving ? { opacity: 0.7 } : null,
-              ]}
-            >
-              <ThemedText style={styles.primaryActionText}>
-                {saving
-                  ? "Saving..."
-                  : editing
-                    ? "Update symptom"
-                    : prefillSource
-                      ? "Save new report"
-                      : "Save symptom"}
-              </ThemedText>
-            </TouchableOpacity>
+              loading={saving}
+              style={{ flex: 1 }}
+            />
             {editing || prefillSource ? (
-              <TouchableOpacity
+              <AppButton
+                label="Cancel"
                 disabled={saving}
                 onPress={resetForm}
-                style={styles.secondaryActionButton}
-              >
-                <ThemedText style={styles.secondaryActionText}>
-                  Cancel
-                </ThemedText>
-              </TouchableOpacity>
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
             ) : null}
           </View>
-        </Card>
+        </Section>
 
-        <Card>
-          <ThemedText type="defaultSemiBold">Active symptoms</ThemedText>
+        <Section title="Active symptoms">
           {data?.activeSymptoms.length ? (
             data.activeSymptoms.map((item: SymptomCurrent) => (
               <View
                 key={item.symptomId}
                 style={{
-                  borderTopColor: "rgba(148,163,184,0.25)",
+                  borderTopColor: theme.colors.borderSubtle,
                   borderTopWidth: 1,
                   gap: 4,
                   paddingTop: 10,
@@ -441,31 +348,25 @@ export default function SymptomsScreen() {
                   Recorded {formatDateTime(item.recordedAt)}
                 </ThemedText>
                 {item.note ? <ThemedText>{item.note}</ThemedText> : null}
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <TouchableOpacity
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <AppButton
+                    label="Edit"
                     onPress={() => beginEditing(item)}
-                    style={styles.secondaryActionButton}
-                  >
-                    <ThemedText style={styles.secondaryActionText}>
-                      Edit
-                    </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                    variant="secondary"
+                    size="compact"
+                  />
+                  <AppButton
+                    label="Report again"
                     onPress={() => startPrefilledReport(item)}
-                    style={styles.secondaryActionButton}
-                  >
-                    <ThemedText style={styles.secondaryActionText}>
-                      Report again
-                    </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                    variant="secondary"
+                    size="compact"
+                  />
+                  <AppButton
+                    label="Mark resolved"
                     onPress={() => onQuickStatusChange(item, "resolved")}
-                    style={styles.primaryActionButton}
-                  >
-                    <ThemedText style={styles.primaryActionText}>
-                      Mark resolved
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant="success"
+                    size="compact"
+                  />
                 </View>
               </View>
             ))
@@ -474,16 +375,15 @@ export default function SymptomsScreen() {
               No active symptoms logged.
             </ThemedText>
           )}
-        </Card>
+        </Section>
 
-        <Card>
-          <ThemedText type="defaultSemiBold">Recently resolved</ThemedText>
+        <Section title="Recently resolved">
           {data?.recentlyResolvedSymptoms.length ? (
             data.recentlyResolvedSymptoms.map((item: SymptomCurrent) => (
               <View
                 key={item.symptomId}
                 style={{
-                  borderTopColor: "rgba(148,163,184,0.25)",
+                  borderTopColor: theme.colors.borderSubtle,
                   borderTopWidth: 1,
                   gap: 4,
                   paddingTop: 10,
@@ -497,22 +397,18 @@ export default function SymptomsScreen() {
                 </ThemedText>
                 {item.note ? <ThemedText>{item.note}</ThemedText> : null}
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  <TouchableOpacity
+                  <AppButton
+                    label="Report again"
                     onPress={() => startPrefilledReport(item)}
-                    style={styles.secondaryActionButton}
-                  >
-                    <ThemedText style={styles.secondaryActionText}>
-                      Report again
-                    </ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                    variant="secondary"
+                    size="compact"
+                  />
+                  <AppButton
+                    label="Reopen"
                     onPress={() => onQuickStatusChange(item, "active")}
-                    style={styles.secondaryActionButton}
-                  >
-                    <ThemedText style={styles.secondaryActionText}>
-                      Reopen
-                    </ThemedText>
-                  </TouchableOpacity>
+                    variant="secondary"
+                    size="compact"
+                  />
                 </View>
               </View>
             ))
@@ -521,44 +417,9 @@ export default function SymptomsScreen() {
               No resolved symptoms yet.
             </ThemedText>
           )}
-        </Card>
+        </Section>
 
-        {/* <Card>
-          <ThemedText type="defaultSemiBold">Recent activity</ThemedText>
-          {timeline.length ? (
-            timeline.slice(0, 12).map((entry: SymptomCurrent) => (
-              <View
-                key={`${entry.symptomId}-${entry.recordedAt}`}
-                style={{
-                  borderTopColor: "rgba(148,163,184,0.25)",
-                  borderTopWidth: 1,
-                  gap: 4,
-                  paddingTop: 10,
-                }}
-              >
-                <ThemedText style={{ fontWeight: "700" }}>{entry.name}</ThemedText>
-                <ThemedText style={styles.helperText}>
-                  {formatDateTime(entry.recordedAt)} • severity {entry.severity}/5 •{" "}
-                  {entry.status}
-                </ThemedText>
-                {entry.note ? <ThemedText>{entry.note}</ThemedText> : null}
-                <TouchableOpacity
-                  onPress={() => startPrefilledReport(entry)}
-                  style={styles.secondaryActionButton}
-                >
-                  <ThemedText style={styles.secondaryActionText}>
-                    Report again
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-            ))
-          ) : (
-            <ThemedText style={styles.helperText}>
-              Your symptom timeline will appear here after you log entries.
-            </ThemedText>
-          )}
-        </Card> */}
-      </ScrollView>
+      </AppScreen>
 
       <DateTimeModal
         visible={pickerField !== null}
@@ -575,6 +436,6 @@ export default function SymptomsScreen() {
         message={modalMessage ?? ""}
         onClose={() => setModalMessage(null)}
       />
-    </View>
+    </>
   );
 }

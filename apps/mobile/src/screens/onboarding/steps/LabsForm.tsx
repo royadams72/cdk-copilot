@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import {
   Controller,
   useFieldArray,
@@ -10,7 +10,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TLabsFormValues, LabsSchema } from "@ckd/core";
 import { useRouter } from "expo-router";
-import { PrimaryButton } from "../components/Buttons";
+import { AppButton, PrimaryButton } from "../components/Buttons";
 import { DateField } from "../components/DateField";
 import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
@@ -316,9 +316,9 @@ export default function LabsForm({
             />
 
             {fields.length > 1 && (
-              <Button
-                color="#b91c1c"
-                title="Remove lab"
+              <AppButton
+                label="Remove lab"
+                variant="danger"
                 onPress={() => remove(index)}
               />
             )}
@@ -326,7 +326,7 @@ export default function LabsForm({
         );
       })}
 
-      <Button title="Add lab" onPress={() => append({ ...emptyLab })} />
+      <AppButton label="Add lab" variant="outline" onPress={() => append({ ...emptyLab })} />
 
       {typeof errors.labs?.message === "string" && (
         <Text style={{ color: "red" }}>{errors.labs.message}</Text>

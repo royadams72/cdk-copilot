@@ -4,8 +4,6 @@ import {
   BackHandler,
   Modal,
   ScrollView,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -15,7 +13,6 @@ import type {
   TFoodItem,
   TFoodItemEntry,
   TNutritionFavouriteFood,
-  TNutritionFavouriteMeal,
 } from "@ckd/core";
 
 import { APP_ROUTES } from "@/constants/routes";
@@ -29,7 +26,6 @@ import {
   applyNutritionResults,
   clearMealCandidate,
   clearMealState,
-  ItemSummary,
   mealTypes,
   registerFoodItem,
   removeMealItem,
@@ -59,6 +55,9 @@ import {
   useUpdateMealDataMutation,
 } from "@/store/services/logMealApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { TextField } from "@/components/ui/form-field";
 import { hasMissingCoreNutrients, mapForSaveOrUpdate } from "./utils";
 import {
   buildNutritionRequestKey,
@@ -67,19 +66,10 @@ import {
   reserveRecentNutritionRequests,
 } from "./nutritionRequestRegistry";
 
-type LogMealTab = "current" | "foods" | "meals";
+type LogMealTab = "current" | "foods";
 
 type FavouriteFoodView = Omit<
   TNutritionFavouriteFood,
-  "patientId" | "createdAt" | "updatedAt" | "lastUsedAt"
-> & {
-  id: string;
-  lastUsedAt: string;
-  updatedAt: string;
-};
-
-type FavouriteMealView = Omit<
-  TNutritionFavouriteMeal,
   "patientId" | "createdAt" | "updatedAt" | "lastUsedAt"
 > & {
   id: string;
@@ -145,8 +135,7 @@ export default function LogMeal() {
     const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     if (
       requestedTab === "current" ||
-      requestedTab === "foods" ||
-      requestedTab === "meals"
+      requestedTab === "foods"
     ) {
       setActiveTab(requestedTab);
     }
@@ -271,10 +260,6 @@ export default function LogMeal() {
   const favouriteFoods = useMemo(
     () => (favouriteItems?.foods ?? []) as FavouriteFoodView[],
     [favouriteItems?.foods],
-  );
-  const favouriteMeals = useMemo(
-    () => (favouriteItems?.meals ?? []) as FavouriteMealView[],
-    [favouriteItems?.meals],
   );
 
   const displayedFoods = useMemo(() => {
@@ -438,31 +423,6 @@ export default function LogMeal() {
     dispatch(removeMealItem({ groupId: match.groupId }));
   }
 
-  function addMealFavourite(favourite: FavouriteMealView) {
-    dispatch(
-      appendFoodsToMeal({
-        foods: favourite.snapshot.items.map((item, index) =>
-          toDraftFoodEntry(item, `${favourite.signature}:${index}`),
-        ),
-      }),
-    );
-    setActiveTab("current");
-    showAddedToast();
-  }
-
-  function removeMealFavourite(favourite: FavouriteMealView) {
-    const signatureSet = new Set(
-      favourite.snapshot.items.map((item) => buildFoodKey(item)),
-    );
-    meal
-      .filter((item) => signatureSet.has(buildFoodKey(item)))
-      .forEach((item) => {
-        if (item.groupId) {
-          dispatch(removeMealItem({ groupId: item.groupId }));
-        }
-      });
-  }
-
   const isToday = (value: Date) => {
     const now = new Date();
     return (
@@ -489,11 +449,13 @@ export default function LogMeal() {
     mealTypes.find((entry) => entry.value === mealType)?.label ?? "Meal";
 
   return (
-    <View style={styles.screen}>
+    <AppScreen keyboardAware scroll={false}>
       <View style={logMealStyles.fixedHeader}>
         <View style={styles.navRow}>
-          <TouchableOpacity
-            accessibilityRole="button"
+          <AppButton
+            label="Back"
+            size="compact"
+            variant="secondary"
             onPress={() => {
               if (isDirty) {
                 confirmExit();
@@ -503,10 +465,7 @@ export default function LogMeal() {
               dispatch(clearMealState());
               router.replace(APP_ROUTES.nutritionDetails);
             }}
-            style={styles.navButton}
-          >
-            <ThemedText style={styles.navButtonText}>‹ Back</ThemedText>
-          </TouchableOpacity>
+          />
         </View>
         <ThemedText type="title">
           {editingEntryId ? "Update" : "Log"} {currentMealTypeLabel}
@@ -515,88 +474,76 @@ export default function LogMeal() {
           <ThemedText style={logMealStyles.dateText}>
             {dateLabel}: {formattedDate} {formattedTime}
           </ThemedText>
-          <TouchableOpacity
-            accessibilityRole="button"
+          <AppButton
+            label="Change"
             onPress={() => setShowDateTimeModal(true)}
-            style={logMealStyles.dateButton}
-          >
-            <ThemedText style={logMealStyles.dateButtonText}>Change</ThemedText>
-          </TouchableOpacity>
-        </View>
-        <View style={logMealStyles.searchWrap}>
-          <TextInput
-            placeholder="100g of carrots"
-            autoCapitalize="none"
-            keyboardType="default"
-            value={searchTerm}
-            onChangeText={(value) => {
-              setSearchTerm(value);
-              if (searchError) {
-                setSearchError("");
-              }
-              if (!value.trim()) {
-                setHasSearched(false);
-              }
-            }}
-            style={logMealStyles.searchInput}
+            size="compact"
+            variant="outline"
           />
-          <TouchableOpacity
-            accessibilityRole="button"
-            disabled={isSearching || searchTerm.trim().length === 0}
-            onPress={submit}
-            style={[
-              logMealStyles.searchButton,
-              (isSearching || searchTerm.trim().length === 0) &&
-                logMealStyles.buttonDisabled,
-            ]}
-          >
-            <ThemedText style={logMealStyles.searchButtonText}>
-              {isSearching ? "Searching..." : "Search"}
-            </ThemedText>
-          </TouchableOpacity>
         </View>
-        <ThemedText style={logMealStyles.helperText}>
-          Search one food at a time with an amount, like "100g of carrots" or
-          "50g of rice".
-        </ThemedText>
-        {searchError ? (
-          <View style={logMealStyles.searchErrorBanner}>
-            <ThemedText style={logMealStyles.searchErrorText}>
-              {searchError}
-            </ThemedText>
+        <View style={logMealStyles.searchPanel}>
+          <View style={logMealStyles.searchWrap}>
+            <TextField
+              label="Search food"
+              hideLabel
+              containerStyle={logMealStyles.searchField}
+              placeholder="100g of carrots"
+              autoCapitalize="none"
+              keyboardType="default"
+              value={searchTerm}
+              onChangeText={(value) => {
+                setSearchTerm(value);
+                if (searchError) setSearchError("");
+                if (!value.trim()) setHasSearched(false);
+              }}
+              style={logMealStyles.searchInput}
+            />
+            <AppButton
+              label={isSearching ? "Searching..." : "Search"}
+              disabled={isSearching || searchTerm.trim().length === 0}
+              loading={isSearching}
+              onPress={submit}
+              size="standard"
+              variant="secondary"
+            />
           </View>
-        ) : null}
-        <View style={logMealStyles.tabRow}>
-          {[
-            { label: "Current Meal", value: "current" as const },
-            { label: "Foods", value: "foods" as const },
-            { label: "Meals", value: "meals" as const },
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.value}
-              onPress={() => setActiveTab(tab.value)}
-              style={[
-                logMealStyles.tabButton,
-                activeTab === tab.value && logMealStyles.tabButtonActive,
-              ]}
-            >
-              <ThemedText
-                style={[
-                  logMealStyles.tabButtonText,
-                  activeTab === tab.value && logMealStyles.tabButtonTextActive,
-                ]}
-              >
-                {tab.label}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
+          {searchError ? (
+            <View style={logMealStyles.searchErrorBanner}>
+              <ThemedText style={logMealStyles.searchErrorText}>{searchError}</ThemedText>
+            </View>
+          ) : null}
+          <View style={logMealStyles.tabRow}>
+            {[
+              { label: "Current Meal", value: "current" as const },
+              { label: "Saved Foods", value: "foods" as const },
+            ].map((tab) => (
+              <AppButton
+                key={tab.value}
+                label={tab.label}
+                onPress={() => setActiveTab(tab.value)}
+                size="compact"
+                variant={activeTab === tab.value ? "success" : "outline"}
+              />
+            ))}
+          </View>
+        </View>
+        <View style={logMealStyles.infoPanel}>
+          <ThemedText style={logMealStyles.helperText}>
+            Search one food at a time with an amount, like &quot;100g of
+            carrots&quot; or &quot;50g of rice&quot;.
+          </ThemedText>
         </View>
       </View>
 
-      <ScrollView
-        style={logMealStyles.contentScroll}
-        contentContainerStyle={logMealStyles.contentContainer}
-      >
+      <View style={logMealStyles.listPanel}>
+        <ThemedText style={logMealStyles.listPanelTitle}>
+          {activeTab === "current" ? "Current meal" : "Saved foods"}
+        </ThemedText>
+        <ScrollView
+          nestedScrollEnabled
+          style={logMealStyles.contentScroll}
+          contentContainerStyle={logMealStyles.contentContainer}
+        >
         {activeTab === "current" ? (
           <View style={logMealStyles.section}>
             {items.length ? (
@@ -607,15 +554,19 @@ export default function LogMeal() {
                       key={item.uid}
                       title={buildDisplayFoodName(item.name, item.brand)}
                       subtitle={buildFoodSubtitle(item)}
-                      onPress={() => {
-                        const currentFood = meal.find(
-                          (entry) =>
-                            entry.uid === item.uid &&
-                            entry.groupId === item.groupId,
-                        );
-                        if (currentFood) openFoodDetails(currentFood);
-                      }}
                       actions={[
+                        {
+                          label: "Edit",
+                          onPress: () => {
+                            const currentFood = meal.find(
+                              (entry) =>
+                                entry.uid === item.uid &&
+                                entry.groupId === item.groupId,
+                            );
+                            if (currentFood) openFoodDetails(currentFood);
+                          },
+                          variant: "ghost",
+                        },
                         {
                           label: "Remove",
                           onPress: () =>
@@ -633,7 +584,7 @@ export default function LogMeal() {
                   No foods in the current meal yet
                 </ThemedText>
                 <ThemedText style={logMealStyles.emptyText}>
-                  Add items from the Foods or Meals tabs.
+                  Add items from Saved Foods or search for something new.
                 </ThemedText>
               </View>
             )}
@@ -685,136 +636,41 @@ export default function LogMeal() {
           </View>
         ) : null}
 
-        {activeTab === "meals" ? (
-          <View style={logMealStyles.section}>
-            {favouriteMeals.length ? (
-              favouriteMeals.map((favourite) => {
-                const mealFoodKeys = new Set(
-                  meal.map((item) => buildFoodKey(item)),
-                );
-                const isAdded = favourite.snapshot.items.every((item) =>
-                  mealFoodKeys.has(buildFoodKey(item)),
-                );
-
-                return (
-                  <FoodCard
-                    key={favourite.id}
-                    title={favourite.label}
-                    subtitle={`${capitalize(favourite.mealType)} | Last used ${formatShortDate(favourite.lastUsedAt)}`}
-                    description={favourite.snapshot.items
-                      .map(
-                        (item) =>
-                          `${item.name} (${item.quantity} ${formatMealUnit(item.unit)})`,
-                      )
-                      .join(", ")}
-                    actions={[
-                      {
-                        label: isAdded ? "Remove" : "Add",
-                        onPress: () =>
-                          isAdded
-                            ? removeMealFavourite(favourite)
-                            : addMealFavourite(favourite),
-                        variant: isAdded ? "danger" : "primary",
-                      },
-                    ]}
-                    style={logMealStyles.listCard}
-                  />
-                );
-              })
-            ) : (
-              <View style={logMealStyles.emptyState}>
-                <ThemedText style={logMealStyles.emptyTitle}>
-                  No favourite meals yet
-                </ThemedText>
-                <ThemedText style={logMealStyles.emptyText}>
-                  Meals you log twice will appear here automatically.
-                </ThemedText>
-              </View>
-            )}
-          </View>
-        ) : null}
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <View style={logMealStyles.fixedFooter}>
         {editingEntryId ? (
           <>
-            <TouchableOpacity
-              accessibilityRole="button"
+            <AppButton
+              label={isPersistingMeal ? "Updating..." : "Update Meal"}
               disabled={isPersistingMeal || !canSubmitMeal}
+              loading={isPersistingMeal}
+              fullWidth
               onPress={persistMeal}
-              style={[
-                logMealStyles.footerPrimaryButton,
-                (isPersistingMeal || !canSubmitMeal) &&
-                  logMealStyles.buttonDisabled,
-              ]}
-            >
-              <ThemedText style={logMealStyles.footerPrimaryButtonText}>
-                {isPersistingMeal ? "Updating..." : "Update Meal"}
-              </ThemedText>
-            </TouchableOpacity>
+            />
             <View style={logMealStyles.footerRow}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                disabled={isPersistingMeal}
-                onPress={() => {
-                  Alert.alert("Delete this meal?", "This cannot be undone.", [
-                    { style: "cancel", text: "Cancel" },
-                    {
-                      onPress: deleteMeal,
-                      style: "destructive",
-                      text: "Delete",
-                    },
-                  ]);
-                }}
-                style={[
-                  logMealStyles.footerSecondaryButton,
-                  logMealStyles.footerDangerButton,
-                  isPersistingMeal && logMealStyles.buttonDisabled,
-                ]}
-              >
-                <ThemedText
-                  style={logMealStyles.footerSecondaryButtonTextLight}
-                >
-                  Delete Meal
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                accessibilityRole="button"
-                onPress={() => confirmExit()}
-                style={logMealStyles.footerSecondaryButton}
-              >
-                <ThemedText style={logMealStyles.footerSecondaryButtonText}>
-                  Cancel
-                </ThemedText>
-              </TouchableOpacity>
+              <View style={logMealStyles.footerButtonCell}>
+                <AppButton label="Delete Meal" disabled={isPersistingMeal} fullWidth variant="danger" onPress={() => {
+                    Alert.alert("Delete this meal?", "This cannot be undone.", [
+                      { style: "cancel", text: "Cancel" },
+                      { onPress: deleteMeal, style: "destructive", text: "Delete" },
+                    ]);
+                  }} />
+              </View>
+              <View style={logMealStyles.footerButtonCell}>
+                <AppButton label="Cancel" fullWidth variant="secondary" onPress={() => confirmExit()} />
+              </View>
             </View>
           </>
         ) : (
           <View style={logMealStyles.footerRow}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              disabled={isPersistingMeal || !canSubmitMeal}
-              onPress={persistMeal}
-              style={[
-                logMealStyles.footerSecondaryButton,
-                logMealStyles.footerPrimaryInlineButton,
-                (isPersistingMeal || !canSubmitMeal) &&
-                  logMealStyles.buttonDisabled,
-              ]}
-            >
-              <ThemedText style={logMealStyles.footerSecondaryButtonTextLight}>
-                {isPersistingMeal ? "Adding..." : "Add Meal"}
-              </ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={() => confirmExit()}
-              style={logMealStyles.footerSecondaryButton}
-            >
-              <ThemedText style={logMealStyles.footerSecondaryButtonText}>
-                Cancel
-              </ThemedText>
-            </TouchableOpacity>
+            <View style={logMealStyles.footerButtonCell}>
+              <AppButton label={isPersistingMeal ? "Adding..." : "Add Meal"} disabled={isPersistingMeal || !canSubmitMeal} loading={isPersistingMeal} fullWidth onPress={persistMeal} />
+            </View>
+            <View style={logMealStyles.footerButtonCell}>
+              <AppButton label="Cancel" fullWidth variant="secondary" onPress={() => confirmExit()} />
+            </View>
           </View>
         )}
       </View>
@@ -844,7 +700,7 @@ export default function LogMeal() {
                   mealType,
                 }).unwrap();
                 dispatch(applyMealCandidate({ candidate }));
-              } catch (error) {
+              } catch {
                 dispatch(applyMealCandidate({ candidate: null }));
               }
             })();
@@ -872,8 +728,9 @@ export default function LogMeal() {
               meal?
             </ThemedText>
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonPrimary]}
+              <AppButton
+                label="Add to meal"
+                fullWidth
                 onPress={() => {
                   if (mealCandidate) {
                     void (async () => {
@@ -891,27 +748,21 @@ export default function LogMeal() {
                   }
                   setShowExistingMealModal(false);
                 }}
-              >
-                <ThemedText style={styles.modalButtonTextPrimary}>
-                  Add to meal
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonGhost]}
+              />
+              <AppButton
+                label="Keep separate"
+                fullWidth
+                variant="secondary"
                 onPress={() => {
                   dispatch(clearMealCandidate());
                   setShowExistingMealModal(false);
                 }}
-              >
-                <ThemedText style={styles.modalButtonTextGhost}>
-                  Keep separate
-                </ThemedText>
-              </TouchableOpacity>
+              />
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </AppScreen>
   );
 }
 
@@ -941,26 +792,11 @@ function buildDisplayFoodName(name: string, brand?: string) {
   return `${name} (${trimmedBrand})`;
 }
 
-function capitalize(value: string | null | undefined) {
-  if (!value) return "Meal";
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 function formatMealUnit(unit: string | null | undefined) {
   if (!unit) return "";
   const normalized = unit.trim().toLowerCase();
   if (["g", "gram", "grams"].includes(normalized)) return "g";
   return ` ${unit}`;
-}
-
-function formatShortDate(value: string | null | undefined) {
-  if (!value) return "recently";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "recently";
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-  });
 }
 
 function formatMealValue(value: string | number | null | undefined) {
