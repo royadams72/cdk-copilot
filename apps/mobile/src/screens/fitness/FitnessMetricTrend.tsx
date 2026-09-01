@@ -10,6 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
+import { APP_ROUTES } from "@/constants/routes";
 import { type StepActivitySummary } from "@/lib/healthConnectStepSummary";
 import {
   getServerHealthConnectSyncState,
@@ -1222,7 +1223,7 @@ export default function FitnessMetricTrend() {
       <ScrollView
         contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 28 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace(APP_ROUTES.healthDashboard)}>
           <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
         </TouchableOpacity>
 

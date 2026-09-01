@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
+import { APP_ROUTES } from "@/constants/routes";
 
 import { ThemedText } from "@/components/themed-text";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
@@ -126,7 +127,7 @@ export default function FitnessMissingDataScreen() {
             justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.replace(APP_ROUTES.healthDashboard)}>
             <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
           </TouchableOpacity>
         </View>

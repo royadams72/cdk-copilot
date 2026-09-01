@@ -142,23 +142,9 @@ export default function Dashboard() {
     })();
   }, []);
 
-  const handleOpenEngagement = useCallback(() => {
+  const handleDismissEngagement = useCallback(() => {
     if (!pendingEngagement?.key) return;
-
-    const title =
-      pendingEngagement.metadata?.copy?.title ?? "Achievement unlocked";
-    const body =
-      pendingEngagement.metadata?.copy?.body ??
-      "You earned a new patient engagement achievement.";
-
-    Alert.alert(title, body, [
-      {
-        onPress: () => {
-          void openPatientEngagement({ key: pendingEngagement.key });
-        },
-        text: "Nice",
-      },
-    ]);
+    void openPatientEngagement({ key: pendingEngagement.key });
   }, [openPatientEngagement, pendingEngagement]);
 
   const rangeSummary = useMemo(() => {
@@ -391,10 +377,10 @@ export default function Dashboard() {
                   "You earned a new engagement milestone."}
               </ThemedText>
               <AppButton
-                label={isOpeningEngagement ? "Opening..." : "View achievement"}
+                label={isOpeningEngagement ? "Dismissing..." : "Dismiss"}
                 disabled={isOpeningEngagement}
                 loading={isOpeningEngagement}
-                onPress={handleOpenEngagement}
+                onPress={handleDismissEngagement}
                 size="compact"
               />
             </Card>
@@ -415,7 +401,7 @@ export default function Dashboard() {
 
             <Pressable
               style={styles.selectableCard}
-              onPress={() => router.push("/(fitness)/fitness-details")}
+              onPress={() => router.push(APP_ROUTES.healthDashboard)}
             >
               <StackedRadialsCard radials={healthRadials} title="Health" />
             </Pressable>

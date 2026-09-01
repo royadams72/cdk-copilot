@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { theme } from "@/constants/theme";
 
 import type {
   ExerciseRefCategory,
@@ -509,7 +510,7 @@ export function AddMeasurementModal({
                 onPress={onSave}
                 disabled={saving}
                 style={{
-                  backgroundColor: "#2563EB",
+                  backgroundColor: theme.colors.primary,
                   borderRadius: 8,
                   opacity: saving ? 0.65 : 1,
                   paddingHorizontal: 12,

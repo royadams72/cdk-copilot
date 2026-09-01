@@ -4,7 +4,6 @@ import {
   Alert,
   Platform,
   RefreshControl,
-  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -22,6 +21,10 @@ import {
   type KnownFitnessApp,
 } from "@/lib/fitnessApps";
 import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { APP_ROUTES } from "@/constants/routes";
+import { theme } from "@/constants/theme";
 import { Card } from "../dashboard/components/Card";
 import { buildFitnessSetupGuidance } from "@/lib/fitnessSetupState";
 import {
@@ -310,7 +313,7 @@ export default function FitnessDashboard() {
   );
   const errorMessage = toQueryErrorMessage(
     error,
-    "Failed to load fitness readings",
+    "Failed to load health readings",
   );
 
   useEffect(() => {
@@ -453,10 +456,8 @@ export default function FitnessDashboard() {
     ],
   );
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 32 }}
+    <AppScreen
+        contentContainerStyle={{ gap: theme.spacing.md }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refetch} />
         }
@@ -468,11 +469,14 @@ export default function FitnessDashboard() {
             justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
-            <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-          </TouchableOpacity>
+          <AppButton
+            label="Back"
+            onPress={() => router.replace(APP_ROUTES.dashboard)}
+            size="compact"
+            variant="outline"
+          />
           <TouchableOpacity
-            accessibilityLabel="Open fitness settings"
+            accessibilityLabel="Open health settings"
             onPress={() => router.push("/(fitness)/settings")}
             style={{
               alignItems: "center",
@@ -488,7 +492,7 @@ export default function FitnessDashboard() {
         </View>
 
         <View style={{ gap: 4 }}>
-          <ThemedText type="title">Fitness dashboard</ThemedText>
+          <ThemedText type="title">Health dashboard</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
             Latest readings for weight, heart rate, activity, blood pressure,
             and sleep.
@@ -670,7 +674,7 @@ export default function FitnessDashboard() {
                     >
                       <View
                         style={{
-                          backgroundColor: "#38BDF8",
+                          backgroundColor: theme.colors.primary,
                           borderRadius: 999,
                           height: "100%",
                           width: `${card.progressPercent}%`,
@@ -694,7 +698,6 @@ export default function FitnessDashboard() {
               </Card>
             </TouchableOpacity>
           ))}
-      </ScrollView>
-    </View>
+      </AppScreen>
   );
 }

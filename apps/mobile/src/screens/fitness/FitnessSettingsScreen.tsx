@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { APP_ROUTES } from "@/constants/routes";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
@@ -105,14 +106,14 @@ export default function FitnessSettingsScreen() {
             justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.replace(APP_ROUTES.healthDashboard)}>
             <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
           </TouchableOpacity>
           <MaterialIcons color="#0F172A" name="settings" size={24} />
         </View>
 
         <View style={{ gap: 4 }}>
-          <ThemedText type="title">Fitness settings</ThemedText>
+          <ThemedText type="title">Health settings</ThemedText>
           <ThemedText style={{ opacity: 0.72 }}>
             Manage targets, health-provider status, and historical repairs.
           </ThemedText>

@@ -7,7 +7,8 @@ import { Platform } from "react-native";
 
 export const palette = {
   black: "#000000",
-  blue: "#38BDF8",
+  blue: "#0876D1",
+  blueDark: "#075FA8",
   border: "#CBD5E1",
   canvas: "#DCE6FF",
   cyan: "#22D3EE",
@@ -40,8 +41,8 @@ export const theme = {
     border: palette.border,
     borderSubtle: "rgba(148,163,184,0.35)",
     overlay: "rgba(15,23,42,0.55)",
-    primary: palette.purple,
-    primaryPressed: palette.purpleDark,
+    primary: palette.blue,
+    primaryPressed: palette.blueDark,
     onPrimary: palette.surface,
     success: palette.green,
     successDark: palette.greenDark,
@@ -57,6 +58,8 @@ export const theme = {
     infoSoft: "rgba(37,99,235,0.14)",
     control: palette.panel,
     controlPressed: "#D1D5DB",
+    quinary: "#4C0A91",
+    quinaryPressed: palette.purple,
     disabled: "#D1D5DB",
     disabledText: palette.muted,
     chart: {

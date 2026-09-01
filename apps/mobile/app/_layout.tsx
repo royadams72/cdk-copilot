@@ -5,6 +5,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import * as SystemUI from "expo-system-ui";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { AppState } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 
@@ -19,16 +20,17 @@ import {
 } from "@/lib/authSession";
 import { APP_ROUTES } from "@/constants/routes";
 import { store, persistor } from "@/store";
+import { theme } from "@/constants/theme";
 
 const LightNavigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: "#FFFFFF",
-    border: "#E5E7EB",
-    card: "#FFFFFF",
-    primary: "#8B5CF6",
-    text: "#111827",
+    background: theme.colors.background,
+    border: theme.colors.border,
+    card: theme.colors.surface,
+    primary: theme.colors.primary,
+    text: theme.colors.text,
   },
 };
 
@@ -163,6 +165,7 @@ export default function RootLayout() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider value={LightNavigationTheme}>
+          <StatusBar style="dark" backgroundColor={theme.colors.background} />
           {shouldBlockProtectedRoute ? null : <Slot />}
         </ThemeProvider>
       </PersistGate>
