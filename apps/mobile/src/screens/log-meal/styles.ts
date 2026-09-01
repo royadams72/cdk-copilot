@@ -57,6 +57,7 @@ export const logMealStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 12,
+    marginBottom: theme.spacing.sm,
     gap: 10,
   },
   fixedHeader: {
@@ -209,6 +210,17 @@ export const logMealStyles = StyleSheet.create({
     borderRadius: theme.radii.md,
     gap: theme.spacing.md,
     padding: theme.spacing.md,
+  },
+  searchPanelHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: theme.controls.touchTarget,
+  },
+  searchPanelTitle: {
+    color: theme.colors.onPrimary,
+    fontSize: 17,
+    fontWeight: "700",
   },
   searchWrap: {
     flexDirection: "row",

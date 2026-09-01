@@ -9,6 +9,7 @@ export const APP_ROUTES = {
   clinicalOnboarding: "/(auth)/onboarding/clinical-form",
   consent: "/(auth)/consent",
   dashboard: "/(dashboard)/dashboard",
+  healthDashboard: "/(fitness)/fitness-details",
   nutritionDetails: "/(nutrition)/nutrition-details",
   piiOnboarding: "/(auth)/onboarding/pii-form",
   welcome: "/(init-app)/welcome",

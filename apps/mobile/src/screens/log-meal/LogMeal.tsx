@@ -3,9 +3,11 @@ import {
   Alert,
   BackHandler,
   Modal,
+  Pressable,
   ScrollView,
   View,
 } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -16,6 +18,7 @@ import type {
 } from "@ckd/core";
 
 import { APP_ROUTES } from "@/constants/routes";
+import { theme } from "@/constants/theme";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { FoodCard } from "@/components/food-card";
 import {
@@ -121,6 +124,7 @@ export default function LogMeal() {
   const [showExistingMealModal, setShowExistingMealModal] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isPersistingMeal, setIsPersistingMeal] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const isLeavingRef = useRef(false);
   const lastPromptRef = useRef<string | null>(null);
@@ -482,6 +486,20 @@ export default function LogMeal() {
           />
         </View>
         <View style={logMealStyles.searchPanel}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: searchExpanded }}
+            onPress={() => setSearchExpanded((expanded) => !expanded)}
+            style={logMealStyles.searchPanelHeader}
+          >
+            <ThemedText style={logMealStyles.searchPanelTitle}>Search</ThemedText>
+            <MaterialIcons
+              color={theme.colors.onPrimary}
+              name={searchExpanded ? "expand-less" : "chevron-right"}
+              size={30}
+            />
+          </Pressable>
+          {searchExpanded ? <>
           <View style={logMealStyles.searchWrap}>
             <TextField
               label="Search food"
@@ -526,13 +544,14 @@ export default function LogMeal() {
               />
             ))}
           </View>
+          </> : null}
         </View>
-        <View style={logMealStyles.infoPanel}>
+        {searchExpanded ? <View style={logMealStyles.infoPanel}>
           <ThemedText style={logMealStyles.helperText}>
             Search one food at a time with an amount, like &quot;100g of
             carrots&quot; or &quot;50g of rice&quot;.
           </ThemedText>
-        </View>
+        </View> : null}
       </View>
 
       <View style={logMealStyles.listPanel}>

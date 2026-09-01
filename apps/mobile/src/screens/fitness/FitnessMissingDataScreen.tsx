@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Platform, ScrollView, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
+import { APP_ROUTES } from "@/constants/routes";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import type { MeasurementKind } from "@/store/services/types";
 
@@ -114,11 +117,7 @@ export default function FitnessMissingDataScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 32 }}
-      >
+    <AppScreen>
         <View
           style={{
             alignItems: "center",
@@ -126,9 +125,12 @@ export default function FitnessMissingDataScreen() {
             justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity onPress={() => router.back()}>
-            <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-          </TouchableOpacity>
+          <AppButton
+            label="Back"
+            onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+            size="compact"
+            variant="outline"
+          />
         </View>
 
         <View style={{ gap: 4 }}>
@@ -188,7 +190,6 @@ export default function FitnessMissingDataScreen() {
             </Card>
           );
         })}
-      </ScrollView>
-    </View>
+    </AppScreen>
   );
 }

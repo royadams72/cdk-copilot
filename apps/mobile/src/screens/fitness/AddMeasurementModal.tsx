@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppButton } from "@/components/ui/button";
 
 import type {
   ExerciseRefCategory,
@@ -499,27 +500,20 @@ export function AddMeasurementModal({
                 justifyContent: "flex-end",
               }}
             >
-              <TouchableOpacity
+              <AppButton
+                label="Cancel"
                 onPress={() => setModalOpen(false)}
-                style={{ padding: 8 }}
-              >
-                <ThemedText style={{ fontWeight: "600" }}>Cancel</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
+                size="compact"
+                variant="secondary"
+              />
+              <AppButton
+                label={saving ? "Saving..." : confirmLabel}
                 onPress={onSave}
                 disabled={saving}
-                style={{
-                  backgroundColor: "#2563EB",
-                  borderRadius: 8,
-                  opacity: saving ? 0.65 : 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                }}
-              >
-                <ThemedText style={{ color: "white", fontWeight: "700" }}>
-                  {saving ? "Saving..." : confirmLabel}
-                </ThemedText>
-              </TouchableOpacity>
+                loading={saving}
+                size="compact"
+                variant="primary"
+              />
             </View>
           </View>
         </View>

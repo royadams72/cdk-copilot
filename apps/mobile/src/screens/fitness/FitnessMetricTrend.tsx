@@ -3,13 +3,15 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { APP_ROUTES } from "@/constants/routes";
 import { type StepActivitySummary } from "@/lib/healthConnectStepSummary";
 import {
   getServerHealthConnectSyncState,
@@ -1218,13 +1220,13 @@ export default function FitnessMetricTrend() {
   const showAdd = kind !== "steps";
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 28 }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
+    <AppScreen>
+        <AppButton
+          label="Back"
+          onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+          size="compact"
+          variant="outline"
+        />
 
         <View style={{ gap: 4 }}>
           <ThemedText type="title">{label}</ThemedText>
@@ -1261,20 +1263,12 @@ export default function FitnessMetricTrend() {
         </View>
 
         {showAdd ? (
-          <TouchableOpacity
+          <AppButton
+            label={addLabel(kind)}
             onPress={openCreateModal}
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: "rgba(59,130,246,0.16)",
-              borderRadius: 10,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-            }}
-          >
-            <ThemedText style={{ color: "#1E3A8A", fontWeight: "700" }}>
-              {addLabel(kind)}
-            </ThemedText>
-          </TouchableOpacity>
+            size="standard"
+            variant="primary"
+          />
         ) : (
           <View style={{ gap: 4 }}>
             <ThemedText style={{ opacity: 0.7 }}>
@@ -1478,7 +1472,6 @@ export default function FitnessMetricTrend() {
             )}
           </Card>
         ) : null}
-      </ScrollView>
 
       <AddMeasurementModal
         bpDiastolic={bpDiastolic}
@@ -1528,7 +1521,7 @@ export default function FitnessMetricTrend() {
         weightUnit={preferredWeightUnit}
         weightValue={weightValue}
       />
-    </View>
+    </AppScreen>
   );
 }
 

@@ -10,6 +10,9 @@ export type ButtonVariant =
   | "outline"
   | "ghost"
   | "success"
+  | "tertiary"
+  | "quaternary"
+  | "quinary"
   | "danger"
   | "link";
 
@@ -87,6 +90,9 @@ const textColors: Record<ButtonVariant, string> = {
   outline: theme.colors.text,
   ghost: theme.colors.text,
   success: theme.colors.onPrimary,
+  tertiary: theme.colors.onPrimary,
+  quaternary: theme.colors.text,
+  quinary: theme.colors.onPrimary,
   danger: theme.colors.onPrimary,
   link: theme.colors.primary,
 };
@@ -118,6 +124,12 @@ const styles = StyleSheet.create({
   ghostPressed: { backgroundColor: theme.colors.control },
   success: { backgroundColor: theme.colors.success },
   successPressed: { backgroundColor: theme.colors.successDark },
+  tertiary: { backgroundColor: theme.colors.success },
+  tertiaryPressed: { backgroundColor: theme.colors.successDark },
+  quaternary: { backgroundColor: theme.colors.control },
+  quaternaryPressed: { backgroundColor: theme.colors.controlPressed },
+  quinary: { backgroundColor: theme.colors.quinary },
+  quinaryPressed: { backgroundColor: theme.colors.quinaryPressed },
   danger: { backgroundColor: theme.colors.danger },
   dangerPressed: { backgroundColor: theme.colors.dangerDark },
   link: { backgroundColor: "transparent", minHeight: theme.controls.touchTarget, paddingHorizontal: theme.spacing.sm },

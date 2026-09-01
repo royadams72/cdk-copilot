@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { ThemedText } from "@/components/themed-text";
+import { theme } from "@/constants/theme";
 
 type DateTimeModalProps = {
   visible: boolean;
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primary: {
-    backgroundColor: "#8B5CF6",
+    backgroundColor: theme.colors.primary,
   },
   ghost: {
     backgroundColor: "rgba(148,163,184,0.25)",
