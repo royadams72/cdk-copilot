@@ -3,15 +3,15 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
 import { useStepCount } from "@/hooks/useStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import type { NativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectNativeBridge";
@@ -33,7 +33,6 @@ function providerDisplayName() {
 
 export default function FitnessSettingsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const {
     backgroundReadGranted,
     missingHealthPermissions,
@@ -89,16 +88,7 @@ export default function FitnessSettingsScreen() {
     workerStatus.provider === "healthkit";
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          gap: 12,
-          padding: 16,
-          paddingBottom: 32,
-          paddingTop: Math.max(insets.top + 8, 20),
-        }}
-      >
+    <AppScreen>
         <View
           style={{
             alignItems: "center",
@@ -106,9 +96,12 @@ export default function FitnessSettingsScreen() {
             justifyContent: "space-between",
           }}
         >
-          <TouchableOpacity onPress={() => router.replace(APP_ROUTES.healthDashboard)}>
-            <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-          </TouchableOpacity>
+          <AppButton
+            label="Back"
+            onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+            size="compact"
+            variant="outline"
+          />
           <MaterialIcons color="#0F172A" name="settings" size={24} />
         </View>
 
@@ -239,7 +232,6 @@ export default function FitnessSettingsScreen() {
             )}
           </View>
         </Card>
-      </ScrollView>
-    </View>
+    </AppScreen>
   );
 }
