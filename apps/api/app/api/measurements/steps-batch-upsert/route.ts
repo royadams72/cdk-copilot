@@ -174,7 +174,6 @@ export async function POST(req: NextRequest) {
             kind: "steps",
             orgId,
             patientId,
-            "provider.packageName": item.provider.packageName,
           },
           update: {
             $set: setFields,

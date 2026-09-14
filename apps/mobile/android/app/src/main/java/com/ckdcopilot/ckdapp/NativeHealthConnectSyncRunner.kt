@@ -61,69 +61,93 @@ class NativeHealthConnectSyncRunner(
     auth: NativeBackgroundAuthStore,
   ) {
     val now = ZonedDateTime.now(zoneId)
-    val dayStart = now.toLocalDate().atStartOfDay(zoneId)
-    val dayEnd = dayStart.plusDays(1).minusNanos(1)
-    val timeRange = TimeRangeFilter.between(dayStart.toInstant(), dayEnd.toInstant())
-
-    val aggregate = client.aggregate(
-      AggregateRequest(
-        metrics = setOf(StepsRecord.COUNT_TOTAL),
-        timeRangeFilter = timeRange,
-      )
+    val today = now.toLocalDate()
+    val items = JSONArray()
+    val reconciliationPrefs = context.getSharedPreferences(
+      STEP_RECONCILIATION_PREFS_NAME,
+      Context.MODE_PRIVATE,
     )
-    val aggregateTotal = max(0, (aggregate[StepsRecord.COUNT_TOTAL] ?: 0L).toInt())
-    val dataOrigins = aggregate.dataOrigins.map { it.packageName }.distinct()
-    val originTotals = linkedMapOf<String, Int>()
+    val shouldReconcileCompletedDays =
+      reconciliationPrefs.getString(KEY_LAST_STEP_RECONCILIATION_DAY, null) != today.toString()
+    val oldestDaysAgo = if (shouldReconcileCompletedDays) COMPLETED_STEP_LOOKBACK_DAYS else 0
 
-    for (origin in dataOrigins) {
-      val result = client.aggregate(
+    // WorkManager runs are deliberately inexact and Android vendors may defer
+    // them for hours (or longer). Reconcile completed days once per local day
+    // so a delayed worker does not leave a permanent hole in steps history.
+    for (daysAgo in oldestDaysAgo downTo 0) {
+      val date = today.minusDays(daysAgo.toLong())
+      val dayStart = date.atStartOfDay(zoneId)
+      val dayEnd = if (date == today) now else dayStart.plusDays(1)
+      val timeRange = TimeRangeFilter.between(dayStart.toInstant(), dayEnd.toInstant())
+
+      val aggregate = client.aggregate(
         AggregateRequest(
           metrics = setOf(StepsRecord.COUNT_TOTAL),
           timeRangeFilter = timeRange,
-          dataOriginFilter = setOf(DataOrigin(origin)),
         )
       )
-      originTotals[origin] = max(0, (result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt())
+      val aggregateTotal = max(0, (aggregate[StepsRecord.COUNT_TOTAL] ?: 0L).toInt())
+      val dataOrigins = aggregate.dataOrigins.map { it.packageName }.distinct()
+      val originTotals = linkedMapOf<String, Int>()
+
+      for (origin in dataOrigins) {
+        val result = client.aggregate(
+          AggregateRequest(
+            metrics = setOf(StepsRecord.COUNT_TOTAL),
+            timeRangeFilter = timeRange,
+            dataOriginFilter = setOf(DataOrigin(origin)),
+          )
+        )
+        originTotals[origin] = max(0, (result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt())
+      }
+
+      val selectedOrigin = selectStepDataOrigin(dataOrigins, originTotals)
+      val selectedTotal = when {
+        selectedOrigin != null -> originTotals[selectedOrigin] ?: aggregateTotal
+        else -> aggregateTotal
+      }
+      if (selectedTotal <= 0) continue
+
+      val distanceMeters = readAggregateDistance(client, timeRange, selectedOrigin)
+      val caloriesKcal = readAggregateCalories(client, timeRange, selectedOrigin)
+      val averageSpeedKph = readAverageSpeed(client, timeRange, selectedOrigin)
+      val dateKey = date.toString()
+      val reconciledAt = Instant.now().toString()
+      val isFinalized = date < today
+
+      items.put(JSONObject().apply {
+        put("count", selectedTotal)
+        put("externalRecordId", "health-connect:steps:$dateKey")
+        put("measuredAt", dayStart.plusHours(12).toInstant().toString())
+        put("provider", providerJson(selectedOrigin ?: "android.healthconnect"))
+        put(
+          "sync",
+          JSONObject().apply {
+            put("dayKey", dateKey)
+            put("lastReconciledAt", reconciledAt)
+            put("provider", "health_connect")
+            put("status", if (isFinalized) "finalized" else "provisional")
+            if (isFinalized) put("finalizedAt", reconciledAt)
+          }
+        )
+        if (distanceMeters != null) put("distanceMeters", distanceMeters)
+        if (caloriesKcal != null) put("caloriesKcal", caloriesKcal)
+        if (averageSpeedKph != null) put("averageSpeedKph", averageSpeedKph)
+      })
     }
 
-    val selectedOrigin = selectStepDataOrigin(dataOrigins, originTotals)
-    val selectedTotal = when {
-      selectedOrigin != null -> originTotals[selectedOrigin] ?: aggregateTotal
-      else -> aggregateTotal
-    }
-    if (selectedTotal <= 0) {
-      return
-    }
-
-    val distanceMeters = readAggregateDistance(client, timeRange, selectedOrigin)
-    val caloriesKcal = readAggregateCalories(client, timeRange, selectedOrigin)
-    val averageSpeedKph = readAverageSpeed(client, timeRange, selectedOrigin)
-    val dateKey = dayStart.toLocalDate().toString()
-
-    val item = JSONObject().apply {
-      put("count", selectedTotal)
-      put("externalRecordId", "health-connect:steps:$dateKey")
-      put("measuredAt", dayStart.plusHours(12).toInstant().toString())
-      put("provider", providerJson(selectedOrigin ?: "android.healthconnect"))
-      put(
-        "sync",
-        JSONObject().apply {
-          put("dayKey", dateKey)
-          put("lastReconciledAt", Instant.now().toString())
-          put("provider", "health_connect")
-          put("status", "provisional")
-        }
+    if (items.length() > 0) {
+      postJson(
+        auth,
+        "/api/measurements/steps-batch-upsert",
+        JSONObject().put("items", items),
       )
-      if (distanceMeters != null) put("distanceMeters", distanceMeters)
-      if (caloriesKcal != null) put("caloriesKcal", caloriesKcal)
-      if (averageSpeedKph != null) put("averageSpeedKph", averageSpeedKph)
     }
-
-    postJson(
-      auth,
-      "/api/measurements/steps-batch-upsert",
-      JSONObject().put("items", JSONArray().put(item)),
-    )
+    if (shouldReconcileCompletedDays) {
+      reconciliationPrefs.edit()
+        .putString(KEY_LAST_STEP_RECONCILIATION_DAY, today.toString())
+        .apply()
+    }
   }
 
   private suspend fun syncMeasurements(
@@ -510,6 +534,9 @@ class NativeHealthConnectSyncRunner(
   }
 
   companion object {
+    private const val COMPLETED_STEP_LOOKBACK_DAYS = 7
+    private const val KEY_LAST_STEP_RECONCILIATION_DAY = "last_step_reconciliation_day"
+    private const val STEP_RECONCILIATION_PREFS_NAME = "health_connect_step_reconciliation"
     private const val TAG = "HCNativeSync"
   }
 }

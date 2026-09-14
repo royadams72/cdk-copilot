@@ -126,7 +126,7 @@ export default function MonthlyNutrition() {
     return (
       <View style={NutritionStyles.loading}>
         <ActivityIndicator size="large" />
-        <ThemedText style={NutritionStyles.helperText}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           Loading your monthly nutrition data...
         </ThemedText>
       </View>
@@ -151,7 +151,7 @@ export default function MonthlyNutrition() {
             />
           </View>
           <ThemedText type="title" style={NutritionStyles.screenTitle}>Monthly nutrition</ThemedText>
-          <ThemedText style={NutritionStyles.helperText}>
+          <ThemedText style={NutritionStyles.pageHelperText}>
             Review monthly nutrient averages and the foods driving them.
           </ThemedText>
         </View>

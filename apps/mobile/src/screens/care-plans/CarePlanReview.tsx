@@ -130,7 +130,7 @@ export default function CarePlanReview() {
 
       {!carePlanId || !data ? (
         <Section title="Review unavailable">
-          <ThemedText style={{ color: theme.colors.copy }}>
+          <ThemedText style={styles.helperText}>
             {carePlanId ? errorMessage : "No care plan was selected."}
           </ThemedText>
           <AppButton label="Return to care plans" onPress={() => router.replace("/(dashboard)/care-plans")} variant="outline" size="compact" />
@@ -151,7 +151,7 @@ export default function CarePlanReview() {
         <>
           <View style={{ gap: theme.spacing.xs }}>
             <ThemedText type="title" style={NutritionStyles.screenTitle}>Review care plan</ThemedText>
-            <ThemedText style={{ color: theme.colors.copy }}>{data.title}</ThemedText>
+            <ThemedText style={NutritionStyles.pageHelperText}>{data.title}</ThemedText>
           </View>
 
           <Section title="Quick check-in" style={styles.carePlanReviewCard}>

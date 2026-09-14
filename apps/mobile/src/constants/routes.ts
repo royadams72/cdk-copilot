@@ -12,6 +12,8 @@ export const APP_ROUTES = {
   healthDashboard: "/(fitness)/fitness-details",
   nutritionDetails: "/(nutrition)/nutrition-details",
   piiOnboarding: "/(auth)/onboarding/pii-form",
+  profileSettings: "/(settings)/profile" as Href,
+  settings: "/(settings)" as Href,
   welcome: "/(init-app)/welcome",
 } as const;
 

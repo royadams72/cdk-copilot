@@ -83,7 +83,7 @@ export default function LabsHistory() {
         <ThemedText type="title" style={NutritionStyles.screenTitle}>
           {isEditMode ? "Edit Labs results" : "Labs history"}
         </ThemedText>
-        <ThemedText style={{ color: theme.colors.copy }}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           {isEditMode
             ? "Select a date to edit that day's lab list."
             : "Select a lab to view your reading trend."}

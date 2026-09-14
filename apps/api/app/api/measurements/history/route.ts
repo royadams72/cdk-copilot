@@ -9,6 +9,7 @@ import { isHealthSyncProvider, type HealthSyncProvider } from "@/apps/api/lib/he
 import { bad, badFromError, ok } from "@/apps/api/lib/http/responses";
 import { ROLES } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
+import { preferredStepEntry } from "@/apps/api/lib/measurements/preferredStepEntry";
 
 type MeasurementDoc = {
   _id: ObjectId;
@@ -368,13 +369,7 @@ export async function GET(req: NextRequest) {
             ? numericValue.reduce((sum, item) => sum + item, 0)
             : null;
         } else if (kind === "steps") {
-          const preferredEntry =
-            entries.find(
-              (entry) =>
-                typeof entry.distanceMeters === "number" ||
-                typeof entry.caloriesKcal === "number" ||
-                typeof entry.averageSpeedKph === "number",
-            ) ?? latestEntry;
+          const preferredEntry = preferredStepEntry(entries) ?? latestEntry;
           value = preferredEntry?.value ?? null;
         } else {
           value = latestEntry?.value ?? null;

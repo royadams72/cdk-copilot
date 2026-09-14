@@ -45,7 +45,6 @@ type DuplicateBucket = {
     dayKey: string;
     orgId: string;
     patientId: ObjectId;
-    providerPackageName?: string;
   };
   docs: StepDoc[];
 };
@@ -110,13 +109,28 @@ function metadataScore(doc: StepDoc) {
   if (typeof doc.distanceMeters === "number") score += 1;
   if (typeof doc.caloriesKcal === "number") score += 1;
   if (typeof doc.averageSpeedKph === "number") score += 1;
-  if (doc.sync?.status === "finalized") score += 4;
-  if (doc.sync?.status === "provisional") score += 2;
-  if (typeof doc.count === "number") score += 1;
   return score;
 }
 
 function compareDocsForCanonical(left: StepDoc, right: StepDoc) {
+  const statusScore = (doc: StepDoc) => {
+    const positive = typeof doc.count === "number" && doc.count > 0;
+    const finalized = doc.sync?.status === "finalized";
+    if (finalized && positive) return 4;
+    if (positive) return 3;
+    if (finalized) return 2;
+    return 1;
+  };
+  const statusDiff = statusScore(right) - statusScore(left);
+  if (statusDiff !== 0) {
+    return statusDiff;
+  }
+
+  const countDiff = (right.count ?? 0) - (left.count ?? 0);
+  if (countDiff !== 0) {
+    return countDiff;
+  }
+
   const metadataDiff = metadataScore(right) - metadataScore(left);
   if (metadataDiff !== 0) {
     return metadataDiff;
@@ -189,7 +203,6 @@ async function run() {
               dayKey: { $ifNull: ["$sync.dayKey", "$derivedDayKey"] },
               orgId: "$orgId",
               patientId: "$patientId",
-              providerPackageName: "$provider.packageName",
             },
             docs: { $push: "$$ROOT" },
           },
@@ -228,8 +241,8 @@ async function run() {
       const dayKey = bucket._id.dayKey || utcDayKey(canonical.measuredAt);
 
       console.log(
-        `bucket day=${dayKey} patient=${bucket._id.patientId.toString()} provider=${bucket._id.providerPackageName ?? "-"} keep=${canonical._id.toString()} drop=${duplicates
-          .map((doc) => doc._id.toString())
+        `bucket day=${dayKey} patient=${bucket._id.patientId.toString()} keep=${canonical._id.toString()}(${canonical.count ?? "-"}) drop=${duplicates
+          .map((doc) => `${doc._id.toString()}(${doc.count ?? "-"})`)
           .join(",")}`,
       );
 

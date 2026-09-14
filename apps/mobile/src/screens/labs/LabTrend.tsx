@@ -121,7 +121,7 @@ export default function LabTrend() {
       <AppScreen>
         <AppButton label="Back" onPress={() => router.replace("/(labs)/labs-history")} variant="secondary" size="compact" />
         <ThemedText type="title" style={NutritionStyles.screenTitle}>{name}</ThemedText>
-        <ThemedText style={{ color: theme.colors.copy }}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           {unit ? `Values in ${unit}` : "Value history"}
         </ThemedText>
 

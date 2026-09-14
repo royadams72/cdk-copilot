@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { theme } from "@/constants/theme";
+import { ThemedTextColorProvider } from "@/components/themed-text";
 
 export function AppScreen({
   children,
@@ -47,10 +48,16 @@ export function AppScreen({
       contentContainerStyle={contentStyle}
       style={[styles.screen, style]}
     >
-      {children}
+      <ThemedTextColorProvider color={theme.colors.onBackground}>
+        {children}
+      </ThemedTextColorProvider>
     </ScrollView>
   ) : (
-    <View style={[styles.screen, ...contentStyle, style]}>{children}</View>
+    <View style={[styles.screen, ...contentStyle, style]}>
+      <ThemedTextColorProvider color={theme.colors.onBackground}>
+        {children}
+      </ThemedTextColorProvider>
+    </View>
   );
 
   return keyboardAware ? (

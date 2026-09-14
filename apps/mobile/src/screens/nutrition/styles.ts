@@ -8,6 +8,8 @@ export const NutritionStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
   },
   addMealsButtonText: {
     fontWeight: "600",
@@ -90,6 +92,10 @@ export const NutritionStyles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.copy,
   },
+  pageHelperText: {
+    color: theme.colors.onBackground,
+    fontSize: 13,
+  },
   legendMetric: {
     fontSize: 16,
     fontWeight: "600",
@@ -124,6 +130,7 @@ export const NutritionStyles = StyleSheet.create({
   loading: {
     flex: 1,
     alignItems: "center",
+    backgroundColor: theme.colors.background,
     justifyContent: "center",
     gap: 12,
     padding: 32,
@@ -133,6 +140,8 @@ export const NutritionStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
   },
   logButtonText: {
     fontWeight: "600",
@@ -204,6 +213,8 @@ export const NutritionStyles = StyleSheet.create({
   },
   modalButtonPrimary: {
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
   },
   modalButtonTextGhost: {
     fontWeight: "600",
@@ -281,7 +292,7 @@ export const NutritionStyles = StyleSheet.create({
     padding: 15,
   },
   screenTitle: {
-    color: theme.colors.text,
+    color: theme.colors.onBackground,
   },
   summaryGrid: {
     gap: 12,

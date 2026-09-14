@@ -361,12 +361,12 @@ export default function AddMedication() {
           />
           <ThemedText type="title" style={NutritionStyles.screenTitle}>Medications</ThemedText>
           {isEditMode ? (
-            <ThemedText style={{ color: theme.colors.copy }}>
+            <ThemedText style={NutritionStyles.pageHelperText}>
               Edit the medication below, or set it to paused, stopped, or
               completed.
             </ThemedText>
           ) : (
-            <ThemedText style={{ color: theme.colors.copy }}>
+            <ThemedText style={NutritionStyles.pageHelperText}>
               Name, dose and start date are required.
             </ThemedText>
           )}

@@ -164,12 +164,30 @@ export const styles = StyleSheet.create({
   header: {
     gap: 4,
   },
+  headerTopRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
   helperText: {
     fontSize: 13,
     color: theme.colors.copy,
   },
   panelTitle: {
     color: theme.colors.panelHeader,
+  },
+  settingsButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.panelHeader,
+    borderRadius: theme.radii.pill,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  settingsButtonPressed: {
+    opacity: 0.72,
   },
   labLabel: {
     fontSize: 16,

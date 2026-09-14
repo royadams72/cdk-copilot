@@ -404,10 +404,16 @@ export type SymptomListResponse = TSymptomListResponse;
 export type CreateSymptomArgs = TSymptomCreateRequest;
 export type UpdateSymptomArgs = TSymptomUpdateRequest;
 export type CurrentUserSettingsResponse = {
+  careTeam: { contact?: string; name?: string; org?: string; role: string }[];
+  ckdStage?: "1" | "2" | "3a" | "3b" | "4" | "5" | null;
   dateOfBirth?: string | null;
+  dialysisStatus: "none" | "hemodialysis" | "peritoneal" | "post-transplant";
+  email?: string | null;
   firstName?: string | null;
+  heightCm?: number | null;
   lastName?: string | null;
   nhsNumber?: string | null;
+  phoneE164?: string | null;
   units: UserUnits;
 };
 export type RunWeeklyNutritionInsightArgs = {

@@ -1,0 +1,293 @@
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { APP_ROUTES } from "@/constants/routes";
+
+import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/app-screen";
+import { AppButton } from "@/components/ui/button";
+import { useStepCount } from "@/hooks/useStepCount";
+import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
+import type { NativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectNativeBridge";
+import {
+  getNativeHealthKitStatus,
+  type NativeHealthKitStatus,
+} from "@/lib/healthKitNativeBridge";
+import { theme } from "@/constants/theme";
+import { Card } from "../dashboard/components/Card";
+
+function formatTimestamp(value: number | null | undefined) {
+  if (!value) return "Never";
+  return new Date(value).toLocaleString();
+}
+
+function providerDisplayName() {
+  return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
+}
+
+export default function SettingsScreen() {
+  const router = useRouter();
+  const {
+    backgroundReadGranted,
+    missingHealthPermissions,
+    status: stepStatus,
+  } = useStepCount(10000);
+  const [workerStatus, setWorkerStatus] = useState<
+    NativeHealthConnectBackgroundSyncStatus | NativeHealthKitStatus | null
+  >(null);
+  const [loadingWorkerStatus, setLoadingWorkerStatus] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const status =
+          Platform.OS === "ios"
+            ? await getNativeHealthKitStatus()
+            : await getCurrentHealthSyncProvider()?.getBackgroundSyncStatus();
+        if (!cancelled) {
+          setWorkerStatus(status ?? null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingWorkerStatus(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const permissionSummary =
+    stepStatus === "ready"
+      ? missingHealthPermissions.length > 0
+        ? `${missingHealthPermissions.length} ${providerDisplayName()} permissions still missing`
+        : `${providerDisplayName()} permissions look complete`
+      : `${providerDisplayName()} is not fully ready on this device`;
+
+  const backgroundSummary = backgroundReadGranted
+    ? `Background ${providerDisplayName()} access is enabled`
+    : `Background ${providerDisplayName()} access is not enabled`;
+
+  const isAndroidWorkerStatus =
+    workerStatus &&
+    "nativeWorkerEnabled" in workerStatus &&
+    workerStatus.platform === "android";
+  const isIosHealthKitStatus =
+    workerStatus &&
+    "provider" in workerStatus &&
+    workerStatus.provider === "healthkit";
+
+  return (
+    <AppScreen>
+      <View
+        style={{
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
+      >
+        <AppButton
+          label="Back"
+          onPress={() => router.back()}
+          size="compact"
+          variant="outline"
+        />
+      </View>
+
+      <View style={{ gap: 4 }}>
+        <ThemedText type="title">Settings</ThemedText>
+        <ThemedText style={{ opacity: 0.72 }}>
+          Manage your profile, targets, and connected health services.
+        </ThemedText>
+      </View>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Profile</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Contact details, units, kidney status, and care team.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push(APP_ROUTES.profileSettings)}
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              View and edit profile
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Nutrition targets</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Update your renal nutrition goals.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                params: { domain: "renal", title: "Nutrition targets" },
+                pathname: "/targets",
+              })
+            }
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              Edit nutrition targets
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Health targets</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Update steps, sleep, weight, and activity targets.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                params: {
+                  domain: "lifestyle",
+                  title: "Health targets",
+                },
+                pathname: "/targets",
+              })
+            }
+          >
+            <ThemedText style={{ fontWeight: "700" }}>Edit targets</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Missing data</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Repair historical gaps from your health provider by category.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/(fitness)/missing-data")}
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              Open repair tools
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      <Card>
+        <View style={{ gap: 8 }}>
+          <ThemedText type="defaultSemiBold">
+            {providerDisplayName()} status
+          </ThemedText>
+          <ThemedText style={{ opacity: 0.72 }}>{permissionSummary}</ThemedText>
+          <ThemedText style={{ opacity: 0.72 }}>{backgroundSummary}</ThemedText>
+          {loadingWorkerStatus ? (
+            <View style={{ alignItems: "flex-start", paddingTop: 4 }}>
+              <ActivityIndicator />
+            </View>
+          ) : (
+            <View style={{ gap: 4 }}>
+              {isAndroidWorkerStatus ? (
+                <>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Native background worker:{" "}
+                    {workerStatus.nativeWorkerEnabled
+                      ? "scheduled"
+                      : "not scheduled"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Periodic work: {workerStatus.periodicWorkState ?? "unknown"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Immediate work:{" "}
+                    {workerStatus.immediateWorkState ?? "unknown"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last task status: {workerStatus.lastTaskStatus ?? "unknown"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last scheduled:{" "}
+                    {formatTimestamp(workerStatus.lastScheduledAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last trigger:{" "}
+                    {formatTimestamp(workerStatus.lastTriggeredAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last worker start:{" "}
+                    {formatTimestamp(workerStatus.lastWorkerStartedAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last task start:{" "}
+                    {formatTimestamp(workerStatus.lastTaskStartedAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last task finish:{" "}
+                    {formatTimestamp(workerStatus.lastTaskFinishedAt)}
+                  </ThemedText>
+                  {workerStatus.lastFailureReason ? (
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last failure: {workerStatus.lastFailureReason}
+                    </ThemedText>
+                  ) : null}
+                </>
+              ) : isIosHealthKitStatus ? (
+                <>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Strategy: native HealthKit observer delivery
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Background delivery:{" "}
+                    {workerStatus.backgroundDeliveryEnabled
+                      ? "enabled"
+                      : "not enabled"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Pending observer types:{" "}
+                    {workerStatus.pendingObserverTypes.length
+                      ? workerStatus.pendingObserverTypes.join(", ")
+                      : "none"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last observer events:{" "}
+                    {Object.keys(workerStatus.lastObserverEventAtByType).length
+                      ? Object.entries(workerStatus.lastObserverEventAtByType)
+                          .map(
+                            ([key, value]) =>
+                              `${key} (${new Date(value).toLocaleString()})`,
+                          )
+                          .join(", ")
+                      : "none"}
+                  </ThemedText>
+                </>
+              ) : (
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Background status is unavailable on this build or device.
+                </ThemedText>
+              )}
+            </View>
+          )}
+        </View>
+      </Card>
+    </AppScreen>
+  );
+}

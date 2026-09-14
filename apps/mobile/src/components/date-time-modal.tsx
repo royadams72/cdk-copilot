@@ -222,6 +222,8 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
   },
   ghost: {
     backgroundColor: "rgba(148,163,184,0.25)",

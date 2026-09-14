@@ -2,6 +2,8 @@ import { PropsWithChildren } from "react";
 import { ViewStyle, View } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { styles } from "../styles";
+import { ThemedTextColorProvider } from "@/components/themed-text";
+import { theme as appTheme } from "@/constants/theme";
 
 export function Card({
   children,
@@ -16,7 +18,9 @@ export function Card({
         style,
       ]}
     >
-      {children}
+      <ThemedTextColorProvider color={appTheme.colors.text}>
+        {children}
+      </ThemedTextColorProvider>
     </View>
   );
 }
