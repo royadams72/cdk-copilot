@@ -28,9 +28,9 @@ const LightNavigationTheme = {
     ...DefaultTheme.colors,
     background: theme.colors.background,
     border: theme.colors.border,
-    card: theme.colors.surface,
+    card: theme.colors.background,
     primary: theme.colors.primary,
-    text: theme.colors.text,
+    text: theme.colors.onBackground,
   },
 };
 
@@ -119,7 +119,7 @@ export default function RootLayout() {
       }
     }
 
-    void SystemUI.setBackgroundColorAsync("#FFFFFF");
+    void SystemUI.setBackgroundColorAsync(theme.colors.background);
     void syncNativeAuthSessionMirrorFromSecureStore();
     if (hasAuthenticatedSessionReady()) {
       void syncAuthenticatedAppState();
@@ -165,7 +165,7 @@ export default function RootLayout() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider value={LightNavigationTheme}>
-          <StatusBar style="dark" backgroundColor={theme.colors.background} />
+          <StatusBar style="light" backgroundColor={theme.colors.background} />
           {shouldBlockProtectedRoute ? null : <Slot />}
         </ThemeProvider>
       </PersistGate>

@@ -223,7 +223,7 @@ export default function AddLabs() {
         <ThemedText type="title" style={NutritionStyles.screenTitle}>
           {isEdit ? "Edit labs" : "Add lab results"}
         </ThemedText>
-        <ThemedText style={{ color: theme.colors.copy }}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           {isEdit && editTakenAt
             ? `Editing labs for ${formatMobileUkInputDate(new Date(editTakenAt))}.`
             : "Enter values for the labs you want to submit."}

@@ -79,6 +79,8 @@ export const logMealStyles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 16,
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -89,6 +91,8 @@ export const logMealStyles = StyleSheet.create({
   },
   footerPrimaryInlineButton: {
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
   },
   footerRow: {
     flexDirection: "row",
@@ -146,7 +150,7 @@ export const logMealStyles = StyleSheet.create({
   dateText: {
     fontSize: 14,
     fontWeight: "600",
-    color: theme.colors.panelHeader,
+    color: theme.colors.onBackground,
   },
   dateButton: {
     paddingHorizontal: 12,
@@ -163,6 +167,8 @@ export const logMealStyles = StyleSheet.create({
     padding: 14,
     borderRadius: 8,
     backgroundColor: theme.colors.info,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
     marginBottom: 10,
   },
   logButtonText: {
@@ -174,6 +180,8 @@ export const logMealStyles = StyleSheet.create({
     minWidth: 104,
     borderRadius: 14,
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
@@ -206,7 +214,7 @@ export const logMealStyles = StyleSheet.create({
   },
   searchField: { flex: 1 },
   searchPanel: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.search,
     borderRadius: theme.radii.md,
     gap: theme.spacing.md,
     padding: theme.spacing.md,
@@ -246,6 +254,8 @@ export const logMealStyles = StyleSheet.create({
   },
   tabButtonActive: {
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
   },
   tabButtonText: {
     color: theme.colors.text,

@@ -203,7 +203,7 @@ export default function SymptomsScreen() {
 
         <View style={{ gap: theme.spacing.xs }}>
           <ThemedText type="title" style={NutritionStyles.screenTitle}>Symptoms</ThemedText>
-          <ThemedText style={{ color: theme.colors.copy }}>
+          <ThemedText style={NutritionStyles.pageHelperText}>
             Log symptoms in a structured way so your care team can review them.
           </ThemedText>
         </View>

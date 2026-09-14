@@ -57,7 +57,7 @@ export default function CarePlanList() {
 
       <View style={{ gap: theme.spacing.xs }}>
         <ThemedText type="title" style={NutritionStyles.screenTitle}>Care plans</ThemedText>
-        <ThemedText style={{ color: theme.colors.copy }}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           Active and completed care plans linked to your account.
         </ThemedText>
       </View>

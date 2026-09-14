@@ -19,7 +19,6 @@ import { AppButton } from "@/components/ui/button";
 import { Section } from "@/components/ui/section";
 import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
-import { NutritionStyles } from "@/screens/nutrition/styles";
 
 function formatStatus(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -83,7 +82,7 @@ export default function CarePlanDetail() {
 
       {!carePlanId || !data ? (
         <Section title="Care plan unavailable">
-          <ThemedText style={{ color: theme.colors.copy }}>
+          <ThemedText style={styles.helperText}>
             {carePlanId ? errorMessage : "No care plan was selected."}
           </ThemedText>
           <AppButton label="Return to care plans" onPress={() => router.replace("/(dashboard)/care-plans")} variant="outline" size="compact" />
@@ -91,8 +90,13 @@ export default function CarePlanDetail() {
       ) : (
         <>
           <View style={{ gap: theme.spacing.xs }}>
-            <ThemedText type="title" style={NutritionStyles.screenTitle}>{data.title}</ThemedText>
-            <ThemedText style={styles.carePlanStatusText}>
+            <ThemedText type="title">{data.title}</ThemedText>
+            <ThemedText
+              style={[
+                styles.carePlanStatusText,
+                { color: theme.colors.onBackground },
+              ]}
+            >
               {data.reviewDue ? "Review due" : formatStatus(data.status)}
             </ThemedText>
           </View>

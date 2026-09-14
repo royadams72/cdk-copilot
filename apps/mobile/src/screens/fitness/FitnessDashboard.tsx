@@ -17,7 +17,7 @@ import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { syncSleepReminderNotification } from "@/lib/pushNotifications";
 import {
   detectInstalledFitnessApps,
-  formatFitnessAppName,
+  getKnownFitnessApp,
   type KnownFitnessApp,
 } from "@/lib/fitnessApps";
 import { ThemedText } from "@/components/themed-text";
@@ -211,24 +211,13 @@ function stepStatusLabel(status: ReturnType<typeof useStepCount>["status"]) {
 }
 
 function formatStepOrigins(dataOrigins: string[]) {
-  if (!dataOrigins.length) return `Today from ${healthProviderName()}`;
+  const namedOrigins = dataOrigins
+    .map((origin) => getKnownFitnessApp(origin)?.displayName)
+    .filter((name): name is string => Boolean(name));
+  const uniqueNames = [...new Set(namedOrigins)];
+  if (!uniqueNames.length) return `Today from ${healthProviderName()}`;
 
-  return `Today from ${healthProviderName()}: ${dataOrigins
-    .map(formatHealthConnectOrigin)
-    .join(", ")}`;
-}
-
-function formatHealthConnectOrigin(origin: string) {
-  return formatFitnessAppName(origin);
-}
-
-function formatOriginTotals(originTotals: Record<string, number>) {
-  const entries = Object.entries(originTotals);
-  if (!entries.length) return "";
-
-  return entries
-    .map(([origin, total]) => `${formatHealthConnectOrigin(origin)} ${total}`)
-    .join(", ");
+  return `Today from ${healthProviderName()}: ${uniqueNames.join(", ")}`;
 }
 
 function getStepSubtext(
@@ -296,7 +285,6 @@ export default function FitnessDashboard() {
   const {
     backgroundReadGranted,
     dataOrigins: stepDataOrigins,
-    debug: stepDebug,
     hasAnyMeasurementAccess,
     missingHealthPermissions,
     openAppSettings,
@@ -431,7 +419,6 @@ export default function FitnessDashboard() {
     requestAccess,
     hasMissingHealthPermissions,
     stepDataOrigins,
-    stepDebug,
     stepStatus,
     stepsTarget,
     stepsToday,
@@ -480,14 +467,16 @@ export default function FitnessDashboard() {
             onPress={() => router.push("/(fitness)/settings")}
             style={{
               alignItems: "center",
-              backgroundColor: "rgba(148,163,184,0.18)",
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.panelHeader,
               borderRadius: 999,
+              borderWidth: 1,
               height: 40,
               justifyContent: "center",
               width: 40,
             }}
           >
-            <MaterialIcons color="#0F172A" name="settings" size={22} />
+            <MaterialIcons color={theme.colors.panelHeader} name="settings" size={22} />
           </TouchableOpacity>
         </View>
 
@@ -648,19 +637,6 @@ export default function FitnessDashboard() {
                   {card.value}
                 </ThemedText>
                 <ThemedText style={{ opacity: 0.7 }}>{card.subtext}</ThemedText>
-                {card.kind === "steps" && stepDebug ? (
-                <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                    {healthProviderName()} debug: aggregate {stepDebug.aggregateTotal}
-                    {typeof stepDebug.groupedTotal === "number"
-                      ? `, grouped ${stepDebug.groupedTotal}`
-                      : stepDebug.groupedError
-                        ? ", grouped failed"
-                        : ""}
-                    {Object.keys(stepDebug.originTotals).length > 0
-                      ? `, sources ${formatOriginTotals(stepDebug.originTotals)}`
-                      : ""}
-                  </ThemedText>
-                ) : null}
                 {typeof card.progressPercent === "number" ? (
                   <View style={{ gap: 6, marginTop: 8 }}>
                     <View

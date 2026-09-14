@@ -411,7 +411,7 @@ export default function NutritionDetails() {
     return (
       <View style={NutritionStyles.loading}>
         <ActivityIndicator size="large" />
-        <ThemedText style={NutritionStyles.helperText}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           Loading your nutrition data...
         </ThemedText>
       </View>
@@ -465,7 +465,7 @@ export default function NutritionDetails() {
           <ThemedText type="title" style={NutritionStyles.screenTitle}>
             Nutrition
           </ThemedText>
-          <ThemedText style={NutritionStyles.helperText}>
+          <ThemedText style={NutritionStyles.pageHelperText}>
             Track how your meals contribute to renal targets.
           </ThemedText>
         </View>

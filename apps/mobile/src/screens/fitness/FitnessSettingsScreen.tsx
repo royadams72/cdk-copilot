@@ -102,7 +102,20 @@ export default function FitnessSettingsScreen() {
             size="compact"
             variant="outline"
           />
-          <MaterialIcons color="#0F172A" name="settings" size={24} />
+          <View
+            style={{
+              alignItems: "center",
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.panelHeader,
+              borderRadius: 999,
+              borderWidth: 1,
+              height: 40,
+              justifyContent: "center",
+              width: 40,
+            }}
+          >
+            <MaterialIcons color={theme.colors.panelHeader} name="settings" size={22} />
+          </View>
         </View>
 
         <View style={{ gap: 4 }}>

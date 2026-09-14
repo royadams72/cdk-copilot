@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 import { theme } from "@/constants/theme";
+import { ThemedTextColorProvider } from "@/components/themed-text";
 import { AppButton } from "./button";
 
 export function Section({
@@ -34,11 +35,15 @@ export function Section({
           {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
       ) : null}
-      {empty && emptyLabel ? <Text style={styles.empty}>{emptyLabel}</Text> : children}
-      {actionLabel && onAction ? (
-        <AppButton label={actionLabel} onPress={onAction} variant="outline" size="compact" />
-      ) : null}
-      {footer}
+      <ThemedTextColorProvider
+        color={variant === "plain" ? theme.colors.onBackground : theme.colors.text}
+      >
+        {empty && emptyLabel ? <Text style={styles.empty}>{emptyLabel}</Text> : children}
+        {actionLabel && onAction ? (
+          <AppButton label={actionLabel} onPress={onAction} variant="outline" size="compact" />
+        ) : null}
+        {footer}
+      </ThemedTextColorProvider>
     </View>
   );
 }

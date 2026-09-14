@@ -1,3 +1,4 @@
+import { createContext, useContext, type PropsWithChildren } from "react";
 import { StyleSheet, Text, type TextProps } from "react-native";
 
 import { useThemeColor } from "@/hooks/use-theme-color";
@@ -8,6 +9,19 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string;
 };
 
+const ThemedTextColorContext = createContext<string | undefined>(undefined);
+
+export function ThemedTextColorProvider({
+  children,
+  color,
+}: PropsWithChildren<{ color: string }>) {
+  return (
+    <ThemedTextColorContext.Provider value={color}>
+      {children}
+    </ThemedTextColorContext.Provider>
+  );
+}
+
 export function ThemedText({
   style,
   lightColor,
@@ -15,7 +29,14 @@ export function ThemedText({
   type = "default",
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ dark: darkColor, light: lightColor }, "text");
+  const inheritedColor = useContext(ThemedTextColorContext);
+  const color = useThemeColor(
+    {
+      dark: darkColor ?? inheritedColor,
+      light: lightColor ?? inheritedColor,
+    },
+    "text",
+  );
 
   return (
     <Text

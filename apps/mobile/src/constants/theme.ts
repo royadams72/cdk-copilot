@@ -10,7 +10,7 @@ export const palette = {
   blue: "#0876D1",
   blueDark: "#075FA8",
   border: "#CBD5E1",
-  canvas: "#DCE6FF",
+  canvas: "#005EB8",
   cyan: "#22D3EE",
   green: "#10B981",
   greenDark: "#047857",
@@ -31,6 +31,7 @@ export const theme = {
   charts: { compactHeight: 144, radialSize: 152 },
   colors: {
     background: palette.canvas,
+    onBackground: "#E4E7EC",
     surface: palette.surface,
     surfaceMuted: "#F8FAFC",
     text: palette.ink,
@@ -60,6 +61,7 @@ export const theme = {
     controlPressed: "#D1D5DB",
     quinary: "#4C0A91",
     quinaryPressed: palette.purple,
+    search: "#320071",
     disabled: "#D1D5DB",
     disabledText: palette.muted,
     chart: {
@@ -91,7 +93,7 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
   light: {
-    text: theme.colors.text,
+    text: theme.colors.onBackground,
     background: theme.colors.background,
     tint: tintColorLight,
     icon: "#687076",

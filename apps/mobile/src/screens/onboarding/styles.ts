@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { theme } from "@/constants/theme";
 const BORDER_COLOR = "rgba(148,163,184,0.45)";
 const SURFACE_COLOR = "#FFFFFF";
 const SUBTLE_SURFACE_COLOR = "#F8FAFC";
@@ -94,7 +95,7 @@ export const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#0F172A",
+    color: theme.colors.onBackground,
   },
   loadingBlock: {
     minHeight: 220,
@@ -244,11 +245,11 @@ export const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#475569",
+    color: theme.colors.onBackground,
   },
   title: {
     fontSize: 26,
     fontWeight: "700",
-    color: "#0F172A",
+    color: theme.colors.onBackground,
   },
 });

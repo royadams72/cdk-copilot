@@ -109,7 +109,7 @@ export default function MedicationHistory() {
           size="compact"
         />
         <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication history</ThemedText>
-        <ThemedText style={{ color: theme.colors.copy }}>
+        <ThemedText style={NutritionStyles.pageHelperText}>
           Select a medication to view full status and edit history.
         </ThemedText>
 

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { theme } from "@/constants/theme";
 
 type MenuItem = {
   id: string;
@@ -51,14 +52,16 @@ export function HeaderOverflowMenu({
           onPress={openMenu}
           style={{
             alignItems: "center",
-            backgroundColor: "rgba(148,163,184,0.18)",
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.panelHeader,
             borderRadius: 999,
+            borderWidth: 1,
             height: 40,
             justifyContent: "center",
             width: 40,
           }}
         >
-          <MaterialIcons color="#0F172A" name="more-horiz" size={22} />
+          <MaterialIcons color={theme.colors.panelHeader} name="more-horiz" size={22} />
         </TouchableOpacity>
       </View>
       <Modal

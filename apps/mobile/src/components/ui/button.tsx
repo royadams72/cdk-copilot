@@ -114,7 +114,11 @@ const styles = StyleSheet.create({
   standardLabel: { fontSize: 16 },
   largeLabel: { fontSize: 17 },
   fullWidth: { alignSelf: "stretch" },
-  primary: { backgroundColor: theme.colors.primary },
+  primary: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.onPrimary,
+    borderWidth: 1,
+  },
   primaryPressed: { backgroundColor: theme.colors.primaryPressed },
   secondary: { backgroundColor: theme.colors.control, borderColor: theme.colors.textMuted, borderWidth: 1 },
   secondaryPressed: { backgroundColor: theme.colors.controlPressed },
