@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import type { TMealType } from "@ckd/core";
 
 import { APP_ROUTES } from "@/constants/routes";
-import { HeaderOverflowMenu } from "@/components/header-overflow-menu";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ThemedText } from "@/components/themed-text";
 import { FoodCard } from "@/components/food-card";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
@@ -443,23 +443,13 @@ export default function NutritionDetails() {
                 onPress={() => openLogMealModal(false)}
                 size="compact"
               />
-              <HeaderOverflowMenu
-                accessibilityLabel="Open nutrition actions"
-                items={[
-                  {
-                    id: "edit-targets",
-                    label: "Edit targets",
-                    onPress: () =>
-                      router.push({
-                        params: {
-                          domain: "renal",
-                          title: "Nutrition targets",
-                        },
-                        pathname: "/targets",
-                      }),
-                  },
-                ]}
-              />
+              <Pressable
+                accessibilityLabel="Open settings"
+                onPress={() => router.push(APP_ROUTES.settings)}
+                style={{ alignItems: "center", backgroundColor: theme.colors.surface, borderColor: theme.colors.panelHeader, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: "center", width: 40 }}
+              >
+                <MaterialIcons color={theme.colors.panelHeader} name="settings" size={22} />
+              </Pressable>
             </View>
           </View>
           <ThemedText type="title" style={NutritionStyles.screenTitle}>

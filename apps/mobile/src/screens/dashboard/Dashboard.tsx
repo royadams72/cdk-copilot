@@ -34,6 +34,8 @@ import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { useGetMeasurementHistoryQuery } from "@/store/services/measurementsApi";
 import { AppScreen } from "@/components/app-screen";
 import { AppButton } from "@/components/ui/button";
+import { theme } from "@/constants/theme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const EXERCISE_DAILY_TARGET_MIN = 30;
 const EXERCISE_DAILY_TARGET_KCAL = 500;
@@ -256,7 +258,25 @@ export default function Dashboard() {
       ) : (
         <>
           <View style={styles.header}>
-            <ThemedText type="title">Your dashboard</ThemedText>
+            <View style={styles.headerTopRow}>
+              <ThemedText type="title">Your dashboard</ThemedText>
+              <Pressable
+                accessibilityLabel="Open settings"
+                accessibilityRole="button"
+                hitSlop={4}
+                onPress={() => router.push(APP_ROUTES.settings)}
+                style={({ pressed }) => [
+                  styles.settingsButton,
+                  pressed && styles.settingsButtonPressed,
+                ]}
+              >
+                <MaterialIcons
+                  color={theme.colors.panelHeader}
+                  name="settings"
+                  size={22}
+                />
+              </Pressable>
+            </View>
             {data?.summary.ckdStage && (
               <ThemedText style={styles.subtleText}>
                 CKD stage {data.summary.ckdStage.toUpperCase()}

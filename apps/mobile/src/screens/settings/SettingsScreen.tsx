@@ -1,4 +1,3 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,7 +30,7 @@ function providerDisplayName() {
   return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
 }
 
-export default function FitnessSettingsScreen() {
+export default function SettingsScreen() {
   const router = useRouter();
   const {
     backgroundReadGranted,
@@ -98,36 +97,59 @@ export default function FitnessSettingsScreen() {
       >
         <AppButton
           label="Back"
-          onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+          onPress={() => router.back()}
           size="compact"
           variant="outline"
         />
-        <View
-          style={{
-            alignItems: "center",
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.panelHeader,
-            borderRadius: 999,
-            borderWidth: 1,
-            height: 40,
-            justifyContent: "center",
-            width: 40,
-          }}
-        >
-          <MaterialIcons
-            color={theme.colors.panelHeader}
-            name="settings"
-            size={22}
-          />
-        </View>
       </View>
 
       <View style={{ gap: 4 }}>
-        <ThemedText type="title">Health settings</ThemedText>
+        <ThemedText type="title">Settings</ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
-          Manage targets, health-provider status, and historical repairs.
+          Manage your profile, targets, and connected health services.
         </ThemedText>
       </View>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Profile</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Contact details, units, kidney status, and care team.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push(APP_ROUTES.profileSettings)}
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              View and edit profile
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Nutrition targets</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Update your renal nutrition goals.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                params: { domain: "renal", title: "Nutrition targets" },
+                pathname: "/targets",
+              })
+            }
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              Edit nutrition targets
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
 
       <Card>
         <View style={{ gap: 12 }}>

@@ -464,7 +464,7 @@ export default function FitnessDashboard() {
           />
           <TouchableOpacity
             accessibilityLabel="Open health settings"
-            onPress={() => router.push("/(fitness)/settings")}
+            onPress={() => router.push(APP_ROUTES.settings)}
             style={{
               alignItems: "center",
               backgroundColor: theme.colors.surface,
