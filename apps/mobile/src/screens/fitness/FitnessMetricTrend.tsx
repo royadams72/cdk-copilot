@@ -943,15 +943,15 @@ export default function FitnessMetricTrend() {
           return false;
         });
 
-        // Advance cursor regardless so the next session checks a new window
+        if (datesToBackfill.length) {
+          await getCurrentHealthSyncProvider()?.backfillStepDates(datesToBackfill, {
+            reason: "steps-screen",
+            windowKey,
+          });
+        }
+
+        // Only advance after all provider reads and uploads complete successfully.
         await updateServerStepsBackfilledFrom(windowStartKey);
-
-        if (!datesToBackfill.length) return;
-
-        await getCurrentHealthSyncProvider()?.backfillStepDates(datesToBackfill, {
-          reason: "steps-screen",
-          windowKey,
-        });
       } catch (err) {
         // Allow retry next session
         completedBackfillWindowKeys.delete(sessionKey);

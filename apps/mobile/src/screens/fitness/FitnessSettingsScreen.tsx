@@ -19,7 +19,7 @@ import {
   getNativeHealthKitStatus,
   type NativeHealthKitStatus,
 } from "@/lib/healthKitNativeBridge";
-
+import { theme } from "@/constants/theme";
 import { Card } from "../dashboard/components/Card";
 
 function formatTimestamp(value: number | null | undefined) {
@@ -89,162 +89,183 @@ export default function FitnessSettingsScreen() {
 
   return (
     <AppScreen>
+      <View
+        style={{
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
+      >
+        <AppButton
+          label="Back"
+          onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+          size="compact"
+          variant="outline"
+        />
         <View
           style={{
             alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "space-between",
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.panelHeader,
+            borderRadius: 999,
+            borderWidth: 1,
+            height: 40,
+            justifyContent: "center",
+            width: 40,
           }}
         >
-          <AppButton
-            label="Back"
-            onPress={() => router.replace(APP_ROUTES.healthDashboard)}
-            size="compact"
-            variant="outline"
+          <MaterialIcons
+            color={theme.colors.panelHeader}
+            name="settings"
+            size={22}
           />
-          <View
-            style={{
-              alignItems: "center",
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.panelHeader,
-              borderRadius: 999,
-              borderWidth: 1,
-              height: 40,
-              justifyContent: "center",
-              width: 40,
-            }}
+        </View>
+      </View>
+
+      <View style={{ gap: 4 }}>
+        <ThemedText type="title">Health settings</ThemedText>
+        <ThemedText style={{ opacity: 0.72 }}>
+          Manage targets, health-provider status, and historical repairs.
+        </ThemedText>
+      </View>
+
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Health targets</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Update steps, sleep, weight, and activity targets.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                params: {
+                  domain: "lifestyle",
+                  title: "Health targets",
+                },
+                pathname: "/targets",
+              })
+            }
           >
-            <MaterialIcons color={theme.colors.panelHeader} name="settings" size={22} />
-          </View>
+            <ThemedText style={{ fontWeight: "700" }}>Edit targets</ThemedText>
+          </TouchableOpacity>
         </View>
+      </Card>
 
-        <View style={{ gap: 4 }}>
-          <ThemedText type="title">Health settings</ThemedText>
-          <ThemedText style={{ opacity: 0.72 }}>
-            Manage targets, health-provider status, and historical repairs.
+      <Card>
+        <View style={{ gap: 12 }}>
+          <View style={{ gap: 4 }}>
+            <ThemedText type="defaultSemiBold">Missing data</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Repair historical gaps from your health provider by category.
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/(fitness)/missing-data")}
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              Open repair tools
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      <Card>
+        <View style={{ gap: 8 }}>
+          <ThemedText type="defaultSemiBold">
+            {providerDisplayName()} status
           </ThemedText>
-        </View>
-
-        <Card>
-          <View style={{ gap: 12 }}>
-            <View style={{ gap: 4 }}>
-              <ThemedText type="defaultSemiBold">Health targets</ThemedText>
-              <ThemedText style={{ opacity: 0.72 }}>
-                Update steps, sleep, weight, and activity targets.
-              </ThemedText>
+          <ThemedText style={{ opacity: 0.72 }}>{permissionSummary}</ThemedText>
+          <ThemedText style={{ opacity: 0.72 }}>{backgroundSummary}</ThemedText>
+          {loadingWorkerStatus ? (
+            <View style={{ alignItems: "flex-start", paddingTop: 4 }}>
+              <ActivityIndicator />
             </View>
-            <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  params: {
-                    domain: "lifestyle",
-                    title: "Health targets",
-                  },
-                  pathname: "/targets",
-                })
-              }
-            >
-              <ThemedText style={{ fontWeight: "700" }}>Edit targets</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </Card>
-
-        <Card>
-          <View style={{ gap: 12 }}>
+          ) : (
             <View style={{ gap: 4 }}>
-              <ThemedText type="defaultSemiBold">Missing data</ThemedText>
-              <ThemedText style={{ opacity: 0.72 }}>
-                Repair historical gaps from your health provider by category.
-              </ThemedText>
-            </View>
-            <TouchableOpacity
-              onPress={() => router.push("/(fitness)/missing-data")}
-            >
-              <ThemedText style={{ fontWeight: "700" }}>Open repair tools</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </Card>
-
-        <Card>
-          <View style={{ gap: 8 }}>
-            <ThemedText type="defaultSemiBold">{providerDisplayName()} status</ThemedText>
-            <ThemedText style={{ opacity: 0.72 }}>{permissionSummary}</ThemedText>
-            <ThemedText style={{ opacity: 0.72 }}>{backgroundSummary}</ThemedText>
-            {loadingWorkerStatus ? (
-              <View style={{ alignItems: "flex-start", paddingTop: 4 }}>
-                <ActivityIndicator />
-              </View>
-            ) : (
-              <View style={{ gap: 4 }}>
-                {isAndroidWorkerStatus ? (
-                  <>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Native background worker:{" "}
-                      {workerStatus.nativeWorkerEnabled ? "scheduled" : "not scheduled"}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Periodic work: {workerStatus.periodicWorkState ?? "unknown"}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Immediate work: {workerStatus.immediateWorkState ?? "unknown"}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last task status: {workerStatus.lastTaskStatus ?? "unknown"}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last scheduled: {formatTimestamp(workerStatus.lastScheduledAt)}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last trigger: {formatTimestamp(workerStatus.lastTriggeredAt)}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last worker start: {formatTimestamp(workerStatus.lastWorkerStartedAt)}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last task start: {formatTimestamp(workerStatus.lastTaskStartedAt)}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last task finish: {formatTimestamp(workerStatus.lastTaskFinishedAt)}
-                    </ThemedText>
-                    {workerStatus.lastFailureReason ? (
-                      <ThemedText style={{ opacity: 0.72 }}>
-                        Last failure: {workerStatus.lastFailureReason}
-                      </ThemedText>
-                    ) : null}
-                  </>
-                ) : isIosHealthKitStatus ? (
-                  <>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Strategy: native HealthKit observer delivery
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Background delivery:{" "}
-                      {workerStatus.backgroundDeliveryEnabled ? "enabled" : "not enabled"}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Pending observer types:{" "}
-                      {workerStatus.pendingObserverTypes.length
-                        ? workerStatus.pendingObserverTypes.join(", ")
-                        : "none"}
-                    </ThemedText>
-                    <ThemedText style={{ opacity: 0.72 }}>
-                      Last observer events:{" "}
-                      {Object.keys(workerStatus.lastObserverEventAtByType).length
-                        ? Object.entries(workerStatus.lastObserverEventAtByType)
-                            .map(([key, value]) => `${key} (${new Date(value).toLocaleString()})`)
-                            .join(", ")
-                        : "none"}
-                    </ThemedText>
-                  </>
-                ) : (
+              {isAndroidWorkerStatus ? (
+                <>
                   <ThemedText style={{ opacity: 0.72 }}>
-                    Background status is unavailable on this build or device.
+                    Native background worker:{" "}
+                    {workerStatus.nativeWorkerEnabled
+                      ? "scheduled"
+                      : "not scheduled"}
                   </ThemedText>
-                )}
-              </View>
-            )}
-          </View>
-        </Card>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Periodic work: {workerStatus.periodicWorkState ?? "unknown"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Immediate work:{" "}
+                    {workerStatus.immediateWorkState ?? "unknown"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last task status: {workerStatus.lastTaskStatus ?? "unknown"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last scheduled:{" "}
+                    {formatTimestamp(workerStatus.lastScheduledAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last trigger:{" "}
+                    {formatTimestamp(workerStatus.lastTriggeredAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last worker start:{" "}
+                    {formatTimestamp(workerStatus.lastWorkerStartedAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last task start:{" "}
+                    {formatTimestamp(workerStatus.lastTaskStartedAt)}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last task finish:{" "}
+                    {formatTimestamp(workerStatus.lastTaskFinishedAt)}
+                  </ThemedText>
+                  {workerStatus.lastFailureReason ? (
+                    <ThemedText style={{ opacity: 0.72 }}>
+                      Last failure: {workerStatus.lastFailureReason}
+                    </ThemedText>
+                  ) : null}
+                </>
+              ) : isIosHealthKitStatus ? (
+                <>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Strategy: native HealthKit observer delivery
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Background delivery:{" "}
+                    {workerStatus.backgroundDeliveryEnabled
+                      ? "enabled"
+                      : "not enabled"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Pending observer types:{" "}
+                    {workerStatus.pendingObserverTypes.length
+                      ? workerStatus.pendingObserverTypes.join(", ")
+                      : "none"}
+                  </ThemedText>
+                  <ThemedText style={{ opacity: 0.72 }}>
+                    Last observer events:{" "}
+                    {Object.keys(workerStatus.lastObserverEventAtByType).length
+                      ? Object.entries(workerStatus.lastObserverEventAtByType)
+                          .map(
+                            ([key, value]) =>
+                              `${key} (${new Date(value).toLocaleString()})`,
+                          )
+                          .join(", ")
+                      : "none"}
+                  </ThemedText>
+                </>
+              ) : (
+                <ThemedText style={{ opacity: 0.72 }}>
+                  Background status is unavailable on this build or device.
+                </ThemedText>
+              )}
+            </View>
+          )}
+        </View>
+      </Card>
     </AppScreen>
   );
 }

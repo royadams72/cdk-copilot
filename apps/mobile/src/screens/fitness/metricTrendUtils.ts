@@ -145,25 +145,24 @@ export function sortEntriesForTrendDay(
     return sorted;
   }
 
-  const preferred =
-    sorted.find(
-      (entry) =>
-        typeof entry.distanceMeters === "number" ||
-        typeof entry.caloriesKcal === "number" ||
-        typeof entry.averageSpeedKph === "number",
-    ) ?? sorted[0];
+  const priority = (entry: DayEntry) => {
+    const positive = typeof entry.value === "number" && entry.value > 0;
+    const finalized = entry.sync?.status === "finalized";
+    if (finalized && positive) return 4;
+    if (positive) return 3;
+    if (finalized) return 2;
+    return 1;
+  };
+  const preferred = sorted.reduce<DayEntry | undefined>((best, entry) => {
+    if (!best) return entry;
+    return priority(entry) > priority(best) ? entry : best;
+  }, undefined);
 
   return preferred ? [preferred] : [];
 }
 
 export function getStepSummaryFromEntries(entries: DayEntry[]) {
-  const preferred =
-    entries.find(
-      (entry) =>
-        typeof entry.distanceMeters === "number" ||
-        typeof entry.caloriesKcal === "number" ||
-        typeof entry.averageSpeedKph === "number",
-    ) ?? entries[0];
+  const preferred = sortEntriesForTrendDay("steps", entries)[0];
 
   return {
     averageSpeedKph: preferred?.averageSpeedKph ?? null,
