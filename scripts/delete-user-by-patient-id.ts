@@ -36,7 +36,6 @@ type PiiDoc = {
 const OBJECT_ID_PATIENT_COLLECTIONS = [
   COLLECTIONS.AuthTokens,
   COLLECTIONS.CarePlans,
-  COLLECTIONS.FitPlans,
   COLLECTIONS.HealthConnectEventLogs,
   COLLECTIONS.HealthConnectSyncState,
   COLLECTIONS.HealthProfilesCurrent,
@@ -387,7 +386,8 @@ async function run() {
       `credentialIds: ${credentialIds.length > 0 ? credentialIds.join(", ") : "(none found)"}`,
     );
 
-    const { deletes: plannedDeletes, updates: plannedUpdates } = getPlanSummary(plans);
+    const { deletes: plannedDeletes, updates: plannedUpdates } =
+      getPlanSummary(plans);
 
     if (plannedDeletes === 0 && plannedUpdates === 0) {
       throw new Error(

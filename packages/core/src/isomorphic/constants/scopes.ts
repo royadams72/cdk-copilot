@@ -5,9 +5,6 @@ export const SCOPES = {
   USERS_CLINICAL_READ: "users:clinical:read",
   USERS_CLINICAL_WRITE: "users:clinical:write",
 
-  FITPLANS_READ: "fitplans:read",
-  FITPLANS_WRITE: "fitplans:write",
-
   LABS_READ: "labs:read",
   LABS_WRITE: "labs:write",
   MEDS_READ: "medications:read",
@@ -36,9 +33,9 @@ export const SCOPES = {
 } as const;
 
 export const ROLES = {
-  Patient: "patient",
   Clinician: "clinician",
   Dietitian: "dietitian",
+  Patient: "patient",
 } as const;
 
 export type Scope = (typeof SCOPES)[keyof typeof SCOPES];
@@ -46,22 +43,11 @@ export type Role = "patient" | "clinician" | "dietitian" | "admin";
 
 // Role → scopes (no strings!)
 export const ROLE_SCOPES: Record<Role, readonly Scope[]> = {
-  patient: [
-    SCOPES.USERS_PII_READ,
-    SCOPES.USERS_PII_WRITE,
-    SCOPES.USERS_CLINICAL_READ,
-    SCOPES.FITPLANS_READ,
-    SCOPES.MEASUREMENTS_READ,
-    SCOPES.MEASUREMENTS_WRITE,
-    SCOPES.MEDS_READ,
-    SCOPES.MEDS_WRITE,
-  ],
+  admin: Object.values(SCOPES),
   clinician: [
     SCOPES.USERS_PII_READ,
     SCOPES.USERS_CLINICAL_READ,
     SCOPES.USERS_CLINICAL_WRITE,
-    SCOPES.FITPLANS_READ,
-    SCOPES.FITPLANS_WRITE,
     SCOPES.LABS_READ,
     SCOPES.MEDS_READ,
     SCOPES.CAREPLANS_READ,
@@ -71,13 +57,19 @@ export const ROLE_SCOPES: Record<Role, readonly Scope[]> = {
   dietitian: [
     SCOPES.USERS_PII_READ,
     SCOPES.USERS_CLINICAL_READ,
-    SCOPES.FITPLANS_READ,
-    SCOPES.FITPLANS_WRITE,
     SCOPES.CAREPLANS_READ,
     SCOPES.CAREPLANS_WRITE,
     SCOPES.MEASUREMENTS_READ,
   ],
-  admin: Object.values(SCOPES),
+  patient: [
+    SCOPES.USERS_PII_READ,
+    SCOPES.USERS_PII_WRITE,
+    SCOPES.USERS_CLINICAL_READ,
+    SCOPES.MEASUREMENTS_READ,
+    SCOPES.MEASUREMENTS_WRITE,
+    SCOPES.MEDS_READ,
+    SCOPES.MEDS_WRITE,
+  ],
 };
 
 export const DEFAULT_SCOPES = [
@@ -102,7 +94,7 @@ export const STEP3 = [
 // tiny checker
 export function hasScopes(
   has: readonly Scope[] | undefined,
-  needs: Scope | Scope[]
+  needs: Scope | Scope[],
 ) {
   if (!has?.length) return false;
   const set = new Set(has);
