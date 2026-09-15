@@ -18,7 +18,6 @@ export * from "./schemas/patient_consents";
 export * from "./schemas/patient_invites";
 export * from "./schemas/patients";
 export * from "./schemas/symptoms";
-export * from "./schemas/weekly_nutrition_insights";
 export * from "./schemas/clinical_reference_rules";
 export * from "./schemas/targets";
 export * from "./schemas/users_pii";

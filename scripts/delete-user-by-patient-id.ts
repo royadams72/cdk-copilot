@@ -73,11 +73,6 @@ const OBJECT_ID_PATIENT_COLLECTIONS = [
   COLLECTIONS.TargetsLedger,
   COLLECTIONS.UsersClinical,
   COLLECTIONS.UsersPII,
-  COLLECTIONS.WeeklyNutritionInsights,
-] as const;
-
-const STRING_PATIENT_COLLECTIONS = [
-  COLLECTIONS.WeeklyNutritionInsights,
 ] as const;
 
 function printHelp() {
@@ -204,16 +199,6 @@ async function buildDeletePlan(
 
   for (const collection of OBJECT_ID_PATIENT_COLLECTIONS) {
     const filter = { patientId: patientObjectId };
-    plans.push({
-      collection,
-      count: await countDocuments(client, args.dbName, collection, filter),
-      filter,
-      kind: "deleteMany",
-    });
-  }
-
-  for (const collection of STRING_PATIENT_COLLECTIONS) {
-    const filter = { patientId: patientObjectId.toString() };
     plans.push({
       collection,
       count: await countDocuments(client, args.dbName, collection, filter),

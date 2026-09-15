@@ -4,10 +4,6 @@
     {
       "path": "/api/membership/expire/run",
       "schedule": "10 1 * * *"
-    },
-    {
-      "path": "/api/nutrition/weekly-summary/run",
-      "schedule": "0 8 * * 1"
     }
   ]
 }

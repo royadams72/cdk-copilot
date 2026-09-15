@@ -1,5 +1,4 @@
 import { COLLECTIONS, getCollection } from "@ckd/core/server";
-import type { TWeeklyNutritionInsight } from "@ckd/core";
 import { ObjectId, type Db } from "mongodb";
 
 type UserPiiPushDoc = {
@@ -32,11 +31,6 @@ type ExpoPushMessage = {
   title: string;
   to: string;
 };
-
-function getInsightPreview(insight: TWeeklyNutritionInsight) {
-  const firstSentence = insight.humanMessage.split(/(?<=[.!?])\s+/)[0]?.trim();
-  return firstSentence || "Your weekly nutrition report is ready.";
-}
 
 async function sendExpoPushMessages(pushMessages: ExpoPushMessage[]) {
   if (!pushMessages.length) {
@@ -145,54 +139,4 @@ export async function sendPatientPushNotification(
   }
 
   return result;
-}
-
-export async function sendWeeklyInsightPushNotifications(
-  db: Db,
-  insights: TWeeklyNutritionInsight[],
-) {
-  if (!insights.length) {
-    return { attempted: 0, delivered: 0, failed: 0 };
-  }
-
-  const usersPii = getCollection<UserPiiPushDoc>(db, COLLECTIONS.UsersPII);
-  const patientIds = insights.map((insight) => insight.patientId);
-  const users = await usersPii
-    .find(
-      {
-        patientId: { $in: patientIds },
-        "notificationPrefs.push": true,
-        "devices.pushToken": { $exists: true },
-      },
-      {
-        projection: {
-          devices: 1,
-          notificationPrefs: 1,
-          patientId: 1,
-        },
-      },
-    )
-    .toArray();
-
-  const pushMessages: ExpoPushMessage[] = insights.flatMap((insight) => {
-    const user = users.find((candidate) => candidate.patientId === insight.patientId);
-    const tokens = (user?.devices ?? [])
-      .map((device) => device.pushToken?.trim())
-      .filter((token): token is string => Boolean(token));
-
-    return Array.from(new Set(tokens)).map((to) => ({
-      body: getInsightPreview(insight),
-      data: {
-        screen: "/(nutrition)/nutrition-details",
-        type: "weekly-report",
-        weekEnd: insight.weekEnd,
-        weekStart: insight.weekStart,
-      },
-      sound: "default" as const,
-      title: "Weekly report ready",
-      to,
-    }));
-  });
-
-  return sendExpoPushMessages(pushMessages);
 }

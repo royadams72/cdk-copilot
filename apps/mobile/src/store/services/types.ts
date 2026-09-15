@@ -16,7 +16,6 @@ import {
   TSymptomListResponse,
   TSymptomsCurrent,
   TSymptomUpdateRequest,
-  TWeeklyNutritionInsight,
 } from "@ckd/core";
 
 export type DashboardScope = "today" | "all";
@@ -285,7 +284,6 @@ export type TargetsResponse = {
   weightKg?: number | null;
 };
 
-export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
 export type MonthlyNutritionFilter =
   | "caloriesKcal"
   | "phosphorusMg"
@@ -416,10 +414,6 @@ export type CurrentUserSettingsResponse = {
   phoneE164?: string | null;
   units: UserUnits;
 };
-export type RunWeeklyNutritionInsightArgs = {
-  referenceDate?: string;
-};
-
 export type UpdateTargetArgs = {
   clearOverride?: boolean;
   metric: string;

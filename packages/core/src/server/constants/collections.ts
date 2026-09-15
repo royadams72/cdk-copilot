@@ -38,7 +38,6 @@ export const COLLECTIONS = {
   NutritionFavourites: "nutrition_favourites",
   NutritionLedger: "nutrition_ledger",
   NutritionMonthlyPatientSummary: "nutrition_monthly_patient_summary",
-  WeeklyNutritionInsights: "weekly_nutrition_insights",
   TargetsCurrent: "targets_current",
   TargetsLedger: "targets_ledger",
   SymptomsCurrent: "symptoms_current",

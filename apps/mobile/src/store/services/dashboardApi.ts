@@ -1,4 +1,3 @@
-import { TWeeklyNutritionInsight } from "@ckd/core";
 import type {
   DashboardData,
   NutritionDailyPoint,
@@ -11,12 +10,10 @@ import {
   MonthlyNutritionSummaryResponse,
   NutritionTrendChunkArgs,
   NutritionTrendData,
-  RunWeeklyNutritionInsightArgs,
   TargetDomain,
   TargetItem,
   TargetsResponse,
   UpdateTargetArgs,
-  WeeklyNutritionInsightResponse,
 } from "./types";
 
 import { appApi } from "./appApi";
@@ -40,16 +37,6 @@ export const dashboardApi = appApi.injectEndpoints({
         const { patientId: _patientId, ...safeResponse } = response;
         return safeResponse;
       },
-    }),
-    getLatestWeeklyNutritionInsight: builder.query<
-      WeeklyNutritionInsightResponse,
-      void
-    >({
-      providesTags: [{ id: "weekly-summary", type: "Dashboard" as const }],
-      query: () => "/api/nutrition/weekly-summary/latest",
-      transformResponse: (response: {
-        insight: TWeeklyNutritionInsight | null;
-      }) => response?.insight ?? null,
     }),
     getMonthlyNutritionSummary: builder.query<
       MonthlyNutritionSummaryResponse,
@@ -113,21 +100,6 @@ export const dashboardApi = appApi.injectEndpoints({
       query: (domain) =>
         domain ? `/api/targets?domain=${domain}` : "/api/targets",
     }),
-    runWeeklyNutritionInsight: builder.mutation<
-      TWeeklyNutritionInsight,
-      RunWeeklyNutritionInsightArgs | void
-    >({
-      invalidatesTags: [
-        { id: "today", type: "Dashboard" as const },
-        { id: "all", type: "Dashboard" as const },
-        { id: "weekly-summary", type: "Dashboard" as const },
-      ],
-      query: (body) => ({
-        body: body ?? {},
-        method: "POST",
-        url: "/api/nutrition/weekly-summary/run",
-      }),
-    }),
     updateTarget: builder.mutation<
       { metric: string; target: TargetItem; updated: boolean },
       UpdateTargetArgs
@@ -157,12 +129,10 @@ export const dashboardApi = appApi.injectEndpoints({
 
 export const {
   useGetDashboardQuery,
-  useGetLatestWeeklyNutritionInsightQuery,
   useGetMonthlyNutritionSummaryQuery,
   useGetNutritionTrendChunkQuery,
   useGetTargetsQuery,
   useLazyGetNutritionTrendChunkQuery,
-  useRunWeeklyNutritionInsightMutation,
   useUpdateTargetMutation,
 } = dashboardApi;
 
