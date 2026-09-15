@@ -78,7 +78,7 @@ export function MetricHourlyBarChart({
         >
           {values.map((value, index) => {
             const numeric =
-              typeof value === "number" && Number.isFinite(value)
+              Number.isFinite(value)
                 ? value
                 : null;
             const barHeight =

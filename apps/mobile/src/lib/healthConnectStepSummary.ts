@@ -292,7 +292,7 @@ async function readStepAggregateSummary(
               .map((sample) => sample.speed?.inKilometersPerHour ?? null)
               .filter(
                 (value): value is number =>
-                  typeof value === "number" && Number.isFinite(value),
+                  Number.isFinite(value),
               ),
           );
 

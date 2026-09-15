@@ -193,7 +193,7 @@ export default function NutritionDetails() {
   const chartTarget = useMemo(() => {
     if (metricConfig.key === "phosphorus_protein_ratio") {
       const ratioTarget = chartRatio.target;
-      return typeof ratioTarget === "number" && Number.isFinite(ratioTarget)
+      return Number.isFinite(ratioTarget)
         ? ratioTarget
         : null;
     }
@@ -206,7 +206,7 @@ export default function NutritionDetails() {
   const chartDomainMax = useMemo(() => {
     const values = chartSeries.map((point) => point.value);
     const targetValue =
-      typeof chartTarget === "number" && Number.isFinite(chartTarget)
+      Number.isFinite(chartTarget)
         ? chartTarget
         : null;
     if (targetValue !== null) {

@@ -274,7 +274,7 @@ const getTotals = (entries: TFoodItemEntry[]) =>
 
 function normaliseNutrient(key: string, value: unknown): number | undefined {
   if (typeof value !== "number") return undefined;
-  if (!Number.isFinite(value) || Number.isNaN(value)) return 0;
+  if (!Number.isFinite(value)) return 0;
   if (value < 0) return 0;
   const max = nutrientMax[key];
   const bounded = typeof max === "number" ? Math.min(value, max) : value;
@@ -282,8 +282,7 @@ function normaliseNutrient(key: string, value: unknown): number | undefined {
 }
 
 function sanitiseQuantity(value: unknown): number {
-  if (typeof value !== "number" || Number.isNaN(value)) return 1;
-  if (!Number.isFinite(value)) return 1;
+  if (typeof value !== "number" || !Number.isFinite(value)) return 1;
   if (value < 0) return 0;
   if (value > 600) return 600;
   return value;
