@@ -7,6 +7,19 @@ import { COLLECTIONS } from "../packages/core/src/server/constants/collections";
 
 dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 dotenv.config({ path: path.join(process.cwd(), ".env") });
+/**
+ Usage:
+  pnpm db:delete:user --patientId <24-hex-id>
+  pnpm db:delete:user --patientId <24-hex-id> --apply
+
+Options:
+  --patientId <id>  Required Mongo ObjectId string for patients._id
+                    Not an invite _id, users_accounts _id, or principalId
+  --apply           Execute deletes. Omit for dry run
+  --db <name>       Override database name (default: MONGODB_DB | DB_NAME | ckd-copilot)
+  --help            Show this message
+ */
+// 6a5a1aba3483457d764a7f7e
 
 type CliArgs = {
   apply: boolean;
