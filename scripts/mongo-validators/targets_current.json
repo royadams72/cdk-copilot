@@ -98,8 +98,39 @@
                 },
                 "additionalProperties": false
               },
+              "personalGoal": {
+                "bsonType": ["object", "null"],
+                "required": ["type"],
+                "properties": {
+                  "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },
+                  "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "high": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "value": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "basis": {
+                    "bsonType": ["string", "null"],
+                    "enum": ["perDay", "perKgPerDay", null]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "careTeamTarget": {
+                "bsonType": ["object", "null"],
+                "required": ["type"],
+                "properties": {
+                  "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },
+                  "low": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "high": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "value": { "bsonType": ["double", "int", "long", "decimal", "null"] },
+                  "basis": {
+                    "bsonType": ["string", "null"],
+                    "enum": ["perDay", "perKgPerDay", null]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "generalReferenceSelected": { "bsonType": "bool" },
               "effective": {
-                "bsonType": "object",
+                "bsonType": ["object", "null"],
                 "required": ["type"],
                 "properties": {
                   "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },
@@ -124,6 +155,50 @@
                 "additionalProperties": false
               },
               "overrideMeta": {
+                "bsonType": ["object", "null"],
+                "required": ["setAt", "setBy"],
+                "properties": {
+                  "setAt": { "bsonType": "date" },
+                  "setBy": {
+                    "bsonType": "object",
+                    "required": ["principalId", "actorType"],
+                    "properties": {
+                      "principalId": { "bsonType": "string" },
+                      "actorType": {
+                        "bsonType": "string",
+                        "enum": ["user", "clinician", "system"]
+                      },
+                      "displayName": { "bsonType": ["string", "null"] }
+                    },
+                    "additionalProperties": false
+                  },
+                  "reason": { "bsonType": ["string", "null"] }
+                },
+                "additionalProperties": false
+              },
+              "personalGoalMeta": {
+                "bsonType": ["object", "null"],
+                "required": ["setAt", "setBy"],
+                "properties": {
+                  "setAt": { "bsonType": "date" },
+                  "setBy": {
+                    "bsonType": "object",
+                    "required": ["principalId", "actorType"],
+                    "properties": {
+                      "principalId": { "bsonType": "string" },
+                      "actorType": {
+                        "bsonType": "string",
+                        "enum": ["user", "clinician", "system"]
+                      },
+                      "displayName": { "bsonType": ["string", "null"] }
+                    },
+                    "additionalProperties": false
+                  },
+                  "reason": { "bsonType": ["string", "null"] }
+                },
+                "additionalProperties": false
+              },
+              "careTeamTargetMeta": {
                 "bsonType": ["object", "null"],
                 "required": ["setAt", "setBy"],
                 "properties": {

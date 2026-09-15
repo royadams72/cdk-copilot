@@ -51,7 +51,6 @@ type MetricCard = {
   value: string;
 };
 
-const STEPS_DAILY_TARGET = 10000;
 
 function healthProviderName() {
   return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
@@ -73,7 +72,7 @@ function formatDateTime(value?: string) {
 function toCard(
   kind: MeasurementKind,
   doc?: MeasurementLatest,
-  stepsTarget: number = STEPS_DAILY_TARGET,
+  stepsTarget: number | null = null,
   weightDisplayUnit: "kg" | "lb" = "kg",
 ): MetricCard {
   if (!doc) {
@@ -99,14 +98,14 @@ function toCard(
     const steps =
       typeof doc.count === "number" ? Math.max(0, Math.round(doc.count)) : null;
     const percent =
-      steps === null
+      steps === null || stepsTarget === null || stepsTarget <= 0
         ? undefined
         : Math.min(100, Math.round((steps / stepsTarget) * 100));
     return {
       kind: "steps",
       label: "Steps",
       progressLabel:
-        steps !== null
+        steps !== null && stepsTarget !== null
           ? `${percent}% of ${stepsTarget.toLocaleString()} daily target`
           : undefined,
       progressPercent: percent,
@@ -282,6 +281,8 @@ export default function FitnessDashboard() {
     useGetLatestMeasurementsQuery(undefined);
   const { data: currentUserSettings } = useGetCurrentUserSettingsQuery();
   const { data: targetsData } = useGetTargetsQuery("lifestyle");
+  const stepsTargetValue = targetsData?.items.find((item) => item.metric === "steps_per_day")?.effective?.value;
+  const stepsTarget = typeof stepsTargetValue === "number" && stepsTargetValue > 0 ? stepsTargetValue : null;
   const {
     backgroundReadGranted,
     dataOrigins: stepDataOrigins,
@@ -294,7 +295,7 @@ export default function FitnessDashboard() {
     requestBackgroundReadAccess,
     status: stepStatus,
     stepsToday,
-  } = useStepCount(STEPS_DAILY_TARGET);
+  } = useStepCount(stepsTarget ?? 0);
   useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(
     stepStatus === "ready" || hasAnyMeasurementAccess,
@@ -350,16 +351,6 @@ export default function FitnessDashboard() {
     }
   };
 
-  const stepsTarget = useMemo(() => {
-    const stepsTargetItem = targetsData?.items.find(
-      (item) =>
-        item.metric === "steps_per_day" &&
-        item.effective &&
-        typeof item.effective.value === "number",
-    );
-    return stepsTargetItem?.effective.value ?? STEPS_DAILY_TARGET;
-  }, [targetsData?.items]);
-
   const cards = useMemo(() => {
     const byKind = new Map(items.map((item) => [item.kind, item]));
     const stepProgress =
@@ -375,7 +366,7 @@ export default function FitnessDashboard() {
           : undefined,
       progressLabel:
         typeof stepProgress === "number"
-          ? `${stepProgress}% of ${stepsTarget.toLocaleString()} daily target`
+          ? `${stepProgress}% of ${stepsTarget?.toLocaleString()} daily target`
           : undefined,
       progressPercent: stepProgress,
       subtext: getStepSubtext(

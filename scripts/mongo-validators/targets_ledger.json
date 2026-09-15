@@ -82,7 +82,7 @@
           "additionalProperties": false
         },
         "after": {
-          "bsonType": "object",
+          "bsonType": ["object", "null"],
           "required": ["type"],
           "properties": {
             "type": { "bsonType": "string", "enum": ["range", "max", "min", "exact"] },

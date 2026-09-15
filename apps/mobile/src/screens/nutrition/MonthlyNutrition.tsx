@@ -178,6 +178,11 @@ export default function MonthlyNutrition() {
             </ThemedText>
           </View>
           <View style={NutritionStyles.monthlyChartWrap}>
+            {selectedTarget === null ? (
+              <ThemedText style={NutritionStyles.helperText}>
+                No target set for this metric; the chart shows recorded intake only.
+              </ThemedText>
+            ) : null}
             <View style={NutritionStyles.monthlyChartFrame}>
               <Svg width={monthlyChartWidth} height={CHART_HEIGHT}>
                 <Line

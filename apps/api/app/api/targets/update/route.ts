@@ -10,6 +10,7 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 import { makeRandomId } from "@/apps/api/lib/http/request";
 import { ROLES, TargetActor, TargetDefinition } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
+import { isUsableTargetDefinition } from "@/apps/api/lib/utils/targets";
 
 type TargetDefinitionValue = {
   basis?: "perDay" | "perKgPerDay" | null;
@@ -38,7 +39,8 @@ type TargetMetricState = {
     version: number;
   } | null;
   domain: "renal" | "lifestyle";
-  effective: TargetDefinitionValue;
+  effective: TargetDefinitionValue | null;
+  generalReferenceSelected?: boolean;
   metric: string;
   override?: TargetDefinitionValue | null;
   overrideMeta?: TargetMeta;
@@ -99,11 +101,13 @@ export async function PATCH(req: NextRequest) {
     const metric = cleanText(body.metric);
     const reason = cleanText(body.reason) || null;
     const clearOverride = body.clearOverride === true;
+    const selectGeneralReference = body.selectGeneralReference === true;
+    const clearTarget = body.clearTarget === true;
 
     if (!metric) {
       return bad("Metric is required", { requestId }, 400);
     }
-    if (!clearOverride && !isRecord(body.override)) {
+    if (!clearOverride && !selectGeneralReference && !clearTarget && !isRecord(body.override)) {
       return bad(
         "Override is required unless clearOverride is true",
         { requestId },
@@ -111,7 +115,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const overrideResult = clearOverride
+    const overrideResult = clearOverride || selectGeneralReference || clearTarget
       ? { data: null as TargetDefinitionValue | null, success: true as const }
       : TargetDefinition.safeParse(body.override);
     if (!overrideResult.success) {
@@ -120,6 +124,9 @@ export async function PATCH(req: NextRequest) {
         { issues: overrideResult.error.flatten(), requestId },
         400,
       );
+    }
+    if (overrideResult.data && !isUsableTargetDefinition(overrideResult.data)) {
+      return bad("Target values must be above zero (and ranges must be increasing)", { requestId }, 400);
     }
 
     const db = await getDb();
@@ -168,22 +175,29 @@ export async function PATCH(req: NextRequest) {
       (legacyCareTeamTarget ? existingState.overrideMeta : null);
     const existingPersonalGoal =
       existingState.personalGoal ?? legacyPersonalGoal;
-    const nextPersonalGoal = clearOverride ? null : overrideResult.data;
-    const personalGoalMeta = clearOverride
+    const nextPersonalGoal = clearOverride || selectGeneralReference || clearTarget ? null : overrideResult.data;
+    const generalReferenceSelected = selectGeneralReference
+      ? true
+      : clearTarget
+        ? false
+        : existingState.generalReferenceSelected !== false;
+    const personalGoalMeta = clearOverride || selectGeneralReference || clearTarget
       ? null
       : { reason, setAt: now, setBy: actor };
     const nextEffective =
-      careTeamTarget ?? nextPersonalGoal ?? existingState.recommended;
+      careTeamTarget ?? nextPersonalGoal ??
+      (generalReferenceSelected ? existingState.recommended : null);
     const nextOverride = careTeamTarget ?? nextPersonalGoal;
     const nextOverrideMeta = careTeamTarget
       ? careTeamTargetMeta
       : personalGoalMeta;
-    const eventType = clearOverride
+    const eventType = clearOverride || clearTarget
       ? "manual_target_removed"
       : "user_changed_target";
 
     if (
-      definitionsEqual(existingPersonalGoal, nextPersonalGoal)
+      definitionsEqual(existingPersonalGoal, nextPersonalGoal) &&
+      (existingState.generalReferenceSelected !== false) === generalReferenceSelected
     ) {
       return ok({
         metric,
@@ -197,6 +211,7 @@ export async function PATCH(req: NextRequest) {
       careTeamTarget,
       careTeamTargetMeta,
       effective: nextEffective,
+      generalReferenceSelected,
       override: nextOverride,
       overrideMeta: nextOverrideMeta,
       personalGoal: nextPersonalGoal,
@@ -204,8 +219,9 @@ export async function PATCH(req: NextRequest) {
     };
 
     await ledgerCollection.insertOne({
-      after: nextPersonalGoal ?? nextEffective,
-      before: existingPersonalGoal,
+      after: selectGeneralReference ? existingState.recommended : nextPersonalGoal,
+      before: existingPersonalGoal ??
+        (existingState.generalReferenceSelected !== false ? existingState.recommended : null),
       createdAt: now,
       createdBy: actor,
       derivedFrom: existingState.derivedFrom ?? null,

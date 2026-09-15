@@ -453,7 +453,7 @@ export default function NutritionDetails() {
             Nutrition
           </ThemedText>
           <ThemedText style={NutritionStyles.pageHelperText}>
-            Track how your meals contribute to renal targets.
+            Review your recorded meals and, where selected, compare with targets.
           </ThemedText>
         </View>
 
@@ -528,7 +528,11 @@ export default function NutritionDetails() {
                   <ThemedText style={NutritionStyles.legendTargetValue}>
                     Target {formatChartValue(chartTarget, metricConfig.unit)}
                   </ThemedText>
-                ) : null}
+                ) : (
+                  <ThemedText style={NutritionStyles.legendTargetValue}>
+                    No target set for this metric
+                  </ThemedText>
+                )}
               </View>
               <View style={NutritionStyles.chartWrap}>
                 <ScrollView
@@ -739,7 +743,7 @@ export default function NutritionDetails() {
             <ThemedText style={NutritionStyles.helperText}>
               {showAddForSelectedDay && selectedPoint
                 ? `Add foods for ${formatFullDate(selectedPoint.date)}.`
-                : "Add foods to your diary to keep your nutrition targets on track."}
+                : "Add foods to your diary to see your nutrition history."}
             </ThemedText>
             <View style={NutritionStyles.modalActions}>
               {mealTypes.map((mealType) => (
@@ -906,10 +910,10 @@ function buildRatioFromTotals(
     typeof targets?.phosphorusMg === "number" &&
     targets.proteinG > 0
       ? Math.round((targets.phosphorusMg / targets.proteinG) * 100) / 100
-      : 12;
+      : null;
 
   return {
-    status: value === null ? "unknown" : value <= target ? "in-range" : "high",
+    status: value === null || target === null ? "unknown" : value <= target ? "in-range" : "high",
     target,
     unit: "mg phosphorus per g protein",
     value,

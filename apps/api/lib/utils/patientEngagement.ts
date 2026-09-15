@@ -54,6 +54,7 @@ type PendingEngagement = Pick<
 
 type TargetStateLike = {
   effective?: TargetDefinitionLike;
+  generalReferenceSelected?: boolean;
   metric?: string;
   override?: TargetDefinitionLike;
   recommended?: TargetDefinitionLike;
@@ -164,7 +165,8 @@ function resolveTargetValue(
     return null;
   }
 
-  const target = state.effective ?? state.override ?? state.recommended ?? null;
+  const target = state.effective ?? state.override ??
+    (state.generalReferenceSelected === false ? null : state.recommended ?? null);
   if (!target) return null;
 
   if (typeof target.value === "number" && Number.isFinite(target.value)) {

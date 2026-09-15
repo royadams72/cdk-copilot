@@ -7,10 +7,7 @@ Purpose:
 - Stores the displayed reference, patient personal goal, or care-team target for
   a patient.
 - Read-optimised for dashboards, calculations, and comparisons.
-- Reflects the resolved state after:
-  - guideline-based recommendation
-  - user override
-  - clinician override
+- Reflects the resolved state after explicit patient selection and care-team updates.
 
 This collection should always be updated together with a corresponding
 `targets_ledger` insert.
@@ -28,8 +25,15 @@ This collection should always be updated together with a corresponding
 - `personalGoal` and `personalGoalMeta` store a patient-owned goal.
 - `careTeamTarget` and `careTeamTargetMeta` store a clinician/dietitian-owned
   target.
-- `effective` resolves in this order: care-team target, personal goal, general
-  reference.
+- `effective` resolves in this order: care-team target, personal goal, selected
+  general reference, otherwise `null` (unset).
+- `generalReferenceSelected` is `false` for newly seeded targets. The stored
+  `recommended` reference is informational until the patient explicitly selects it.
+- Older completed rows without this flag retain their pre-redesign reference
+  behavior until separately reviewed or migrated. An incomplete patient's
+  required onboarding review treats a missing flag as unset; confirmation
+  writes `false` for unchosen references and preserves any personal or
+  care-team value, with a ledger event.
 - The legacy `override` and `overrideMeta` fields mirror the effective non-reference
   value for backward compatibility.
 - Patient and care-team values can coexist; neither update path deletes the other.
@@ -84,8 +88,9 @@ Each key in `targets` maps to:
   "metric": "sodium_mg_day",
   "unit": "mg/day",
   "recommended": { "type": "max", "value": 2000, "basis": "perDay" },
+  "generalReferenceSelected": false,
   "override": null,
-  "effective": { "type": "max", "value": 2000, "basis": "perDay" },
+  "effective": null,
   "derivedFrom": {
     "ruleId": "ckd-sodium-default-v1",
     "version": 1,
@@ -136,7 +141,40 @@ Renal nutrition profile storage split:
 ## Update Rules
 
 - Never mutate nested values silently.
-- Every update MUST insert a `targets_ledger` event.
-- `effective` must always equal:
-  - `override` if present
-  - otherwise `recommended`
+- Every patient/clinician target update MUST insert a `targets_ledger` event.
+- A newly seeded general reference is stored but not active; it does not create
+  a comparison line or target-streak notification until selected.
+- `effective` must equal `careTeamTarget ?? personalGoal ?? (generalReferenceSelected
+  ? recommended : null)`. A care-team update never deletes the patient's goal.
+- The onboarding target-review step is required, but individual metrics may
+  remain unset. Unset metrics show recorded data without a target comparison.
+- The patient can select a general reference per metric, fill general references
+  for currently unset metrics, or enter a custom personal goal. Confirmation
+  is blocked while edited choices remain unsaved. A clinician-set target stays
+  separate and takes priority in comparisons.
+- Target editing rejects zero/non-finite values and non-increasing ranges.
+- Target-based meal and step streaks require an active value for that metric;
+  logging-only milestones and fixed recorded-activity milestones (such as a
+  10,000-step day) do not. Nutrition and activity graphs omit target
+  lines or progress percentages when the metric is unset. The derived
+  phosphorus-to-protein ratio has no fallback target when its source targets
+  are missing.
+- Monthly nutrition graphs use the current active target, not a historical
+  snapshot, so removing a target immediately removes the line. Historic
+  snapshots remain in stored summaries for audit/context.
+- The clinician target and nutrition-profile forms display `No target set`
+  when `effective` is null. They may use the stored general reference as an
+  editing template, but do not activate it by merely displaying it.
+
+## Deployment note
+
+Apply the updated `targets_current` and `targets_ledger` MongoDB validators
+before deploying this API/mobile flow: new rows use nullable `effective`, the
+selection flag, separate `personalGoal`/`careTeamTarget` values with attribution
+metadata, and nullable ledger `after` values for removals. On 15 September
+2026, the two target validators were applied to the database configured by
+`MONGODB_URI_MIGRATIONS` and read back successfully; no patient records or
+indexes were changed. Other environments still need the same targeted
+validator deployment. Test all-unset, partial-target,
+care-team-priority, and legacy incomplete-account onboarding against that
+environment before release.

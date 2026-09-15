@@ -14,6 +14,7 @@ import { APP_ROUTES } from "@/constants/routes";
 import { getLastViewedCarePlanAt } from "@/lib/carePlans";
 import {
   toQueryErrorMessage,
+  useGetTargetsQuery,
   useGetDashboardQuery,
 } from "@/store/services/dashboardApi";
 import { useGetCarePlansQuery } from "@/store/services/carePlanApi";
@@ -36,9 +37,6 @@ import { AppScreen } from "@/components/app-screen";
 import { AppButton } from "@/components/ui/button";
 import { theme } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-
-const EXERCISE_DAILY_TARGET_MIN = 30;
-const EXERCISE_DAILY_TARGET_KCAL = 500;
 
 function localDateKey(date: Date) {
   const year = date.getFullYear();
@@ -70,6 +68,9 @@ function formatMembershipEndDate(value: string | null | undefined) {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { data: targetData } = useGetTargetsQuery("lifestyle");
+  const stepTargetValue = targetData?.items.find((item) => item.metric === "steps_per_day")?.effective?.value;
+  const stepTarget = typeof stepTargetValue === "number" && stepTargetValue > 0 ? stepTargetValue : null;
   const { data, error, isFetching, isLoading, refetch } = useGetDashboardQuery(
     "today",
     {
@@ -87,7 +88,7 @@ export default function Dashboard() {
     status: stepStatus,
     stepSummary,
     stepsToday,
-  } = useStepCount(10000);
+  } = useStepCount(stepTarget ?? 0);
   useSyncStepCount(stepsToday, stepStatus === "ready");
   useSyncHealthConnectMeasurements(
     stepStatus === "ready" || hasAnyMeasurementAccess,
@@ -172,34 +173,28 @@ export default function Dashboard() {
         id: "steps",
         actual: stepsToday,
         label: "Steps",
-        percent: stepsToday === null ? null : stepsToday / 10000,
-        target: 10000,
+        percent: stepsToday === null || stepTarget === null ? null : stepsToday / stepTarget,
+        target: stepTarget,
         unit: "steps",
       },
       {
         id: "minutes-exercise",
         actual: exerciseMinutes,
         label: "Exercise",
-        percent:
-          exerciseMinutes === null
-            ? null
-            : exerciseMinutes / EXERCISE_DAILY_TARGET_MIN,
-        target: EXERCISE_DAILY_TARGET_MIN,
+        percent: null,
+        target: null,
         unit: "min",
       },
       {
         id: "calories-burned",
         actual: caloriesBurned,
         label: "Calories burned",
-        percent:
-          caloriesBurned === null
-            ? null
-            : caloriesBurned / EXERCISE_DAILY_TARGET_KCAL,
-        target: EXERCISE_DAILY_TARGET_KCAL,
+        percent: null,
+        target: null,
         unit: "kcal",
       },
     ];
-  }, [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday]);
+  }, [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday, stepTarget]);
 
   useEffect(() => {
     let cancelled = false;

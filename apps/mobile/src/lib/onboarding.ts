@@ -44,6 +44,10 @@ export function resolveOnboardingRoute(
     return ONBOARDING_ROUTES.dashboard;
   }
 
+  if (onboardingSteps?.includes(ONBOARDING_STEPS.Clinical)) {
+    return ONBOARDING_ROUTES.targets;
+  }
+
   if (onboardingSteps?.includes(ONBOARDING_STEPS.Pii)) {
     return ONBOARDING_ROUTES.clinical;
   }

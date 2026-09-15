@@ -137,15 +137,6 @@ export default function ClinicalForm({
     const healthProfilesPayload = buildHealthProfilesPayload(values);
 
     try {
-      const clinicalRes = await authFetch(`${API}/api/users/clinical/create`, {
-        body: JSON.stringify(clinicalPayload),
-        method: "POST",
-      });
-      if (!clinicalRes.ok) {
-        const errBody = await clinicalRes.json().catch(() => null);
-        throw new Error(formatApiError(clinicalRes.status, errBody));
-      }
-
       const profileRes = await authFetch(`${API}/api/health-profiles`, {
         body: JSON.stringify(healthProfilesPayload),
         method: "POST",
@@ -155,9 +146,18 @@ export default function ClinicalForm({
         throw new Error(formatApiError(profileRes.status, errBody));
       }
 
+      const clinicalRes = await authFetch(`${API}/api/users/clinical/create`, {
+        body: JSON.stringify(clinicalPayload),
+        method: "POST",
+      });
+      if (!clinicalRes.ok) {
+        const errBody = await clinicalRes.json().catch(() => null);
+        throw new Error(formatApiError(clinicalRes.status, errBody));
+      }
+
       await onboardingDrafts.clearPiiDraft();
       await onboardingDrafts.clearClinicalDraft();
-      router.replace(APP_ROUTES.dashboard);
+      router.replace(APP_ROUTES.targetsOnboarding);
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "Failed to save clinical data");
     }

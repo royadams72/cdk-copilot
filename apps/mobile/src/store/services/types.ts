@@ -251,7 +251,8 @@ export type TargetItem = {
     version: number;
   } | null;
   domain: TargetDomain;
-  effective: TargetDefinitionValue;
+  effective: TargetDefinitionValue | null;
+  generalReferenceSelected?: boolean;
   key: string;
   metric: string;
   override?: TargetDefinitionValue | null;
@@ -416,7 +417,9 @@ export type CurrentUserSettingsResponse = {
 };
 export type UpdateTargetArgs = {
   clearOverride?: boolean;
+  clearTarget?: boolean;
   metric: string;
   override?: TargetDefinitionValue;
   reason?: string;
+  selectGeneralReference?: boolean;
 };

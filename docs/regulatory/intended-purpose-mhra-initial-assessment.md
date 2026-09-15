@@ -3,19 +3,19 @@
 **Status:** Draft for product, renal-clinical and UK medical-device regulatory review. This is not an MHRA determination or release approval.
 **Assessment date:** 15 September 2026
 **Assessed market:** Great Britain (England, Scotland and Wales). Northern Ireland requires a separate regulatory-route review.
-**Assessed product:** Patient mobile app and clinician portal in this repository, after removal of the saved weekly nutrition report. The intended target-onboarding flow is not implemented. A release-specific version, enabled-feature list and external marketing claims must be added before sign-off.
+**Assessed product:** Patient mobile app and clinician portal in this repository, after removal of the saved weekly nutrition report and implementation of required target review. A release-specific version, enabled-feature list and external marketing claims must be added before sign-off.
 
 ## 1. Decision this assessment must support
 
 Determine whether CKD Copilot, or a separable feature of it, is intended for a medical purpose under the applicable UK medical-device rules. Assess **functionality and all claims together**: in-app text, outputs, instructions, website, invitation email and app-store descriptions. “Review surrounding claims” means checking whether those words promise CKD monitoring, advice or clinical action beyond the screen's actual record/display function. A disclaimer is a safety communication, not evidence that software lacks a medical purpose.
 
-**No product-level qualification conclusion is assigned yet.** System-seeded targets, range labels, engagement notifications and clinician trend summaries must be assessed as they actually operate. The proposed flow after target-onboarding redesign must be reassessed separately; changing a target's source or allowing patient edits does not by itself decide medical-device status. No risk class or conformity route is assigned here.
+**No product-level qualification conclusion is assigned yet.** General-reference targets, range labels, engagement notifications and clinician trend summaries must be assessed as they actually operate. Required target review and patient edits do not by themselves decide medical-device status. No risk class or conformity route is assigned here.
 
 ## 2. Proposed factual intended-purpose statement for review
 
 > CKD Copilot is a mobile and web-based service intended for people with CKD and their authorised care-team members. It helps patients record and review meals, symptoms, measurements, laboratory results, medication information and activity; view recorded trends and nutrient contributions; compare recorded values with clearly identified personal, general-reference or care-team targets; and share selected information with authorised clinicians. Clinicians may review the underlying information and make their own decisions. The app does not diagnose CKD or other conditions or instruct patients to change medication or treatment. Patient engagement notifications describe logging and target streaks rather than clinical urgency.
 
-**Draft for review, not release copy.** The target-onboarding design described below is proposed, not implemented. The final statement must also specify the intended population (including any exclusions), clinician workflow, and whether access means passive review or active monitoring. Do not promise that clinicians continuously monitor the app unless the service actually provides that response pathway.
+**Draft for review, not release copy.** The target-onboarding code described below requires release testing. The final statement must also specify the intended population (including any exclusions), clinician workflow, and whether access means passive review or active monitoring. Do not promise that clinicians continuously monitor the app unless the service actually provides that response pathway.
 
 ## 3. Feature-level screening
 
@@ -29,7 +29,7 @@ Health-device readings become charts and progress against targets. The app does 
 
 ### General renal and lifestyle reference targets
 
-**Current behavior:** clinical-reference rules seed values which are shown and used in comparisons. **Proposed onboarding:** show target inputs as blank/unset. Patients may enter their own goals or explicitly choose “Fill with general reference values”; identify the source of each value and allow review before continuing. Do not store zero as an active target: current comparison paths treat non-positive values as unavailable. A general reference must not be described as an individual prescription or silently adopted as a care-team target. **Initial screening:** Reassess the implemented design and downstream comparisons. Optional selection and editability improve clarity and user control but do not alone establish non-device status.
+**Implemented behavior for newly seeded targets:** stored general references start inactive; each metric is unset unless the patient explicitly selects the reference, saves a separate personal goal, or has a care-team target. Patients must review the target page and confirm before onboarding is completed, but are not required to invent a number for each metric. Recorded data can still be graphed without target lines or target-based engagement notifications. A care-team target takes precedence over a personal goal and cannot be changed by the patient. Older completed target records without the new selection flag retain legacy behavior pending separate review or migration; incomplete accounts are normalised at required onboarding confirmation. Do not store zero as an active target. A general reference must not be described as an individual prescription or silently adopted as a care-team target. **Initial screening:** Verify the release build, legacy-record behavior and downstream comparisons. Selection and editability improve clarity and user control but do not alone establish non-device status.
 
 ### Patient personal goals and clinician-set targets
 
@@ -63,7 +63,7 @@ For each feature above, document answers and attach representative screenshots:
 4. What populations are in scope or excluded: CKD stage, dialysis, transplant, pregnancy, paediatric patients, acute illness and clinician-prescribed restrictions?
 5. What foreseeable wrong output or misuse could cause harm? Include an inappropriate generic target, a falsely reassuring range label, incomplete meal logging and a clinician mistaking a trend filter for a clinical assessment.
 6. Do app-store, website, invitation and portal claims describe a stronger medical function than the interface or this statement?
-7. After target-onboarding redesign, do remaining claims and features accurately match the revised intended-purpose statement? Can any further feature be scoped separately without leaving its downstream effects in the product?
+7. After target-onboarding release testing, do remaining claims and features accurately match the revised intended-purpose statement? Can any further feature be scoped separately without leaving its downstream effects in the product?
 
 ## 5. Review and release gates
 
@@ -78,7 +78,7 @@ For each feature above, document answers and attach representative screenshots:
 
 - Exact mobile and portal release version and feature flags.
 - Current and proposed website, app-store, invitation-email and onboarding wording.
-- Screenshots and sample outputs for current target seeding, proposed target onboarding, daily/monthly food highlights, engagement notifications, lab labels, symptoms and clinician trend searches.
+- Screenshots and sample outputs for required target onboarding (all/some/no metrics set, clinician priority, and legacy records), daily/monthly food highlights, engagement notifications, lab labels, symptoms and clinician trend searches.
 - Target-rule sources and thresholds; lab range and flag provenance; how comparison screens convey incomplete logging and target source.
 - Confirm the release inventory and decide how historical reports created before this feature was removed will be retained or deleted; feature removal does not erase stored patient data.
 - Written decision on whether patients are expected to act on any remaining target comparisons or only discuss them with a care team.

@@ -30,9 +30,9 @@
 
 ### targets.current
 
-- **Location:** `targets_current.targets[*].effective`
-- **Type:** object (`type`, `low?`, `high?`, `value?`, `basis?`)
-- **Notes:** effective target after override resolution (`override ?? recommended`)
+- **Location:** `targets_current.targets[*].effective` (nullable; unset metrics have no effective target)
+- **Type:** object (`type`, `low?`, `high?`, `value?`, `basis?`) or `null`
+- **Notes:** care-team target, then personal goal, then explicitly selected general reference; otherwise unset
 
 ### measurements.value
 
