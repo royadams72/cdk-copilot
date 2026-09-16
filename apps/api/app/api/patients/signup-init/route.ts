@@ -19,7 +19,6 @@ const Body = z.object({
 
 const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
-const VERIFY_URL = (process.env.VERIFY_URL as unknown as URL) || null;
 const REDIRECT_URI = process.env.REDIRECT_URI || null;
 const EMAIL_FROM = process.env.EMAIL_FROM || null;
 const APP_ORIGIN = process.env.APP_ORIGIN || null;
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
     }
 
-    if (!VERIFY_URL || !REDIRECT_URI || !linkBaseOrigin) {
+    if (!REDIRECT_URI || !linkBaseOrigin) {
       return NextResponse.json(
         {
           error: "missing_params: env",
@@ -141,7 +140,7 @@ export async function POST(req: NextRequest) {
     );
 
     const existingAccountByEmail = await accounts.findOne(
-      { email, isActive: true },
+      { email, isActive: true, role: ROLES.Patient },
       {
         collation: { locale: "en", strength: 2 },
         projection: { principalId: 1, role: 1, scopes: 1 },
@@ -226,13 +225,23 @@ export async function POST(req: NextRequest) {
             ? (pendingAuth as any).scopes
             : scopes;
 
-    const isExistingIdentity = Boolean(
-      existingPii ||
-      existingAccount ||
-      existingAccountByEmail ||
-      patientByPiiId ||
-      patientByPrincipal,
-    );
+    // Email login is only for an already-provisioned patient. New patients must
+    // redeem their invitation's activation code, which owns the provisioning
+    // flow. In particular, a pending token or an orphaned patient row must not
+    // turn an arbitrary email address into a new identity.
+    const isExistingIdentity = Boolean(existingPii || existingAccountByEmail);
+
+    if (!isExistingIdentity) {
+      return NextResponse.json(
+        {
+          error: "account_not_found",
+          message:
+            "No patient account exists for this email. Use the activation code from your invitation.",
+          ok: false,
+        },
+        { status: 404 },
+      );
+    }
 
     if (existingPii && !existingAccount) {
       await accounts.updateOne(
@@ -372,82 +381,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ devLink, status: "ok" });
     }
 
-    // New user: issue verification token and continue provisioning via /api/auth/verify.
-    // Invalidate older unconsumed verification links so only the newest verify link is valid.
-    await auth_tokens.updateMany(
-      {
-        type: COLLECTION_TYPE.EmailVerify,
-        email,
-        usedAt: null,
-      },
-      { $set: { usedAt: now } },
-    );
-
-    const { id, token, secretHash } = setToken();
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
-
-    const auth_tokens_doc: AuthTokenDoc = {
-      deviceId,
-      id: b64url(id),
-      _id: new ObjectId(),
-      type: COLLECTION_TYPE.EmailVerify,
-      createdAt: now,
-      email,
-      expiresAt,
-      patientId,
-      principalId,
-      redirectUri: REDIRECT_URI,
-      role,
-      scopes: effectiveScopes,
-      secretHash: secretHash.toString("base64"),
-      usedAt: null as Date | null,
-    };
-
-    await auth_tokens.insertOne(auth_tokens_doc);
-
-    const verifyUrl = new URL(VERIFY_URL, linkBaseOrigin);
-    verifyUrl.searchParams.set("token", token);
-
-    let devLink: string | undefined;
-
-    if (resend && EMAIL_FROM) {
-      try {
-        await resend.emails.send({
-          from: EMAIL_FROM,
-          html: `
-          <p>Confirm your email to continue.</p>
-          <p><a href="${verifyUrl.toString()}">Verify email</a></p>
-          <p>This link expires at ${expiresAt.toISOString()}.</p>
-        `,
-          subject: "Confirm your email",
-          to: email,
-        });
-
-        if (isLocalDev) {
-          devLink = verifyUrl.toString();
-          console.log("[DEV] Patient verify email accepted by Resend", {
-            email,
-          });
-        }
-      } catch (error) {
-        if (!isLocalDev) {
-          throw error;
-        }
-        console.warn(
-          "patient signup-init: resend failed, falling back to dev verify link",
-          error,
-        );
-        devLink = verifyUrl.toString();
-      }
-    } else {
-      devLink = verifyUrl.toString();
-    }
-
-    if (devLink) {
-      console.log("[DEV] Patient verification link for", email, "=", devLink);
-    }
-
-    return NextResponse.json({ devLink, status: "ok" });
   } catch (e: any) {
     if (e?.status === 429) {
       return NextResponse.json(

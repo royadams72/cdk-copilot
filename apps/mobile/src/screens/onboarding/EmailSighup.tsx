@@ -27,6 +27,15 @@ export default function EmailSignup() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 404 && data?.error === "account_not_found") {
+          Alert.alert(
+            "Account not found",
+            data?.message ??
+              "No patient account exists for this email. Use the activation code from your invitation.",
+          );
+          return;
+        }
+
         Alert.alert(
           "Signup failed",
           `Status ${res.status}\n${String(data?.error ?? data?.message ?? "Unknown error").slice(0, 500)}`,

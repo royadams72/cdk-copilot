@@ -39,6 +39,15 @@ export function PortalLoginForm() {
   const canRequestCode = trimmedEmail.length > 0;
   const canVerifyCode = trimmedEmail.length > 0 && trimmedCode.length === 6;
 
+  function resetForm() {
+    setEmail("");
+    setCode("");
+    setDevCode(null);
+    setHasRequestedCode(false);
+    setError(null);
+    setNotice(null);
+  }
+
   function requestCode(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     setError(null);
@@ -50,24 +59,31 @@ export function PortalLoginForm() {
     }
 
     startTransition(async () => {
-      const response = await fetch("/api/portal/auth/request-code", {
-        body: JSON.stringify({ email: trimmedEmail }),
-        headers: {
-          "content-type": "application/json",
-        },
-        method: "POST",
-      });
+      try {
+        const response = await fetch("/api/portal/auth/request-code", {
+          body: JSON.stringify({ email: trimmedEmail }),
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "POST",
+        });
 
-      const body = (await response.json().catch(() => null)) as RequestCodeResponse | null;
+        const body = (await response.json().catch(() => null)) as RequestCodeResponse | null;
 
-      if (!response.ok || !body?.ok) {
-        setError(body?.message || "Unable to send the login code.");
-        return;
+        if (!response.ok || !body?.ok) {
+          setError(body?.message || "Unable to send the login code.");
+          return;
+        }
+
+        setHasRequestedCode(true);
+        setDevCode(body.data?.devCode ?? null);
+        setNotice(
+          body.data?.message ||
+            "If an account exists for that email address, you'll receive a login code shortly.",
+        );
+      } catch {
+        setError("Unable to send the login code. Check your connection and try again.");
       }
-
-      setHasRequestedCode(true);
-      setDevCode(body.data?.devCode ?? null);
-      setNotice(body.data?.message || "If the account exists, a login code has been sent.");
     });
   }
 
@@ -87,29 +103,33 @@ export function PortalLoginForm() {
     }
 
     startTransition(async () => {
-      const response = await fetch("/api/portal/auth/verify-code", {
-        body: JSON.stringify({ code: trimmedCode, email: trimmedEmail }),
-        headers: {
-          "content-type": "application/json",
-        },
-        method: "POST",
-      });
+      try {
+        const response = await fetch("/api/portal/auth/verify-code", {
+          body: JSON.stringify({ code: trimmedCode, email: trimmedEmail }),
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "POST",
+        });
 
-      const body = (await response.json().catch(() => null)) as VerifyCodeResponse | null;
-      const jwt = body?.data?.jwt?.trim();
+        const body = (await response.json().catch(() => null)) as VerifyCodeResponse | null;
+        const jwt = body?.data?.jwt?.trim();
 
-      if (!response.ok || !body?.ok || !jwt) {
-        setError(body?.message || "Unable to verify the login code.");
-        return;
+        if (!response.ok || !body?.ok || !jwt) {
+          setError(body?.message || "Unable to verify the login code.");
+          return;
+        }
+
+        savePortalSessionSnapshot({
+          jwt,
+          refreshToken: body?.data?.refreshToken?.trim() || null,
+        });
+
+        router.push("/portal");
+        router.refresh();
+      } catch {
+        setError("Unable to verify the login code. Check your connection and try again.");
       }
-
-      savePortalSessionSnapshot({
-        jwt,
-        refreshToken: body?.data?.refreshToken?.trim() || null,
-      });
-
-      router.push("/portal");
-      router.refresh();
     });
   }
 
@@ -122,6 +142,7 @@ export function PortalLoginForm() {
           autoCorrect="off"
           className={styles.control}
           autoComplete="email"
+          disabled={pending || hasRequestedCode}
           name="email"
           onChange={(event) => setEmail(event.target.value)}
           placeholder="name@trust.nhs.uk"
@@ -159,6 +180,17 @@ export function PortalLoginForm() {
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
       <div className={styles.actions}>
+        {hasRequestedCode ? (
+          <button
+            className={styles.secondaryButton}
+            disabled={pending}
+            onClick={resetForm}
+            type="button"
+          >
+            Try again
+          </button>
+        ) : null}
+
         {hasRequestedCode ? (
           <button
             className={styles.secondaryButton}
