@@ -13,7 +13,7 @@ import {
 } from "@/lib/format/date";
 import { SelectionField } from "@/screens/onboarding/components/FormFields";
 import { styles } from "@/screens/onboarding/styles";
-import { PrimaryButton, SecondaryButton } from "./Buttons";
+import { AppButton } from "@/components/ui/button";
 
 function buildDateFromParts(year: number, month: number, day: number) {
   return new Date(year, month, day);
@@ -218,7 +218,7 @@ export function DateField({
             </View>
             <View style={styles.actionsRow}>
               {dateValue ? (
-                <SecondaryButton
+                <AppButton variant="secondary"
                   label="Clear"
                   onPress={() => {
                     onChange(null);
@@ -226,11 +226,11 @@ export function DateField({
                   }}
                 />
               ) : null}
-              <SecondaryButton
+              <AppButton variant="secondary"
                 label="Cancel"
                 onPress={() => setVisible(false)}
               />
-              <PrimaryButton
+              <AppButton variant="primary"
                 label="Save"
                 onPress={() => {
                   onChange(

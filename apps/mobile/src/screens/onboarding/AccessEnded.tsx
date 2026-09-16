@@ -7,7 +7,7 @@ import {
   clearMembershipInactiveSessionState,
   clearSessionToken,
 } from "@/lib/authSession";
-import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
 import { styles } from "@/screens/onboarding/styles";
 
@@ -37,7 +37,7 @@ export default function AccessEndedScreen() {
         If you think this is a mistake, contact your care team or clinic to check
         your access.
       </Text>
-      <PrimaryButton
+      <AppButton variant="primary"
         label="Back to sign in"
         onPress={() => {
           void clearMembershipInactiveSessionState();

@@ -20,7 +20,7 @@ import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import { onboardingDrafts } from "@/lib/onboarding";
-import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import {
   AllergiesSection,
   BodyMeasurementsSection,
@@ -202,7 +202,7 @@ export default function ClinicalForm({
         persistDraftSnapshot={persistDraftSnapshot}
       />
 
-      <PrimaryButton
+      <AppButton variant="primary"
         label={isSubmitting ? "Saving..." : "Save Profile"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit)}

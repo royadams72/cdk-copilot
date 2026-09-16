@@ -24,7 +24,7 @@ import {
   PickerField,
   SelectionField,
 } from "../components/FormFields";
-import { PrimaryButton, SecondaryButton } from "../components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import { DateField } from "../components/DateField";
 import { OnboardingFormScreen } from "../components/Onboarding";
 
@@ -641,7 +641,7 @@ export default function OnboardingPiiForm({
           <Text style={styles.errorText}>{String(errors.root.message)}</Text>
         )}
 
-        <PrimaryButton
+        <AppButton variant="primary"
           label={isSubmitting || saving || isLoading ? "Saving..." : "Save"}
           disabled={isSubmitting || saving || isLoading}
           onPress={handleSubmit(onSubmit)}
@@ -694,11 +694,11 @@ export default function OnboardingPiiForm({
               ))}
             </ScrollView>
             <View style={styles.modalActions}>
-              <SecondaryButton
+              <AppButton variant="secondary"
                 label="Cancel"
                 onPress={() => setEthnicityModalVisible(false)}
               />
-              <PrimaryButton
+              <AppButton variant="primary"
                 label="Save"
                 onPress={() => {
                   setValue("ethnicity", ethnicityDraft as any, {

@@ -21,11 +21,7 @@ import {
 } from "@ckd/core";
 
 import { AutocompleteSelectionField } from "@/screens/onboarding/components/AutocompleteSelectionField";
-import {
-  PrimaryButton,
-  SecondaryButton,
-  TertiaryDangerButton,
-} from "@/screens/onboarding/components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import {
   LabeledInput,
   OptionSelectField,
@@ -523,14 +519,14 @@ export function DietaryPreferencesSection({
                 justifyContent: "flex-end",
               }}
             >
-              <SecondaryButton
+              <AppButton variant="secondary"
                 label="Cancel"
                 onPress={() => {
                   setDraftPreferences(dietaryPreferences);
                   setModalVisible(false);
                 }}
               />
-              <PrimaryButton
+              <AppButton variant="primary"
                 label="Done"
                 onPress={() => {
                   onSave(draftPreferences);
@@ -907,11 +903,11 @@ function AllergyEditor({
       <View
         style={{ flexDirection: "row", gap: 10, justifyContent: "flex-end" }}
       >
-        <SecondaryButton
+        <AppButton variant="secondary"
           label={hasCompleteAllergy ? "Done" : "Cancel"}
           onPress={hasCompleteAllergy ? onDone : onRemove}
         />
-        <TertiaryDangerButton
+        <AppButton variant="danger"
           label="Remove allergy"
           disabled={!hasCompleteAllergy}
           onPress={onRemove}
@@ -971,11 +967,11 @@ function ConditionEditor({
       <View
         style={{ flexDirection: "row", gap: 10, justifyContent: "flex-end" }}
       >
-        <SecondaryButton
+        <AppButton variant="secondary"
           label={hasSelectedCondition ? "Done" : "Cancel"}
           onPress={hasSelectedCondition ? onDone : onRemove}
         />
-        <TertiaryDangerButton
+        <AppButton variant="danger"
           label="Remove condition"
           disabled={!hasSelectedCondition}
           onPress={onRemove}

@@ -10,7 +10,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TLabsFormValues, LabsSchema } from "@ckd/core";
 import { useRouter } from "expo-router";
-import { AppButton, PrimaryButton } from "../components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import { DateField } from "../components/DateField";
 import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
@@ -332,7 +332,7 @@ export default function LabsForm({
         <Text style={{ color: "red" }}>{errors.labs.message}</Text>
       )}
 
-      <PrimaryButton
+      <AppButton variant="primary"
         label={isSubmitting ? "Saving..." : "Save labs"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit)}

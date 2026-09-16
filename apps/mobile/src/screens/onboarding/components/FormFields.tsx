@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { TextField } from "@/components/ui/form-field";
 import { styles } from "../styles";
-import { PrimaryButton, SecondaryButton } from "./Buttons";
+import { AppButton } from "@/components/ui/button";
 
 function FieldMessage({ error }: { error?: string }) {
   if (!error) return null;
@@ -157,8 +157,8 @@ export function OptionSelectField<TValue extends string>({
               })}
             </ScrollView>
             <View style={styles.actionsRow}>
-              <SecondaryButton label="Close" onPress={() => setVisible(false)} />
-              <PrimaryButton
+              <AppButton variant="secondary" label="Close" onPress={() => setVisible(false)} />
+              <AppButton variant="primary"
                 label="Done"
                 onPress={() => setVisible(false)}
               />

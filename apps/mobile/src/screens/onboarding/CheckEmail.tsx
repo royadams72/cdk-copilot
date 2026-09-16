@@ -2,7 +2,7 @@ import { Text } from "react-native";
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
-import { PrimaryButton } from "@/screens/onboarding/components/Buttons";
+import { AppButton } from "@/components/ui/button";
 
 export default function CheckEmail() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function CheckEmail() {
       <Text style={{ color: "#334155", fontSize: 16, lineHeight: 24 }}>
         You can go back and try again
       </Text>
-      <PrimaryButton
+      <AppButton variant="primary"
         label="Back to email"
         onPress={() => {
           router.replace(APP_ROUTES.welcome);
