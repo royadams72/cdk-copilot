@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Alert } from "react-native";
+import { Alert, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { API } from "@/constants/api";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { LabeledInput } from "./components/FormFields";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
-import { PrimaryButton, SecondaryButton } from "@/screens/onboarding/components/Buttons";
+import { AppButton } from "@/components/ui/button";
+import { styles } from "./styles";
 
 export default function EmailSignup() {
   const router = useRouter();
@@ -26,6 +27,15 @@ export default function EmailSignup() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 404 && data?.error === "account_not_found") {
+          Alert.alert(
+            "Account not found",
+            data?.message ??
+              "No patient account exists for this email. Use the activation code from your invitation.",
+          );
+          return;
+        }
+
         Alert.alert(
           "Signup failed",
           `Status ${res.status}\n${String(data?.error ?? data?.message ?? "Unknown error").slice(0, 500)}`,
@@ -58,24 +68,30 @@ export default function EmailSignup() {
         label="Email"
         placeholder="Email"
         autoCapitalize="none"
+        autoComplete="email"
         keyboardType="email-address"
+        textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
       />
-      <PrimaryButton
-        label={submitting ? "Continuing..." : "Continue"}
-        disabled={submitting}
-        onPress={() => {
-          void submit();
-        }}
-      />
-      <SecondaryButton
-        disabled={submitting}
-        label="Use activation code"
-        onPress={() => {
-          router.push("/(auth)/activate" as never);
-        }}
-      />
+      <View style={styles.actionsRow}>
+        <AppButton
+          variant="primary"
+          label={submitting ? "Continuing..." : "Continue"}
+          disabled={submitting}
+          onPress={() => {
+            void submit();
+          }}
+        />
+        <AppButton
+          variant="secondary"
+          disabled={submitting}
+          label="Use activation code"
+          onPress={() => {
+            router.push("/(auth)/activate" as never);
+          }}
+        />
+      </View>
     </OnboardingFormScreen>
   );
 }

@@ -28,6 +28,8 @@ const EMAIL_FROM = process.env.EMAIL_FROM || null;
 const IS_LOCAL_DEV =
   process.env.APP_ORIGIN?.includes("localhost") ||
   process.env.NODE_ENV !== "production";
+const GENERIC_LOGIN_MESSAGE =
+  "If an account exists for that email address, you'll receive a login code shortly.";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     if (!account?.principalId) {
       return ok({
-        message: "If the account exists, a login code has been sent.",
+        message: GENERIC_LOGIN_MESSAGE,
       });
     }
 
@@ -179,7 +181,7 @@ export async function POST(req: NextRequest) {
 
     return ok({
       devCode,
-      message: "If the account exists, a login code has been sent.",
+      message: GENERIC_LOGIN_MESSAGE,
     });
   } catch (error: any) {
     if (error?.status === 429) {

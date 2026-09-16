@@ -6,7 +6,7 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { resolvePostAuthRoute } from "@/lib/onboarding";
 
-import { PrimaryButton, SecondaryButton } from "./components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import { OnboardingFormScreen } from "./components/Onboarding";
 import { styles } from "./styles";
 
@@ -156,7 +156,7 @@ export default function ConsentGate() {
         contentContainerStyle={{ gap: 20 }}
       >
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        <PrimaryButton
+        <AppButton variant="primary"
           label="Continue"
           onPress={() => {
             void refreshStateAndRoute();
@@ -195,14 +195,14 @@ export default function ConsentGate() {
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <PrimaryButton
+      <AppButton variant="primary"
         disabled={submitting}
         label={submitting ? "Saving..." : "Agree"}
         onPress={() => {
           void decide("agree");
         }}
       />
-      <SecondaryButton
+      <AppButton variant="secondary"
         disabled={submitting}
         label={submitting ? "Saving..." : "Disagree"}
         onPress={() => {

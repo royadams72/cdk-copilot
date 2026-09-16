@@ -44,6 +44,7 @@ export const theme = {
     overlay: "rgba(15,23,42,0.55)",
     primary: palette.blue,
     primaryPressed: palette.blueDark,
+    primarySoft: "rgba(8,118,209,0.12)",
     onPrimary: palette.surface,
     success: palette.green,
     successDark: palette.greenDark,

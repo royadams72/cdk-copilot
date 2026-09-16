@@ -7,7 +7,7 @@ import { APP_ROUTES } from "@/constants/routes";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { completeAuthExchange } from "@/lib/completeAuthExchange";
 import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
-import { PrimaryButton, SecondaryButton } from "@/screens/onboarding/components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import { LabeledInput } from "@/screens/onboarding/components/FormFields";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
 
@@ -66,14 +66,14 @@ export default function ActivationCodeScreen() {
         placeholder="Activation code"
         value={activationCode}
       />
-      <PrimaryButton
+      <AppButton variant="primary"
         disabled={submitting || activationCode.trim().length === 0}
         label={submitting ? "Activating..." : "Continue"}
         onPress={() => {
           void submit();
         }}
       />
-      <SecondaryButton
+      <AppButton variant="secondary"
         disabled={submitting}
         label="Back to email sign in"
         onPress={() => {

@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
 import { useRouter } from "expo-router";
-import { AppButton, PrimaryButton } from "../components/Buttons";
+import { AppButton } from "@/components/ui/button";
 import { DateField } from "../components/DateField";
 import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
@@ -264,7 +264,7 @@ export default function MedicationsForm({
         <Text style={{ color: "red" }}>{errors.medications.message}</Text>
       )}
 
-      <PrimaryButton
+      <AppButton variant="primary"
         label={isSubmitting ? "Saving..." : "Save medications"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit)}
