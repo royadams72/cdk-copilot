@@ -149,9 +149,7 @@ function toHealthKitBloodPressurePayloads(
       } =>
         typeof entry.externalRecordId === "string" &&
         typeof entry.measuredAt === "string" &&
-        typeof entry.systolicMmHg === "number" &&
         Number.isFinite(entry.systolicMmHg) &&
-        typeof entry.diastolicMmHg === "number" &&
         Number.isFinite(entry.diastolicMmHg),
     )
     .map(
@@ -185,7 +183,6 @@ function toHealthKitSleepPayloads(
         typeof entry.measuredAt === "string" &&
         typeof entry.sleepFromAt === "string" &&
         typeof entry.sleepToAt === "string" &&
-        typeof entry.durationMin === "number" &&
         Number.isFinite(entry.durationMin),
     )
     .map(
@@ -530,7 +527,6 @@ export async function syncRecentHealthKitMeasurements(
             } =>
               typeof sample.externalRecordId === "string" &&
               typeof sample.measuredAt === "string" &&
-              typeof sample.value === "number" &&
               Number.isFinite(sample.value),
           )
           .map(
@@ -565,9 +561,7 @@ export async function syncRecentHealthKitMeasurements(
             } =>
               typeof sample.externalRecordId === "string" &&
               typeof sample.measuredAt === "string" &&
-              typeof sample.systolicMmHg === "number" &&
               Number.isFinite(sample.systolicMmHg) &&
-              typeof sample.diastolicMmHg === "number" &&
               Number.isFinite(sample.diastolicMmHg),
           )
           .map(
@@ -606,7 +600,6 @@ export async function syncRecentHealthKitMeasurements(
               typeof sample.measuredAt === "string" &&
               typeof sample.sleepFromAt === "string" &&
               typeof sample.sleepToAt === "string" &&
-              typeof sample.durationMin === "number" &&
               Number.isFinite(sample.durationMin),
           )
           .map(
@@ -646,7 +639,6 @@ export async function syncRecentHealthKitMeasurements(
             typeof sample.measuredAt === "string" &&
             typeof sample.exerciseId === "string" &&
             typeof sample.exerciseTitle === "string" &&
-            typeof sample.durationMin === "number" &&
             Number.isFinite(sample.durationMin),
         )
         .map(

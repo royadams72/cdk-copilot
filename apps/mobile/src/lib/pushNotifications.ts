@@ -94,9 +94,9 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("weekly-reports", {
+    await Notifications.setNotificationChannelAsync("patient-updates", {
       importance: Notifications.AndroidImportance.DEFAULT,
-      name: "Weekly reports",
+      name: "Patient updates",
     });
   }
 

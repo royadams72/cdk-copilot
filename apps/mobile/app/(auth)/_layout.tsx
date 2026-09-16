@@ -32,6 +32,10 @@ export default function RootLayout() {
         name="onboarding/clinical-form"
         options={{ title: "Your Clinical Information" }}
       />
+      <Stack.Screen
+        name="onboarding/targets-form"
+        options={{ title: "Review targets", gestureEnabled: false, headerBackVisible: false }}
+      />
     </Stack>
   );
 }

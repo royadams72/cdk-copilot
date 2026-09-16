@@ -602,7 +602,7 @@ export default function FitnessMetricTrend() {
   const latestPoint = useMemo(() => {
     const numeric = points.filter(
       (point) =>
-        typeof point.value === "number" && Number.isFinite(point.value),
+        Number.isFinite(point.value),
     );
     return numeric.length ? numeric[numeric.length - 1] : null;
   }, [points]);

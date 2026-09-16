@@ -25,7 +25,6 @@ import { NutritionStyles } from "./styles";
 import { useAppDispatch } from "@/store/hooks";
 import {
   toQueryErrorMessage,
-  useGetLatestWeeklyNutritionInsightQuery,
   useGetNutritionTrendChunkQuery,
   useLazyGetNutritionTrendChunkQuery,
 } from "@/store/services/dashboardApi";
@@ -63,8 +62,6 @@ export default function NutritionDetails() {
     error: trendQueryError,
     isLoading: isTrendLoading,
   } = useGetNutritionTrendChunkQuery({ days: chartRequestDays });
-  const { data: latestWeeklyInsight } =
-    useGetLatestWeeklyNutritionInsightQuery();
   const [loadTrendChunk] = useLazyGetNutritionTrendChunkQuery();
   const [requestError, setRequestError] = useState<unknown>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -196,7 +193,7 @@ export default function NutritionDetails() {
   const chartTarget = useMemo(() => {
     if (metricConfig.key === "phosphorus_protein_ratio") {
       const ratioTarget = chartRatio.target;
-      return typeof ratioTarget === "number" && Number.isFinite(ratioTarget)
+      return Number.isFinite(ratioTarget)
         ? ratioTarget
         : null;
     }
@@ -209,7 +206,7 @@ export default function NutritionDetails() {
   const chartDomainMax = useMemo(() => {
     const values = chartSeries.map((point) => point.value);
     const targetValue =
-      typeof chartTarget === "number" && Number.isFinite(chartTarget)
+      Number.isFinite(chartTarget)
         ? chartTarget
         : null;
     if (targetValue !== null) {
@@ -456,7 +453,7 @@ export default function NutritionDetails() {
             Nutrition
           </ThemedText>
           <ThemedText style={NutritionStyles.pageHelperText}>
-            Track how your meals contribute to renal targets.
+            Review your recorded meals and, where selected, compare with targets.
           </ThemedText>
         </View>
 
@@ -477,56 +474,6 @@ export default function NutritionDetails() {
               variant="outline"
               size="compact"
             />
-          </Card>
-        )}
-
-        {latestWeeklyInsight && (
-          <Card>
-            {(() => {
-              const analysisMode =
-                latestWeeklyInsight.analysisMode ?? "weekly_average";
-              const loggedDays =
-                typeof latestWeeklyInsight.loggedDays === "number"
-                  ? latestWeeklyInsight.loggedDays
-                  : 7;
-              return (
-                <>
-                  <View style={NutritionStyles.cardHeader}>
-                    <ThemedText
-                      type="defaultSemiBold"
-                      style={NutritionStyles.panelTitle}
-                    >
-                      Weekly nutrition alert
-                    </ThemedText>
-                    <ThemedText style={NutritionStyles.helperText}>
-                      {latestWeeklyInsight.weekStart} to{" "}
-                      {latestWeeklyInsight.weekEnd}
-                    </ThemedText>
-                    <ThemedText style={NutritionStyles.helperText}>
-                      Logged days: {loggedDays} | Mode:{" "}
-                      {analysisMode.replace(/_/g, " ")}
-                    </ThemedText>
-                  </View>
-                  <ThemedText style={NutritionStyles.helperText}>
-                    {latestWeeklyInsight.humanMessage}
-                  </ThemedText>
-                  {latestWeeklyInsight.findings.slice(0, 2).map((finding) => (
-                    <View key={finding.type}>
-                      <ThemedText style={NutritionStyles.helperText}>
-                        {finding.type.replace(/_/g, " ")}: {finding.actual} /{" "}
-                        {finding.target}
-                      </ThemedText>
-                      {finding.topContributors?.[0] ? (
-                        <ThemedText style={NutritionStyles.helperText}>
-                          {finding.topContributors[0].food} contributed{" "}
-                          {finding.topContributors[0].contribution}%.
-                        </ThemedText>
-                      ) : null}
-                    </View>
-                  ))}
-                </>
-              );
-            })()}
           </Card>
         )}
 
@@ -581,7 +528,11 @@ export default function NutritionDetails() {
                   <ThemedText style={NutritionStyles.legendTargetValue}>
                     Target {formatChartValue(chartTarget, metricConfig.unit)}
                   </ThemedText>
-                ) : null}
+                ) : (
+                  <ThemedText style={NutritionStyles.legendTargetValue}>
+                    No target set for this metric
+                  </ThemedText>
+                )}
               </View>
               <View style={NutritionStyles.chartWrap}>
                 <ScrollView
@@ -792,7 +743,7 @@ export default function NutritionDetails() {
             <ThemedText style={NutritionStyles.helperText}>
               {showAddForSelectedDay && selectedPoint
                 ? `Add foods for ${formatFullDate(selectedPoint.date)}.`
-                : "Add foods to your diary to keep your nutrition targets on track."}
+                : "Add foods to your diary to see your nutrition history."}
             </ThemedText>
             <View style={NutritionStyles.modalActions}>
               {mealTypes.map((mealType) => (
@@ -959,10 +910,10 @@ function buildRatioFromTotals(
     typeof targets?.phosphorusMg === "number" &&
     targets.proteinG > 0
       ? Math.round((targets.phosphorusMg / targets.proteinG) * 100) / 100
-      : 12;
+      : null;
 
   return {
-    status: value === null ? "unknown" : value <= target ? "in-range" : "high",
+    status: value === null || target === null ? "unknown" : value <= target ? "in-range" : "high",
     target,
     unit: "mg phosphorus per g protein",
     value,

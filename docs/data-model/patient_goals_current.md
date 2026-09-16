@@ -1,12 +1,11 @@
 # patient_goals_current
 
-**Purpose:** Current effective patient goal state. This is the source of truth for patient-selected goals, care-team overrides, and the goals used by weekly nutrition insights.
+**Purpose:** Current effective patient goal state. This is the source of truth for patient-selected goals and care-team overrides.
 
 ## Why this exists
 
 - Patients can choose multiple goals during onboarding or later in the app.
 - Care team members can override and lock specific goals.
-- Weekly nutrition insights should read persisted effective goals, not request-body input.
 - Major active goals are mirrored into `care_plans.goals` for clinician visibility and audit context.
 
 ## Shape

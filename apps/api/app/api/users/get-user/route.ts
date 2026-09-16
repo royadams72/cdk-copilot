@@ -16,6 +16,9 @@ function resolveOnboardingRoute(
   onboardingSteps?: string[],
 ) {
   if (onboardingCompleted) return null;
+  if (onboardingSteps?.includes(ONBOARDING_STEPS.Clinical)) {
+    return "/(auth)/onboarding/targets-form";
+  }
   if (onboardingSteps?.includes(ONBOARDING_STEPS.Pii)) {
     return "/(auth)/onboarding/clinical-form";
   }

@@ -16,7 +16,6 @@ import {
   TSymptomListResponse,
   TSymptomsCurrent,
   TSymptomUpdateRequest,
-  TWeeklyNutritionInsight,
 } from "@ckd/core";
 
 export type DashboardScope = "today" | "all";
@@ -252,7 +251,8 @@ export type TargetItem = {
     version: number;
   } | null;
   domain: TargetDomain;
-  effective: TargetDefinitionValue;
+  effective: TargetDefinitionValue | null;
+  generalReferenceSelected?: boolean;
   key: string;
   metric: string;
   override?: TargetDefinitionValue | null;
@@ -285,7 +285,6 @@ export type TargetsResponse = {
   weightKg?: number | null;
 };
 
-export type WeeklyNutritionInsightResponse = TWeeklyNutritionInsight | null;
 export type MonthlyNutritionFilter =
   | "caloriesKcal"
   | "phosphorusMg"
@@ -416,13 +415,11 @@ export type CurrentUserSettingsResponse = {
   phoneE164?: string | null;
   units: UserUnits;
 };
-export type RunWeeklyNutritionInsightArgs = {
-  referenceDate?: string;
-};
-
 export type UpdateTargetArgs = {
   clearOverride?: boolean;
+  clearTarget?: boolean;
   metric: string;
   override?: TargetDefinitionValue;
   reason?: string;
+  selectGeneralReference?: boolean;
 };

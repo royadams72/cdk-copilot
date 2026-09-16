@@ -47,7 +47,8 @@ type TargetMetricState = {
   careTeamTarget?: TargetDefinitionValue | null;
   careTeamTargetMeta?: TargetMeta;
   domain: "renal" | "lifestyle";
-  effective: TargetDefinitionValue;
+  effective: TargetDefinitionValue | null;
+  generalReferenceSelected?: boolean;
   metric: string;
   override?: TargetDefinitionValue | null;
   overrideMeta?: TargetMeta;
@@ -250,6 +251,7 @@ export async function GET(
               }
             : null,
           effective: state.effective,
+          generalReferenceSelected: state.generalReferenceSelected,
           override: state.override ?? null,
           overrideMeta: state.overrideMeta
             ? {

@@ -121,9 +121,7 @@ export async function GET(req: NextRequest) {
         isSelected: false,
         label: formatMonthLabel(month),
         month,
-        target:
-          resolveTargetValue(summary?.targetSnapshot ?? {}, filter) ??
-          resolveTargetValue(targets, filter),
+        target: resolveTargetValue(targets, filter),
         value,
       };
     });

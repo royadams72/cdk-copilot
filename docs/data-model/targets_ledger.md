@@ -37,7 +37,7 @@ This collection should NEVER be updated in-place (except controlled supersession
 | `metric`       | `string`           | ✅       | Metric affected           |
 | `domain`       | `string`           | ✅       | `renal` or `lifestyle`    |
 | `before`       | `object \| null`   | ✅       | State before change       |
-| `after`        | `object`           | ✅       | State after change        |
+| `after`        | `object \| null`   | ✅       | State after change; null when unset |
 | `derivedFrom`  | `object \| null`   | ❌       | Rule lineage              |
 | `reason`       | `string \| null`   | ❌       | Human explanation         |
 | `idemKey`      | `string \| null`   | ❌       | Idempotency key           |
@@ -59,17 +59,18 @@ This collection should NEVER be updated in-place (except controlled supersession
 ## Common `eventType` values
 
 - `system_recommended_target` . The rules engine calculated a recommended target
-- `user_changed_target` . Patient manually changed their target
-- `clinician_changed_target` . Clinician manually changed the target
-- `manual_target_removed`
+- `user_changed_target` . Patient changed their personal goal or general-reference selection
+- `clinician_changed_target` . Clinician changed the separate care-team target
+- `manual_target_removed` . Actor removed their own target/selection; inspect `createdBy.actorType`
 - `system_recalculated_target`
 - `admin_adjusted_target`
 - `ledger_correction`
 
 - Examples:
-  • user sets an override → user_changed_target
-  • clinician sets/updates an override → clinician_changed_target
-  • user removes override → manual_target_removed
+  • patient sets a personal goal or selects a general reference → user_changed_target
+  • clinician sets/updates a care-team target → clinician_changed_target
+  • patient removes their goal/selection → manual_target_removed (user actor)
+  • clinician removes a care-team target → manual_target_removed (clinician actor)
   • rules run after labs/profile change → system_recalculated_target
   • initial creation by engine → system_recommended_target
   • staff fixes a prior event → ledger_correction (+ correctionOf)
@@ -120,5 +121,8 @@ This collection should NEVER be updated in-place (except controlled supersession
 - Never modify historical values.
 - Use `correctionOf` + `superseded: true` for logical corrections.
 - `targets_current` must always reflect the latest non-superseded ledger state.
+- A stored inactive general reference is an audit event, not evidence that the
+  patient selected it. The current row's `generalReferenceSelected` flag and
+  separate personal/care-team fields determine the active comparison value.
 - If a target comes from rule evaluation, `derivedFrom` should reference
   `clinical_reference_rules.ruleId/version`.

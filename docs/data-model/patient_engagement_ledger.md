@@ -220,7 +220,7 @@ Suggested copy:
 - `3` consecutive days at `1.5x` step target
 - `3` consecutive days at `2x` step target
 
-This should evaluate against the effective lifestyle target in `targets_current` where available. If no patient target exists, either skip the target-based event or use a clearly versioned product default.
+Target-based events evaluate against the effective lifestyle target in `targets_current` where available. If that metric has no active target, skip the target-based event; do not substitute a product default. Logging-only events may still be awarded.
 
 ### 3. Meal adherence achievements
 

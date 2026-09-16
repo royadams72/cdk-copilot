@@ -4,4 +4,5 @@ export const ONBOARDING_STEPS = {
   Medications: "medications",
   Labs: "labs",
   Clinical: "clinical",
+  Targets: "targets",
 } as const;

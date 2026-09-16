@@ -806,11 +806,11 @@ function buildCurrentFoodIngredientLookup(
   return {
     foodLabel: lookupItem.foodName ?? lookupItem.originalText ?? lookupItem.foodId,
     phosphorusMgPer100g:
-      typeof phosphorus === "number" && Number.isFinite(phosphorus) && phosphorus > 0
+      Number.isFinite(phosphorus) && phosphorus > 0
         ? roundNumber((phosphorus / totalWeight) * 100)
         : undefined,
     potassiumMgPer100g:
-      typeof potassium === "number" && Number.isFinite(potassium) && potassium > 0
+      Number.isFinite(potassium) && potassium > 0
         ? roundNumber((potassium / totalWeight) * 100)
         : undefined,
   };
@@ -1001,7 +1001,7 @@ function resolveEdamamResponseWeight(response: any) {
       (parsed: any) => typeof parsed?.weight === "number" && parsed.weight > 0,
     )?.weight;
 
-  return typeof parsedWeight === "number" && Number.isFinite(parsedWeight)
+  return Number.isFinite(parsedWeight)
     ? parsedWeight
     : undefined;
 }
@@ -1020,7 +1020,7 @@ function scaleNutrientMap(
       {
         ...value,
         quantity:
-          typeof value?.quantity === "number" && Number.isFinite(value.quantity)
+          Number.isFinite(value.quantity)
             ? value.quantity * ratio
             : value?.quantity,
       },

@@ -41,7 +41,8 @@ type TargetItem = {
   state: {
     careTeamTarget: TargetDefinitionValue | null;
     careTeamTargetMeta: TargetMetaView;
-    effective: TargetDefinitionValue;
+    effective: TargetDefinitionValue | null;
+    generalReferenceSelected?: boolean;
     override: TargetDefinitionValue | null;
     overrideMeta: TargetMetaView;
     personalGoal: TargetDefinitionValue | null;
@@ -282,7 +283,7 @@ export default function PortalPatientNutritionProfilePage() {
               item.metric,
               buildDraftState(
                 item,
-                item.state.override ?? item.state.effective,
+                item.state.override ?? item.state.effective ?? item.state.recommended,
                 item.state.overrideMeta?.reason,
               ),
             ]),
@@ -393,16 +394,17 @@ export default function PortalPatientNutritionProfilePage() {
     const draft = targetDrafts[item.metric];
     if (!draft) return;
 
+    const template = item.state.effective ?? item.state.recommended;
     const override: TargetDefinitionValue = {
-      type: item.state.effective.type,
+      type: template.type,
       basis:
         item.metric === "caloriesKcal"
           ? "perDay"
-          : (item.state.effective.basis ?? null),
+          : (template.basis ?? null),
       high: draft.high.trim() ? parseNumberInput(draft.high) : null,
       low: draft.low.trim() ? parseNumberInput(draft.low) : null,
       value:
-        item.state.effective.type === "range"
+        template.type === "range"
           ? null
           : parseNumberInput(draft.value),
     };
@@ -532,7 +534,7 @@ export default function PortalPatientNutritionProfilePage() {
                         careTeamTargetMeta: null,
                         effective:
                           currentItem.state.personalGoal ??
-                          currentItem.state.recommended,
+                          (currentItem.state.generalReferenceSelected === false ? null : currentItem.state.recommended),
                         override: currentItem.state.personalGoal ?? null,
                         overrideMeta:
                           currentItem.state.personalGoalMeta ?? null,
@@ -874,7 +876,7 @@ export default function PortalPatientNutritionProfilePage() {
               const draft = targetDrafts[item.metric];
               const persistedDraft = buildDraftState(
                 item,
-                item.state.override ?? item.state.effective,
+                item.state.override ?? item.state.effective ?? item.state.recommended,
                 item.state.overrideMeta?.reason,
               );
               const hasDraftChanges = draftsMatch(draft, persistedDraft)
@@ -893,12 +895,14 @@ export default function PortalPatientNutritionProfilePage() {
                       ? "Care-team target"
                       : item.state.overrideMeta?.setBy.actorType === "user"
                         ? "Patient personal goal"
-                        : "Displayed reference"}
+                        : item.state.effective ? "Displayed reference" : "No target set"}
                     :{" "}
-                    {formatDefinition(item.state.effective, item.state.unit)}
+                    {item.state.effective
+                      ? formatDefinition(item.state.effective, item.state.unit)
+                      : "No active comparison value"}
                   </span>
                   <div className={styles.carePlanFormGroup}>
-                    {item.state.effective.type !== "range" ? (
+                    {(item.state.effective ?? item.state.recommended).type !== "range" ? (
                       <label>
                         <span className={styles.dataScreenCaption}>Value</span>
                         <input
@@ -918,7 +922,7 @@ export default function PortalPatientNutritionProfilePage() {
                         />
                       </label>
                     ) : null}
-                    {item.state.effective.type === "range" ? (
+                    {(item.state.effective ?? item.state.recommended).type === "range" ? (
                       <div className={styles.carePlanInlineRow}>
                         <label>
                           <span className={styles.dataScreenCaption}>Low</span>

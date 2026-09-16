@@ -117,10 +117,7 @@ export async function POST(req: NextRequest) {
       { patientId: new ObjectId(user.patientId) },
       {
         $addToSet: { onboardingSteps: ONBOARDING_STEPS.Clinical },
-        $set: {
-          onboardingCompleted: true,
-          updatedAt: now,
-        },
+        $set: { updatedAt: now },
       },
     );
 

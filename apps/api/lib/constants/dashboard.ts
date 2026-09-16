@@ -1,7 +1,5 @@
 import { NutrientKey } from "@/apps/api/lib/types/dashboard";
 
-export const DEFAULT_RATIO_THRESHOLD = 12;
-
 export const TRACKED_LABS = [
   {
     id: "egfr",

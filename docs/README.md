@@ -28,7 +28,6 @@ This folder contains developer documentation for **CKD Copilot**. It covers the 
 - [Food taxonomy](./data-model/food_taxonomy.md)
 - [Patient goals current](./data-model/patient_goals_current.md)
 - [Patient goals ledger](./data-model/patient_goals_ledger.md)
-- [Weekly nutrition insights](./data-model/weekly_nutrition_insights.md)
 
 ## Security
 

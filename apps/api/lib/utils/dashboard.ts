@@ -2,7 +2,6 @@ import { COLLECTIONS } from "@/packages/core/dist/server";
 import { Db, ObjectId } from "mongodb";
 import {
   DAY_MS,
-  DEFAULT_RATIO_THRESHOLD,
   FOOD_HIGHLIGHT_LIMIT,
   RADIAL_METRICS,
   TRACKED_LABS,
@@ -690,11 +689,11 @@ function buildRatio(
   const targetDerived =
     targets?.proteinG && targets?.phosphorusMg
       ? targets.phosphorusMg / targets.proteinG
-      : DEFAULT_RATIO_THRESHOLD;
+      : null;
 
-  const target = round(targetDerived, 0);
+  const target = targetDerived === null ? null : round(targetDerived, 0);
   let status: "in-range" | "high" | "unknown" = "unknown";
-  if (actual !== null && Number.isFinite(target)) {
+  if (actual !== null && target !== null && Number.isFinite(target)) {
     status = actual <= target ? "in-range" : "high";
   }
 

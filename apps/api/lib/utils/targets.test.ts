@@ -3,7 +3,11 @@ import {
   mapNutritionTargets,
   resolveTargetDefinitionForWeight,
   resolveTargetStateForWeight,
+  resolveTargetValue,
 } from "./targets";
+import { TargetMetricState } from "@ckd/core";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 describe("buildDefaultTargetStates", () => {
   it("builds editable default renal and lifestyle targets", () => {
@@ -29,7 +33,8 @@ describe("buildDefaultTargetStates", () => {
         version: 1,
       },
       domain: "lifestyle",
-      effective: { basis: "perDay", type: "min", value: 8000 },
+      effective: null,
+      generalReferenceSelected: false,
       metric: "steps_per_day",
       override: null,
       personalGoal: null,
@@ -39,16 +44,45 @@ describe("buildDefaultTargetStates", () => {
 
     expect(targets.caloriesKcal).toMatchObject({
       domain: "renal",
-      effective: {
-        basis: "perKgPerDay",
-        high: 35,
-        low: 25,
-        type: "range",
-        value: null,
-      },
+      effective: null,
+      generalReferenceSelected: false,
       metric: "caloriesKcal",
       unit: "kcal/day",
     });
+    expect(TargetMetricState.safeParse(targets.steps_per_day).success).toBe(true);
+    expect(mapNutritionTargets(targets, 80)).toEqual({});
+  });
+});
+
+describe("Mongo target validators", () => {
+  it("permits every seeded target field and nullable removal values", () => {
+    const current = JSON.parse(readFileSync(
+      resolve(__dirname, "../../../../scripts/mongo-validators/targets_current.json"),
+      "utf8",
+    ));
+    const ledger = JSON.parse(readFileSync(
+      resolve(__dirname, "../../../../scripts/mongo-validators/targets_ledger.json"),
+      "utf8",
+    ));
+    const fields = current.validator.$jsonSchema.properties.targets.additionalProperties.properties;
+    const state = buildDefaultTargetStates().steps_per_day;
+    expect(Object.keys(state).filter((key) => !(key in fields))).toEqual([]);
+    expect(fields.effective.bsonType).toContain("null");
+    expect(fields.personalGoal.bsonType).toContain("null");
+    expect(fields.careTeamTarget.bsonType).toContain("null");
+    expect(ledger.validator.$jsonSchema.properties.after.bsonType).toContain("null");
+  });
+});
+
+describe("target priority", () => {
+  it("uses the care-team target without deleting the separate personal goal", () => {
+    expect(resolveTargetValue({
+      careTeamTarget: { type: "max", value: 1700 },
+      effective: { type: "max", value: 1700 },
+      generalReferenceSelected: false,
+      personalGoal: { type: "max", value: 1900 },
+      recommended: { type: "max", value: 2000 },
+    }, null)).toBe(1700);
   });
 });
 
@@ -83,6 +117,21 @@ describe("resolveTargetDefinitionForWeight", () => {
 });
 
 describe("mapNutritionTargets", () => {
+  it("omits unset metrics while retaining explicitly active metrics", () => {
+    expect(mapNutritionTargets({
+      phosphorusMg: {
+        effective: null,
+        generalReferenceSelected: false,
+        recommended: { type: "max", value: 800 },
+      },
+      sodiumMg: {
+        effective: { type: "max", value: 1800 },
+        generalReferenceSelected: false,
+        personalGoal: { type: "max", value: 1800 },
+      },
+    })).toEqual({ sodiumMg: 1800 });
+  });
+
   it("does not rescale an ordinary calorie target", () => {
     expect(mapNutritionTargets({ caloriesKcal: 2525 })).toEqual({
       caloriesKcal: 2525,

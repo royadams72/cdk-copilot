@@ -12,6 +12,7 @@ export const APP_ROUTES = {
   healthDashboard: "/(fitness)/fitness-details",
   nutritionDetails: "/(nutrition)/nutrition-details",
   piiOnboarding: "/(auth)/onboarding/pii-form",
+  targetsOnboarding: "/(auth)/onboarding/targets-form" as Href,
   profileSettings: "/(settings)/profile" as Href,
   settings: "/(settings)" as Href,
   welcome: "/(init-app)/welcome",
@@ -23,4 +24,5 @@ export const ONBOARDING_ROUTES = {
   consent: APP_ROUTES.consent,
   dashboard: APP_ROUTES.dashboard,
   pii: APP_ROUTES.piiOnboarding,
+  targets: APP_ROUTES.targetsOnboarding,
 } as const;

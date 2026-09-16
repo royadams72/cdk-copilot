@@ -17,6 +17,7 @@ export type TargetDefinitionLike = {
 export type TargetStateLike = {
   careTeamTarget?: TargetDefinitionLike;
   effective?: TargetDefinitionLike;
+  generalReferenceSelected?: boolean;
   metric?: string;
   override?: TargetDefinitionLike;
   overrideMeta?: {
@@ -80,6 +81,16 @@ type TargetDefinitionValue = {
   value?: number | null;
 };
 
+export function isUsableTargetDefinition(definition: TargetDefinitionValue | null): boolean {
+  if (!definition) return false;
+  if (definition.type === "range") {
+    return typeof definition.low === "number" && Number.isFinite(definition.low) && definition.low > 0 &&
+      typeof definition.high === "number" && Number.isFinite(definition.high) && definition.high > definition.low;
+  }
+  const amount = definition.value ?? definition.high ?? definition.low;
+  return typeof amount === "number" && Number.isFinite(amount) && amount > 0;
+}
+
 type SeedTargetMetricState = {
   careTeamTarget?: TargetDefinitionValue | null;
   careTeamTargetMeta?: null;
@@ -89,7 +100,8 @@ type SeedTargetMetricState = {
     version: number;
   } | null;
   domain: "renal" | "lifestyle";
-  effective: TargetDefinitionValue;
+  effective: TargetDefinitionValue | null;
+  generalReferenceSelected?: boolean;
   metric: string;
   override?: TargetDefinitionValue | null;
   overrideMeta?: {
@@ -200,7 +212,8 @@ export function buildDefaultTargetStates(now = new Date()) {
           domain: item.domain,
           careTeamTarget: null,
           careTeamTargetMeta: null,
-          effective: cloneDefinition(recommended),
+          effective: null,
+          generalReferenceSelected: false,
           metric: item.metric,
           override: null,
           overrideMeta: null,
@@ -271,7 +284,7 @@ export async function ensurePatientTargetsSeeded(
   try {
     await ledgerCollection.insertMany(
       Object.values(targets).map((target) => ({
-        after: target.effective,
+        after: target.recommended,
         before: null,
         createdAt: now,
         createdBy: actor,
@@ -284,8 +297,8 @@ export async function ensurePatientTargetsSeeded(
         patientId: input.patientId,
         reason:
           target.domain === "lifestyle"
-            ? "Seeded initial lifestyle targets"
-            : "Seeded initial renal targets",
+            ? "Stored inactive lifestyle general reference"
+            : "Stored inactive renal general reference",
         superseded: false,
       })),
       { ordered: false },
@@ -397,7 +410,7 @@ export function resolveTargetStateForWeight(
     recommended: resolveTargetDefinitionForWeight(
       normalizeTargetDefinitionBasis(state.metric, state.recommended ?? null),
       weightKg,
-    ),
+    ) ?? state.recommended,
   };
 }
 
@@ -411,7 +424,8 @@ export function resolveTargetValue(
   if (!isTargetStateLike(state)) {
     return null;
   }
-  const rawSource = state.effective ?? state.override ?? state.recommended ?? null;
+  const rawSource = state.effective ?? state.override ??
+    (state.generalReferenceSelected === false ? null : state.recommended ?? null);
   const source = normalizeTargetDefinitionBasis(state.metric, rawSource);
   if (source?.basis === "perKgPerDay" && (!weightKg || weightKg <= 0)) {
     return null;

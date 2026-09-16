@@ -34,7 +34,8 @@ export const TargetMetricState = z
     domain: TargetDomain,
     careTeamTarget: TargetDefinition.nullable().optional(),
     careTeamTargetMeta: TargetOverrideMeta.nullable().optional(),
-    effective: TargetDefinition,
+    effective: TargetDefinition.nullable(),
+    generalReferenceSelected: z.boolean().optional(),
     metric: z.string().min(1),
     override: TargetDefinition.nullable().optional(),
     overrideMeta: TargetOverrideMeta.nullable().optional(),
@@ -46,11 +47,12 @@ export const TargetMetricState = z
   .strict()
   .superRefine((v, ctx) => {
     const effectiveSource =
-      v.careTeamTarget ?? v.personalGoal ?? v.override ?? v.recommended;
+      v.careTeamTarget ?? v.personalGoal ?? v.override ??
+      (v.generalReferenceSelected === false ? null : v.recommended);
     if (JSON.stringify(v.effective) !== JSON.stringify(effectiveSource)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "effective must equal override ?? recommended",
+        message: "effective must match the selected care-team, personal or general-reference value",
         path: ["effective"],
       });
     }
@@ -92,7 +94,7 @@ export const TargetEventType = z.enum([
 export const TargetsLedger_Base = z
   .object({
     _id: objectIdHex,
-    after: TargetDefinition,
+    after: TargetDefinition.nullable(),
     before: TargetDefinition.nullable(),
     correctionOf: objectIdHex.nullable().optional(),
     createdAt: z.date(),

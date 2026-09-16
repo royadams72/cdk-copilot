@@ -13,6 +13,7 @@ import {
   ensurePatientTargetsSeeded,
   findTargetsCurrentDoc,
   isStructuredTargetState,
+  isUsableTargetDefinition,
 } from "@/apps/api/lib/utils/targets";
 import { TargetActor, TargetDefinition } from "@ckd/core";
 import { COLLECTIONS } from "@ckd/core/server";
@@ -44,7 +45,8 @@ type TargetMetricState = {
     version: number;
   } | null;
   domain: "renal" | "lifestyle";
-  effective: TargetDefinitionValue;
+  effective: TargetDefinitionValue | null;
+  generalReferenceSelected?: boolean;
   metric: string;
   override?: TargetDefinitionValue | null;
   overrideMeta?: TargetMeta;
@@ -126,6 +128,7 @@ export async function GET(
               }
             : null,
           effective: state.effective,
+          generalReferenceSelected: state.generalReferenceSelected,
           override: state.override ?? null,
           overrideMeta: state.overrideMeta
             ? {
@@ -212,6 +215,9 @@ export async function PATCH(
         400,
       );
     }
+    if (overrideResult.data && !isUsableTargetDefinition(overrideResult.data)) {
+      return bad("Target values must be above zero (and ranges must be increasing)", undefined, 400);
+    }
 
     const actorResult = TargetActor.safeParse({
       actorType: targetActorTypeFromRole(loaded.caller.role),
@@ -243,7 +249,8 @@ export async function PATCH(
       ? null
       : { reason, setAt: now, setBy: actor };
     const nextEffective =
-      nextCareTeamTarget ?? personalGoal ?? existingState.recommended;
+      nextCareTeamTarget ?? personalGoal ??
+      (existingState.generalReferenceSelected === false ? null : existingState.recommended);
     const nextOverride = nextCareTeamTarget ?? personalGoal;
     const nextOverrideMeta = nextCareTeamTarget
       ? careTeamTargetMeta
@@ -270,7 +277,7 @@ export async function PATCH(
     };
 
     await ledgerCollection.insertOne({
-      after: nextCareTeamTarget ?? nextEffective,
+      after: nextCareTeamTarget,
       before: existingCareTeamTarget,
       createdAt: now,
       createdBy: actor,
