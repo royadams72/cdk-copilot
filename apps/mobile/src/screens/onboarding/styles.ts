@@ -6,6 +6,11 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+  actionsRowEnd: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "flex-end",
+  },
   button: {
     minHeight: 50,
     borderRadius: 14,
@@ -15,6 +20,29 @@ export const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  bodyText: {
+    color: theme.colors.text,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  checkbox: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    height: 22,
+    justifyContent: "center",
+    width: 22,
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  checkboxTick: {
+    color: theme.colors.onPrimary,
+    fontWeight: "700",
   },
   consentCard: {
     borderWidth: 1,
@@ -64,8 +92,25 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.dangerDark,
   },
+  editorCard: {
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+    padding: 12,
+  },
   fieldBlock: {
     gap: 8,
+  },
+  flexItem: {
+    flex: 1,
+  },
+  flexItemGap: {
+    flex: 1,
+    gap: 4,
+  },
+  formSection: {
+    gap: 12,
   },
   header: {
     gap: 8,
@@ -103,6 +148,17 @@ export const styles = StyleSheet.create({
     padding: 18,
     gap: 14,
   },
+  modalCardTall: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 22,
+    gap: 14,
+    maxHeight: "80%",
+    padding: 18,
+  },
+  modalContent: {
+    gap: 12,
+    paddingBottom: 8,
+  },
   modalSubtitle: {
     fontSize: 14,
     color: theme.colors.textSecondary,
@@ -133,6 +189,26 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: theme.colors.primary,
   },
+  selectionOption: {
+    alignItems: "flex-start",
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  selectionOptionSelected: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+  },
+  selectionOptionTitle: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   optionList: {
     maxHeight: 220,
   },
@@ -150,6 +226,13 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.textSecondary,
     textTransform: "capitalize",
+  },
+  repeatableCard: {
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
   },
   pickerLabel: {
     fontSize: 13,
@@ -189,6 +272,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
+  sectionTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
   secondaryButton: {
     backgroundColor: theme.colors.control,
   },
@@ -219,10 +307,27 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text,
   },
+  summaryButton: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  summaryButtonText: {
+    color: theme.colors.text,
+    fontWeight: "600",
+  },
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
     color: theme.colors.onBackground,
+  },
+  splitRow: {
+    flexDirection: "row",
+    gap: 12,
   },
   tertiaryDangerButton: {
     backgroundColor: theme.colors.dangerSoft,

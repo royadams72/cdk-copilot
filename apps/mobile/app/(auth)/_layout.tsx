@@ -13,28 +13,32 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="check-email"
-        options={{ title: "Check your email" }}
+        // options={{ title: "Check your email" }}
       />
-      <Stack.Screen name="consent" options={{ title: "Consent required" }} />
+      <Stack.Screen
+        name="consent"
+        // options={{ title: "Consent required" }}
+      />
       <Stack.Screen
         name="onboarding/pii-form"
-        options={{ title: "Your information" }}
+        // options={{ title: "Your information" }}
       />
       <Stack.Screen
         name="onboarding/medications-form"
-        options={{ title: "Your Medications" }}
+        // options={{ title: "Your Medications" }}
       />
       <Stack.Screen
         name="onboarding/labs-form"
-        options={{ title: "Your Lab Results" }}
+        // options={{ title: "Your Lab Results" }}
       />
       <Stack.Screen
         name="onboarding/clinical-form"
-        options={{ title: "Your Clinical Information" }}
+        // options={{ title: "Your Clinical Information" }}
       />
       <Stack.Screen
+        // title: "Review targets",
         name="onboarding/targets-form"
-        options={{ title: "Review targets", gestureEnabled: false, headerBackVisible: false }}
+        options={{ gestureEnabled: false, headerBackVisible: false }}
       />
     </Stack>
   );

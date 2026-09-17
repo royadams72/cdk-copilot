@@ -1,42 +1,24 @@
 import React from "react";
-import { Text, View } from "react-native";
-import {
-  Controller,
-  type Resolver,
-  useFieldArray,
-  useForm,
-} from "react-hook-form";
+import { Text } from "react-native";
+import { type Resolver, useFieldArray, useForm } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { MedicationsFormSchema, TMedicationFormValues } from "@ckd/core";
 import { useRouter } from "expo-router";
 import { AppButton } from "@/components/ui/button";
-import { DateField } from "../components/DateField";
-import { LabeledInput, OptionSelectField } from "../components/FormFields";
 import { OnboardingFormScreen } from "../components/Onboarding";
-
-const emptyMedication: TMedicationFormValues["medications"][number] = {
-  dmplusdCode: "",
-  dose: "",
-  endAt: null,
-  form: "",
-  frequency: "",
-  instructions: "",
-  name: "",
-  route: "",
-  snomedCode: "",
-  startAt: null,
-  status: "active",
-  strength: "",
-};
-
-const MEDICATION_STATUS_OPTIONS = [
-  { label: "Yes", value: "active" },
-  { label: "Paused", value: "paused" },
-  { label: "Stopped", value: "stopped" },
-  { label: "Completed", value: "completed" },
-] as const;
+import { RepeatableFormCard } from "../components/RepeatableFormCard";
+import {
+  ControlledDateField,
+  ControlledOptionField,
+  ControlledTextField,
+} from "../components/ControlledFormFields";
+import {
+  EMPTY_MEDICATION,
+  MEDICATION_STATUS_OPTIONS,
+} from "../definitions/medications";
+import { styles } from "../styles";
 
 export default function MedicationsForm({
   defaults,
@@ -52,7 +34,7 @@ export default function MedicationsForm({
     defaultValues: {
       medications: defaults?.medications?.length
         ? defaults.medications
-        : [emptyMedication],
+        : [EMPTY_MEDICATION],
     },
     resolver: zodResolver(
       MedicationsFormSchema,
@@ -72,196 +54,114 @@ export default function MedicationsForm({
     <OnboardingFormScreen contentContainerStyle={{ gap: 24 }}>
       {fields.map((field, index) => {
         const base = `medications.${index}` as const;
-        const medErrors =
-          (errors.medications && errors.medications[index]) || undefined;
-
         return (
-          <View
+          <RepeatableFormCard
             key={field.id}
-            style={{ borderRadius: 12, borderWidth: 1, gap: 12, padding: 16 }}
+            title={`Medication ${index + 1}`}
+            removeLabel="Remove medication"
+            onRemove={fields.length > 1 ? () => remove(index) : undefined}
           >
-            <Text style={{ fontWeight: "700" }}>Medication {index + 1}</Text>
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="Name"
               name={`${base}.name`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="Name"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Sevelamer 800 mg tablet"
-                  error={medErrors?.name?.message as string | undefined}
-                />
-              )}
+              placeholder="Sevelamer 800 mg tablet"
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="Strength"
               name={`${base}.strength`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="Strength"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholder="800 mg"
-                />
-              )}
+              placeholder="800 mg"
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="Frequency/Per day"
               name={`${base}.frequency`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="Frequency/Per day"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Three times daily"
-                  error={medErrors?.frequency?.message as string | undefined}
-                />
-              )}
+              placeholder="Three times daily"
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="Form"
               name={`${base}.form`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="Form"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholder="Tablet, solution..."
-                />
-              )}
+              placeholder="Tablet, solution..."
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="Dose"
               name={`${base}.dose`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="Dose"
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="800 mg"
-                  error={medErrors?.dose?.message as string | undefined}
-                />
-              )}
+              placeholder="800 mg"
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="How are you taking this?"
               name={`${base}.route`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="How are you taking this?"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholder="Oral, IV..."
-                />
-              )}
+              placeholder="Oral, IV..."
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="Instructions"
               name={`${base}.instructions`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="Instructions"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholder="Take with meals"
-                  multiline
-                />
-              )}
+              placeholder="Take with meals"
+              multiline
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="dm+d code (optional)"
               name={`${base}.dmplusdCode`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="dm+d code (optional)"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholder="1234567"
-                />
-              )}
+              placeholder="1234567"
             />
 
-            <Controller
+            <ControlledTextField
               control={control}
+              label="SNOMED code (optional)"
               name={`${base}.snomedCode`}
-              render={({ field: { value, onChange } }) => (
-                <LabeledInput
-                  label="SNOMED code (optional)"
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholder="987654321"
-                />
-              )}
+              placeholder="987654321"
             />
 
-            <Controller
+            <ControlledOptionField
               control={control}
+              label="Are you taking this now?"
               name={`${base}.status`}
-              render={({ field: { value, onChange } }) => (
-                <OptionSelectField
-                  label="Are you taking this now?"
-                  value={value}
-                  options={[...MEDICATION_STATUS_OPTIONS]}
-                  onChange={onChange}
-                />
-              )}
+              options={[...MEDICATION_STATUS_OPTIONS]}
             />
-            <Controller
+            <ControlledDateField
               control={control}
+              label="Start date"
               name={`${base}.startAt`}
-              render={({ field: { value, onChange } }) => (
-                <DateField
-                  label="Start date"
-                  value={value ? value.toISOString() : null}
-                  onChange={(nextValue) =>
-                    onChange(nextValue ? new Date(nextValue) : null)
-                  }
-                />
-              )}
+              toFormValue={(nextValue) =>
+                nextValue ? new Date(nextValue) : null
+              }
             />
 
-            <Controller
+            <ControlledDateField
               control={control}
+              label="End date"
               name={`${base}.endAt`}
-              render={({ field: { value, onChange } }) => (
-                <DateField
-                  label="End date"
-                  value={value ? value.toISOString() : null}
-                  onChange={(nextValue) =>
-                    onChange(nextValue ? new Date(nextValue) : null)
-                  }
-                />
-              )}
+              toFormValue={(nextValue) =>
+                nextValue ? new Date(nextValue) : null
+              }
             />
 
-            {fields.length > 1 && (
-              <AppButton
-                label="Remove medication"
-                variant="danger"
-                onPress={() => remove(index)}
-              />
-            )}
-          </View>
+          </RepeatableFormCard>
         );
       })}
 
       <AppButton
         label="Add medication"
         variant="outline"
-        onPress={() => append({ ...emptyMedication })}
+        onPress={() => append({ ...EMPTY_MEDICATION })}
       />
 
       {typeof errors.medications?.message === "string" && (
-        <Text style={{ color: "red" }}>{errors.medications.message}</Text>
+        <Text style={styles.errorText}>{errors.medications.message}</Text>
       )}
 
       <AppButton variant="primary"

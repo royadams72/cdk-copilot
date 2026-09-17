@@ -56,7 +56,9 @@ export const PiiForm = z.object({
   dateOfBirth: z
     .string()
     .transform((v) => (v ? new Date(v) : null))
-    .refine((v) => v instanceof Date, { message: "Invalid date" })
+    .refine((v) => v === null || !Number.isNaN(v.getTime()), {
+      message: "Invalid date",
+    })
     .nullable()
     .refine((v) => v !== null, { message: "Please select your date of birth" }),
   ethnicity: z
@@ -90,7 +92,10 @@ export const PiiForm = z.object({
 
   units: z.enum(["metric", "imperial"]),
 });
-export type TPiiInput = z.infer<typeof PiiForm>;
+export type TPiiFormInput = z.input<typeof PiiForm>;
+export type TPiiFormOutput = z.output<typeof PiiForm>;
+/** @deprecated Prefer TPiiFormInput for controls and TPiiFormOutput after validation. */
+export type TPiiInput = TPiiFormOutput;
 export type TUserPII = z.infer<typeof UserPII_Base>;
 export type TUserPIICreate = z.infer<typeof UserPII_Create>;
 export type TUserPIIUpdate = z.infer<typeof UserPII_Update>;
