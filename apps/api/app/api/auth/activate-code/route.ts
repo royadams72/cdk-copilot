@@ -12,6 +12,7 @@ import { requireUser } from "@/apps/api/lib/auth/auth_requireUser";
 import { enforceRateLimit, getClientIp } from "@/apps/api/lib/auth/rateLimit";
 import { getDb } from "@/apps/api/lib/db/mongodb";
 import { ensurePatientTargetsSeeded } from "@/apps/api/lib/utils/targets";
+import { queueCareTeamConsent } from "@/apps/api/lib/utils/patientConsents";
 import {
   DEFAULT_SCOPES,
   ROLES,
@@ -114,6 +115,7 @@ function addMonths(from: Date, months: number) {
 }
 
 function buildInitialAssignment(args: {
+  assignmentId?: string;
   careTeamId: string;
   endsAt: Date;
   facilityId: string;
@@ -123,15 +125,15 @@ function buildInitialAssignment(args: {
   const nowIso = args.now.toISOString();
 
   return {
-    assignmentId: `asg_${new ObjectId().toHexString()}`,
+    assignmentId: args.assignmentId ?? `asg_${new ObjectId().toHexString()}`,
     careTeamId: args.careTeamId,
-    consentStatus: "accepted",
+    consentStatus: "pending",
     createdAt: nowIso,
     endsAt: args.endsAt.toISOString(),
     facilityId: args.facilityId,
     orgId: args.orgId,
-    startsAt: nowIso,
-    status: "active",
+    startsAt: null,
+    status: "pending",
     updatedAt: nowIso,
   } satisfies TPatientAssignment;
 }
@@ -263,12 +265,15 @@ export async function POST(req: NextRequest) {
         assignment.facilityId === invite.facilityId &&
         assignment.careTeamId === invite.careTeamId,
     );
+    const assignmentId =
+      matchingAssignment?.assignmentId ?? `asg_${new ObjectId().toHexString()}`;
 
     if (!existingPatient) {
       await patients.insertOne({
         _id: patientId,
         assignments: [
           buildInitialAssignment({
+            assignmentId,
             careTeamId: invite.careTeamId,
             endsAt: accessEndsAt,
             facilityId: invite.facilityId,
@@ -281,7 +286,6 @@ export async function POST(req: NextRequest) {
         principalId: invite.principalId,
         summary: {
           membershipEndsAt: accessEndsAt.toISOString(),
-          membershipStartedAt: now.toISOString(),
         },
         updatedAt: now,
       });
@@ -293,14 +297,13 @@ export async function POST(req: NextRequest) {
         },
         {
           $set: {
-            "assignments.$.consentStatus": "accepted",
+            "assignments.$.consentStatus": "pending",
             "assignments.$.endsAt": accessEndsAt.toISOString(),
-            "assignments.$.startsAt": matchingAssignment.startsAt ?? now.toISOString(),
-            "assignments.$.status": "active",
+            "assignments.$.startsAt": null,
+            "assignments.$.status": "pending",
             "assignments.$.updatedAt": now.toISOString(),
             "summary.membershipEndsAt": accessEndsAt.toISOString(),
-            "summary.membershipStartedAt":
-              matchingAssignment.startsAt ?? now.toISOString(),
+            "summary.membershipStartedAt": null,
             principalId: invite.principalId,
             updatedAt: now,
           },
@@ -312,6 +315,7 @@ export async function POST(req: NextRequest) {
         {
           $push: {
             assignments: buildInitialAssignment({
+              assignmentId,
               careTeamId: invite.careTeamId,
               endsAt: accessEndsAt,
               facilityId: invite.facilityId,
@@ -321,7 +325,7 @@ export async function POST(req: NextRequest) {
           },
           $set: {
             "summary.membershipEndsAt": accessEndsAt.toISOString(),
-            "summary.membershipStartedAt": now.toISOString(),
+            "summary.membershipStartedAt": null,
             principalId: invite.principalId,
             updatedAt: now,
           },
@@ -334,6 +338,16 @@ export async function POST(req: NextRequest) {
         { upsert: true },
       );
     }
+
+    await queueCareTeamConsent(db, {
+      actorPrincipalId: invite.createdBy,
+      assignmentId,
+      careTeamId: invite.careTeamId,
+      facilityId: invite.facilityId,
+      orgId,
+      patientId,
+      patientPrincipalId: invite.principalId,
+    });
 
     await usersPii.updateOne(
       { email: invite.email },

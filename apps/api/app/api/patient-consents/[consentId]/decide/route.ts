@@ -87,8 +87,10 @@ export async function POST(
         {
           $set: {
             "assignments.$.consentStatus": "accepted",
+            "assignments.$.startsAt": now.toISOString(),
             "assignments.$.status": "active",
             "assignments.$.updatedAt": now.toISOString(),
+            "summary.membershipStartedAt": now.toISOString(),
             updatedAt: now,
           },
         },

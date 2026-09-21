@@ -42,8 +42,10 @@ const Integrations = z.object({
 });
 
 export const UserPII_Common = z.object({
-  consentAppTosAt: z.coerce.date(),
-  consentPrivacyAt: z.coerce.date(),
+  consentAppTosAt: z.coerce.date().optional(),
+  consentAppTosVersion: z.string().min(1).optional(),
+  consentPrivacyAt: z.coerce.date().optional(),
+  consentPrivacyVersion: z.string().min(1).optional(),
   consentResearchAt: z.coerce.date().nullable().optional(),
   country: IsoCountry2.default("GB"),
   createdAt: z.coerce.date().optional(),

@@ -27,5 +27,6 @@ export * from "./foodMeasures";
 export { CKD_STAGE_VALUES, CKDStage } from "./schemas/common";
 export * from "./schemas/edamam_responses";
 export * from "./constants/onboardingSteps";
+export * from "./constants/legalDocuments";
 export * from "./constants/scopes";
 export * from "../shared/common";
