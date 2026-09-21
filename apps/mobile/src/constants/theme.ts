@@ -32,6 +32,8 @@ export const theme = {
   colors: {
     background: palette.canvas,
     onBackground: "#E4E7EC",
+    borderOnBackground: "rgba(228,231,236,0.55)",
+    dangerOnBackground: "#FFD0D0",
     surface: palette.surface,
     surfaceMuted: "#F8FAFC",
     text: palette.ink,
@@ -45,6 +47,7 @@ export const theme = {
     primary: palette.blue,
     primaryPressed: palette.blueDark,
     primarySoft: "rgba(8,118,209,0.12)",
+    tertiary: palette.green,
     onPrimary: palette.surface,
     success: palette.green,
     successDark: palette.greenDark,

@@ -32,11 +32,11 @@ export function AppScreen({
   const contentStyle = [
     styles.content,
     padded && styles.padded,
-    contentContainerStyle,
     {
       paddingTop: Math.max(insets.top, theme.spacing.lg),
       paddingBottom: Math.max(insets.bottom, theme.spacing.lg) + theme.spacing.lg,
     },
+    contentContainerStyle,
   ];
 
   const body = scroll ? (

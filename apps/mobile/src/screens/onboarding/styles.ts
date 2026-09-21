@@ -6,15 +6,33 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  button: {
-    minHeight: 50,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    alignItems: "center",
-    justifyContent: "center",
+  actionsRowEnd: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "flex-end",
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  bodyText: {
+    color: theme.colors.onBackground,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  checkbox: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    height: 22,
+    justifyContent: "center",
+    width: 22,
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  checkboxTick: {
+    color: theme.colors.onPrimary,
+    fontWeight: "700",
   },
   consentCard: {
     borderWidth: 1,
@@ -60,12 +78,29 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  editorCard: {
+    borderColor: theme.colors.borderOnBackground,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+    padding: 12,
+  },
   errorText: {
     fontSize: 13,
-    color: theme.colors.dangerDark,
+    color: theme.colors.dangerOnBackground,
   },
   fieldBlock: {
     gap: 8,
+  },
+  flexItem: {
+    flex: 1,
+  },
+  flexItemGap: {
+    flex: 1,
+    gap: 4,
+  },
+  formSection: {
+    gap: 12,
   },
   header: {
     gap: 8,
@@ -103,6 +138,17 @@ export const styles = StyleSheet.create({
     padding: 18,
     gap: 14,
   },
+  modalCardTall: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 22,
+    gap: 14,
+    maxHeight: "80%",
+    padding: 18,
+  },
+  modalContent: {
+    gap: 12,
+    paddingBottom: 8,
+  },
   modalSubtitle: {
     fontSize: 14,
     color: theme.colors.textSecondary,
@@ -111,10 +157,6 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: theme.colors.text,
-  },
-  multilineInput: {
-    minHeight: 100,
-    textAlignVertical: "top",
   },
   optionItem: {
     paddingHorizontal: 12,
@@ -169,35 +211,21 @@ export const styles = StyleSheet.create({
     color: theme.colors.text,
     lineHeight: 24,
   },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-  },
-  primaryButtonPressed: {
-    backgroundColor: theme.colors.primaryPressed,
-  },
-  primaryButtonText: {
-    color: theme.colors.onPrimary,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
+  repeatableCard: {
+    borderColor: theme.colors.borderOnBackground,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
   },
   screenContent: {
     gap: 20,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 50,
   },
-  secondaryButton: {
-    backgroundColor: theme.colors.control,
-  },
-  secondaryButtonPressed: {
-    backgroundColor: theme.colors.controlPressed,
-  },
-  secondaryButtonText: {
-    color: theme.colors.text,
-    fontSize: 16,
+  sectionTitle: {
+    color: theme.colors.onBackground,
+    fontSize: 18,
     fontWeight: "700",
   },
   selectionField: {
@@ -211,6 +239,26 @@ export const styles = StyleSheet.create({
   selectionFieldPressed: {
     opacity: 0.82,
   },
+  selectionOption: {
+    alignItems: "flex-start",
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  selectionOptionSelected: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+  },
+  selectionOptionTitle: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   selectionPlaceholder: {
     fontSize: 16,
     color: theme.colors.textMuted,
@@ -219,21 +267,28 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text,
   },
+  splitRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
     color: theme.colors.onBackground,
   },
-  tertiaryDangerButton: {
-    backgroundColor: theme.colors.dangerSoft,
+  summaryButton: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.tertiary,
+    borderColor: theme.colors.borderOnBackground,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: theme.colors.onBackground,
   },
-  tertiaryDangerButtonPressed: {
-    backgroundColor: theme.colors.danger,
-  },
-  tertiaryDangerButtonText: {
-    color: theme.colors.dangerDark,
-    fontSize: 16,
-    fontWeight: "700",
+  summaryButtonText: {
+    color: theme.colors.text,
+    fontWeight: "600",
   },
   title: {
     fontSize: 26,

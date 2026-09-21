@@ -10,6 +10,8 @@ import {
 
 import { theme } from "@/constants/theme";
 
+type FormFieldTone = "background" | "surface";
+
 export function FormField({
   children,
   containerStyle,
@@ -17,6 +19,7 @@ export function FormField({
   error,
   label,
   required = false,
+  tone = "background",
 }: {
   children: ReactNode;
   containerStyle?: ViewStyle;
@@ -24,21 +27,49 @@ export function FormField({
   error?: string;
   label?: string;
   required?: boolean;
+  tone?: FormFieldTone;
 }) {
   return (
     <View style={[styles.block, containerStyle]}>
       {label ? (
-        <Text style={styles.label}>
+        <Text
+          style={[
+            styles.label,
+            tone === "background" ? styles.textOnBackground : null,
+          ]}
+        >
           {label}
-          {required ? <Text style={styles.required}> *</Text> : null}
+          {required ? (
+            <Text
+              style={[
+                styles.required,
+                tone === "background" ? styles.errorOnBackground : null,
+              ]}
+            >
+              {" *"}
+            </Text>
+          ) : null}
         </Text>
       ) : null}
       {description ? (
-        <Text style={styles.description}>{description}</Text>
+        <Text
+          style={[
+            styles.description,
+            tone === "background" ? styles.textOnBackground : null,
+          ]}
+        >
+          {description}
+        </Text>
       ) : null}
       {children}
       {error ? (
-        <Text accessibilityLiveRegion="polite" style={styles.error}>
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.error,
+            tone === "background" ? styles.errorOnBackground : null,
+          ]}
+        >
           {error}
         </Text>
       ) : null}
@@ -55,6 +86,7 @@ export function TextField({
   required,
   hideLabel = false,
   style,
+  tone,
   ...props
 }: TextInputProps & {
   containerStyle?: ViewStyle;
@@ -63,6 +95,7 @@ export function TextField({
   hideLabel?: boolean;
   label: string;
   required?: boolean;
+  tone?: FormFieldTone;
 }) {
   return (
     <View style={containerStyle}>
@@ -71,6 +104,7 @@ export function TextField({
         description={description}
         error={error}
         required={required}
+        tone={tone}
       >
         <TextInput
           accessibilityLabel={label}
@@ -109,6 +143,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   error: { color: theme.colors.dangerDark, fontSize: 13 },
+  errorOnBackground: { color: theme.colors.dangerOnBackground },
   input: {
     ...formControlStyles.shell,
     color: theme.colors.text,
@@ -117,7 +152,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   inputError: formControlStyles.shellError,
-  label: { color: theme.colors.onBackground, fontSize: 15, fontWeight: "600" },
+  label: { color: theme.colors.text, fontSize: 15, fontWeight: "600" },
   multiline: { minHeight: 100, textAlignVertical: "top" },
   required: { color: theme.colors.dangerDark },
+  textOnBackground: { color: theme.colors.onBackground },
 });

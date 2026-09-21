@@ -45,7 +45,7 @@ const nativeSyncModule = (
     };
   }
 ).NativeModules.HealthConnectBackgroundSync;
-const mockedRouter = router as { replace: jest.Mock };
+const mockedRouter = router as unknown as { replace: jest.Mock };
 
 describe("authSession", () => {
   beforeEach(() => {
