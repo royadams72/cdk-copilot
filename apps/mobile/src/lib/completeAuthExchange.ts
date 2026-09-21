@@ -44,7 +44,9 @@ export async function completeAuthExchange(token: string) {
   await clearMembershipInactiveSessionState();
   markAuthenticatedSessionReady();
   await syncNativeAuthSessionMirror(data.jwt, data.refreshToken ?? null);
-  void syncAuthenticatedAppState();
+  if (data.hasActiveAssignments !== false) {
+    void syncAuthenticatedAppState();
+  }
 
   return data;
 }

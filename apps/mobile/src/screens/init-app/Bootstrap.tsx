@@ -74,7 +74,9 @@ const Bootstrap = () => {
             if (retried.data?.ok) {
               await clearMembershipInactiveSessionState();
               markAuthenticatedSessionReady();
-              void syncAuthenticatedAppState();
+              if (retried.data?.hasActiveAssignments !== false) {
+                void syncAuthenticatedAppState();
+              }
               logPostAuthRouteDecision("bootstrap:refresh-only", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;
@@ -95,7 +97,9 @@ const Bootstrap = () => {
         if (data.ok) {
           await clearMembershipInactiveSessionState();
           markAuthenticatedSessionReady();
-          void syncAuthenticatedAppState();
+          if (data?.hasActiveAssignments !== false) {
+            void syncAuthenticatedAppState();
+          }
           logPostAuthRouteDecision("bootstrap", data ?? {});
           router.replace(resolvePostAuthRoute(data ?? {}) as never);
         } else if (res.status === 403 && hasMembershipInactiveCode(data)) {
@@ -108,7 +112,9 @@ const Bootstrap = () => {
             if (retried.data?.ok) {
               await clearMembershipInactiveSessionState();
               markAuthenticatedSessionReady();
-              void syncAuthenticatedAppState();
+              if (retried.data?.hasActiveAssignments !== false) {
+                void syncAuthenticatedAppState();
+              }
               logPostAuthRouteDecision("bootstrap:retry", retried.data ?? {});
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;

@@ -27,7 +27,9 @@ export async function POST(
   const requestId = makeRandomId();
 
   try {
-    const caller = await requireUser(req);
+    const caller = await requireUser(req, [], {
+      allowPendingMembership: true,
+    });
 
     if (!caller.patientId || !ObjectId.isValid(caller.patientId)) {
       return bad("Patient context missing", { requestId }, 403);
