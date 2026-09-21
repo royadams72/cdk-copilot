@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
   try {
     const user: SessionUser = await requireUser(req, [], {
       allowAccountRecovery: true,
+      allowPendingMembership: true,
     });
     if (!user.patientId) {
       return bad("Patient context missing", { requestId }, 403);

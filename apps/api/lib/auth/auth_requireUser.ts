@@ -58,7 +58,11 @@ export async function findPatientIdForPrincipal(db: Db, principalId: string) {
   return undefined;
 }
 
-async function requireActivePatientMembership(db: Db, patientId: string) {
+async function requireActivePatientMembership(
+  db: Db,
+  patientId: string,
+  allowPendingMembership = false,
+) {
   await syncExpiredPatientMemberships({
     db,
     patientId: new ObjectId(patientId),
@@ -67,6 +71,7 @@ async function requireActivePatientMembership(db: Db, patientId: string) {
   const patient = await db.collection(COLLECTIONS.Patients).findOne<{
     assignments?: Array<{
       endsAt?: Date | string | null;
+      consentStatus?: string | null;
       status?: string | null;
     }>;
   }>(
@@ -78,7 +83,16 @@ async function requireActivePatientMembership(db: Db, patientId: string) {
     (patient?.assignments ?? []) as any,
   );
 
-  if (!assignmentState.hasActiveAssignments) {
+  const hasPendingMembership = patient?.assignments?.some(
+    (assignment) =>
+      assignment.status === "pending" &&
+      assignment.consentStatus === "pending",
+  );
+
+  if (
+    !assignmentState.hasActiveAssignments &&
+    !(allowPendingMembership && hasPendingMembership)
+  ) {
     throw Object.assign(new Error("Your membership is no longer active."), {
       code: "membership_inactive",
       status: 403,
@@ -89,7 +103,11 @@ async function requireActivePatientMembership(db: Db, patientId: string) {
 export async function requireUser(
   req: NextRequest,
   neededScopes: Scope | Scope[] = [],
-  opts: { allowAccountRecovery?: boolean; allowBootstrap?: boolean } = {},
+  opts: {
+    allowAccountRecovery?: boolean;
+    allowBootstrap?: boolean;
+    allowPendingMembership?: boolean;
+  } = {},
 ): Promise<SessionUser> {
   const db = await getDb();
   const token = getBearer(req);
@@ -218,7 +236,11 @@ export async function requireUser(
           status: 403,
         });
       }
-      await requireActivePatientMembership(db, patientId);
+      await requireActivePatientMembership(
+        db,
+        patientId,
+        opts.allowPendingMembership,
+      );
     }
 
     return {
