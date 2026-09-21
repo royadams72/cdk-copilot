@@ -50,6 +50,8 @@ export const PatientConsentBase = z.object({
   requestedAt: dateAsISOString,
   decidedAt: dateAsISOString.nullable().optional(),
   copy: PatientConsentCopy,
+  noticeVersion: z.string().min(1),
+  purpose: z.literal("direct_care"),
   createdAt: dateAsISOString,
   updatedAt: dateAsISOString,
   createdBy: PrincipalId,

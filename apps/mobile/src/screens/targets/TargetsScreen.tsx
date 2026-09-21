@@ -493,9 +493,7 @@ export default function TargetsScreen({
     }));
     setCustomValues((current) =>
       Object.fromEntries(
-        Object.entries(current).filter(
-          ([metric]) => !unsetMetrics.has(metric),
-        ),
+        Object.entries(current).filter(([metric]) => !unsetMetrics.has(metric)),
       ),
     );
   }
@@ -519,9 +517,6 @@ export default function TargetsScreen({
             variant="secondary"
             size="compact"
           />
-          <TouchableOpacity onPress={() => router.back()}>
-            <MaterialIcons color="#475569" name="close" size={22} />
-          </TouchableOpacity>
         </View>
       ) : null}
 

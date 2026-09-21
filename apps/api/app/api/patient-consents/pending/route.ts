@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
             careTeamId: 1,
             clinicianPrincipalId: 1,
             copy: 1,
+            noticeVersion: 1,
+            purpose: 1,
             createdAt: 1,
             decision: 1,
             decisionSource: 1,

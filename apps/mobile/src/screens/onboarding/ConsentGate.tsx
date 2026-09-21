@@ -6,8 +6,8 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { resolvePostAuthRoute } from "@/lib/onboarding";
 
+import { AppScreen } from "@/components/app-screen";
 import { AppButton } from "@/components/ui/button";
-import { OnboardingFormScreen } from "./components/Onboarding";
 import { styles } from "./styles";
 
 type PendingConsentItem = {
@@ -22,6 +22,8 @@ type PendingConsentItem = {
   };
   facilityId: string;
   orgId: string;
+  noticeVersion?: string;
+  purpose?: "direct_care";
   status: string;
 };
 
@@ -59,7 +61,9 @@ export default function ConsentGate() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<
+    "agree" | "continue" | "disagree" | null
+  >(null);
   const [items, setItems] = useState<PendingConsentItem[]>([]);
 
   useEffect(() => {
@@ -107,7 +111,7 @@ export default function ConsentGate() {
   async function decide(decision: "agree" | "disagree") {
     if (!currentItem || submitting) return;
 
-    setSubmitting(true);
+    setSubmitting(decision);
     setError("");
 
     try {
@@ -131,51 +135,91 @@ export default function ConsentGate() {
     } catch (nextError: any) {
       setError(nextError?.message ?? "We couldn't save your decision.");
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
+    }
+  }
+
+  async function continueWithoutConsent() {
+    if (submitting) return;
+    setSubmitting("continue");
+    setError("");
+    try {
+      await refreshStateAndRoute();
+    } catch (nextError: any) {
+      setError(nextError?.message ?? "We couldn't continue right now.");
+    } finally {
+      setSubmitting(null);
     }
   }
 
   if (loading) {
     return (
-      <OnboardingFormScreen title="Checking your consent status">
+      <AppScreen
+        contentContainerStyle={styles.screenContent}
+        keyboardAware
+        padded={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Checking your consent status</Text>
+        </View>
         <View style={styles.loadingBlock}>
           <ActivityIndicator size="large" />
           <Text style={styles.subtitle}>
             Loading your care team access request...
           </Text>
         </View>
-      </OnboardingFormScreen>
+      </AppScreen>
     );
   }
 
   if (!currentItem) {
     return (
-      <OnboardingFormScreen
-        title="No consent request found"
-        subtitle="There are no pending consent requests for this account."
-        contentContainerStyle={{ gap: 20 }}
+      <AppScreen
+        contentContainerStyle={[styles.screenContent, { gap: 20 }]}
+        keyboardAware
+        padded={false}
       >
+        <View style={styles.header}>
+          <Text style={styles.title}>No consent request found</Text>
+          <Text style={styles.subtitle}>
+            There are no pending consent requests for this account.
+          </Text>
+        </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        <AppButton variant="primary"
+        <AppButton
+          disabled={submitting !== null}
+          fullWidth
           label="Continue"
-          onPress={() => {
-            void refreshStateAndRoute();
-          }}
+          loading={submitting === "continue"}
+          onPress={() => void continueWithoutConsent()}
+          variant="primary"
         />
-      </OnboardingFormScreen>
+      </AppScreen>
     );
   }
 
   return (
-    <OnboardingFormScreen
-      title={currentItem.copy?.title ?? "Consent required"}
-      subtitle={
-        currentItem.copy?.body ??
-        "A new care team or clinician needs your approval before you can continue."
-      }
-      contentContainerStyle={{ gap: 24 }}
+    <AppScreen
+      contentContainerStyle={[styles.screenContent, { gap: 24 }]}
+      keyboardAware
+      padded={false}
     >
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {currentItem.copy?.title ?? "Consent required"}
+        </Text>
+        <Text style={styles.subtitle}>
+          {currentItem.copy?.body ??
+            "A new care team or clinician needs your approval before you can continue."}
+        </Text>
+      </View>
       <View style={styles.consentCard}>
+        <Text style={styles.bodyText}>
+          If you agree, authorised members of this care team can use the health
+          information you record in CKD Copilot to support your direct care.
+          You can decline, ask your care team who has access, or contact them
+          later if you want to discuss or withdraw access.
+        </Text>
         <Text style={styles.consentLabel}>Assignment</Text>
         <Text style={styles.consentValue}>
           {summary ?? currentItem.assignmentId}
@@ -191,24 +235,35 @@ export default function ConsentGate() {
         <Text style={styles.consentMeta}>
           Request type: {currentItem.type.replaceAll("_", " ")}
         </Text>
+        {currentItem.noticeVersion ? (
+          <Text style={styles.consentMeta}>
+            Notice version: {currentItem.noticeVersion}
+          </Text>
+        ) : null}
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <AppButton variant="primary"
-        disabled={submitting}
-        label={submitting ? "Saving..." : "Agree"}
+      <AppButton
+        disabled={submitting !== null}
+        fullWidth
+        label="Agree"
+        loading={submitting === "agree"}
         onPress={() => {
           void decide("agree");
         }}
+        variant="primary"
       />
-      <AppButton variant="secondary"
-        disabled={submitting}
-        label={submitting ? "Saving..." : "Disagree"}
+      <AppButton
+        disabled={submitting !== null}
+        fullWidth
+        label="Disagree"
+        loading={submitting === "disagree"}
         onPress={() => {
           void decide("disagree");
         }}
+        variant="secondary"
       />
-    </OnboardingFormScreen>
+    </AppScreen>
   );
 }

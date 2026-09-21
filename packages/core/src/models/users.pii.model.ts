@@ -66,8 +66,10 @@ const UserPIISchema = new Schema(
     integrations: { type: IntegrationsSchema, default: {} },
     devices: { type: [DeviceSchema], default: [] },
 
-    consentAppTosAt: { type: Date, required: true },
-    consentPrivacyAt: { type: Date, required: true },
+    consentAppTosAt: Date,
+    consentAppTosVersion: String,
+    consentPrivacyAt: Date,
+    consentPrivacyVersion: String,
     consentResearchAt: Date,
     pseudonymId: { type: String, required: true, unique: true, index: true },
     dataSharingScope: {

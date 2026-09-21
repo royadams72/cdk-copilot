@@ -13,6 +13,9 @@ export default function RootLayout() {
       />
       <Stack.Screen name="check-email" />
       <Stack.Screen name="consent" />
+      <Stack.Screen name="legal" />
+      <Stack.Screen name="terms" />
+      <Stack.Screen name="privacy-notice" />
       <Stack.Screen name="onboarding/pii-form" />
       <Stack.Screen name="onboarding/medications-form" />
       <Stack.Screen name="onboarding/labs-form" />

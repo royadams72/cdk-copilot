@@ -165,6 +165,8 @@ export async function queueCareTeamConsent(
       careTeamId: args.careTeamId,
       clinicianPrincipalId: args.clinicianPrincipalId,
     }),
+    noticeVersion: "care-team-access-draft-2026-09-21",
+    purpose: "direct_care",
     createdAt: nowIso,
     createdBy: args.actorPrincipalId,
     decision: null,

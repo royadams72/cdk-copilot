@@ -1,6 +1,6 @@
 # patient_consents
 
-**Purpose:** Track patient consent decisions for assignment-scoped care access when new clinicians or care teams are added after the patient account already exists.
+**Purpose:** Track patient consent decisions for assignment-scoped care access during initial activation and when new clinicians or care teams are added later.
 **Contains PII:** No direct PII. References patient, assignment, and clinician identifiers.
 **Access:** App server only for writes. Patient may read and decide their own pending items through API routes. Staff/admin access should be audited.
 
@@ -23,6 +23,8 @@
 - `copy` · object · prebuilt patient-facing content
   - `title` · string
   - `body` · string
+- `noticeVersion` · string · immutable identifier for the wording shown
+- `purpose` · `direct_care`
 - `createdAt` / `updatedAt` · Date
 - `createdBy` / `updatedBy` · string ref: `principalId`
 
@@ -48,6 +50,8 @@
     "title": "Care team update",
     "body": "A clinician has been added to your care team and needs your approval."
   },
+  "noticeVersion": "care-team-access-draft-2026-09-21",
+  "purpose": "direct_care",
   "createdBy": "pr_service_lead_1",
   "updatedBy": "pr_service_lead_1",
   "createdAt": "2026-05-29T09:00:00.000Z",

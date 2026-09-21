@@ -28,8 +28,10 @@
   Health Connect sync progress now lives in `health_connect_sync_state`, not inline on `users_pii`.
 - `devices` · array of device records `{ platform, pushToken?, lastSeenAt? }`
 - `consentAppTosAt` · Date
+- `consentAppTosVersion` · string
   **(TOS = Terms of Service)**
 - `consentPrivacyAt` · Date
+- `consentPrivacyVersion` · string
 - `consentResearchAt` · Date|null (explicit opt‑in)
 - `pseudonymId` · string (for analytics/research only)
 - `dataSharingScope` · enum (`minimal|standard|broad`)
