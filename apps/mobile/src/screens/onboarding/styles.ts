@@ -34,14 +34,6 @@ export const styles = StyleSheet.create({
     color: theme.colors.onPrimary,
     fontWeight: "700",
   },
-  consentCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-    borderRadius: 18,
-    backgroundColor: theme.colors.surfaceMuted,
-    padding: 18,
-    gap: 8,
-  },
   consentLabel: {
     fontSize: 12,
     fontWeight: "600",

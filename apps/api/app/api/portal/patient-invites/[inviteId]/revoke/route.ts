@@ -42,6 +42,48 @@ export async function POST(
       facilityId: invite.facilityId,
     });
 
+    const isActivated = invite.status === "activated" || Boolean(invite.activatedAt);
+    if (isActivated) {
+      const consents = db.collection(COLLECTIONS.PatientConsents);
+      const pendingConsent = await consents.findOne({
+        careTeamId: invite.careTeamId,
+        facilityId: invite.facilityId,
+        orgId: invite.orgId,
+        patientId: invite.patientId,
+        status: "pending",
+      });
+      if (!pendingConsent) {
+        return bad("Only activated invites awaiting consent can be revoked", { code: "invite_revoke_not_allowed" }, 409);
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      await db.collection(COLLECTIONS.Patients).updateOne(
+        { _id: invite.patientId, "assignments.assignmentId": pendingConsent.assignmentId },
+        {
+          $set: {
+            "assignments.$.consentStatus": "revoked",
+            "assignments.$.status": "inactive",
+            "assignments.$.updatedAt": nowIso,
+            updatedAt: now,
+          },
+        },
+      );
+      await consents.updateOne(
+        { _id: pendingConsent._id, status: "pending" },
+        { $set: { status: "revoked", updatedAt: nowIso, updatedBy: caller.principalId } },
+      );
+      await invites.updateOne(
+        { _id: invite._id },
+        { $set: { status: "revoked", updatedAt: now, updatedBy: caller.principalId } },
+      );
+      await db.collection(COLLECTIONS.AuthTokens).updateMany(
+        { patientId: invite.patientId, revokedAt: null },
+        { $set: { revokedAt: now } },
+      );
+      return ok({ inviteId, status: "revoked" });
+    }
+
     if (!REVOCABLE_STATUSES.has(invite.status)) {
       return bad(
         "Only pending, invited, or expired invites can be revoked",

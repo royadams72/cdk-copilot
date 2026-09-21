@@ -135,11 +135,7 @@ function isInviteActivated(item: InviteItem) {
 }
 
 function canResendInvite(item: InviteItem) {
-  if (isInviteActivated(item) || item.status === "cancelled") {
-    return false;
-  }
-
-  return ["pending_review", "invited", "expired", "revoked"].includes(item.status);
+  return item.canResend;
 }
 
 function canExtendInvite(item: InviteItem) {
@@ -151,11 +147,7 @@ function canExtendInvite(item: InviteItem) {
 }
 
 function canRevokeInvite(item: InviteItem) {
-  if (isInviteActivated(item) || item.status === "cancelled" || item.status === "revoked") {
-    return false;
-  }
-
-  return ["pending_review", "invited", "expired"].includes(item.status);
+  return item.canRevoke;
 }
 
 export default function PortalPatientInvitesPage() {
@@ -320,10 +312,16 @@ export default function PortalPatientInvitesPage() {
         invite,
         summary:
           action === "resend"
-            ? `A fresh activation code was sent to ${invite.email}.`
+            ? isInviteActivated(invite) &&
+              invite.membershipLifecycleStatus === "pending"
+              ? `A care-team access reminder was sent to ${invite.email}.`
+              : `A fresh activation code was sent to ${invite.email}.`
             : action === "extend"
               ? `The invite expiry for ${invite.email} was extended by 7 days.`
-              : `The invite for ${invite.email} was revoked.`,
+              : isInviteActivated(invite) &&
+                  invite.membershipLifecycleStatus === "pending"
+                ? `The pending care-team access request for ${invite.email} was revoked.`
+                : `The invite for ${invite.email} was revoked.`,
       });
     } catch (nextError) {
       setActionError(
@@ -524,7 +522,11 @@ export default function PortalPatientInvitesPage() {
                           onClick={() => void runAction(item, "resend")}
                           type="button"
                         >
-                          {actionPending === item.id ? "Working..." : "Resend"}
+                          {actionPending === item.id
+                            ? "Working..."
+                            : isInviteActivated(item) && item.membershipLifecycleStatus === "pending"
+                              ? "Resend request"
+                              : "Resend"}
                         </button>
                         <button
                           className={styles.buttonSecondarySmall}
@@ -562,8 +564,9 @@ export default function PortalPatientInvitesPage() {
         >
             <h2 className={styles.modalTitle} id="revoke-invite-dialog-title">Revoke invite</h2>
             <p className={styles.modalCopy}>
-              Revoke the invite for {revokeTarget.firstName} {revokeTarget.lastName}?
-              The activation code will stop working.
+              {isInviteActivated(revokeTarget) && revokeTarget.membershipLifecycleStatus === "pending"
+                ? `Revoke the pending care-team access request for ${revokeTarget.firstName} ${revokeTarget.lastName}? Their pending assignment will be deactivated and their current app sessions will be signed out.`
+                : `Revoke the invite for ${revokeTarget.firstName} ${revokeTarget.lastName}? The activation code will stop working.`}
             </p>
             <div className={styles.warningActions}>
               <button

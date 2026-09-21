@@ -15,7 +15,7 @@ import { authFetch } from "@/lib/authFetch";
 
 import { ThemedText } from "@/components/themed-text";
 import { AppButton } from "@/components/ui/button";
-import { Card } from "@/screens/dashboard/components/Card";
+import { Section } from "@/components/ui/section";
 import {
   type TargetDefinitionValue,
   type TargetDomain,
@@ -569,7 +569,7 @@ export default function TargetsScreen({
       ) : null}
 
       {screenError || error ? (
-        <Card>
+        <Section>
           <ThemedText type="defaultSemiBold">Could not load targets</ThemedText>
           <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
           <AppButton
@@ -579,16 +579,16 @@ export default function TargetsScreen({
             style={{ marginTop: 8 }}
             variant="outline"
           />
-        </Card>
+        </Section>
       ) : null}
 
       {!isLoading && items.length === 0 ? (
-        <Card>
+        <Section>
           <ThemedText type="defaultSemiBold">No targets found</ThemedText>
           <ThemedText style={{ opacity: 0.7 }}>
             This section does not have editable targets yet.
           </ThemedText>
-        </Card>
+        </Section>
       ) : null}
 
       {items.map((item) => {
@@ -599,7 +599,7 @@ export default function TargetsScreen({
         const hasChanged = currentKey !== savedKey;
 
         return (
-          <Card key={item.metric}>
+          <Section key={item.metric}>
             <View style={{ gap: 6 }}>
               <View
                 style={{
@@ -749,7 +749,7 @@ export default function TargetsScreen({
                 </ThemedText>
               ) : null}
             </View>
-          </Card>
+          </Section>
         );
       })}
       {onboarding && !isLoading && !error && items.length > 0 ? (

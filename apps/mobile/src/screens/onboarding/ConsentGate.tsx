@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -7,7 +7,9 @@ import { authFetch } from "@/lib/authFetch";
 import { resolvePostAuthRoute } from "@/lib/onboarding";
 
 import { AppScreen } from "@/components/app-screen";
+import { ThemedText } from "@/components/themed-text";
 import { AppButton } from "@/components/ui/button";
+import { Section } from "@/components/ui/section";
 import { styles } from "./styles";
 
 type PendingConsentItem = {
@@ -15,20 +17,25 @@ type PendingConsentItem = {
   type: string;
   assignmentId: string;
   careTeamId: string;
+  careTeamName?: string;
   clinicianPrincipalId?: string;
+  clinicianName?: string;
   copy?: {
     body?: string;
     title?: string;
   };
   facilityId: string;
+  facilityName?: string;
   orgId: string;
+  orgName?: string;
   noticeVersion?: string;
   purpose?: "direct_care";
   status: string;
 };
 
 type PendingConsentResponse = {
-  items?: PendingConsentItem[];
+  data?: { items?: PendingConsentItem[] };
+  message?: string;
   ok?: boolean;
 };
 
@@ -46,7 +53,10 @@ async function fetchPendingConsents() {
   const data = (await res
     .json()
     .catch(() => null)) as PendingConsentResponse | null;
-  return { data, res };
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.message ?? "We couldn't load your consent request.");
+  }
+  return data.data?.items ?? [];
 }
 
 async function fetchSessionState() {
@@ -54,6 +64,9 @@ async function fetchSessionState() {
   const data = (await res
     .json()
     .catch(() => null)) as SessionStateResponse | null;
+  if (!res.ok || !data?.ok) {
+    throw new Error("We couldn't refresh your account status.");
+  }
   return { data, res };
 }
 
@@ -69,10 +82,11 @@ export default function ConsentGate() {
   useEffect(() => {
     void (async () => {
       try {
-        const [{ data: consentData }] =
-          await Promise.all([fetchPendingConsents(), fetchSessionState()]);
-
-        setItems(consentData?.items ?? []);
+        const [pendingItems] = await Promise.all([
+          fetchPendingConsents(),
+          fetchSessionState(),
+        ]);
+        setItems(pendingItems);
       } catch (nextError: any) {
         setError(
           nextError?.message ?? "We couldn't load your consent request.",
@@ -85,20 +99,11 @@ export default function ConsentGate() {
 
   const currentItem = items[0] ?? null;
 
-  const summary = useMemo(() => {
-    if (!currentItem) return null;
-    return [currentItem.orgId, currentItem.facilityId, currentItem.careTeamId]
-      .filter(Boolean)
-      .join(" / ");
-  }, [currentItem]);
-
   async function refreshStateAndRoute() {
-    const [{ data: consentData }, { data: sessionData }] = await Promise.all([
+    const [nextItems, { data: sessionData }] = await Promise.all([
       fetchPendingConsents(),
       fetchSessionState(),
     ]);
-
-    const nextItems = consentData?.items ?? [];
     setItems(nextItems);
 
     if (nextItems.length > 0) {
@@ -180,16 +185,20 @@ export default function ConsentGate() {
         padded={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>No consent request found</Text>
+          <Text style={styles.title}>
+            {error ? "Could not load consent request" : "No consent request found"}
+          </Text>
           <Text style={styles.subtitle}>
-            There are no pending consent requests for this account.
+            {error
+              ? "Check your connection and try again."
+              : "There are no pending consent requests for this account."}
           </Text>
         </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <AppButton
           disabled={submitting !== null}
           fullWidth
-          label="Continue"
+          label={error ? "Try again" : "Continue"}
           loading={submitting === "continue"}
           onPress={() => void continueWithoutConsent()}
           variant="primary"
@@ -209,38 +218,39 @@ export default function ConsentGate() {
           {currentItem.copy?.title ?? "Consent required"}
         </Text>
         <Text style={styles.subtitle}>
-          {currentItem.copy?.body ??
-            "A new care team or clinician needs your approval before you can continue."}
+          {currentItem.type === "clinician_added"
+            ? `A clinician connected with ${currentItem.careTeamName ?? "your care team"} needs your approval.`
+            : `${currentItem.careTeamName ?? "Your care team"} at ${currentItem.facilityName ?? "your care service"} has requested access.`}
         </Text>
       </View>
-      <View style={styles.consentCard}>
-        <Text style={styles.bodyText}>
+      <Section variant="group">
+        <ThemedText>
           If you agree, authorised members of this care team can use the health
           information you record in CKD Copilot to support your direct care.
           You can decline, ask your care team who has access, or contact them
           later if you want to discuss or withdraw access.
-        </Text>
-        <Text style={styles.consentLabel}>Assignment</Text>
-        <Text style={styles.consentValue}>
-          {summary ?? currentItem.assignmentId}
-        </Text>
+        </ThemedText>
+        <ThemedText style={styles.consentLabel}>Organisation</ThemedText>
+        <ThemedText style={styles.consentValue}>
+          {currentItem.orgName ?? "Your care organisation"}
+        </ThemedText>
+        <ThemedText style={styles.consentLabel}>Service</ThemedText>
+        <ThemedText style={styles.consentValue}>
+          {currentItem.facilityName ?? "Your care service"}
+        </ThemedText>
+        <ThemedText style={styles.consentLabel}>Care team</ThemedText>
+        <ThemedText style={styles.consentValue}>
+          {currentItem.careTeamName ?? "Your care team"}
+        </ThemedText>
         {currentItem.clinicianPrincipalId ? (
           <>
-            <Text style={styles.consentLabel}>Clinician</Text>
-            <Text style={styles.consentValue}>
-              {currentItem.clinicianPrincipalId}
-            </Text>
+            <ThemedText style={styles.consentLabel}>Clinician</ThemedText>
+            <ThemedText style={styles.consentValue}>
+              {currentItem.clinicianName ?? "A clinician from your care team"}
+            </ThemedText>
           </>
         ) : null}
-        <Text style={styles.consentMeta}>
-          Request type: {currentItem.type.replaceAll("_", " ")}
-        </Text>
-        {currentItem.noticeVersion ? (
-          <Text style={styles.consentMeta}>
-            Notice version: {currentItem.noticeVersion}
-          </Text>
-        ) : null}
-      </View>
+      </Section>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
