@@ -11,18 +11,8 @@ export const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "flex-end",
   },
-  button: {
-    minHeight: 50,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
   bodyText: {
-    color: theme.colors.text,
+    color: theme.colors.onBackground,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -88,16 +78,16 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  errorText: {
-    fontSize: 13,
-    color: theme.colors.dangerDark,
-  },
   editorCard: {
-    borderColor: theme.colors.borderSubtle,
+    borderColor: theme.colors.borderOnBackground,
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
     padding: 12,
+  },
+  errorText: {
+    fontSize: 13,
+    color: theme.colors.dangerOnBackground,
   },
   fieldBlock: {
     gap: 8,
@@ -168,10 +158,6 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: theme.colors.text,
   },
-  multilineInput: {
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
   optionItem: {
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -188,6 +174,70 @@ export const styles = StyleSheet.create({
   optionItemTextSelected: {
     fontWeight: "700",
     color: theme.colors.primary,
+  },
+  optionList: {
+    maxHeight: 220,
+  },
+  optionListContent: {
+    gap: 8,
+  },
+  optionPanel: {
+    gap: 10,
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: theme.colors.borderSubtle,
+  },
+  optionPanelTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: theme.colors.textSecondary,
+    textTransform: "capitalize",
+  },
+  pickerLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.textSecondary,
+  },
+  pickerShell: {
+    borderWidth: 1,
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: theme.colors.surfaceMuted,
+  },
+  pickerValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: theme.colors.text,
+    lineHeight: 24,
+  },
+  repeatableCard: {
+    borderColor: theme.colors.borderOnBackground,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
+  },
+  screenContent: {
+    gap: 20,
+    paddingHorizontal: 16,
+    paddingTop: 50,
+  },
+  sectionTitle: {
+    color: theme.colors.onBackground,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  selectionField: {
+    borderWidth: 1,
+    borderColor: theme.colors.borderSubtle,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+    backgroundColor: theme.colors.surfaceMuted,
+  },
+  selectionFieldPressed: {
+    opacity: 0.82,
   },
   selectionOption: {
     alignItems: "flex-start",
@@ -209,96 +259,6 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  optionList: {
-    maxHeight: 220,
-  },
-  optionListContent: {
-    gap: 8,
-  },
-  optionPanel: {
-    gap: 10,
-    borderRadius: 16,
-    padding: 12,
-    backgroundColor: theme.colors.borderSubtle,
-  },
-  optionPanelTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.textSecondary,
-    textTransform: "capitalize",
-  },
-  repeatableCard: {
-    borderColor: theme.colors.borderSubtle,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 12,
-    padding: 16,
-  },
-  pickerLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.textSecondary,
-  },
-  pickerShell: {
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: theme.colors.surfaceMuted,
-  },
-  pickerValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.text,
-    lineHeight: 24,
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-  },
-  primaryButtonPressed: {
-    backgroundColor: theme.colors.primaryPressed,
-  },
-  primaryButtonText: {
-    color: theme.colors.onPrimary,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-  },
-  screenContent: {
-    gap: 20,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  sectionTitle: {
-    color: theme.colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    backgroundColor: theme.colors.control,
-  },
-  secondaryButtonPressed: {
-    backgroundColor: theme.colors.controlPressed,
-  },
-  secondaryButtonText: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  selectionField: {
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 15,
-    backgroundColor: theme.colors.surfaceMuted,
-  },
-  selectionFieldPressed: {
-    opacity: 0.82,
-  },
   selectionPlaceholder: {
     fontSize: 16,
     color: theme.colors.textMuted,
@@ -307,38 +267,28 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text,
   },
-  summaryButton: {
-    alignSelf: "flex-start",
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.borderSubtle,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  summaryButtonText: {
-    color: theme.colors.text,
-    fontWeight: "600",
+  splitRow: {
+    flexDirection: "row",
+    gap: 12,
   },
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
     color: theme.colors.onBackground,
   },
-  splitRow: {
-    flexDirection: "row",
-    gap: 12,
+  summaryButton: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.tertiary,
+    borderColor: theme.colors.borderOnBackground,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: theme.colors.onBackground,
   },
-  tertiaryDangerButton: {
-    backgroundColor: theme.colors.dangerSoft,
-  },
-  tertiaryDangerButtonPressed: {
-    backgroundColor: theme.colors.danger,
-  },
-  tertiaryDangerButtonText: {
-    color: theme.colors.dangerDark,
-    fontSize: 16,
-    fontWeight: "700",
+  summaryButtonText: {
+    color: theme.colors.text,
+    fontWeight: "600",
   },
   title: {
     fontSize: 26,

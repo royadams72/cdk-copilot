@@ -31,14 +31,43 @@ export function Section({
     <View style={[styles.base, styles[variant], style]}>
       {title || description ? (
         <View style={styles.header}>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
-          {description ? <Text style={styles.description}>{description}</Text> : null}
+          {title ? (
+            <Text
+              style={[
+                styles.title,
+                variant === "plain" ? styles.textOnBackground : null,
+              ]}
+            >
+              {title}
+            </Text>
+          ) : null}
+          {description ? (
+            <Text
+              style={[
+                styles.description,
+                variant === "plain" ? styles.textOnBackground : null,
+              ]}
+            >
+              {description}
+            </Text>
+          ) : null}
         </View>
       ) : null}
       <ThemedTextColorProvider
         color={variant === "plain" ? theme.colors.onBackground : theme.colors.text}
       >
-        {empty && emptyLabel ? <Text style={styles.empty}>{emptyLabel}</Text> : children}
+        {empty && emptyLabel ? (
+          <Text
+            style={[
+              styles.empty,
+              variant === "plain" ? styles.textOnBackground : null,
+            ]}
+          >
+            {emptyLabel}
+          </Text>
+        ) : (
+          children
+        )}
         {actionLabel && onAction ? (
           <AppButton label={actionLabel} onPress={onAction} variant="outline" size="compact" />
         ) : null}
@@ -57,4 +86,5 @@ const styles = StyleSheet.create({
   title: { color: theme.colors.text, fontSize: 20, fontWeight: "700" },
   description: { color: theme.colors.textSecondary, fontSize: 14, lineHeight: 20 },
   empty: { color: theme.colors.textMuted, fontSize: 14 },
+  textOnBackground: { color: theme.colors.onBackground },
 });

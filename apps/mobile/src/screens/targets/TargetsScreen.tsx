@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  RefreshControl,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   View,
@@ -16,6 +14,7 @@ import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 
 import { ThemedText } from "@/components/themed-text";
+import { AppButton } from "@/components/ui/button";
 import { Card } from "@/screens/dashboard/components/Card";
 import {
   type TargetDefinitionValue,
@@ -25,6 +24,7 @@ import {
   useGetTargetsQuery,
   useUpdateTargetMutation,
 } from "@/store/services/dashboardApi";
+import { AppScreen } from "@/components/app-screen";
 
 type PickerOption = {
   key: string;
@@ -85,7 +85,9 @@ function describeDefinition(
   const basisLabel = displayUnit(metric, target, unit);
   if (target.type === "range") {
     const low =
-      typeof target.low === "number" ? formatMetricAmount(metric, target.low) : null;
+      typeof target.low === "number"
+        ? formatMetricAmount(metric, target.low)
+        : null;
     const high =
       typeof target.high === "number"
         ? formatMetricAmount(metric, target.high)
@@ -215,12 +217,17 @@ function buildPickerOptions(item: TargetItem): PickerOption[] {
 function getSelectedOptionKey(item: TargetItem, onboarding = false) {
   return item.personalGoal
     ? serialiseOption(item.personalGoal)
-    : item.generalReferenceSelected === false || (onboarding && item.generalReferenceSelected !== true)
+    : item.generalReferenceSelected === false ||
+        (onboarding && item.generalReferenceSelected !== true)
       ? "__unset__"
       : "__recommended__";
 }
 
-export default function TargetsScreen({ onboarding = false }: { onboarding?: boolean }) {
+export default function TargetsScreen({
+  onboarding = false,
+}: {
+  onboarding?: boolean;
+}) {
   const router = useRouter();
   const params = useLocalSearchParams<{
     domain?: string;
@@ -237,15 +244,15 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
       ? domainParam
       : undefined;
 
-  const { data, error, isFetching, isLoading, refetch } =
-    useGetTargetsQuery(domain);
+  const { data, error, isLoading, refetch } = useGetTargetsQuery(domain);
   const [updateTarget, { isLoading: isSaving }] = useUpdateTargetMutation();
   const [selectedKeys, setSelectedKeys] = useState<Record<string, string>>({});
-  const [customValues, setCustomValues] = useState<Record<string, { low?: string; high?: string; value?: string }>>({});
+  const [customValues, setCustomValues] = useState<
+    Record<string, { high?: string; low?: string; value?: string }>
+  >({});
   const [savingMetric, setSavingMetric] = useState<string | null>(null);
   const [screenError, setScreenError] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
-  const [isFillingReferences, setIsFillingReferences] = useState(false);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const title =
@@ -259,7 +266,10 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
     if (!items.length) return;
     setSelectedKeys(
       Object.fromEntries(
-        items.map((item) => [item.metric, getSelectedOptionKey(item, onboarding)]),
+        items.map((item) => [
+          item.metric,
+          getSelectedOptionKey(item, onboarding),
+        ]),
       ),
     );
   }, [items]);
@@ -297,9 +307,9 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
         }).unwrap();
       } else if (selectedOption.mode === "reference") {
         await updateTarget({
-          selectGeneralReference: true,
           metric: item.metric,
           reason: "Patient chose general reference",
+          selectGeneralReference: true,
         }).unwrap();
       } else if (selectedOption.value) {
         await updateTarget({
@@ -322,17 +332,29 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
     const low = Number(input.low);
     const high = Number(input.high);
     const value = Number(input.value);
-    if (isRange
-      ? (!input.low || !input.high || !Number.isFinite(low) || !Number.isFinite(high) || low <= 0 || high <= low)
-      : (!input.value || !Number.isFinite(value) || value <= 0)) {
-      Alert.alert("Check your goal", isRange ? "Enter a lower and upper value, both above zero." : "Enter a value above zero.");
+    if (
+      isRange
+        ? !input.low ||
+          !input.high ||
+          !Number.isFinite(low) ||
+          !Number.isFinite(high) ||
+          low <= 0 ||
+          high <= low
+        : !input.value || !Number.isFinite(value) || value <= 0
+    ) {
+      Alert.alert(
+        "Check your goal",
+        isRange
+          ? "Enter a lower and upper value, both above zero."
+          : "Enter a value above zero.",
+      );
       return;
     }
     try {
       setSavingMetric(item.metric);
       setScreenError(null);
       const definition: TargetDefinitionValue = isRange
-        ? { ...template, low, high, value: null }
+        ? { ...template, high, low, value: null }
         : { ...template, value };
       await updateTarget({
         metric: item.metric,
@@ -348,78 +370,167 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
   }
 
   async function handleFinish() {
-    if (items.some((item) =>
-      (selectedKeys[item.metric] ?? getSelectedOptionKey(item, onboarding)) !== getSelectedOptionKey(item, onboarding) ||
-      Object.values(customValues[item.metric] ?? {}).some((value) => !!value?.trim())
-    )) {
-      Alert.alert("Save your choices", "Save each changed target before continuing.");
-      return;
+    const updates: Array<{
+      clearTarget?: boolean;
+      metric: string;
+      override?: TargetDefinitionValue;
+      reason: string;
+      selectGeneralReference?: boolean;
+    }> = [];
+
+    for (const item of items) {
+      const input = customValues[item.metric] ?? {};
+      const hasCustomInput = Object.values(input).some(
+        (value) => !!value?.trim(),
+      );
+
+      if (hasCustomInput) {
+        const template = item.personalGoal ?? item.recommended;
+        const isRange = template.type === "range";
+        const low = Number(input.low);
+        const high = Number(input.high);
+        const value = Number(input.value);
+        const isInvalid = isRange
+          ? !input.low ||
+            !input.high ||
+            !Number.isFinite(low) ||
+            !Number.isFinite(high) ||
+            low <= 0 ||
+            high <= low
+          : !input.value || !Number.isFinite(value) || value <= 0;
+
+        if (isInvalid) {
+          Alert.alert(
+            `Check ${cleanLabel(item.metric)}`,
+            isRange
+              ? "Enter a lower and upper value, both above zero."
+              : "Enter a value above zero.",
+          );
+          return;
+        }
+
+        updates.push({
+          metric: item.metric,
+          override: isRange
+            ? { ...template, high, low, value: null }
+            : { ...template, value },
+          reason: "Patient entered a personal goal during onboarding",
+        });
+        continue;
+      }
+
+      const savedKey = getSelectedOptionKey(item, onboarding);
+      const selectedKey = selectedKeys[item.metric] ?? savedKey;
+      if (selectedKey === savedKey) continue;
+
+      const selectedOption = optionsByMetric[item.metric]?.find(
+        (option) => option.key === selectedKey,
+      );
+      if (!selectedOption) continue;
+
+      if (selectedOption.mode === "unset") {
+        updates.push({
+          clearTarget: true,
+          metric: item.metric,
+          reason: "Patient left target unset during onboarding",
+        });
+      } else if (selectedOption.mode === "reference") {
+        updates.push({
+          metric: item.metric,
+          reason: "Patient chose general reference during onboarding",
+          selectGeneralReference: true,
+        });
+      } else if (selectedOption.value) {
+        updates.push({
+          metric: item.metric,
+          override: selectedOption.value,
+          reason: "Patient changed target during onboarding",
+        });
+      }
     }
+
     try {
       setIsFinishing(true);
-      const response = await authFetch(`${API}/api/targets/confirm-onboarding`, {
-        body: JSON.stringify({ confirmed: true }),
-        method: "POST",
-      });
-      if (!response.ok) throw new Error("Could not confirm target review. Please try again.");
+      setScreenError(null);
+      for (const update of updates) {
+        await updateTarget(update).unwrap();
+      }
+      const response = await authFetch(
+        `${API}/api/targets/confirm-onboarding`,
+        {
+          body: JSON.stringify({ confirmed: true }),
+          method: "POST",
+        },
+      );
+      if (!response.ok)
+        throw new Error("Could not confirm target review. Please try again.");
       router.replace(APP_ROUTES.dashboard);
     } catch (error) {
-      Alert.alert("Could not continue", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(
+        "Could not save targets",
+        error instanceof Error
+          ? error.message
+          : "Your targets were not all saved. Please try again.",
+      );
     } finally {
       setIsFinishing(false);
     }
   }
 
-  async function handleFillReferences() {
-    const unset = items.filter((item) =>
-      !item.careTeamTarget && !item.personalGoal && (item.generalReferenceSelected === false || item.generalReferenceSelected === undefined)
+  function handleFillReferences() {
+    const unset = items.filter(
+      (item) =>
+        !item.careTeamTarget &&
+        (selectedKeys[item.metric] ??
+          getSelectedOptionKey(item, onboarding)) === "__unset__",
     );
-    try {
-      setIsFillingReferences(true);
-      for (const item of unset) {
-        await updateTarget({
-          metric: item.metric,
-          selectGeneralReference: true,
-          reason: "Patient selected general reference during onboarding",
-        }).unwrap();
-      }
-    } catch (error) {
-      Alert.alert("Some references were not saved", "Review the targets shown and retry any unset metrics.");
-    } finally {
-      setIsFillingReferences(false);
-    }
+    const unsetMetrics = new Set(unset.map((item) => item.metric));
+    setSelectedKeys((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        unset.map((item) => [item.metric, "__recommended__"]),
+      ),
+    }));
+    setCustomValues((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([metric]) => !unsetMetrics.has(metric),
+        ),
+      ),
+    );
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ gap: 12, padding: 16, paddingBottom: 32 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={isFetching && !isLoading}
-          onRefresh={refetch}
-        />
-      }
+    <AppScreen
+      keyboardAware
+      contentContainerStyle={{ paddingBottom: 60, paddingTop: 40 }}
     >
-      {!onboarding ? <View
-        style={{
-          alignItems: "center",
-          flexDirection: "row",
-          justifyContent: "space-between",
-        }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={{ fontWeight: "600" }}>‹ Back</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons color="#475569" name="close" size={22} />
-        </TouchableOpacity>
-      </View> : null}
+      {!onboarding ? (
+        <View
+          style={{
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "space-between",
+          }}
+        >
+          <AppButton
+            label="Back"
+            onPress={() => router.back()}
+            variant="secondary"
+            size="compact"
+          />
+          <TouchableOpacity onPress={() => router.back()}>
+            <MaterialIcons color="#475569" name="close" size={22} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <View style={{ gap: 4 }}>
         <ThemedText type="title">{title}</ThemedText>
         <ThemedText style={{ opacity: 0.72 }}>
-          {onboarding ? "Review each target, save your choices, then confirm below. " : ""}
+          {onboarding
+            ? "Review each target, then save all your choices below. "
+            : ""}
           General references are educational starting points, not personalised
           clinical advice. You can set a separate personal goal; a care-team
           target, when present, remains unchanged.
@@ -439,16 +550,20 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
         ) : null}
       </View>
 
-      {onboarding && items.some((item) => !item.careTeamTarget && !item.personalGoal && item.generalReferenceSelected !== true) ? (
-        <TouchableOpacity
-          disabled={isFillingReferences || isSaving}
+      {onboarding &&
+      items.some(
+        (item) =>
+          !item.careTeamTarget &&
+          (selectedKeys[item.metric] ??
+            getSelectedOptionKey(item, onboarding)) === "__unset__",
+      ) ? (
+        <AppButton
+          disabled={isSaving || isFinishing}
+          fullWidth
+          label="Use general references for unset metrics"
           onPress={handleFillReferences}
-          style={{ borderWidth: 1, borderColor: "#0F172A", borderRadius: 12, padding: 12, alignItems: "center" }}
-        >
-          <ThemedText style={{ fontWeight: "700" }}>
-            {isFillingReferences ? "Filling references..." : "Use general references for unset metrics"}
-          </ThemedText>
-        </TouchableOpacity>
+          variant="secondary"
+        />
       ) : null}
 
       {isLoading ? (
@@ -462,9 +577,13 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
         <Card>
           <ThemedText type="defaultSemiBold">Could not load targets</ThemedText>
           <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
-          <TouchableOpacity onPress={refetch} style={{ marginTop: 8 }}>
-            <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
-          </TouchableOpacity>
+          <AppButton
+            label="Retry"
+            onPress={refetch}
+            size="compact"
+            style={{ marginTop: 8 }}
+            variant="outline"
+          />
         </Card>
       ) : null}
 
@@ -504,10 +623,17 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
                   ? "Care-team target"
                   : item.personalGoal
                     ? "Personal goal"
-                    : item.generalReferenceSelected === false || (onboarding && item.generalReferenceSelected !== true)
+                    : item.generalReferenceSelected === false ||
+                        (onboarding && item.generalReferenceSelected !== true)
                       ? "No target set"
                       : "General reference"}
-                {item.effective && !(onboarding && !item.careTeamTarget && !item.personalGoal && item.generalReferenceSelected !== true)
+                {item.effective &&
+                !(
+                  onboarding &&
+                  !item.careTeamTarget &&
+                  !item.personalGoal &&
+                  item.generalReferenceSelected !== true
+                )
                   ? `: ${describeDefinition(item.effective, item.metric, item.unit)}`
                   : ""}
               </ThemedText>
@@ -538,31 +664,22 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
                   ))}
                 </Picker>
               </View>
-              <TouchableOpacity
-                disabled={isItemSaving || !hasChanged}
-                onPress={() => handleSave(item)}
-                style={{
-                  alignItems: "center",
-                  backgroundColor:
-                    isItemSaving || !hasChanged ? "#94A3B8" : "#0F172A",
-                  borderRadius: 12,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                }}
-              >
-                <ThemedText style={{ color: "#FFF", fontWeight: "700" }}>
-                  {isItemSaving
-                    ? "Saving..."
-                    : hasChanged
-                      ? "Save personal goal"
-                      : "Saved"}
-                </ThemedText>
-              </TouchableOpacity>
+              {!onboarding ? (
+                <AppButton
+                  disabled={isItemSaving || !hasChanged}
+                  fullWidth
+                  label={hasChanged ? "Save personal goal" : "Saved"}
+                  loading={isItemSaving}
+                  onPress={() => handleSave(item)}
+                />
+              ) : null}
               <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                General reference: {describeDefinition(item.recommended, item.metric, item.unit)}
+                General reference:{" "}
+                {describeDefinition(item.recommended, item.metric, item.unit)}
               </ThemedText>
               <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
-                Or enter your own personal goal ({displayUnit(item.metric, item.recommended, item.unit)}):
+                Or enter your own personal goal (
+                {displayUnit(item.metric, item.recommended, item.unit)}):
               </ThemedText>
               {(item.personalGoal ?? item.recommended).type === "range" ? (
                 <View style={{ flexDirection: "row", gap: 8 }}>
@@ -571,13 +688,26 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
                       key={field}
                       accessibilityLabel={`${cleanLabel(item.metric)} ${field} goal`}
                       keyboardType="decimal-pad"
-                      placeholder={field === "low" ? "Lower value" : "Upper value"}
+                      placeholder={
+                        field === "low" ? "Lower value" : "Upper value"
+                      }
                       value={customValues[item.metric]?.[field] ?? ""}
-                      onChangeText={(next) => setCustomValues((current) => ({
-                        ...current,
-                        [item.metric]: { ...current[item.metric], [field]: next },
-                      }))}
-                      style={{ flex: 1, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 10, padding: 10 }}
+                      onChangeText={(next) =>
+                        setCustomValues((current) => ({
+                          ...current,
+                          [item.metric]: {
+                            ...current[item.metric],
+                            [field]: next,
+                          },
+                        }))
+                      }
+                      style={{
+                        borderColor: "#CBD5E1",
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        flex: 1,
+                        padding: 10,
+                      }}
                     />
                   ))}
                 </View>
@@ -587,27 +717,40 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
                   keyboardType="decimal-pad"
                   placeholder="Enter a value"
                   value={customValues[item.metric]?.value ?? ""}
-                  onChangeText={(next) => setCustomValues((current) => ({
-                    ...current,
-                    [item.metric]: { ...current[item.metric], value: next },
-                  }))}
-                  style={{ borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 10, padding: 10 }}
+                  onChangeText={(next) =>
+                    setCustomValues((current) => ({
+                      ...current,
+                      [item.metric]: { ...current[item.metric], value: next },
+                    }))
+                  }
+                  style={{
+                    borderColor: "#CBD5E1",
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    padding: 10,
+                  }}
                 />
               )}
-              <TouchableOpacity
-                disabled={isItemSaving}
-                onPress={() => handleSaveCustom(item)}
-                style={{ borderWidth: 1, borderColor: "#0F172A", borderRadius: 10, padding: 10, alignItems: "center" }}
-              >
-                <ThemedText style={{ fontWeight: "700" }}>Save custom goal</ThemedText>
-              </TouchableOpacity>
+              {!onboarding ? (
+                <AppButton
+                  disabled={isItemSaving}
+                  fullWidth
+                  label="Save custom goal"
+                  loading={isItemSaving}
+                  onPress={() => handleSaveCustom(item)}
+                  variant="outline"
+                />
+              ) : null}
               {item.careTeamTarget ? (
                 <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                  Set by {item.careTeamTargetMeta?.setBy.displayName || "your care team"}
+                  Set by{" "}
+                  {item.careTeamTargetMeta?.setBy.displayName ||
+                    "your care team"}
                   {item.careTeamTargetMeta?.setAt
                     ? ` on ${new Date(item.careTeamTargetMeta.setAt).toLocaleDateString()}`
                     : ""}
-                  . Your selector above changes only your separate personal goal.
+                  . Your selector above changes only your separate personal
+                  goal.
                 </ThemedText>
               ) : null}
             </View>
@@ -615,16 +758,15 @@ export default function TargetsScreen({ onboarding = false }: { onboarding?: boo
         );
       })}
       {onboarding && !isLoading && !error && items.length > 0 ? (
-        <TouchableOpacity
-          disabled={isFinishing || isSaving || isFillingReferences}
+        <AppButton
+          disabled={isFinishing || isSaving}
+          fullWidth
+          label="Save targets and continue"
+          loading={isFinishing}
           onPress={handleFinish}
-          style={{ backgroundColor: "#0F172A", borderRadius: 12, padding: 16, alignItems: "center" }}
-        >
-          <ThemedText style={{ color: "#FFF", fontWeight: "700" }}>
-            {isFinishing ? "Confirming..." : "I have reviewed my targets — continue"}
-          </ThemedText>
-        </TouchableOpacity>
+          size="large"
+        />
       ) : null}
-    </ScrollView>
+    </AppScreen>
   );
 }

@@ -16,14 +16,18 @@ export function OnboardingFormScreen({
   title?: string;
 }) {
   return (
-    <AppScreen keyboardAware contentContainerStyle={[styles.screenContent, contentContainerStyle]}>
-        {title || subtitle ? (
-          <View style={styles.header}>
-            {title ? <Text style={styles.title}>{title}</Text> : null}
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          </View>
-        ) : null}
-        {children}
+    <AppScreen
+      keyboardAware
+      padded={false}
+      contentContainerStyle={[styles.screenContent, contentContainerStyle]}
+    >
+      {title || subtitle ? (
+        <View style={styles.header}>
+          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+      ) : null}
+      {children}
     </AppScreen>
   );
 }

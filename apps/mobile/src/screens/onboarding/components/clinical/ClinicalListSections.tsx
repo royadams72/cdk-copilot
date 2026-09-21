@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { type FieldErrors } from "react-hook-form";
 
@@ -54,7 +54,7 @@ export function AllergiesSection({
   persistDraftSnapshot: () => Promise<void>;
 }) {
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
-
+  const [isEditorActive, setIsEditorActive] = useState(false);
   React.useEffect(() => {
     if (allergyFields.length === 0) {
       setActiveIndex(null);
@@ -83,7 +83,10 @@ export function AllergiesSection({
             {!isEditing ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setActiveIndex(index)}
+                onPress={() => {
+                  setActiveIndex(index);
+                  setIsEditorActive(true);
+                }}
                 style={styles.summaryButton}
               >
                 <Text style={styles.summaryButtonText}>
@@ -99,9 +102,13 @@ export function AllergiesSection({
                     | undefined
                 }
                 index={index}
-                onDone={() => setActiveIndex(null)}
+                onDone={() => {
+                  setActiveIndex(null);
+                  setIsEditorActive(false);
+                }}
                 onRemove={() => {
                   onRemove(index);
+                  setIsEditorActive(false);
                   setActiveIndex((current) => {
                     if (current === null) return null;
                     if (current === index) return null;
@@ -116,19 +123,19 @@ export function AllergiesSection({
           </View>
         );
       })}
-
-      <Pressable
-        accessibilityRole="button"
+      <AppButton
+        label={"Add Allergy"}
+        disabled={isEditorActive}
         onPress={() => {
           const nextIndex = allergyFields.length;
           onAdd();
           setActiveIndex(nextIndex);
+          setIsEditorActive(true);
           void persistDraftSnapshot();
         }}
-        style={styles.summaryButton}
-      >
-        <Text style={styles.summaryButtonText}>Add allergy</Text>
-      </Pressable>
+        variant={"tertiary"}
+        fullWidth={true}
+      />
     </Section>
   );
 }
@@ -217,26 +224,22 @@ export function DietaryPreferencesSection({
         addLabel=""
         onAdd={() => undefined}
       >
-        {summary ? (
-          <Text style={styles.bodyText}>
-            {summary}
-          </Text>
-        ) : null}
+        {summary ? <Text style={styles.bodyText}>{summary}</Text> : null}
 
-        <Pressable
-          accessibilityRole="button"
+        <AppButton
+          disabled={modalVisible}
+          fullWidth={true}
+          label={
+            hasSelections
+              ? "Edit Dietary Preferences"
+              : "Add Dietary Preferences"
+          }
           onPress={() => {
             setDraftPreferences(dietaryPreferences);
             setModalVisible(true);
           }}
-          style={styles.summaryButton}
-        >
-          <Text style={styles.summaryButtonText}>
-            {hasSelections
-              ? "Edit Dietary Preferences"
-              : "Add Dietary Preferences"}
-          </Text>
-        </Pressable>
+          variant="tertiary"
+        />
       </Section>
 
       <Modal
@@ -247,9 +250,7 @@ export function DietaryPreferencesSection({
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCardTall}>
-            <Text style={styles.modalTitle}>
-              Dietary preferences
-            </Text>
+            <Text style={styles.modalTitle}>Dietary preferences</Text>
             <Text style={styles.modalSubtitle}>
               Choose all options that apply. These help tailor future meal and
               guidance suggestions.
@@ -293,14 +294,16 @@ export function DietaryPreferencesSection({
               })}
             </ScrollView>
             <View style={styles.actionsRowEnd}>
-              <AppButton variant="secondary"
+              <AppButton
+                variant="secondary"
                 label="Cancel"
                 onPress={() => {
                   setDraftPreferences(dietaryPreferences);
                   setModalVisible(false);
                 }}
               />
-              <AppButton variant="primary"
+              <AppButton
+                variant="primary"
                 label="Done"
                 onPress={() => {
                   onSave(draftPreferences);
@@ -333,6 +336,7 @@ export function ConditionsSection({
   persistDraftSnapshot: () => Promise<void>;
 }) {
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+  const [isEditorActive, setIsEditorActive] = useState(false);
 
   React.useEffect(() => {
     if (conditionFields.length === 0) {
@@ -362,7 +366,10 @@ export function ConditionsSection({
             {!isEditing ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setActiveIndex(index)}
+                onPress={() => {
+                  setActiveIndex(index);
+                  setIsEditorActive(true);
+                }}
                 style={styles.summaryButton}
               >
                 <Text style={styles.summaryButtonText}>
@@ -385,9 +392,13 @@ export function ConditionsSection({
                     : undefined
                 }
                 index={index}
-                onDone={() => setActiveIndex(null)}
+                onDone={() => {
+                  setActiveIndex(null);
+                  setIsEditorActive(false);
+                }}
                 onRemove={() => {
                   onRemove(index);
+                  setIsEditorActive(false);
                   setActiveIndex((current) => {
                     if (current === null) return null;
                     if (current === index) return null;
@@ -403,20 +414,19 @@ export function ConditionsSection({
         );
       })}
 
-      <Pressable
-        accessibilityRole="button"
+      <AppButton
+        disabled={isEditorActive}
+        fullWidth={true}
+        label="Add Condition"
         onPress={() => {
           const nextIndex = conditionFields.length;
           onAdd();
           setActiveIndex(nextIndex);
+          setIsEditorActive(true);
           void persistDraftSnapshot();
         }}
-        style={styles.summaryButton}
-      >
-        <Text style={styles.summaryButtonText}>
-          Add condition
-        </Text>
-      </Pressable>
+        variant="tertiary"
+      />
     </Section>
   );
 }
@@ -658,11 +668,13 @@ function AllergyEditor({
       />
 
       <View style={styles.actionsRowEnd}>
-        <AppButton variant="secondary"
+        <AppButton
+          variant="secondary"
           label={hasCompleteAllergy ? "Done" : "Cancel"}
           onPress={hasCompleteAllergy ? onDone : onRemove}
         />
-        <AppButton variant="danger"
+        <AppButton
+          variant="danger"
           label="Remove allergy"
           disabled={!hasCompleteAllergy}
           onPress={onRemove}
@@ -720,11 +732,13 @@ function ConditionEditor({
       />
 
       <View style={styles.actionsRowEnd}>
-        <AppButton variant="secondary"
+        <AppButton
+          variant="secondary"
           label={hasSelectedCondition ? "Done" : "Cancel"}
           onPress={hasSelectedCondition ? onDone : onRemove}
         />
-        <AppButton variant="danger"
+        <AppButton
+          variant="danger"
           label="Remove condition"
           disabled={!hasSelectedCondition}
           onPress={onRemove}
