@@ -9,8 +9,8 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileShortDayMonth } from "@/lib/format/date";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { NutritionStyles } from "../nutrition/styles";
 
@@ -28,7 +28,11 @@ function asNumber(value: number | string): number | null {
 export default function LabTrend() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
-  const params = useLocalSearchParams<{ code?: string; unit?: string; name?: string }>();
+  const params = useLocalSearchParams<{
+    code?: string;
+    unit?: string;
+    name?: string;
+  }>();
   const code = typeof params.code === "string" ? params.code : "";
   const unit = typeof params.unit === "string" ? params.unit : "";
   const name = typeof params.name === "string" ? params.name : "Lab trend";
@@ -77,7 +81,10 @@ export default function LabTrend() {
           label: formatMobileShortDayMonth(point.takenAt),
           value: asNumber(point.value),
         }))
-        .filter((point) => point.value !== null) as { label: string; value: number }[],
+        .filter((point) => point.value !== null) as {
+        label: string;
+        value: number;
+      }[],
     [points],
   );
 
@@ -86,7 +93,15 @@ export default function LabTrend() {
     const height = theme.charts.compactHeight;
     const pad = 22;
     if (numericPoints.length === 0) {
-      return { circles: [], polyline: "", width, height, xTicks: [], yMax: 0, yMin: 0 };
+      return {
+        circles: [],
+        polyline: "",
+        width,
+        height,
+        xTicks: [],
+        yMax: 0,
+        yMin: 0,
+      };
     }
 
     const values = numericPoints.map((point) => point.value);
@@ -94,11 +109,14 @@ export default function LabTrend() {
     const yMax = Math.max(...values);
     const span = Math.max(1, yMax - yMin);
     const xStep =
-      numericPoints.length > 1 ? (width - pad * 2) / (numericPoints.length - 1) : 0;
+      numericPoints.length > 1
+        ? (width - pad * 2) / (numericPoints.length - 1)
+        : 0;
 
     const coords = numericPoints.map((point, index) => {
       const x = pad + index * xStep;
-      const y = height - pad - ((point.value - yMin) / span) * (height - pad * 2);
+      const y =
+        height - pad - ((point.value - yMin) / span) * (height - pad * 2);
       return { x, y };
     });
 
@@ -119,8 +137,15 @@ export default function LabTrend() {
   return (
     <>
       <AppScreen>
-        <AppButton label="Back" onPress={() => router.replace("/(labs)/labs-history")} variant="secondary" size="compact" />
-        <ThemedText type="title" style={NutritionStyles.screenTitle}>{name}</ThemedText>
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(labs)/labs-history")}
+          variant="secondary"
+          size="compact"
+        />
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
+          {name}
+        </ThemedText>
         <ThemedText style={NutritionStyles.pageHelperText}>
           {unit ? `Values in ${unit}` : "Value history"}
         </ThemedText>
@@ -131,7 +156,9 @@ export default function LabTrend() {
             <ThemedText>Loading trend...</ThemedText>
           </View>
         ) : numericPoints.length === 0 ? (
-          <ThemedText style={{ opacity: 0.7 }}>No numeric history available.</ThemedText>
+          <ThemedText style={{ opacity: 0.7 }}>
+            No numeric history available.
+          </ThemedText>
         ) : (
           <Section title="Reading trend">
             <Svg width={chart.width} height={chart.height}>
@@ -158,12 +185,23 @@ export default function LabTrend() {
                 strokeWidth={2.5}
               />
               {chart.circles.map((coord, index) => (
-                <Circle key={`${coord.x}-${coord.y}-${index}`} cx={coord.x} cy={coord.y} r={3.5} fill={theme.colors.primary} />
+                <Circle
+                  key={`${coord.x}-${coord.y}-${index}`}
+                  cx={coord.x}
+                  cy={coord.y}
+                  r={3.5}
+                  fill={theme.colors.primary}
+                />
               ))}
               <SvgText x={4} y={26} fontSize={11} fill={theme.colors.copy}>
                 {chart.yMax.toFixed(1)}
               </SvgText>
-              <SvgText x={4} y={chart.height - 22} fontSize={11} fill={theme.colors.copy}>
+              <SvgText
+                x={4}
+                y={chart.height - 22}
+                fontSize={11}
+                fill={theme.colors.copy}
+              >
                 {chart.yMin.toFixed(1)}
               </SvgText>
               {chart.xTicks.map((tick, index) => (

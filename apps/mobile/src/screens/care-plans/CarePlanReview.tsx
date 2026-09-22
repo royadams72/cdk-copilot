@@ -16,9 +16,9 @@ import {
   useSubmitCarePlanReviewMutation,
 } from "@/store/services/carePlanApi";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { TextField } from "@/components/ui/form-field";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/FormField";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
 import { NutritionStyles } from "@/screens/nutrition/styles";
@@ -54,12 +54,16 @@ export default function CarePlanReview() {
   const carePlanId = typeof params.id === "string" ? params.id : "";
   const { data, error, isFetching, isLoading, refetch } =
     useGetCarePlanByIdQuery(carePlanId, { skip: !carePlanId });
-  const [submitReview, { isLoading: isSubmitting }] = useSubmitCarePlanReviewMutation();
+  const [submitReview, { isLoading: isSubmitting }] =
+    useSubmitCarePlanReviewMutation();
   const [note, setNote] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<ReviewOptionId[]>([]);
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
-  const errorMessage = toQueryErrorMessage(error, "We couldn't load this review.");
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't load this review.",
+  );
 
   const canSubmit = useMemo(
     () => Boolean(carePlanId && data?.reviewDue && !isSubmitting),
@@ -103,7 +107,9 @@ export default function CarePlanReview() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
-        <ThemedText style={styles.helperText}>Loading care plan review...</ThemedText>
+        <ThemedText style={styles.helperText}>
+          Loading care plan review...
+        </ThemedText>
       </View>
     );
   }
@@ -133,16 +139,24 @@ export default function CarePlanReview() {
           <ThemedText style={styles.helperText}>
             {carePlanId ? errorMessage : "No care plan was selected."}
           </ThemedText>
-          <AppButton label="Return to care plans" onPress={() => router.replace("/(dashboard)/care-plans")} variant="outline" size="compact" />
+          <AppButton
+            label="Return to care plans"
+            onPress={() => router.replace("/(dashboard)/care-plans")}
+            variant="outline"
+            size="compact"
+          />
         </Section>
       ) : !data.reviewDue ? (
         <Section title="Review not needed right now">
           <ThemedText style={styles.helperText}>
-            This care plan was already reviewed on {formatMobileDate(data.reviewedAt)}.
+            This care plan was already reviewed on{" "}
+            {formatMobileDate(data.reviewedAt)}.
           </ThemedText>
           <AppButton
             label="Open care plan"
-            onPress={() => router.replace(`/(dashboard)/care-plan?id=${carePlanId}` as never)}
+            onPress={() =>
+              router.replace(`/(dashboard)/care-plan?id=${carePlanId}` as never)
+            }
             variant="outline"
             size="compact"
           />
@@ -150,20 +164,28 @@ export default function CarePlanReview() {
       ) : (
         <>
           <View style={{ gap: theme.spacing.xs }}>
-            <ThemedText type="title" style={NutritionStyles.screenTitle}>Review care plan</ThemedText>
-            <ThemedText style={NutritionStyles.pageHelperText}>{data.title}</ThemedText>
+            <ThemedText type="title" style={NutritionStyles.screenTitle}>
+              Review care plan
+            </ThemedText>
+            <ThemedText style={NutritionStyles.pageHelperText}>
+              {data.title}
+            </ThemedText>
           </View>
 
           <Section title="Quick check-in" style={styles.carePlanReviewCard}>
             <ThemedText style={styles.helperText}>
-              Select anything that feels true for you. Your care team will see this at the next review.
+              Select anything that feels true for you. Your care team will see
+              this at the next review.
             </ThemedText>
             <ThemedText style={styles.helperText}>
               Next review was due {formatMobileDate(data.nextReviewAt)}.
             </ThemedText>
           </Section>
 
-          <Section title="How is this plan going?" description="You can tick more than one answer.">
+          <Section
+            title="How is this plan going?"
+            description="You can tick more than one answer."
+          >
             {REVIEW_OPTIONS.map((option) => {
               const selected = selectedOptions.includes(option.id);
               return (
@@ -177,19 +199,33 @@ export default function CarePlanReview() {
                     selected ? styles.selectedOptionCard : undefined,
                   ]}
                 >
-                  <View style={[styles.checkbox, selected ? styles.checkboxChecked : undefined]}>
-                    {selected ? <ThemedText style={styles.checkboxTick}>✓</ThemedText> : null}
+                  <View
+                    style={[
+                      styles.checkbox,
+                      selected ? styles.checkboxChecked : undefined,
+                    ]}
+                  >
+                    {selected ? (
+                      <ThemedText style={styles.checkboxTick}>✓</ThemedText>
+                    ) : null}
                   </View>
                   <View style={{ flex: 1, gap: 4 }}>
-                    <ThemedText type="defaultSemiBold">{option.title}</ThemedText>
-                    <ThemedText style={styles.helperText}>{option.description}</ThemedText>
+                    <ThemedText type="defaultSemiBold">
+                      {option.title}
+                    </ThemedText>
+                    <ThemedText style={styles.helperText}>
+                      {option.description}
+                    </ThemedText>
                   </View>
                 </Pressable>
               );
             })}
           </Section>
 
-          <Section title="Anything else to add?" description="Optional. Tell us what is working well or what is hard to follow.">
+          <Section
+            title="Anything else to add?"
+            description="Optional. Tell us what is working well or what is hard to follow."
+          >
             <TextField
               label="Note for your care team"
               hideLabel
@@ -204,7 +240,11 @@ export default function CarePlanReview() {
           <View style={{ flexDirection: "row", gap: 12 }}>
             <AppButton
               label="Skip for now"
-              onPress={() => router.replace(`/(dashboard)/care-plan?id=${carePlanId}` as never)}
+              onPress={() =>
+                router.replace(
+                  `/(dashboard)/care-plan?id=${carePlanId}` as never,
+                )
+              }
               variant="secondary"
               style={{ flex: 1 }}
             />

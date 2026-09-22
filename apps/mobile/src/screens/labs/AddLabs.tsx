@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  View,
-} from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -14,9 +10,9 @@ import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { LAB_DEFINITIONS } from "./labDefs";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { TextField } from "@/components/ui/form-field";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/FormField";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { NutritionStyles } from "../nutrition/styles";
 
@@ -216,7 +212,9 @@ export default function AddLabs() {
           size="compact"
           onPress={() =>
             router.replace(
-              isEdit ? "/(labs)/labs-history?mode=edit" : "/(dashboard)/meds-labs",
+              isEdit
+                ? "/(labs)/labs-history?mode=edit"
+                : "/(dashboard)/meds-labs",
             )
           }
         />
@@ -237,10 +235,7 @@ export default function AddLabs() {
         ) : (
           <>
             {labs.map((lab, index) => (
-              <Section
-                key={lab.code}
-                title={lab.name}
-              >
+              <Section key={lab.code} title={lab.name}>
                 <View
                   style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
                 >

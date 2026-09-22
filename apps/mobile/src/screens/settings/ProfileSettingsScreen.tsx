@@ -11,8 +11,8 @@ import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { ThemedText } from "@/components/themed-text";
-import { formControlStyles, TextField } from "@/components/ui/form-field";
-import { AppButton } from "@/components/ui/button";
+import { formControlStyles, TextField } from "@/components/ui/FormField";
+import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 import { Card } from "@/screens/dashboard/components/Card";
 import {
@@ -150,7 +150,7 @@ export default function ProfileSettingsScreen() {
         </ThemedText>
       </View>
 
-      <Card style={styles.card}>
+      <Card>
         <ThemedText type="defaultSemiBold">Personal details</ThemedText>
         <TextField
           description="Changing this sends a verification link. Your current email remains active until confirmed."
@@ -184,7 +184,7 @@ export default function ProfileSettingsScreen() {
         />
       </Card>
 
-      <Card style={styles.card}>
+      <Card>
         <ThemedText type="defaultSemiBold">Kidney health</ThemedText>
         <PickerField
           label="CKD stage"
@@ -246,7 +246,7 @@ export default function ProfileSettingsScreen() {
         )}
       </Card>
 
-      <Card style={styles.card}>
+      <Card>
         <ThemedText type="defaultSemiBold">Care team</ThemedText>
         <ThemedText style={styles.readOnly}>
           Managed by your renal service and shown here as read-only.

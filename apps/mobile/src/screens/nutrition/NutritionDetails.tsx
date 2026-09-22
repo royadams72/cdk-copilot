@@ -43,7 +43,7 @@ import type {
 } from "../dashboard/types";
 import { AccordionCard } from "../dashboard/components/AccordionCard";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 
 const CHART_HEIGHT = theme.charts.compactHeight;

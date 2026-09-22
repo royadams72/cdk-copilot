@@ -5,7 +5,7 @@ import { LAB_CONFIG } from "../../dashboard/constants";
 import { Card } from "../../dashboard/components/Card";
 import { LabSummary } from "../../dashboard/types";
 import { formatDateShort, formatDecimal } from "../../dashboard/utils";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 
 function resolveRange(
@@ -89,13 +89,22 @@ export function LabsCard({
 
   return (
     <Card>
-      <ThemedText type="defaultSemiBold" style={{ color: theme.colors.panelHeader }}>Latest labs</ThemedText>
+      <ThemedText
+        type="defaultSemiBold"
+        style={{ color: theme.colors.panelHeader }}
+      >
+        Latest labs
+      </ThemedText>
       {displayLabs.map((lab, index) => {
         const config =
           LAB_CONFIG.find((item) =>
-            item.codes.some((code) => code.toLowerCase() === lab.code.toLowerCase()),
+            item.codes.some(
+              (code) => code.toLowerCase() === lab.code.toLowerCase(),
+            ),
           ) ??
-          LAB_CONFIG.find((item) => item.label.toLowerCase() === lab.label.toLowerCase());
+          LAB_CONFIG.find(
+            (item) => item.label.toLowerCase() === lab.label.toLowerCase(),
+          );
 
         const value = lab?.value ?? null;
         const range = resolveRange(lab, config?.normalLow, config?.normalHigh);
@@ -114,7 +123,9 @@ export function LabsCard({
             ? clamp(((normalHigh - min) / (max - min)) * 100, 0, 100)
             : 70;
         const markerPct =
-          value !== null ? clamp(((value - min) / (max - min)) * 100, 0, 100) : 50;
+          value !== null
+            ? clamp(((value - min) / (max - min)) * 100, 0, 100)
+            : 50;
 
         const status = statusLabel(
           value,
@@ -149,10 +160,14 @@ export function LabsCard({
                 <ThemedText style={{ opacity: 0.72, fontSize: 13 }}>
                   {range.low !== null && range.high !== null
                     ? `Normal range: ${formatDecimal(range.low, config?.precision ?? 1)} - ${formatDecimal(range.high, config?.precision ?? 1)} ${lab?.unit ?? config?.unit ?? ""}`
-                    : range.text ?? "Reference range unavailable"}
+                    : (range.text ?? "Reference range unavailable")}
                 </ThemedText>
-                <ThemedText style={{ opacity: 0.68, fontSize: 12, marginTop: 2 }}>
-                  {lab?.takenAt ? `Taken ${formatDateShort(lab.takenAt)}` : "No recent result"}
+                <ThemedText
+                  style={{ opacity: 0.68, fontSize: 12, marginTop: 2 }}
+                >
+                  {lab?.takenAt
+                    ? `Taken ${formatDateShort(lab.takenAt)}`
+                    : "No recent result"}
                 </ThemedText>
               </View>
 
@@ -174,16 +189,25 @@ export function LabsCard({
                     style={{
                       paddingHorizontal: 10,
                       paddingVertical: 6,
-                      backgroundColor: isOutOfRange ? theme.colors.warningDark : theme.colors.successDark,
+                      backgroundColor: isOutOfRange
+                        ? theme.colors.warningDark
+                        : theme.colors.successDark,
                     }}
                   >
                     <ThemedText style={{ color: "white", fontWeight: "700" }}>
-                      {value !== null ? formatDecimal(value, config?.precision ?? 1) : "—"}
+                      {value !== null
+                        ? formatDecimal(value, config?.precision ?? 1)
+                        : "—"}
                     </ThemedText>
                   </View>
                   {!!status && (
                     <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
-                      <ThemedText style={{ fontWeight: "700", color: theme.colors.warningDark }}>
+                      <ThemedText
+                        style={{
+                          fontWeight: "700",
+                          color: theme.colors.warningDark,
+                        }}
+                      >
                         {status}
                       </ThemedText>
                     </View>
@@ -205,7 +229,12 @@ export function LabsCard({
                   flexDirection: "row",
                 }}
               >
-                <View style={{ width: `${lowPct}%`, backgroundColor: theme.colors.warning }} />
+                <View
+                  style={{
+                    width: `${lowPct}%`,
+                    backgroundColor: theme.colors.warning,
+                  }}
+                />
                 <View
                   style={{
                     width: `${Math.max(0, highPct - lowPct)}%`,
@@ -261,12 +290,26 @@ export function LabsCard({
         );
       })}
       {displayLabs.length === 0 ? (
-        <ThemedText style={{ opacity: 0.7 }}>No recent lab results yet.</ThemedText>
+        <ThemedText style={{ opacity: 0.7 }}>
+          No recent lab results yet.
+        </ThemedText>
       ) : null}
-      <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      <View
+        style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+      >
         <AppButton label="Add lab results" onPress={onAdd} size="compact" />
-        <AppButton label="Edit" onPress={onEdit} variant="outline" size="compact" />
-        <AppButton label="Labs history" onPress={onHistory} variant="secondary" size="compact" />
+        <AppButton
+          label="Edit"
+          onPress={onEdit}
+          variant="outline"
+          size="compact"
+        />
+        <AppButton
+          label="Labs history"
+          onPress={onHistory}
+          variant="secondary"
+          size="compact"
+        />
       </View>
     </Card>
   );

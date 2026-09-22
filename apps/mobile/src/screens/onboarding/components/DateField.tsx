@@ -7,13 +7,10 @@ import {
   Text,
   View,
 } from "react-native";
-import {
-  formatMobileUkInputDate,
-  toMobileUtcDateIso,
-} from "@/lib/format/date";
+import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { SelectionField } from "@/screens/onboarding/components/FormFields";
 import { styles } from "@/screens/onboarding/styles";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 
 function buildDateFromParts(year: number, month: number, day: number) {
   return new Date(year, month, day);
@@ -184,9 +181,7 @@ export function DateField({
               </Pressable>
             </View>
             <View style={styles.optionPanel}>
-              <Text style={styles.optionPanelTitle}>
-                Choose {activePart}
-              </Text>
+              <Text style={styles.optionPanelTitle}>Choose {activePart}</Text>
               <ScrollView
                 nestedScrollEnabled
                 style={styles.optionList}
@@ -218,7 +213,8 @@ export function DateField({
             </View>
             <View style={styles.actionsRow}>
               {dateValue ? (
-                <AppButton variant="secondary"
+                <AppButton
+                  variant="secondary"
                   label="Clear"
                   onPress={() => {
                     onChange(null);
@@ -226,11 +222,13 @@ export function DateField({
                   }}
                 />
               ) : null}
-              <AppButton variant="secondary"
+              <AppButton
+                variant="secondary"
                 label="Cancel"
                 onPress={() => setVisible(false)}
               />
-              <AppButton variant="primary"
+              <AppButton
+                variant="primary"
                 label="Save"
                 onPress={() => {
                   onChange(

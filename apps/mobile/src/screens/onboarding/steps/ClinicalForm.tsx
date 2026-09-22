@@ -10,17 +10,14 @@ import {
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import {
-  type TAllergyFormItem,
-  type TConditionFormItem,
-} from "@ckd/core";
+import { type TAllergyFormItem, type TConditionFormItem } from "@ckd/core";
 
 import { API } from "@/constants/api";
 import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import { onboardingDrafts } from "@/lib/onboarding";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import {
   AllergiesSection,
   BodyMeasurementsSection,
@@ -41,7 +38,10 @@ import {
   makeEmptyCondition,
 } from "@/screens/onboarding/utils/clinicalForm";
 import { useRouter } from "expo-router";
-import { FormFieldAnchor, useFormScroll } from "@/screens/onboarding/components/FormScroll";
+import {
+  FormFieldAnchor,
+  useFormScroll,
+} from "@/screens/onboarding/components/FormScroll";
 
 export default function ClinicalForm({
   defaults,
@@ -167,42 +167,45 @@ export default function ClinicalForm({
   }
 
   return (
-    <OnboardingFormScreen contentContainerStyle={{ gap: 24 }} scrollRef={scrollRef}>
+    <OnboardingFormScreen
+      contentContainerStyle={{ gap: 24 }}
+      scrollRef={scrollRef}
+    >
       <FormFieldAnchor<TClinicalOnboardingFormValues>
         name={["ckdStage", "egfrCurrent", "dialysisStatus", "acrCategory"]}
         registerField={registerField}
       >
-      <KidneyStatusSection
-        control={control}
-        errors={errors}
-        persistIfValid={persistIfValid}
-      />
+        <KidneyStatusSection
+          control={control}
+          errors={errors}
+          persistIfValid={persistIfValid}
+        />
       </FormFieldAnchor>
 
       <FormFieldAnchor<TClinicalOnboardingFormValues>
         name={["heightCm", "weightKg"]}
         registerField={registerField}
       >
-      <BodyMeasurementsSection
-        control={control}
-        errors={errors}
-        persistIfValid={persistIfValid}
-      />
+        <BodyMeasurementsSection
+          control={control}
+          errors={errors}
+          persistIfValid={persistIfValid}
+        />
       </FormFieldAnchor>
 
       <FormFieldAnchor<TClinicalOnboardingFormValues>
         name="allergies"
         registerField={registerField}
       >
-      <AllergiesSection
-        allergyFields={allergiesArray.fields}
-        allergyValues={allergyValues}
-        errors={errors}
-        onAdd={() => allergiesArray.append(makeEmptyAllergy())}
-        onRemove={(index) => allergiesArray.remove(index)}
-        onUpdate={updateAllergy}
-        persistDraftSnapshot={persistDraftSnapshot}
-      />
+        <AllergiesSection
+          allergyFields={allergiesArray.fields}
+          allergyValues={allergyValues}
+          errors={errors}
+          onAdd={() => allergiesArray.append(makeEmptyAllergy())}
+          onRemove={(index) => allergiesArray.remove(index)}
+          onUpdate={updateAllergy}
+          persistDraftSnapshot={persistDraftSnapshot}
+        />
       </FormFieldAnchor>
 
       <DietaryPreferencesSection
@@ -214,18 +217,19 @@ export default function ClinicalForm({
         name="conditions"
         registerField={registerField}
       >
-      <ConditionsSection
-        conditionFields={conditionsArray.fields}
-        conditionValues={conditionValues}
-        errors={errors}
-        onAdd={() => conditionsArray.append(makeEmptyCondition())}
-        onRemove={(index) => conditionsArray.remove(index)}
-        onUpdate={updateCondition}
-        persistDraftSnapshot={persistDraftSnapshot}
-      />
+        <ConditionsSection
+          conditionFields={conditionsArray.fields}
+          conditionValues={conditionValues}
+          errors={errors}
+          onAdd={() => conditionsArray.append(makeEmptyCondition())}
+          onRemove={(index) => conditionsArray.remove(index)}
+          onUpdate={updateCondition}
+          persistDraftSnapshot={persistDraftSnapshot}
+        />
       </FormFieldAnchor>
 
-      <AppButton variant="primary"
+      <AppButton
+        variant="primary"
         label={isSubmitting ? "Saving..." : "Save Profile"}
         disabled={isSubmitting}
         onPress={handleSubmit(onSubmit, scrollToFirstError)}

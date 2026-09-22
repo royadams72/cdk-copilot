@@ -15,8 +15,8 @@ import { useGetMedicationHistoryQuery } from "@/store/services/medicationApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { NutritionStyles } from "../nutrition/styles";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 
 function MedicationList({
@@ -49,7 +49,8 @@ function MedicationList({
               Current status: {item.status}
             </ThemedText>
             <ThemedText style={{ fontSize: 13, color: theme.colors.copy }}>
-              Updated {formatMobileDate(item.updatedAt, { fallback: "Unknown date" })}
+              Updated{" "}
+              {formatMobileDate(item.updatedAt, { fallback: "Unknown date" })}
             </ThemedText>
             {item.latestReason ? (
               <ThemedText style={{ fontSize: 13, color: theme.colors.copy }}>
@@ -108,7 +109,9 @@ export default function MedicationHistory() {
           variant="secondary"
           size="compact"
         />
-        <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication history</ThemedText>
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
+          Medication history
+        </ThemedText>
         <ThemedText style={NutritionStyles.pageHelperText}>
           Select a medication to view full status and edit history.
         </ThemedText>

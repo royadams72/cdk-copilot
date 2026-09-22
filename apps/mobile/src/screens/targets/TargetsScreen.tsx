@@ -14,8 +14,8 @@ import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 
 import { ThemedText } from "@/components/themed-text";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import {
   type TargetDefinitionValue,
   type TargetDomain,
@@ -605,7 +605,7 @@ export default function TargetsScreen({
             ? null
             : currentKey === "__recommended__"
               ? item.recommended
-              : currentOption?.value ?? item.effective;
+              : (currentOption?.value ?? item.effective);
         const displayedSource = item.careTeamTarget
           ? "Care-team target"
           : currentKey === "__unset__"

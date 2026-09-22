@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { FeedbackModal } from "@/components/feedback-modal";
@@ -12,8 +8,8 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileDate } from "@/lib/format/date";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { NutritionStyles } from "../nutrition/styles";
 
@@ -79,7 +75,12 @@ export default function LabsHistory() {
   return (
     <>
       <AppScreen>
-        <AppButton label="Back" onPress={() => router.replace("/(dashboard)/meds-labs")} variant="secondary" size="compact" />
+        <AppButton
+          label="Back"
+          onPress={() => router.replace("/(dashboard)/meds-labs")}
+          variant="secondary"
+          size="compact"
+        />
         <ThemedText type="title" style={NutritionStyles.screenTitle}>
           {isEditMode ? "Edit Labs results" : "Labs history"}
         </ThemedText>
@@ -124,7 +125,9 @@ export default function LabsHistory() {
                       }}
                     >
                       <ThemedText style={{ fontWeight: "700" }}>
-                        {formatMobileDate(group.takenAt, { fallback: "Unknown" })}
+                        {formatMobileDate(group.takenAt, {
+                          fallback: "Unknown",
+                        })}
                       </ThemedText>
                       <ThemedText style={{ fontSize: 13, opacity: 0.75 }}>
                         {group.itemCount} lab{group.itemCount === 1 ? "" : "s"}

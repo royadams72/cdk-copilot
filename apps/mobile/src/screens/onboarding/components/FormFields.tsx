@@ -8,9 +8,9 @@ import {
   type TextInputProps,
   View,
 } from "react-native";
-import { TextField } from "@/components/ui/form-field";
+import { TextField } from "@/components/ui/FormField";
 import { styles } from "../styles";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 
 function FieldMessage({ error }: { error?: string }) {
   if (!error) return null;
@@ -28,7 +28,15 @@ export function LabeledInput({
   label: string;
   multiline?: boolean;
 } & TextInputProps) {
-  return <TextField {...props} label={label} error={error} multiline={multiline} style={style} />;
+  return (
+    <TextField
+      {...props}
+      label={label}
+      error={error}
+      multiline={multiline}
+      style={style}
+    />
+  );
 }
 
 export function PickerField({
@@ -157,8 +165,13 @@ export function OptionSelectField<TValue extends string>({
               })}
             </ScrollView>
             <View style={styles.actionsRow}>
-              <AppButton variant="secondary" label="Close" onPress={() => setVisible(false)} />
-              <AppButton variant="primary"
+              <AppButton
+                variant="secondary"
+                label="Close"
+                onPress={() => setVisible(false)}
+              />
+              <AppButton
+                variant="primary"
                 label="Done"
                 onPress={() => setVisible(false)}
               />

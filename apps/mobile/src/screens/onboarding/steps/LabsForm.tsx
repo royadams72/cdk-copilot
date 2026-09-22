@@ -5,7 +5,7 @@ import { type Resolver, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LabsSchema, TLabsFormValues } from "@ckd/core";
 import { useRouter } from "expo-router";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { OnboardingFormScreen } from "../components/Onboarding";
 import { RepeatableFormCard } from "../components/RepeatableFormCard";
 import {

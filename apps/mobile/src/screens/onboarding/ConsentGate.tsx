@@ -8,8 +8,8 @@ import { resolvePostAuthRoute } from "@/lib/onboarding";
 
 import { AppScreen } from "@/components/app-screen";
 import { ThemedText } from "@/components/themed-text";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { styles } from "./styles";
 
 type PendingConsentItem = {
@@ -186,7 +186,9 @@ export default function ConsentGate() {
       >
         <View style={styles.header}>
           <Text style={styles.title}>
-            {error ? "Could not load consent request" : "No consent request found"}
+            {error
+              ? "Could not load consent request"
+              : "No consent request found"}
           </Text>
           <Text style={styles.subtitle}>
             {error
@@ -226,9 +228,9 @@ export default function ConsentGate() {
       <Section variant="group">
         <ThemedText>
           If you agree, authorised members of this care team can use the health
-          information you record in CKD Copilot to support your direct care.
-          You can decline, ask your care team who has access, or contact them
-          later if you want to discuss or withdraw access.
+          information you record in CKD Copilot to support your direct care. You
+          can decline, ask your care team who has access, or contact them later
+          if you want to discuss or withdraw access.
         </ThemedText>
         <ThemedText style={styles.consentLabel}>Organisation</ThemedText>
         <ThemedText style={styles.consentValue}>

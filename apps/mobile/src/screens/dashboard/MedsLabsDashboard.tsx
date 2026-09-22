@@ -1,9 +1,5 @@
 import { useCallback } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  View,
-} from "react-native";
+import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -20,7 +16,7 @@ import { useGetSymptomsQuery } from "@/store/services/symptomsApi";
 import { Card } from "./components/Card";
 import { NutritionStyles } from "../nutrition/styles";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 
 export default function MedsLabsDashboard() {
   const router = useRouter();
@@ -64,7 +60,12 @@ export default function MedsLabsDashboard() {
             We couldn&apos;t refresh your medication and lab data
           </ThemedText>
           <ThemedText style={styles.helperText}>{errorMessage}</ThemedText>
-          <AppButton label="Retry" onPress={handleRefresh} variant="outline" size="compact" />
+          <AppButton
+            label="Retry"
+            onPress={handleRefresh}
+            variant="outline"
+            size="compact"
+          />
         </Card>
       );
   }
@@ -85,7 +86,9 @@ export default function MedsLabsDashboard() {
       />
 
       <View style={styles.header}>
-        <ThemedText type="title" style={NutritionStyles.screenTitle}>Meds/Labs dashboard</ThemedText>
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
+          Meds/Labs dashboard
+        </ThemedText>
         <ThemedText style={styles.subtleText}>
           Summary of your medication and lab status.
         </ThemedText>
@@ -111,7 +114,9 @@ export default function MedsLabsDashboard() {
       )}
 
       <Card>
-        <ThemedText type="defaultSemiBold" style={styles.panelTitle}>Symptoms</ThemedText>
+        <ThemedText type="defaultSemiBold" style={styles.panelTitle}>
+          Symptoms
+        </ThemedText>
         <ThemedText style={styles.helperText}>
           {symptomData?.activeSymptoms.length
             ? `${symptomData.activeSymptoms.length} active symptom${symptomData.activeSymptoms.length === 1 ? "" : "s"} logged`

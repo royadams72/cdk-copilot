@@ -34,7 +34,7 @@ import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { useGetMeasurementHistoryQuery } from "@/store/services/measurementsApi";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
@@ -69,8 +69,13 @@ function formatMembershipEndDate(value: string | null | undefined) {
 export default function Dashboard() {
   const router = useRouter();
   const { data: targetData } = useGetTargetsQuery("lifestyle");
-  const stepTargetValue = targetData?.items.find((item) => item.metric === "steps_per_day")?.effective?.value;
-  const stepTarget = typeof stepTargetValue === "number" && stepTargetValue > 0 ? stepTargetValue : null;
+  const stepTargetValue = targetData?.items.find(
+    (item) => item.metric === "steps_per_day",
+  )?.effective?.value;
+  const stepTarget =
+    typeof stepTargetValue === "number" && stepTargetValue > 0
+      ? stepTargetValue
+      : null;
   const { data, error, isFetching, isLoading, refetch } = useGetDashboardQuery(
     "today",
     {
@@ -173,7 +178,10 @@ export default function Dashboard() {
         id: "steps",
         actual: stepsToday,
         label: "Steps",
-        percent: stepsToday === null || stepTarget === null ? null : stepsToday / stepTarget,
+        percent:
+          stepsToday === null || stepTarget === null
+            ? null
+            : stepsToday / stepTarget,
         target: stepTarget,
         unit: "steps",
       },
@@ -194,7 +202,12 @@ export default function Dashboard() {
         unit: "kcal",
       },
     ];
-  }, [exerciseHistory?.points, stepSummary?.caloriesKcal, stepsToday, stepTarget]);
+  }, [
+    exerciseHistory?.points,
+    stepSummary?.caloriesKcal,
+    stepsToday,
+    stepTarget,
+  ]);
 
   useEffect(() => {
     let cancelled = false;

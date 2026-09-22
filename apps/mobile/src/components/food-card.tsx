@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { ThemedText } from "@/components/themed-text";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 
 type FoodCardAction = {
@@ -36,8 +36,12 @@ export function FoodCard({
     <Container style={[styles.card, style]} {...containerProps}>
       <View style={styles.content}>
         <ThemedText style={styles.title}>{title}</ThemedText>
-        {subtitle ? <ThemedText style={styles.subtitle}>{subtitle}</ThemedText> : null}
-        {description ? <ThemedText style={styles.description}>{description}</ThemedText> : null}
+        {subtitle ? (
+          <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>
+        ) : null}
+        {description ? (
+          <ThemedText style={styles.description}>{description}</ThemedText>
+        ) : null}
       </View>
       <View style={styles.side}>
         {rightContent}

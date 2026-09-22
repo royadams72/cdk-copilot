@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  View,
-} from "react-native";
+import { ActivityIndicator, Platform, Pressable, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -26,9 +21,13 @@ import {
   useUpdateMedicationMutation,
 } from "@/store/services/medicationApi";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { FormField, TextField, formControlStyles } from "@/components/ui/form-field";
-import { Section } from "@/components/ui/section";
+import { AppButton } from "@/components/ui/Button";
+import {
+  FormField,
+  TextField,
+  formControlStyles,
+} from "@/components/ui/FormField";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { NutritionStyles } from "../nutrition/styles";
 
@@ -107,10 +106,8 @@ function normaliseFrequency(value: string) {
 export default function AddMedication() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
-  const [
-    searchMedication,
-    { isFetching: isSearchFetching },
-  ] = useLazySearchMedicationQuery();
+  const [searchMedication, { isFetching: isSearchFetching }] =
+    useLazySearchMedicationQuery();
   const medicationId = typeof params.id === "string" ? params.id : "";
   const isEditMode = !!medicationId;
 
@@ -359,7 +356,9 @@ export default function AddMedication() {
             variant="secondary"
             size="compact"
           />
-          <ThemedText type="title" style={NutritionStyles.screenTitle}>Medications</ThemedText>
+          <ThemedText type="title" style={NutritionStyles.screenTitle}>
+            Medications
+          </ThemedText>
           {isEditMode ? (
             <ThemedText style={NutritionStyles.pageHelperText}>
               Edit the medication below, or set it to paused, stopped, or
@@ -376,222 +375,232 @@ export default function AddMedication() {
           title={isEditMode ? "Medication details" : "Add medication"}
           description="Enter the prescribed medication details below."
         >
-        {isEditMode ? (
+          {isEditMode ? (
+            <View>
+              <ThemedText>Status actions</ThemedText>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginTop: 6,
+                }}
+              >
+                {["active", "paused", "stopped", "completed"].map((option) => {
+                  const optionStatus = option as MedicationStatus;
+                  const selected = status === optionStatus;
+                  return (
+                    <AppButton
+                      key={optionStatus}
+                      label={optionStatus}
+                      onPress={() => handleStatusPick(optionStatus)}
+                      variant={selected ? "primary" : "secondary"}
+                      size="compact"
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           <View>
-            <ThemedText>Status actions</ThemedText>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
-                marginTop: 6,
-              }}
-            >
-              {["active", "paused", "stopped", "completed"].map((option) => {
-                const optionStatus = option as MedicationStatus;
-                const selected = status === optionStatus;
-                return (
-                  <AppButton
-                    key={optionStatus}
-                    label={optionStatus}
-                    onPress={() => handleStatusPick(optionStatus)}
-                    variant={selected ? "primary" : "secondary"}
-                    size="compact"
-                  />
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-
-        <View>
-          <TextField
-            label="Name"
-            value={name}
-            onChangeText={(value) => {
-              setName(value);
-              setSelectedDrug(null);
-            }}
-            placeholder="Start typing medication name"
-            autoCapitalize="words"
-          />
-          {isSearchFetching ? (
-            <View
-              style={{
-                alignItems: "center",
-                flexDirection: "row",
-                gap: 8,
-                marginTop: 8,
-              }}
-            >
-              <ActivityIndicator size="small" />
-              <ThemedText style={{ color: theme.colors.copy }}>
-                Searching drugs...
-              </ThemedText>
-            </View>
-          ) : null}
-          {canShowSuggestions ? (
-            <View
-              style={{
-                borderColor: theme.colors.borderSubtle,
-                borderRadius: 10,
-                borderWidth: 1,
-                marginTop: 8,
-              }}
-            >
-              {suggestions.map((item) => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => {
-                    setName(item.displayName);
-                    setSelectedDrug(item);
-                    if (item.route) setRoute(item.route);
-                    if (item.form) setForm(item.form);
-                    setSuggestions([]);
-                  }}
-                  style={{
-                    borderBottomColor: theme.colors.borderSubtle,
-                    borderBottomWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 9,
-                  }}
-                >
-                  <ThemedText style={{ fontWeight: "600" }}>
-                    {item.displayName}
-                  </ThemedText>
-                  <ThemedText style={{ fontSize: 12, color: theme.colors.copy }}>
-                    {[item.form, item.route].filter(Boolean).join(" · ") ||
-                      "No form/route"}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
-
-        <FormField label="Route">
-          <View style={formControlStyles.shell}>
-            <Picker selectedValue={route} onValueChange={setRoute}>
-              {ROUTE_OPTIONS.map((option) => (
-                <Picker.Item
-                  key={option || "none"}
-                  label={option ? option : "Select route"}
-                  value={option}
-                />
-              ))}
-            </Picker>
-          </View>
-        </FormField>
-
-        <FormField label="Form">
-          <View style={formControlStyles.shell}>
-            <Picker selectedValue={form} onValueChange={setForm}>
-              {FORM_OPTIONS.map((option) => (
-                <Picker.Item
-                  key={option || "none"}
-                  label={option ? option : "Select form"}
-                  value={option}
-                />
-              ))}
-            </Picker>
-          </View>
-        </FormField>
-
-        <View>
-          <ThemedText>Dose</ThemedText>
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
             <TextField
-              label="Dose amount"
-              hideLabel
-              value={doseAmount}
-              onChangeText={(value) =>
-                setDoseAmount(value.replace(/[^0-9.]/g, ""))
-              }
-              placeholder="e.g. 50"
-              keyboardType="decimal-pad"
-              containerStyle={{ flex: 1 }}
-            />
-            <View
-              style={{
-                borderColor: theme.colors.border,
-                borderRadius: 10,
-                borderWidth: 1,
-                flex: 1,
+              label="Name"
+              value={name}
+              onChangeText={(value) => {
+                setName(value);
+                setSelectedDrug(null);
               }}
-            >
-              <Picker selectedValue={doseUnit} onValueChange={setDoseUnit}>
-                {DOSE_UNIT_OPTIONS.map((option) => (
-                  <Picker.Item key={option} label={option} value={option} />
+              placeholder="Start typing medication name"
+              autoCapitalize="words"
+            />
+            {isSearchFetching ? (
+              <View
+                style={{
+                  alignItems: "center",
+                  flexDirection: "row",
+                  gap: 8,
+                  marginTop: 8,
+                }}
+              >
+                <ActivityIndicator size="small" />
+                <ThemedText style={{ color: theme.colors.copy }}>
+                  Searching drugs...
+                </ThemedText>
+              </View>
+            ) : null}
+            {canShowSuggestions ? (
+              <View
+                style={{
+                  borderColor: theme.colors.borderSubtle,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  marginTop: 8,
+                }}
+              >
+                {suggestions.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => {
+                      setName(item.displayName);
+                      setSelectedDrug(item);
+                      if (item.route) setRoute(item.route);
+                      if (item.form) setForm(item.form);
+                      setSuggestions([]);
+                    }}
+                    style={{
+                      borderBottomColor: theme.colors.borderSubtle,
+                      borderBottomWidth: 1,
+                      paddingHorizontal: 10,
+                      paddingVertical: 9,
+                    }}
+                  >
+                    <ThemedText style={{ fontWeight: "600" }}>
+                      {item.displayName}
+                    </ThemedText>
+                    <ThemedText
+                      style={{ fontSize: 12, color: theme.colors.copy }}
+                    >
+                      {[item.form, item.route].filter(Boolean).join(" · ") ||
+                        "No form/route"}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          <FormField label="Route">
+            <View style={formControlStyles.shell}>
+              <Picker selectedValue={route} onValueChange={setRoute}>
+                {ROUTE_OPTIONS.map((option) => (
+                  <Picker.Item
+                    key={option || "none"}
+                    label={option ? option : "Select route"}
+                    value={option}
+                  />
                 ))}
               </Picker>
             </View>
-          </View>
-        </View>
+          </FormField>
 
-        <View>
-          <TextField
-            label="Frequency"
-            value={frequency}
-            onChangeText={setFrequency}
-            onBlur={() => setFrequency(normaliseFrequency(frequency))}
-            placeholder="e.g. three times daily"
-          />
-        </View>
-
-        <View>
-          <ThemedText style={{ color: theme.colors.text, fontWeight: "600" }}>Start date</ThemedText>
-          <AppButton
-            label={formatMobileUkInputDate(startAt)}
-            onPress={() => setShowStartDatePicker(true)}
-            variant="outline"
-          />
-          {showStartDatePicker ? (
-            <View style={{ marginTop: 8 }}>
-              <DateTimePicker
-                value={startAt}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(event, selected) => {
-                  if (event.type === "dismissed") {
-                    setShowStartDatePicker(false);
-                    return;
-                  }
-                  if (selected) setStartAt(selected);
-                  if (Platform.OS !== "ios") setShowStartDatePicker(false);
-                }}
-              />
-              {Platform.OS === "ios" ? (
-                <AppButton
-                  label="Done"
-                  onPress={() => setShowStartDatePicker(false)}
-                  variant="secondary"
-                  fullWidth
-                />
-              ) : null}
+          <FormField label="Form">
+            <View style={formControlStyles.shell}>
+              <Picker selectedValue={form} onValueChange={setForm}>
+                {FORM_OPTIONS.map((option) => (
+                  <Picker.Item
+                    key={option || "none"}
+                    label={option ? option : "Select form"}
+                    value={option}
+                  />
+                ))}
+              </Picker>
             </View>
-          ) : null}
-        </View>
+          </FormField>
 
-        {isEditMode ? (
+          <View>
+            <ThemedText>Dose</ThemedText>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+              <TextField
+                label="Dose amount"
+                hideLabel
+                value={doseAmount}
+                onChangeText={(value) =>
+                  setDoseAmount(value.replace(/[^0-9.]/g, ""))
+                }
+                placeholder="e.g. 50"
+                keyboardType="decimal-pad"
+                containerStyle={{ flex: 1 }}
+              />
+              <View
+                style={{
+                  borderColor: theme.colors.border,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  flex: 1,
+                }}
+              >
+                <Picker selectedValue={doseUnit} onValueChange={setDoseUnit}>
+                  {DOSE_UNIT_OPTIONS.map((option) => (
+                    <Picker.Item key={option} label={option} value={option} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          </View>
+
           <View>
             <TextField
-              label="Reason for edit"
-              value={editReason}
-              onChangeText={setEditReason}
-              placeholder="Required when changing medication details"
-              multiline
-              numberOfLines={3}
+              label="Frequency"
+              value={frequency}
+              onChangeText={setFrequency}
+              onBlur={() => setFrequency(normaliseFrequency(frequency))}
+              placeholder="e.g. three times daily"
             />
           </View>
-        ) : null}
 
-        <AppButton
-          label={submitting ? "Saving..." : isEditMode ? "Save changes" : "Save medication"}
-          onPress={handleSubmit}
-          disabled={submitting}
-          loading={submitting}
-          fullWidth
-        />
+          <View>
+            <ThemedText style={{ color: theme.colors.text, fontWeight: "600" }}>
+              Start date
+            </ThemedText>
+            <AppButton
+              label={formatMobileUkInputDate(startAt)}
+              onPress={() => setShowStartDatePicker(true)}
+              variant="outline"
+            />
+            {showStartDatePicker ? (
+              <View style={{ marginTop: 8 }}>
+                <DateTimePicker
+                  value={startAt}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(event, selected) => {
+                    if (event.type === "dismissed") {
+                      setShowStartDatePicker(false);
+                      return;
+                    }
+                    if (selected) setStartAt(selected);
+                    if (Platform.OS !== "ios") setShowStartDatePicker(false);
+                  }}
+                />
+                {Platform.OS === "ios" ? (
+                  <AppButton
+                    label="Done"
+                    onPress={() => setShowStartDatePicker(false)}
+                    variant="secondary"
+                    fullWidth
+                  />
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+
+          {isEditMode ? (
+            <View>
+              <TextField
+                label="Reason for edit"
+                value={editReason}
+                onChangeText={setEditReason}
+                placeholder="Required when changing medication details"
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          ) : null}
+
+          <AppButton
+            label={
+              submitting
+                ? "Saving..."
+                : isEditMode
+                  ? "Save changes"
+                  : "Save medication"
+            }
+            onPress={handleSubmit}
+            disabled={submitting}
+            loading={submitting}
+            fullWidth
+          />
         </Section>
       </AppScreen>
 

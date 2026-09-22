@@ -22,7 +22,7 @@ import {
 } from "@/lib/fitnessApps";
 import { ThemedText } from "@/components/themed-text";
 import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { APP_ROUTES } from "@/constants/routes";
 import { theme } from "@/constants/theme";
 import { Card } from "../dashboard/components/Card";
@@ -50,7 +50,6 @@ type MetricCard = {
   subtext: string;
   value: string;
 };
-
 
 function healthProviderName() {
   return Platform.OS === "ios" ? "Apple Health" : "Health Connect";
@@ -281,8 +280,13 @@ export default function FitnessDashboard() {
     useGetLatestMeasurementsQuery(undefined);
   const { data: currentUserSettings } = useGetCurrentUserSettingsQuery();
   const { data: targetsData } = useGetTargetsQuery("lifestyle");
-  const stepsTargetValue = targetsData?.items.find((item) => item.metric === "steps_per_day")?.effective?.value;
-  const stepsTarget = typeof stepsTargetValue === "number" && stepsTargetValue > 0 ? stepsTargetValue : null;
+  const stepsTargetValue = targetsData?.items.find(
+    (item) => item.metric === "steps_per_day",
+  )?.effective?.value;
+  const stepsTarget =
+    typeof stepsTargetValue === "number" && stepsTargetValue > 0
+      ? stepsTargetValue
+      : null;
   const {
     backgroundReadGranted,
     dataOrigins: stepDataOrigins,
@@ -336,7 +340,8 @@ export default function FitnessDashboard() {
 
   const handleTriggerBackgroundTask = async () => {
     try {
-      const triggered = await getCurrentHealthSyncProvider()?.triggerBackgroundSyncNow();
+      const triggered =
+        await getCurrentHealthSyncProvider()?.triggerBackgroundSyncNow();
       Alert.alert(
         triggered ? "Background task triggered" : "Background task unavailable",
         triggered
@@ -435,236 +440,240 @@ export default function FitnessDashboard() {
   );
   return (
     <AppScreen
-        contentContainerStyle={{ gap: theme.spacing.md }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refetch} />
-        }
+      contentContainerStyle={{ gap: theme.spacing.md }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={refetch} />
+      }
+    >
+      <View
+        style={{
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
       >
-        <View
+        <AppButton
+          label="Back"
+          onPress={() => router.replace(APP_ROUTES.dashboard)}
+          size="compact"
+          variant="outline"
+        />
+        <TouchableOpacity
+          accessibilityLabel="Open health settings"
+          onPress={() => router.push(APP_ROUTES.settings)}
           style={{
             alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "space-between",
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.panelHeader,
+            borderRadius: 999,
+            borderWidth: 1,
+            height: 40,
+            justifyContent: "center",
+            width: 40,
           }}
         >
-          <AppButton
-            label="Back"
-            onPress={() => router.replace(APP_ROUTES.dashboard)}
-            size="compact"
-            variant="outline"
+          <MaterialIcons
+            color={theme.colors.panelHeader}
+            name="settings"
+            size={22}
           />
-          <TouchableOpacity
-            accessibilityLabel="Open health settings"
-            onPress={() => router.push(APP_ROUTES.settings)}
-            style={{
-              alignItems: "center",
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.panelHeader,
-              borderRadius: 999,
-              borderWidth: 1,
-              height: 40,
-              justifyContent: "center",
-              width: 40,
-            }}
-          >
-            <MaterialIcons color={theme.colors.panelHeader} name="settings" size={22} />
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+      </View>
 
-        <View style={{ gap: 4 }}>
-          <ThemedText type="title">Health dashboard</ThemedText>
-          <ThemedText style={{ opacity: 0.72 }}>
-            Latest readings for weight, heart rate, activity, blood pressure,
-            and sleep.
+      <View style={{ gap: 4 }}>
+        <ThemedText type="title">Health dashboard</ThemedText>
+        <ThemedText style={{ opacity: 0.72 }}>
+          Latest readings for weight, heart rate, activity, blood pressure, and
+          sleep.
+        </ThemedText>
+      </View>
+
+      {loading ? (
+        <View style={{ alignItems: "center", gap: 10, paddingVertical: 28 }}>
+          <ActivityIndicator size="large" />
+          <ThemedText>Loading readings...</ThemedText>
+        </View>
+      ) : null}
+
+      {error ? (
+        <Card>
+          <ThemedText type="defaultSemiBold">
+            Could not load readings
           </ThemedText>
-        </View>
+          <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
+          <TouchableOpacity onPress={refetch} style={{ marginTop: 6 }}>
+            <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
+          </TouchableOpacity>
+        </Card>
+      ) : null}
 
-        {loading ? (
-          <View style={{ alignItems: "center", gap: 10, paddingVertical: 28 }}>
-            <ActivityIndicator size="large" />
-            <ThemedText>Loading readings...</ThemedText>
-          </View>
-        ) : null}
+      {!loading && fitnessSetupGuidance ? (
+        <Card>
+          <ThemedText type="defaultSemiBold">
+            {fitnessSetupGuidance.title}
+          </ThemedText>
+          <ThemedText style={{ opacity: 0.7 }}>
+            {fitnessSetupGuidance.body}
+          </ThemedText>
+        </Card>
+      ) : null}
 
-        {error ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">
-              Could not load readings
-            </ThemedText>
-            <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
-            <TouchableOpacity onPress={refetch} style={{ marginTop: 6 }}>
-              <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
-            </TouchableOpacity>
-          </Card>
-        ) : null}
-
-        {!loading && fitnessSetupGuidance ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">
-              {fitnessSetupGuidance.title}
-            </ThemedText>
-            <ThemedText style={{ opacity: 0.7 }}>
-              {fitnessSetupGuidance.body}
-            </ThemedText>
-          </Card>
-        ) : null}
-
-        {!loading &&
-        (stepStatus === "permission-required" ||
-          stepStatus === "permission-denied" ||
-          hasMissingHealthPermissions ||
-          (stepStatus === "ready" && !backgroundReadGranted)) ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">
-              {stepStatus === "ready" && !backgroundReadGranted
-                ? `Allow additional ${healthProviderName()} access`
-                : `${healthProviderName()} setup`}
-            </ThemedText>
-            <ThemedText style={{ opacity: 0.7 }}>
-              {getFitnessHealthSetupMessage(
-                stepStatus,
-                hasMissingHealthPermissions,
-                backgroundReadGranted,
-              )}
-            </ThemedText>
-            <TouchableOpacity
-              onPress={() => {
-                if (stepStatus === "ready" && !backgroundReadGranted) {
-                  void requestBackgroundReadAccess();
-                  return;
-                }
-                void (async () => {
-                  const result = await requestAccess();
-                  if (
-                    Platform.OS === "ios" &&
-                    result &&
-                    (result.status === "permission-required" ||
-                      result.status === "permission-denied")
-                  ) {
-                    Alert.alert(
-                      "Apple Health access",
-                      "The Apple Health prompt still has not completed. You can try the prompt again, open the Health app for CKD Copilot sharing, or open normal app settings.",
-                      [
-                        {
-                          text: "Try again",
-                          onPress: () => {
-                            void requestAccess();
-                          },
-                        },
-                        {
-                          text: "Open Health app",
-                          onPress: () => {
-                            void openHealthAccessSettings();
-                          },
-                        },
-                        {
-                          text: "Open Settings",
-                          onPress: () => {
-                            void openAppSettings();
-                          },
-                        },
-                        { text: "Cancel", style: "cancel" },
-                      ],
-                    );
-                  }
-                })();
-              }}
-              style={{ marginTop: 8 }}
-            >
-              <ThemedText style={{ fontWeight: "700" }}>
-                {stepStatus === "ready" && !backgroundReadGranted
-                  ? Platform.OS === "ios"
-                    ? "Enable Apple Health background sync"
-                    : "Open additional health access settings"
-                  : hasMissingHealthPermissions
-                    ? `Allow more ${healthProviderName()} access`
-                  : Platform.OS === "ios"
-                      ? "Check Apple Health access"
-                      : "Allow Health Connect access"}
-              </ThemedText>
-            </TouchableOpacity>
-          </Card>
-        ) : null}
-
-        {!loading && __DEV__ ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">Dev: Background sync</ThemedText>
-            <ThemedText style={{ opacity: 0.7 }}>
-              Trigger the native background sync path immediately for testing.
-            </ThemedText>
-            <ThemedText style={{ opacity: 0.7 }}>
-              Background read permission:{" "}
-              {backgroundReadGranted ? "granted" : "missing"}
-            </ThemedText>
-            <TouchableOpacity
-              onPress={() => {
-                void handleTriggerBackgroundTask();
-              }}
-              style={{ marginTop: 8 }}
-            >
-              <ThemedText style={{ fontWeight: "700" }}>
-                Run background sync now
-              </ThemedText>
-            </TouchableOpacity>
-          </Card>
-        ) : null}
-
-        {!loading &&
-          cards.map((card) => (
-            <TouchableOpacity
-              key={card.kind}
-              onPress={
-                card.onPress ??
-                (() =>
-                  router.push({
-                    params: { kind: card.kind, label: card.label },
-                    pathname: "/(fitness)/metric-trend",
-                  }))
+      {!loading &&
+      (stepStatus === "permission-required" ||
+        stepStatus === "permission-denied" ||
+        hasMissingHealthPermissions ||
+        (stepStatus === "ready" && !backgroundReadGranted)) ? (
+        <Card>
+          <ThemedText type="defaultSemiBold">
+            {stepStatus === "ready" && !backgroundReadGranted
+              ? `Allow additional ${healthProviderName()} access`
+              : `${healthProviderName()} setup`}
+          </ThemedText>
+          <ThemedText style={{ opacity: 0.7 }}>
+            {getFitnessHealthSetupMessage(
+              stepStatus,
+              hasMissingHealthPermissions,
+              backgroundReadGranted,
+            )}
+          </ThemedText>
+          <TouchableOpacity
+            onPress={() => {
+              if (stepStatus === "ready" && !backgroundReadGranted) {
+                void requestBackgroundReadAccess();
+                return;
               }
-            >
-              <Card>
-                <ThemedText type="defaultSemiBold">{card.label}</ThemedText>
-                <ThemedText style={{ fontSize: 22, fontWeight: "700" }}>
-                  {card.value}
-                </ThemedText>
-                <ThemedText style={{ opacity: 0.7 }}>{card.subtext}</ThemedText>
-                {typeof card.progressPercent === "number" ? (
-                  <View style={{ gap: 6, marginTop: 8 }}>
+              void (async () => {
+                const result = await requestAccess();
+                if (
+                  Platform.OS === "ios" &&
+                  result &&
+                  (result.status === "permission-required" ||
+                    result.status === "permission-denied")
+                ) {
+                  Alert.alert(
+                    "Apple Health access",
+                    "The Apple Health prompt still has not completed. You can try the prompt again, open the Health app for CKD Copilot sharing, or open normal app settings.",
+                    [
+                      {
+                        text: "Try again",
+                        onPress: () => {
+                          void requestAccess();
+                        },
+                      },
+                      {
+                        text: "Open Health app",
+                        onPress: () => {
+                          void openHealthAccessSettings();
+                        },
+                      },
+                      {
+                        text: "Open Settings",
+                        onPress: () => {
+                          void openAppSettings();
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  );
+                }
+              })();
+            }}
+            style={{ marginTop: 8 }}
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              {stepStatus === "ready" && !backgroundReadGranted
+                ? Platform.OS === "ios"
+                  ? "Enable Apple Health background sync"
+                  : "Open additional health access settings"
+                : hasMissingHealthPermissions
+                  ? `Allow more ${healthProviderName()} access`
+                  : Platform.OS === "ios"
+                    ? "Check Apple Health access"
+                    : "Allow Health Connect access"}
+            </ThemedText>
+          </TouchableOpacity>
+        </Card>
+      ) : null}
+
+      {!loading && __DEV__ ? (
+        <Card>
+          <ThemedText type="defaultSemiBold">Dev: Background sync</ThemedText>
+          <ThemedText style={{ opacity: 0.7 }}>
+            Trigger the native background sync path immediately for testing.
+          </ThemedText>
+          <ThemedText style={{ opacity: 0.7 }}>
+            Background read permission:{" "}
+            {backgroundReadGranted ? "granted" : "missing"}
+          </ThemedText>
+          <TouchableOpacity
+            onPress={() => {
+              void handleTriggerBackgroundTask();
+            }}
+            style={{ marginTop: 8 }}
+          >
+            <ThemedText style={{ fontWeight: "700" }}>
+              Run background sync now
+            </ThemedText>
+          </TouchableOpacity>
+        </Card>
+      ) : null}
+
+      {!loading &&
+        cards.map((card) => (
+          <TouchableOpacity
+            key={card.kind}
+            onPress={
+              card.onPress ??
+              (() =>
+                router.push({
+                  params: { kind: card.kind, label: card.label },
+                  pathname: "/(fitness)/metric-trend",
+                }))
+            }
+          >
+            <Card>
+              <ThemedText type="defaultSemiBold">{card.label}</ThemedText>
+              <ThemedText style={{ fontSize: 22, fontWeight: "700" }}>
+                {card.value}
+              </ThemedText>
+              <ThemedText style={{ opacity: 0.7 }}>{card.subtext}</ThemedText>
+              {typeof card.progressPercent === "number" ? (
+                <View style={{ gap: 6, marginTop: 8 }}>
+                  <View
+                    style={{
+                      backgroundColor: "#E2E8F0",
+                      borderRadius: 999,
+                      height: 8,
+                      overflow: "hidden",
+                      width: "100%",
+                    }}
+                  >
                     <View
                       style={{
-                        backgroundColor: "#E2E8F0",
+                        backgroundColor: theme.colors.primary,
                         borderRadius: 999,
-                        height: 8,
-                        overflow: "hidden",
-                        width: "100%",
+                        height: "100%",
+                        width: `${card.progressPercent}%`,
                       }}
-                    >
-                      <View
-                        style={{
-                          backgroundColor: theme.colors.primary,
-                          borderRadius: 999,
-                          height: "100%",
-                          width: `${card.progressPercent}%`,
-                        }}
-                      />
-                    </View>
-                    <ThemedText style={{ fontSize: 12, opacity: 0.75 }}>
-                      {card.progressLabel}
-                    </ThemedText>
+                    />
                   </View>
-                ) : null}
-                <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
-                  {card.onPress
-                    ? hasMissingHealthPermissions
-                      ? `Allow more ${healthProviderName()} access`
-                      : "Allow step access"
-                    : card.kind === "steps"
-                      ? "View trend"
-                      : "View trend and add reading"}
-                </ThemedText>
-              </Card>
-            </TouchableOpacity>
-          ))}
-      </AppScreen>
+                  <ThemedText style={{ fontSize: 12, opacity: 0.75 }}>
+                    {card.progressLabel}
+                  </ThemedText>
+                </View>
+              ) : null}
+              <ThemedText style={{ fontSize: 12, opacity: 0.65 }}>
+                {card.onPress
+                  ? hasMissingHealthPermissions
+                    ? `Allow more ${healthProviderName()} access`
+                    : "Allow step access"
+                  : card.kind === "steps"
+                    ? "View trend"
+                    : "View trend and add reading"}
+              </ThemedText>
+            </Card>
+          </TouchableOpacity>
+        ))}
+    </AppScreen>
   );
 }
