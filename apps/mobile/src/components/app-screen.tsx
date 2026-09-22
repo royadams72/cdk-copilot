@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -13,7 +13,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "@/constants/theme";
 import { ThemedTextColorProvider } from "@/components/themed-text";
 
-export function AppScreen({
+export const AppScreen = forwardRef<ScrollView, ScrollViewProps & {
+  children: ReactNode;
+  keyboardAware?: boolean;
+  padded?: boolean;
+  scroll?: boolean;
+  style?: ViewStyle;
+}>(function AppScreen({
   children,
   contentContainerStyle,
   keyboardAware = false,
@@ -21,13 +27,7 @@ export function AppScreen({
   scroll = true,
   style,
   ...scrollProps
-}: ScrollViewProps & {
-  children: ReactNode;
-  keyboardAware?: boolean;
-  padded?: boolean;
-  scroll?: boolean;
-  style?: ViewStyle;
-}) {
+}, ref) {
   const insets = useSafeAreaInsets();
   const contentStyle = [
     styles.content,
@@ -41,6 +41,7 @@ export function AppScreen({
 
   const body = scroll ? (
     <ScrollView
+      ref={ref}
       automaticallyAdjustKeyboardInsets={keyboardAware && Platform.OS === "ios"}
       keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       keyboardShouldPersistTaps="handled"
@@ -69,7 +70,7 @@ export function AppScreen({
       {body}
     </KeyboardAvoidingView>
   ) : body;
-}
+});
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: theme.colors.background, flex: 1 },

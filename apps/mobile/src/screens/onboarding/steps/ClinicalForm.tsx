@@ -41,6 +41,7 @@ import {
   makeEmptyCondition,
 } from "@/screens/onboarding/utils/clinicalForm";
 import { useRouter } from "expo-router";
+import { FormFieldAnchor, useFormScroll } from "@/screens/onboarding/components/FormScroll";
 
 export default function ClinicalForm({
   defaults,
@@ -100,6 +101,8 @@ export default function ClinicalForm({
       control,
       name: "dietaryPreferences",
     }) ?? [];
+  const { registerField, scrollRef, scrollToFirstError } =
+    useFormScroll<TClinicalOnboardingFormValues>();
 
   async function persistIfValid(
     fieldName: Path<TClinicalOnboardingFormValues>,
@@ -164,19 +167,33 @@ export default function ClinicalForm({
   }
 
   return (
-    <OnboardingFormScreen contentContainerStyle={{ gap: 24 }}>
+    <OnboardingFormScreen contentContainerStyle={{ gap: 24 }} scrollRef={scrollRef}>
+      <FormFieldAnchor<TClinicalOnboardingFormValues>
+        name={["ckdStage", "egfrCurrent", "dialysisStatus", "acrCategory"]}
+        registerField={registerField}
+      >
       <KidneyStatusSection
         control={control}
         errors={errors}
         persistIfValid={persistIfValid}
       />
+      </FormFieldAnchor>
 
+      <FormFieldAnchor<TClinicalOnboardingFormValues>
+        name={["heightCm", "weightKg"]}
+        registerField={registerField}
+      >
       <BodyMeasurementsSection
         control={control}
         errors={errors}
         persistIfValid={persistIfValid}
       />
+      </FormFieldAnchor>
 
+      <FormFieldAnchor<TClinicalOnboardingFormValues>
+        name="allergies"
+        registerField={registerField}
+      >
       <AllergiesSection
         allergyFields={allergiesArray.fields}
         allergyValues={allergyValues}
@@ -186,12 +203,17 @@ export default function ClinicalForm({
         onUpdate={updateAllergy}
         persistDraftSnapshot={persistDraftSnapshot}
       />
+      </FormFieldAnchor>
 
       <DietaryPreferencesSection
         dietaryPreferences={dietaryPreferences}
         onSave={updateDietaryPreferences}
       />
 
+      <FormFieldAnchor<TClinicalOnboardingFormValues>
+        name="conditions"
+        registerField={registerField}
+      >
       <ConditionsSection
         conditionFields={conditionsArray.fields}
         conditionValues={conditionValues}
@@ -201,11 +223,12 @@ export default function ClinicalForm({
         onUpdate={updateCondition}
         persistDraftSnapshot={persistDraftSnapshot}
       />
+      </FormFieldAnchor>
 
       <AppButton variant="primary"
         label={isSubmitting ? "Saving..." : "Save Profile"}
         disabled={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
+        onPress={handleSubmit(onSubmit, scrollToFirstError)}
       />
     </OnboardingFormScreen>
   );

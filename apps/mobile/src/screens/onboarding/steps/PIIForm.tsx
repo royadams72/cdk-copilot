@@ -29,6 +29,7 @@ import {
   ControlledTextField,
 } from "../components/ControlledFormFields";
 import { styles as onboardingStyles } from "../styles";
+import { FormFieldAnchor, useFormScroll } from "../components/FormScroll";
 import {
   ETHNICITY_GROUPS,
   ETHNICITY_LABELS,
@@ -91,6 +92,8 @@ export default function OnboardingPiiForm({
   });
 
   const showGenderIdentityPicker = genderIdentitySameAsBirth === "no";
+  const { registerField, scrollRef, scrollToFirstError } =
+    useFormScroll<TPiiFormInput>();
 
   useEffect(() => {
     let active = true;
@@ -179,9 +182,11 @@ export default function OnboardingPiiForm({
   return (
     <>
       <OnboardingFormScreen
+        scrollRef={scrollRef}
         title="Your information"
         subtitle="Add your details so we can set up your profile."
       >
+        <FormFieldAnchor<TPiiFormInput> name="firstName" registerField={registerField}>
         <ControlledTextField
           autoCapitalize="words"
           control={control}
@@ -190,7 +195,9 @@ export default function OnboardingPiiForm({
           onFieldBlur={() => void persistIfValid("firstName")}
           placeholder="First name"
         />
+        </FormFieldAnchor>
 
+        <FormFieldAnchor<TPiiFormInput> name="lastName" registerField={registerField}>
         <ControlledTextField
           autoCapitalize="words"
           control={control}
@@ -200,7 +207,9 @@ export default function OnboardingPiiForm({
           onFocus={() => void persistIfValid("firstName")}
           placeholder="Last name"
         />
+        </FormFieldAnchor>
 
+        <FormFieldAnchor<TPiiFormInput> name="nhsNumber" registerField={registerField}>
         <ControlledTextField
           control={control}
           keyboardType="number-pad"
@@ -210,7 +219,9 @@ export default function OnboardingPiiForm({
           onFocus={() => void persistIfValid("lastName")}
           placeholder="10 digit NHS number"
         />
+        </FormFieldAnchor>
 
+        <FormFieldAnchor<TPiiFormInput> name="phoneE164" registerField={registerField}>
         <Controller
           control={control}
           name="phoneE164"
@@ -245,14 +256,18 @@ export default function OnboardingPiiForm({
             </View>
           )}
         />
+        </FormFieldAnchor>
 
+        <FormFieldAnchor<TPiiFormInput> name="dateOfBirth" registerField={registerField}>
         <ControlledDateField
           control={control}
           label="Date of birth"
           name="dateOfBirth"
           onValueChange={() => void persistIfValid("dateOfBirth")}
         />
+        </FormFieldAnchor>
 
+        <FormFieldAnchor<TPiiFormInput> name="sexAtBirth" registerField={registerField}>
         <Controller
           control={control}
           name="sexAtBirth"
@@ -279,6 +294,7 @@ export default function OnboardingPiiForm({
             />
           )}
         />
+        </FormFieldAnchor>
 
         <OptionSelectField
           label="Gender identity same as birth"
@@ -320,6 +336,7 @@ export default function OnboardingPiiForm({
         />
 
         {showGenderIdentityPicker ? (
+          <FormFieldAnchor<TPiiFormInput> name="genderIdentity" registerField={registerField}>
           <Controller
             control={control}
             name="genderIdentity"
@@ -336,8 +353,10 @@ export default function OnboardingPiiForm({
               />
             )}
           />
+          </FormFieldAnchor>
         ) : null}
 
+        <FormFieldAnchor<TPiiFormInput> name="ethnicity" registerField={registerField}>
         <Controller
           control={control}
           name="ethnicity"
@@ -354,6 +373,7 @@ export default function OnboardingPiiForm({
             />
           )}
         />
+        </FormFieldAnchor>
 
         <ControlledOptionField
           control={control}
@@ -428,7 +448,7 @@ export default function OnboardingPiiForm({
           variant="primary"
           label={isSubmitting || saving || isLoading ? "Saving..." : "Save"}
           disabled={isSubmitting || saving || isLoading}
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(onSubmit, scrollToFirstError)}
         />
       </OnboardingFormScreen>
 

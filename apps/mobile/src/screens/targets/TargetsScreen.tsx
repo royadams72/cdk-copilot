@@ -595,8 +595,24 @@ export default function TargetsScreen({
         const savedKey = getSelectedOptionKey(item, onboarding);
         const currentKey = selectedKeys[item.metric] ?? savedKey;
         const pickerOptions = optionsByMetric[item.metric] ?? [];
+        const currentOption =
+          pickerOptions.find((option) => option.key === currentKey) ?? null;
         const isItemSaving = isSaving && savingMetric === item.metric;
         const hasChanged = currentKey !== savedKey;
+        const displayedTarget = item.careTeamTarget
+          ? item.effective
+          : currentKey === "__unset__"
+            ? null
+            : currentKey === "__recommended__"
+              ? item.recommended
+              : currentOption?.value ?? item.effective;
+        const displayedSource = item.careTeamTarget
+          ? "Care-team target"
+          : currentKey === "__unset__"
+            ? "No target set"
+            : currentKey === "__recommended__"
+              ? "General reference"
+              : "Personal goal";
 
         return (
           <Section key={item.metric}>
@@ -614,22 +630,9 @@ export default function TargetsScreen({
                 <ThemedText style={{ opacity: 0.6 }}>{item.unit}</ThemedText>
               </View>
               <ThemedText style={{ opacity: 0.75 }}>
-                {item.careTeamTarget
-                  ? "Care-team target"
-                  : item.personalGoal
-                    ? "Personal goal"
-                    : item.generalReferenceSelected === false ||
-                        (onboarding && item.generalReferenceSelected !== true)
-                      ? "No target set"
-                      : "General reference"}
-                {item.effective &&
-                !(
-                  onboarding &&
-                  !item.careTeamTarget &&
-                  !item.personalGoal &&
-                  item.generalReferenceSelected !== true
-                )
-                  ? `: ${describeDefinition(item.effective, item.metric, item.unit)}`
+                {displayedSource}
+                {displayedTarget
+                  ? `: ${describeDefinition(displayedTarget, item.metric, item.unit)}`
                   : ""}
               </ThemedText>
               <View

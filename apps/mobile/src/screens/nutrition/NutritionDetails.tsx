@@ -193,9 +193,7 @@ export default function NutritionDetails() {
   const chartTarget = useMemo(() => {
     if (metricConfig.key === "phosphorus_protein_ratio") {
       const ratioTarget = chartRatio.target;
-      return Number.isFinite(ratioTarget)
-        ? ratioTarget
-        : null;
+      return Number.isFinite(ratioTarget) ? ratioTarget : null;
     }
     const target = trendData?.targets?.[metricConfig.key as NutrientKey];
     return typeof target === "number" && Number.isFinite(target)
@@ -205,10 +203,7 @@ export default function NutritionDetails() {
 
   const chartDomainMax = useMemo(() => {
     const values = chartSeries.map((point) => point.value);
-    const targetValue =
-      Number.isFinite(chartTarget)
-        ? chartTarget
-        : null;
+    const targetValue = Number.isFinite(chartTarget) ? chartTarget : null;
     if (targetValue !== null) {
       values.push(targetValue);
     }
@@ -439,13 +434,27 @@ export default function NutritionDetails() {
                 label="Log meal"
                 onPress={() => openLogMealModal(false)}
                 size="compact"
+                variant={"tertiary"}
               />
               <Pressable
                 accessibilityLabel="Open settings"
                 onPress={() => router.push(APP_ROUTES.settings)}
-                style={{ alignItems: "center", backgroundColor: theme.colors.surface, borderColor: theme.colors.panelHeader, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: "center", width: 40 }}
+                style={{
+                  alignItems: "center",
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.panelHeader,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  height: 40,
+                  justifyContent: "center",
+                  width: 40,
+                }}
               >
-                <MaterialIcons color={theme.colors.panelHeader} name="settings" size={22} />
+                <MaterialIcons
+                  color={theme.colors.panelHeader}
+                  name="settings"
+                  size={22}
+                />
               </Pressable>
             </View>
           </View>
@@ -453,7 +462,8 @@ export default function NutritionDetails() {
             Nutrition
           </ThemedText>
           <ThemedText style={NutritionStyles.pageHelperText}>
-            Review your recorded meals and, where selected, compare with targets.
+            Review your recorded meals and, where selected, compare with
+            targets.
           </ThemedText>
         </View>
 
@@ -913,7 +923,12 @@ function buildRatioFromTotals(
       : null;
 
   return {
-    status: value === null || target === null ? "unknown" : value <= target ? "in-range" : "high",
+    status:
+      value === null || target === null
+        ? "unknown"
+        : value <= target
+          ? "in-range"
+          : "high",
     target,
     unit: "mg phosphorus per g protein",
     value,
