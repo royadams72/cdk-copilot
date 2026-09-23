@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { FeedbackModal } from "@/components/FeedBackModal";
 import { formatMobileDate } from "@/lib/format/date";
 import type { MedicationHistoryItem } from "./types";

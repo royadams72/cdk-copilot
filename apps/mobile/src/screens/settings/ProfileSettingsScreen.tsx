@@ -10,7 +10,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/AppScreen";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { formControlStyles, TextField } from "@/components/ui/FormField";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";

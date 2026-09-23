@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { FeedbackModal } from "@/components/FeedBackModal";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileDate } from "@/lib/format/date";

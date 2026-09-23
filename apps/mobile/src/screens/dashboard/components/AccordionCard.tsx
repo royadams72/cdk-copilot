@@ -1,7 +1,7 @@
 import { PropsWithChildren, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { styles } from "../styles";
 import { Card } from "./Card";
 

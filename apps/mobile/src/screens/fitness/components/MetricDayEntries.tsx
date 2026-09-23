@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { ExerciseType } from "react-native-health-connect";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 
 import { Card } from "../../dashboard/components/Card";
 import type { DayEntry, MeasurementKind } from "../metricTrendTypes";

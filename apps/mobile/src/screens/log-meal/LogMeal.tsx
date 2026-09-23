@@ -45,7 +45,7 @@ import {
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles as styles } from "../nutrition/styles";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { DateTimeModal } from "@/components/DateTimeModal";
 import {
   useCheckMealExistsMutation,

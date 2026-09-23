@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { setLastViewedCarePlanAt } from "@/lib/carePlans";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";

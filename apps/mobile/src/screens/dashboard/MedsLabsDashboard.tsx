@@ -3,7 +3,7 @@ import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 
 import { styles } from "./styles";
 import { LabsCard } from "../labs/components/LabsCard";

@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { Card } from "./Card";
 import { styles } from "../styles";
 import { formatDateShort } from "../utils";

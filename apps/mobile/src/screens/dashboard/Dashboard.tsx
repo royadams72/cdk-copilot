@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 import { getLastViewedCarePlanAt } from "@/lib/carePlans";

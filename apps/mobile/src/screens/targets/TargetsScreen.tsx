@@ -13,7 +13,7 @@ import { API } from "@/constants/api";
 import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import {

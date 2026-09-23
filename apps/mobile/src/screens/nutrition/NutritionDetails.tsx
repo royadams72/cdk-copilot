@@ -15,7 +15,7 @@ import type { TMealType } from "@ckd/core";
 
 import { APP_ROUTES } from "@/constants/routes";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { FoodCard } from "@/components/FoodCard";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { Card } from "../dashboard/components/Card";

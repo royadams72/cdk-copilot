@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 
 import { DateTimeModal } from "@/components/DateTimeModal";
 import { FeedbackModal } from "@/components/FeedBackModal";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { FormField, TextField } from "@/components/ui/FormField";

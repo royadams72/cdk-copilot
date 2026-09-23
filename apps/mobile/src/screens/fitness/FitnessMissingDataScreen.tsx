@@ -9,7 +9,7 @@ import {
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";

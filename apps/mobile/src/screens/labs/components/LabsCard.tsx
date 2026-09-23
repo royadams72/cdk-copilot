@@ -1,4 +1,4 @@
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { View } from "react-native";
 
 import { LAB_CONFIG } from "../../dashboard/constants";

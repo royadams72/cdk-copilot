@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { theme } from "@/constants/theme";
-import { ThemedTextColorProvider } from "@/components/ThemedText";
+import { ThemedTextColorProvider } from "@/components/ThemedTextColorContext";
 
 export const AppScreen = forwardRef<
   ScrollView,

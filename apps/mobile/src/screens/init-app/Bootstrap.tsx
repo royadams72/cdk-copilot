@@ -11,7 +11,7 @@ import {
   refreshSessionTokenOnce,
 } from "@/lib/authSession";
 import { API } from "@/constants/api";
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { syncAuthenticatedAppState } from "@/lib/pushNotifications";
 import { ActivityIndicator, View } from "react-native";
 import { styles } from "../dashboard/styles";

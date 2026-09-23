@@ -1,6 +1,6 @@
 import { Modal, StyleSheet, View } from "react-native";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 
