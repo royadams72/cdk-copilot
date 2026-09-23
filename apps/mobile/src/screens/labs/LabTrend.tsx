@@ -3,12 +3,12 @@ import { ActivityIndicator, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 
-import { FeedbackModal } from "@/components/feedback-modal";
-import { ThemedText } from "@/components/themed-text";
+import { FeedbackModal } from "@/components/FeedBackModal";
+import { ThemedText } from "@/components/ThemedText";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileShortDayMonth } from "@/lib/format/date";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";

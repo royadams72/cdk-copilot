@@ -6,8 +6,8 @@ import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { resolvePostAuthRoute } from "@/lib/onboarding";
 
-import { AppScreen } from "@/components/app-screen";
-import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/AppScreen";
+import { ThemedText } from "@/components/ThemedText";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { styles } from "./styles";

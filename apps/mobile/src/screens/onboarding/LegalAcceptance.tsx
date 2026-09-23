@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { API } from "@/constants/api";
 import { LEGAL_VERSIONS } from "@/constants/legal";

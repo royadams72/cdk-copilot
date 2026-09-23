@@ -8,14 +8,14 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
   useGetCarePlanByIdQuery,
   useSubmitCarePlanReviewMutation,
 } from "@/store/services/carePlanApi";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/FormField";
 import { Section } from "@/components/ui/Section";

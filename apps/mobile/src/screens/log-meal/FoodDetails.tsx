@@ -10,7 +10,7 @@ import {
 import type { TEdamamMeasure } from "@ckd/core";
 import type { TNutrientEstimate } from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
 
-import { FoodCard } from "@/components/food-card";
+import { FoodCard } from "@/components/FoodCard";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
 import {
@@ -27,7 +27,7 @@ import {
 
 import { typeStyles } from "../styles";
 import { logMealStyles } from "./styles";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { FormField } from "@/components/ui/FormField";

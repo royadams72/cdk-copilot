@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { ThemedTextColorProvider } from "@/components/themed-text";
+import { ThemedTextColorProvider } from "@/components/ThemedText";
 import { theme } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 

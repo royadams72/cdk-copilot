@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 import { setLastViewedCarePlanAt } from "@/lib/carePlans";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
@@ -10,7 +10,7 @@ import {
   useGetCarePlanByIdQuery,
   useUpdateCarePlanTaskStatusMutation,
 } from "@/store/services/carePlanApi";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";

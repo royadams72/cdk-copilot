@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { DateTimeModal } from "@/components/date-time-modal";
-import { FeedbackModal } from "@/components/feedback-modal";
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
+import { DateTimeModal } from "@/components/DateTimeModal";
+import { FeedbackModal } from "@/components/FeedBackModal";
+import { ThemedText } from "@/components/ThemedText";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { FormField, TextField } from "@/components/ui/FormField";
 import { Section } from "@/components/ui/Section";

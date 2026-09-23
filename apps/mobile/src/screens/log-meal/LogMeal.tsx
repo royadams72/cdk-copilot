@@ -20,7 +20,7 @@ import type {
 import { APP_ROUTES } from "@/constants/routes";
 import { theme } from "@/constants/theme";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { FoodCard } from "@/components/food-card";
+import { FoodCard } from "@/components/FoodCard";
 import {
   appendFoodsToMeal,
   applyFetchMealByDate,
@@ -45,8 +45,8 @@ import {
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles as styles } from "../nutrition/styles";
-import { ThemedText } from "@/components/themed-text";
-import { DateTimeModal } from "@/components/date-time-modal";
+import { ThemedText } from "@/components/ThemedText";
+import { DateTimeModal } from "@/components/DateTimeModal";
 import {
   useCheckMealExistsMutation,
   useDeleteMealDataMutation,
@@ -58,7 +58,7 @@ import {
   useUpdateMealDataMutation,
 } from "@/store/services/logMealApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/FormField";
 import { hasMissingCoreNutrients, mapForSaveOrUpdate } from "./utils";

@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, View, type ScrollView, type ViewStyle } from "react-native";
 
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { styles } from "@/screens/onboarding/styles";
 
 export function OnboardingFormScreen({

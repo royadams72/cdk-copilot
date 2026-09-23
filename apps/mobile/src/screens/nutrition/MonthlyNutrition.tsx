@@ -10,7 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
 import { NutritionStyles } from "./styles";
@@ -22,7 +22,7 @@ import type {
   MonthlyNutritionFilter,
   MonthlyNutritionFoodRow,
 } from "@/store/services/types";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 

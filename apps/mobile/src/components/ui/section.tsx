@@ -8,7 +8,7 @@ import {
 } from "react-native";
 
 import { theme } from "@/constants/theme";
-import { ThemedTextColorProvider } from "@/components/themed-text";
+import { ThemedTextColorProvider } from "@/components/ThemedText";
 import { AppButton } from "./Button";
 import { Card } from "./Card";
 

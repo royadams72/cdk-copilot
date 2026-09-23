@@ -7,14 +7,14 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
-import { FeedbackModal } from "@/components/feedback-modal";
+import { ThemedText } from "@/components/ThemedText";
+import { FeedbackModal } from "@/components/FeedBackModal";
 import { formatMobileDate } from "@/lib/format/date";
 import type { MedicationHistoryItem } from "./types";
 import { useGetMedicationHistoryQuery } from "@/store/services/medicationApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { NutritionStyles } from "../nutrition/styles";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";

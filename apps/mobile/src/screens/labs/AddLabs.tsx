@@ -3,13 +3,13 @@ import { ActivityIndicator, Platform, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { FeedbackModal } from "@/components/feedback-modal";
-import { ThemedText } from "@/components/themed-text";
+import { FeedbackModal } from "@/components/FeedBackModal";
+import { ThemedText } from "@/components/ThemedText";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { LAB_DEFINITIONS } from "./labDefs";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/FormField";
 import { Section } from "@/components/ui/Section";

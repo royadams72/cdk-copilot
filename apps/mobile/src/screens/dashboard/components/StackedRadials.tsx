@@ -1,5 +1,5 @@
 import { DashboardRadial } from "../types";
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 import React from "react";
 import { useWindowDimensions, View } from "react-native";
 import Svg, { Circle, G, Path } from "react-native-svg";

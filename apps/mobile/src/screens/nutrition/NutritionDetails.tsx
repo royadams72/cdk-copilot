@@ -15,8 +15,8 @@ import type { TMealType } from "@ckd/core";
 
 import { APP_ROUTES } from "@/constants/routes";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { ThemedText } from "@/components/themed-text";
-import { FoodCard } from "@/components/food-card";
+import { ThemedText } from "@/components/ThemedText";
+import { FoodCard } from "@/components/FoodCard";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { Card } from "../dashboard/components/Card";
 import { NUTRITION_METRICS } from "../dashboard/constants";
@@ -42,7 +42,7 @@ import type {
   NutritionDailyPoint,
 } from "../dashboard/types";
 import { AccordionCard } from "../dashboard/components/AccordionCard";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 

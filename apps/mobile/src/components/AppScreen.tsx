@@ -11,30 +11,37 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { theme } from "@/constants/theme";
-import { ThemedTextColorProvider } from "@/components/themed-text";
+import { ThemedTextColorProvider } from "@/components/ThemedText";
 
-export const AppScreen = forwardRef<ScrollView, ScrollViewProps & {
-  children: ReactNode;
-  keyboardAware?: boolean;
-  padded?: boolean;
-  scroll?: boolean;
-  style?: ViewStyle;
-}>(function AppScreen({
-  children,
-  contentContainerStyle,
-  keyboardAware = false,
-  padded = true,
-  scroll = true,
-  style,
-  ...scrollProps
-}, ref) {
+export const AppScreen = forwardRef<
+  ScrollView,
+  ScrollViewProps & {
+    children: ReactNode;
+    keyboardAware?: boolean;
+    padded?: boolean;
+    scroll?: boolean;
+    style?: ViewStyle;
+  }
+>(function AppScreen(
+  {
+    children,
+    contentContainerStyle,
+    keyboardAware = false,
+    padded = true,
+    scroll = true,
+    style,
+    ...scrollProps
+  },
+  ref,
+) {
   const insets = useSafeAreaInsets();
   const contentStyle = [
     styles.content,
     padded && styles.padded,
     {
       paddingTop: Math.max(insets.top, theme.spacing.lg),
-      paddingBottom: Math.max(insets.bottom, theme.spacing.lg) + theme.spacing.lg,
+      paddingBottom:
+        Math.max(insets.bottom, theme.spacing.lg) + theme.spacing.lg,
     },
     contentContainerStyle,
   ];
@@ -69,7 +76,9 @@ export const AppScreen = forwardRef<ScrollView, ScrollViewProps & {
     >
       {body}
     </KeyboardAvoidingView>
-  ) : body;
+  ) : (
+    body
+  );
 });
 
 const styles = StyleSheet.create({

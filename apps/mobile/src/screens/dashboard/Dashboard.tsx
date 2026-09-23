@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 import { getLastViewedCarePlanAt } from "@/lib/carePlans";
@@ -33,7 +33,7 @@ import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMe
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { useGetMeasurementHistoryQuery } from "@/store/services/measurementsApi";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";

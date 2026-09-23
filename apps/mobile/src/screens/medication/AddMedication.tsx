@@ -4,8 +4,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
-import { FeedbackModal } from "@/components/feedback-modal";
+import { ThemedText } from "@/components/ThemedText";
+import { FeedbackModal } from "@/components/FeedBackModal";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
@@ -20,7 +20,7 @@ import {
   useLazySearchMedicationQuery,
   useUpdateMedicationMutation,
 } from "@/store/services/medicationApi";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import {
   FormField,

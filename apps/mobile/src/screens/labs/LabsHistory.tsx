@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { FeedbackModal } from "@/components/feedback-modal";
-import { ThemedText } from "@/components/themed-text";
+import { FeedbackModal } from "@/components/FeedBackModal";
+import { ThemedText } from "@/components/ThemedText";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileDate } from "@/lib/format/date";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";

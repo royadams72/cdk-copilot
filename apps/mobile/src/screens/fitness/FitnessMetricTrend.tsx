@@ -8,8 +8,8 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
+import { ThemedText } from "@/components/ThemedText";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { APP_ROUTES } from "@/constants/routes";
 import { type StepActivitySummary } from "@/lib/healthConnectStepSummary";

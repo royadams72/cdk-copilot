@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 import { AppButton } from "@/components/ui/Button";
 
 import type {

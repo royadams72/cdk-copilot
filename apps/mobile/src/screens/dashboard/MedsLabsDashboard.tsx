@@ -3,7 +3,7 @@ import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 
 import { styles } from "./styles";
 import { LabsCard } from "../labs/components/LabsCard";
@@ -15,7 +15,7 @@ import {
 import { useGetSymptomsQuery } from "@/store/services/symptomsApi";
 import { Card } from "./components/Card";
 import { NutritionStyles } from "../nutrition/styles";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 
 export default function MedsLabsDashboard() {

@@ -20,8 +20,8 @@ import {
   getKnownFitnessApp,
   type KnownFitnessApp,
 } from "@/lib/fitnessApps";
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
+import { ThemedText } from "@/components/ThemedText";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import { APP_ROUTES } from "@/constants/routes";
 import { theme } from "@/constants/theme";

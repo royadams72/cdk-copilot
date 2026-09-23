@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedText";
 
 type Props = {
   color?: string;
@@ -77,10 +77,7 @@ export function MetricHourlyBarChart({
           }}
         >
           {values.map((value, index) => {
-            const numeric =
-              Number.isFinite(value)
-                ? value
-                : null;
+            const numeric = Number.isFinite(value) ? value : null;
             const barHeight =
               numeric !== null && maxValue > 0
                 ? Math.max(6, (numeric / maxValue) * CHART_HEIGHT)

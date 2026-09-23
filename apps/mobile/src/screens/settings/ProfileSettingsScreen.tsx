@@ -9,8 +9,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import { AppScreen } from "@/components/app-screen";
-import { ThemedText } from "@/components/themed-text";
+import { AppScreen } from "@/components/AppScreen";
+import { ThemedText } from "@/components/ThemedText";
 import { formControlStyles, TextField } from "@/components/ui/FormField";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
@@ -159,12 +159,14 @@ export default function ProfileSettingsScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          tone="surface"
         />
         <TextField
           label="Phone (optional)"
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
+          tone="surface"
         />
         <TextField
           label="NHS number (optional)"
@@ -172,6 +174,7 @@ export default function ProfileSettingsScreen() {
           onChangeText={setNhsNumber}
           keyboardType="number-pad"
           maxLength={12}
+          tone="surface"
         />
         <PickerField
           label="Units"
@@ -217,6 +220,7 @@ export default function ProfileSettingsScreen() {
             value={height}
             onChangeText={setHeight}
             keyboardType="number-pad"
+            tone="surface"
           />
         ) : (
           <View style={styles.heightRow}>

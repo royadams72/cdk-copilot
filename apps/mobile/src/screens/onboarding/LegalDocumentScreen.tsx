@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import type { LegalSection } from "@/constants/legal";
 import { styles } from "./styles";
