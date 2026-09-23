@@ -14,7 +14,7 @@ import { ThemedText } from "@/components/ThemedTextColorContext";
 import { formControlStyles, TextField } from "@/components/ui/FormField";
 import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
-import { Card } from "@/screens/dashboard/components/Card";
+import { Section } from "@/components/ui/Section";
 import {
   useGetCurrentUserSettingsQuery,
   useRequestEmailChangeMutation,
@@ -150,7 +150,7 @@ export default function ProfileSettingsScreen() {
         </ThemedText>
       </View>
 
-      <Card>
+      <Section variant="card">
         <ThemedText type="defaultSemiBold">Personal details</ThemedText>
         <TextField
           description="Changing this sends a verification link. Your current email remains active until confirmed."
@@ -159,14 +159,12 @@ export default function ProfileSettingsScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
-          tone="surface"
         />
         <TextField
           label="Phone (optional)"
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
-          tone="surface"
         />
         <TextField
           label="NHS number (optional)"
@@ -174,7 +172,6 @@ export default function ProfileSettingsScreen() {
           onChangeText={setNhsNumber}
           keyboardType="number-pad"
           maxLength={12}
-          tone="surface"
         />
         <PickerField
           label="Units"
@@ -185,9 +182,9 @@ export default function ProfileSettingsScreen() {
             { label: "Imperial (lb, ft)", value: "imperial" },
           ]}
         />
-      </Card>
+      </Section>
 
-      <Card>
+      <Section variant="card">
         <ThemedText type="defaultSemiBold">Kidney health</ThemedText>
         <PickerField
           label="CKD stage"
@@ -220,7 +217,6 @@ export default function ProfileSettingsScreen() {
             value={height}
             onChangeText={setHeight}
             keyboardType="number-pad"
-            tone="surface"
           />
         ) : (
           <View style={styles.heightRow}>
@@ -248,9 +244,9 @@ export default function ProfileSettingsScreen() {
             </View>
           </View>
         )}
-      </Card>
+      </Section>
 
-      <Card>
+      <Section variant="card">
         <ThemedText type="defaultSemiBold">Care team</ThemedText>
         <ThemedText style={styles.readOnly}>
           Managed by your renal service and shown here as read-only.
@@ -273,7 +269,7 @@ export default function ProfileSettingsScreen() {
             No care-team details have been added yet.
           </ThemedText>
         )}
-      </Card>
+      </Section>
 
       <TouchableOpacity
         disabled={isSaving || isSendingEmail}

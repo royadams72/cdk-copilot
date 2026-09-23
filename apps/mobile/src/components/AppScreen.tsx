@@ -3,9 +3,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  type ScrollViewProps,
   StyleSheet,
   View,
-  type ScrollViewProps,
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,9 +39,9 @@ export const AppScreen = forwardRef<
     styles.content,
     padded && styles.padded,
     {
-      paddingTop: Math.max(insets.top, theme.spacing.lg),
       paddingBottom:
         Math.max(insets.bottom, theme.spacing.lg) + theme.spacing.lg,
+      paddingTop: Math.max(insets.top, theme.spacing.lg),
     },
     contentContainerStyle,
   ];
@@ -82,7 +82,7 @@ export const AppScreen = forwardRef<
 });
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: theme.colors.background, flex: 1 },
   content: { flexGrow: 1 },
   padded: { gap: theme.spacing.lg, paddingHorizontal: theme.spacing.lg },
+  screen: { backgroundColor: theme.colors.background, flex: 1 },
 });

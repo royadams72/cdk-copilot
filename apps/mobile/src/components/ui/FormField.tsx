@@ -9,8 +9,7 @@ import {
 } from "react-native";
 
 import { theme } from "@/constants/theme";
-
-type FormFieldTone = "background" | "surface";
+import { SurfaceTone, useSurfaceTone } from "../SurfaceToneContext";
 
 export function FormField({
   children,
@@ -18,8 +17,8 @@ export function FormField({
   description,
   error,
   label,
+  tone,
   required = false,
-  tone = "background",
 }: {
   children: ReactNode;
   containerStyle?: ViewStyle;
@@ -27,15 +26,17 @@ export function FormField({
   error?: string;
   label?: string;
   required?: boolean;
-  tone?: FormFieldTone;
+  tone?: SurfaceTone;
 }) {
+  const inheritedTone = useSurfaceTone();
+  const resolvedTone = tone ?? inheritedTone;
   return (
     <View style={[styles.block, containerStyle]}>
       {label ? (
         <Text
           style={[
             styles.label,
-            tone === "background" ? styles.textOnBackground : null,
+            resolvedTone === "background" ? styles.textOnBackground : null,
           ]}
         >
           {label}
@@ -43,7 +44,7 @@ export function FormField({
             <Text
               style={[
                 styles.required,
-                tone === "background" ? styles.errorOnBackground : null,
+                resolvedTone === "background" ? styles.errorOnBackground : null,
               ]}
             >
               {" *"}
@@ -55,7 +56,7 @@ export function FormField({
         <Text
           style={[
             styles.description,
-            tone === "background" ? styles.textOnBackground : null,
+            resolvedTone === "background" ? styles.textOnBackground : null,
           ]}
         >
           {description}
@@ -67,7 +68,7 @@ export function FormField({
           accessibilityLiveRegion="polite"
           style={[
             styles.error,
-            tone === "background" ? styles.errorOnBackground : null,
+            resolvedTone === "background" ? styles.errorOnBackground : null,
           ]}
         >
           {error}
@@ -95,7 +96,7 @@ export function TextField({
   hideLabel?: boolean;
   label: string;
   required?: boolean;
-  tone?: FormFieldTone;
+  tone?: SurfaceTone;
 }) {
   return (
     <View style={containerStyle}>

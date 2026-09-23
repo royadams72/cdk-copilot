@@ -532,7 +532,7 @@ export default function TargetsScreen({
         </ThemedText>
         {typeof data?.weightKg === "number" ? (
           <ThemedText style={{ opacity: 0.6 }}>
-            Weight-based references use {Math.round(data.weightKg)} kg.
+            Weight-based references used: {Math.round(data.weightKg)} kg.
           </ThemedText>
         ) : items.some(
             (item) =>

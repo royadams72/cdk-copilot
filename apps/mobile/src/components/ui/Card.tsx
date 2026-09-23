@@ -1,9 +1,10 @@
 import type { PropsWithChildren } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { ThemedTextColorProvider } from "@/components/ThemedTextColorContext";
 import { theme } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SurfaceToneProvider } from "../SurfaceToneContext";
 
 export function Card({
   children,
@@ -19,9 +20,11 @@ export function Card({
         style,
       ]}
     >
-      <ThemedTextColorProvider color={theme.colors.text}>
-        {children}
-      </ThemedTextColorProvider>
+      <SurfaceToneProvider tone="background">
+        <ThemedTextColorProvider color={theme.colors.text}>
+          {children}
+        </ThemedTextColorProvider>
+      </SurfaceToneProvider>
     </View>
   );
 }
