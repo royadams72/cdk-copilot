@@ -20,7 +20,7 @@ export function Card({
         style,
       ]}
     >
-      <SurfaceToneProvider tone="background">
+      <SurfaceToneProvider tone="surface">
         <ThemedTextColorProvider color={theme.colors.text}>
           {children}
         </ThemedTextColorProvider>

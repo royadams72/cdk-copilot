@@ -150,7 +150,7 @@ export default function ProfileSettingsScreen() {
         </ThemedText>
       </View>
 
-      <Section variant="card">
+      <Section>
         <ThemedText type="defaultSemiBold">Personal details</ThemedText>
         <TextField
           description="Changing this sends a verification link. Your current email remains active until confirmed."
@@ -184,7 +184,7 @@ export default function ProfileSettingsScreen() {
         />
       </Section>
 
-      <Section variant="card">
+      <Section>
         <ThemedText type="defaultSemiBold">Kidney health</ThemedText>
         <PickerField
           label="CKD stage"
@@ -246,7 +246,7 @@ export default function ProfileSettingsScreen() {
         )}
       </Section>
 
-      <Section variant="card">
+      <Section>
         <ThemedText type="defaultSemiBold">Care team</ThemedText>
         <ThemedText style={styles.readOnly}>
           Managed by your renal service and shown here as read-only.

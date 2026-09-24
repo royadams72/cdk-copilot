@@ -25,23 +25,23 @@ import { NutritionStyles } from "@/screens/nutrition/styles";
 
 const REVIEW_OPTIONS = [
   {
-    description: "This care plan helped me understand my diagnosis.",
     id: "understand_diagnosis",
+    description: "This care plan helped me understand my diagnosis.",
     title: "I understand my diagnosis better",
   },
   {
-    description: "I know what I should keep doing next.",
     id: "know_next_steps",
+    description: "I know what I should keep doing next.",
     title: "I know what to do next",
   },
   {
-    description: "The tasks and goals feel realistic for me.",
     id: "fits_into_routine",
+    description: "The tasks and goals feel realistic for me.",
     title: "This plan fits into my routine",
   },
   {
-    description: "I still need extra support or a different plan.",
     id: "need_more_support",
+    description: "I still need extra support or a different plan.",
     title: "I need more support",
   },
 ] as const;

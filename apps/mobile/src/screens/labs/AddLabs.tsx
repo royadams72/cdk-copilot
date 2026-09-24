@@ -259,7 +259,7 @@ export default function AddLabs() {
                   placeholder={`Enter ${lab.name} value`}
                   value={lab.value}
                 />
-                <ThemedText style={{ fontSize: 12, color: theme.colors.copy }}>
+                <ThemedText style={{ color: theme.colors.copy, fontSize: 12 }}>
                   {lab.unit}
                 </ThemedText>
               </Section>

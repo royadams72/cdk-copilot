@@ -23,9 +23,9 @@ import {
 import { AppScreen } from "@/components/AppScreen";
 import { AppButton } from "@/components/ui/Button";
 import {
+  formControlStyles,
   FormField,
   TextField,
-  formControlStyles,
 } from "@/components/ui/FormField";
 import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
@@ -413,6 +413,7 @@ export default function AddMedication() {
               }}
               placeholder="Start typing medication name"
               autoCapitalize="words"
+              tone="surface"
             />
             {isSearchFetching ? (
               <View
@@ -459,7 +460,7 @@ export default function AddMedication() {
                       {item.displayName}
                     </ThemedText>
                     <ThemedText
-                      style={{ fontSize: 12, color: theme.colors.copy }}
+                      style={{ color: theme.colors.copy, fontSize: 12 }}
                     >
                       {[item.form, item.route].filter(Boolean).join(" · ") ||
                         "No form/route"}
@@ -470,7 +471,7 @@ export default function AddMedication() {
             ) : null}
           </View>
 
-          <FormField label="Route">
+          <FormField tone="surface" label="Route">
             <View style={formControlStyles.shell}>
               <Picker selectedValue={route} onValueChange={setRoute}>
                 {ROUTE_OPTIONS.map((option) => (
@@ -484,7 +485,7 @@ export default function AddMedication() {
             </View>
           </FormField>
 
-          <FormField label="Form">
+          <FormField tone="surface" label="Form">
             <View style={formControlStyles.shell}>
               <Picker selectedValue={form} onValueChange={setForm}>
                 {FORM_OPTIONS.map((option) => (
@@ -499,7 +500,7 @@ export default function AddMedication() {
           </FormField>
 
           <View>
-            <ThemedText>Dose</ThemedText>
+            <ThemedText type="defaultSemiBold">Dose</ThemedText>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
               <TextField
                 label="Dose amount"
@@ -536,6 +537,7 @@ export default function AddMedication() {
               onChangeText={setFrequency}
               onBlur={() => setFrequency(normaliseFrequency(frequency))}
               placeholder="e.g. three times daily"
+              tone="surface"
             />
           </View>
 
