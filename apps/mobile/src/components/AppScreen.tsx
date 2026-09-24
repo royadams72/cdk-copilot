@@ -1,46 +1,54 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  type ScrollViewProps,
   StyleSheet,
   View,
-  type ScrollViewProps,
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { theme } from "@/constants/theme";
-import { ThemedTextColorProvider } from "@/components/themed-text";
+import { ThemedTextColorProvider } from "@/components/ThemedTextColorContext";
 
-export function AppScreen({
-  children,
-  contentContainerStyle,
-  keyboardAware = false,
-  padded = true,
-  scroll = true,
-  style,
-  ...scrollProps
-}: ScrollViewProps & {
-  children: ReactNode;
-  keyboardAware?: boolean;
-  padded?: boolean;
-  scroll?: boolean;
-  style?: ViewStyle;
-}) {
+export const AppScreen = forwardRef<
+  ScrollView,
+  ScrollViewProps & {
+    children: ReactNode;
+    keyboardAware?: boolean;
+    padded?: boolean;
+    scroll?: boolean;
+    style?: ViewStyle;
+  }
+>(function AppScreen(
+  {
+    children,
+    contentContainerStyle,
+    keyboardAware = false,
+    padded = true,
+    scroll = true,
+    style,
+    ...scrollProps
+  },
+  ref,
+) {
   const insets = useSafeAreaInsets();
   const contentStyle = [
     styles.content,
     padded && styles.padded,
     {
+      paddingBottom:
+        Math.max(insets.bottom, theme.spacing.lg) + theme.spacing.lg,
       paddingTop: Math.max(insets.top, theme.spacing.lg),
-      paddingBottom: Math.max(insets.bottom, theme.spacing.lg) + theme.spacing.lg,
     },
     contentContainerStyle,
   ];
 
   const body = scroll ? (
     <ScrollView
+      ref={ref}
       automaticallyAdjustKeyboardInsets={keyboardAware && Platform.OS === "ios"}
       keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       keyboardShouldPersistTaps="handled"
@@ -68,11 +76,13 @@ export function AppScreen({
     >
       {body}
     </KeyboardAvoidingView>
-  ) : body;
-}
+  ) : (
+    body
+  );
+});
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: theme.colors.background, flex: 1 },
   content: { flexGrow: 1 },
   padded: { gap: theme.spacing.lg, paddingHorizontal: theme.spacing.lg },
+  screen: { backgroundColor: theme.colors.background, flex: 1 },
 });

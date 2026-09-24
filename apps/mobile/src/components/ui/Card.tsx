@@ -1,0 +1,47 @@
+import type { PropsWithChildren } from "react";
+import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+
+import { ThemedTextColorProvider } from "@/components/ThemedTextColorContext";
+import { theme } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SurfaceToneProvider } from "../SurfaceToneContext";
+
+export function Card({
+  children,
+  style,
+}: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
+  const colorScheme = useColorScheme() ?? "light";
+
+  return (
+    <View
+      style={[
+        styles.card,
+        colorScheme === "light" ? styles.light : styles.dark,
+        style,
+      ]}
+    >
+      <SurfaceToneProvider tone="surface">
+        <ThemedTextColorProvider color={theme.colors.text}>
+          {children}
+        </ThemedTextColorProvider>
+      </SurfaceToneProvider>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  dark: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSubtle,
+  },
+  light: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+  },
+});

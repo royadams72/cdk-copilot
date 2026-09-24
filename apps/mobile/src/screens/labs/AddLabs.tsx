@@ -1,22 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  View,
-} from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { FeedbackModal } from "@/components/feedback-modal";
-import { ThemedText } from "@/components/themed-text";
+import { FeedbackModal } from "@/components/FeedBackModal";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { API } from "@/constants/api";
 import { authFetch } from "@/lib/authFetch";
 import { formatMobileUkInputDate, toMobileUtcDateIso } from "@/lib/format/date";
 import { LAB_DEFINITIONS } from "./labDefs";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { TextField } from "@/components/ui/form-field";
-import { Section } from "@/components/ui/section";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/FormField";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { NutritionStyles } from "../nutrition/styles";
 
@@ -216,7 +212,9 @@ export default function AddLabs() {
           size="compact"
           onPress={() =>
             router.replace(
-              isEdit ? "/(labs)/labs-history?mode=edit" : "/(dashboard)/meds-labs",
+              isEdit
+                ? "/(labs)/labs-history?mode=edit"
+                : "/(dashboard)/meds-labs",
             )
           }
         />
@@ -237,10 +235,7 @@ export default function AddLabs() {
         ) : (
           <>
             {labs.map((lab, index) => (
-              <Section
-                key={lab.code}
-                title={lab.name}
-              >
+              <Section key={lab.code} title={lab.name}>
                 <View
                   style={{ alignItems: "center", flexDirection: "row", gap: 8 }}
                 >
@@ -264,7 +259,7 @@ export default function AddLabs() {
                   placeholder={`Enter ${lab.name} value`}
                   value={lab.value}
                 />
-                <ThemedText style={{ fontSize: 12, color: theme.colors.copy }}>
+                <ThemedText style={{ color: theme.colors.copy, fontSize: 12 }}>
                   {lab.unit}
                 </ThemedText>
               </Section>

@@ -20,7 +20,7 @@ import type {
 import { APP_ROUTES } from "@/constants/routes";
 import { theme } from "@/constants/theme";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { FoodCard } from "@/components/food-card";
+import { FoodCard } from "@/components/FoodCard";
 import {
   appendFoodsToMeal,
   applyFetchMealByDate,
@@ -45,8 +45,8 @@ import {
 
 import { logMealStyles } from "./styles";
 import { NutritionStyles as styles } from "../nutrition/styles";
-import { ThemedText } from "@/components/themed-text";
-import { DateTimeModal } from "@/components/date-time-modal";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { DateTimeModal } from "@/components/DateTimeModal";
 import {
   useCheckMealExistsMutation,
   useDeleteMealDataMutation,
@@ -58,9 +58,9 @@ import {
   useUpdateMealDataMutation,
 } from "@/store/services/logMealApi";
 import { toQueryErrorMessage } from "@/store/services/appApi";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { TextField } from "@/components/ui/form-field";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/FormField";
 import { hasMissingCoreNutrients, mapForSaveOrUpdate } from "./utils";
 import {
   buildNutritionRequestKey,
@@ -137,10 +137,7 @@ export default function LogMeal() {
 
   useEffect(() => {
     const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-    if (
-      requestedTab === "current" ||
-      requestedTab === "foods"
-    ) {
+    if (requestedTab === "current" || requestedTab === "foods") {
       setActiveTab(requestedTab);
     }
   }, [params.tab]);
@@ -492,66 +489,74 @@ export default function LogMeal() {
             onPress={() => setSearchExpanded((expanded) => !expanded)}
             style={logMealStyles.searchPanelHeader}
           >
-            <ThemedText style={logMealStyles.searchPanelTitle}>Search</ThemedText>
+            <ThemedText style={logMealStyles.searchPanelTitle}>
+              Search
+            </ThemedText>
             <MaterialIcons
               color={theme.colors.onPrimary}
               name={searchExpanded ? "expand-less" : "chevron-right"}
               size={30}
             />
           </Pressable>
-          {searchExpanded ? <>
-          <View style={logMealStyles.searchWrap}>
-            <TextField
-              label="Search food"
-              hideLabel
-              containerStyle={logMealStyles.searchField}
-              placeholder="100g of carrots"
-              autoCapitalize="none"
-              keyboardType="default"
-              value={searchTerm}
-              onChangeText={(value) => {
-                setSearchTerm(value);
-                if (searchError) setSearchError("");
-                if (!value.trim()) setHasSearched(false);
-              }}
-              style={logMealStyles.searchInput}
-            />
-            <AppButton
-              label={isSearching ? "Searching..." : "Search"}
-              disabled={isSearching || searchTerm.trim().length === 0}
-              loading={isSearching}
-              onPress={submit}
-              size="standard"
-              variant="secondary"
-            />
-          </View>
-          {searchError ? (
-            <View style={logMealStyles.searchErrorBanner}>
-              <ThemedText style={logMealStyles.searchErrorText}>{searchError}</ThemedText>
-            </View>
+          {searchExpanded ? (
+            <>
+              <View style={logMealStyles.searchWrap}>
+                <TextField
+                  label="Search food"
+                  hideLabel
+                  containerStyle={logMealStyles.searchField}
+                  placeholder="100g of carrots"
+                  autoCapitalize="none"
+                  keyboardType="default"
+                  value={searchTerm}
+                  onChangeText={(value) => {
+                    setSearchTerm(value);
+                    if (searchError) setSearchError("");
+                    if (!value.trim()) setHasSearched(false);
+                  }}
+                  style={logMealStyles.searchInput}
+                />
+                <AppButton
+                  label={isSearching ? "Searching..." : "Search"}
+                  disabled={isSearching || searchTerm.trim().length === 0}
+                  loading={isSearching}
+                  onPress={submit}
+                  size="standard"
+                  variant="secondary"
+                />
+              </View>
+              {searchError ? (
+                <View style={logMealStyles.searchErrorBanner}>
+                  <ThemedText style={logMealStyles.searchErrorText}>
+                    {searchError}
+                  </ThemedText>
+                </View>
+              ) : null}
+              <View style={logMealStyles.tabRow}>
+                {[
+                  { label: "Current Meal", value: "current" as const },
+                  { label: "Saved Foods", value: "foods" as const },
+                ].map((tab) => (
+                  <AppButton
+                    key={tab.value}
+                    label={tab.label}
+                    onPress={() => setActiveTab(tab.value)}
+                    size="compact"
+                    variant={activeTab === tab.value ? "success" : "outline"}
+                  />
+                ))}
+              </View>
+            </>
           ) : null}
-          <View style={logMealStyles.tabRow}>
-            {[
-              { label: "Current Meal", value: "current" as const },
-              { label: "Saved Foods", value: "foods" as const },
-            ].map((tab) => (
-              <AppButton
-                key={tab.value}
-                label={tab.label}
-                onPress={() => setActiveTab(tab.value)}
-                size="compact"
-                variant={activeTab === tab.value ? "success" : "outline"}
-              />
-            ))}
-          </View>
-          </> : null}
         </View>
-        {searchExpanded ? <View style={logMealStyles.infoPanel}>
-          <ThemedText style={logMealStyles.helperText}>
-            Search one food at a time with an amount, like &quot;100g of
-            carrots&quot; or &quot;50g of rice&quot;.
-          </ThemedText>
-        </View> : null}
+        {searchExpanded ? (
+          <View style={logMealStyles.infoPanel}>
+            <ThemedText style={logMealStyles.helperText}>
+              Search one food at a time with an amount, like &quot;100g of
+              carrots&quot; or &quot;50g of rice&quot;.
+            </ThemedText>
+          </View>
+        ) : null}
       </View>
 
       <View style={logMealStyles.listPanel}>
@@ -563,98 +568,101 @@ export default function LogMeal() {
           style={logMealStyles.contentScroll}
           contentContainerStyle={logMealStyles.contentContainer}
         >
-        {activeTab === "current" ? (
-          <View style={logMealStyles.section}>
-            {items.length ? (
-              items.map(
-                (item) =>
-                  item && (
+          {activeTab === "current" ? (
+            <View style={logMealStyles.section}>
+              {items.length ? (
+                items.map(
+                  (item) =>
+                    item && (
+                      <FoodCard
+                        key={item.uid}
+                        title={buildDisplayFoodName(item.name, item.brand)}
+                        subtitle={buildFoodSubtitle(item)}
+                        actions={[
+                          {
+                            label: "Edit",
+                            onPress: () => {
+                              const currentFood = meal.find(
+                                (entry) =>
+                                  entry.uid === item.uid &&
+                                  entry.groupId === item.groupId,
+                              );
+                              if (currentFood) openFoodDetails(currentFood);
+                            },
+                            variant: "ghost",
+                          },
+                          {
+                            label: "Remove",
+                            onPress: () =>
+                              dispatch(
+                                removeMealItem({ groupId: item.groupId }),
+                              ),
+                            variant: "danger",
+                          },
+                        ]}
+                        style={logMealStyles.listCard}
+                      />
+                    ),
+                )
+              ) : (
+                <View style={logMealStyles.emptyState}>
+                  <ThemedText style={logMealStyles.emptyTitle}>
+                    No foods in the current meal yet
+                  </ThemedText>
+                  <ThemedText style={logMealStyles.emptyText}>
+                    Add items from Saved Foods or search for something new.
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          {activeTab === "foods" ? (
+            <View style={logMealStyles.section}>
+              {displayedFoods.length ? (
+                displayedFoods.map((food) => {
+                  const isAdded = meal.some((entry) =>
+                    sameFoodKey(entry, food),
+                  );
+                  return (
                     <FoodCard
-                      key={item.uid}
-                      title={buildDisplayFoodName(item.name, item.brand)}
-                      subtitle={buildFoodSubtitle(item)}
+                      key={`${food.groupId}:${food.uid}`}
+                      title={buildDisplayFoodName(food.name, food.brand)}
+                      subtitle={buildFoodSubtitle(food)}
+                      description={
+                        hasSearched && searchTerm.trim().length > 0
+                          ? "Tap the card to edit this food before adding it."
+                          : "Favourite food"
+                      }
+                      onPress={() => openFoodDetails(food)}
                       actions={[
                         {
-                          label: "Edit",
-                          onPress: () => {
-                            const currentFood = meal.find(
-                              (entry) =>
-                                entry.uid === item.uid &&
-                                entry.groupId === item.groupId,
-                            );
-                            if (currentFood) openFoodDetails(currentFood);
-                          },
-                          variant: "ghost",
-                        },
-                        {
-                          label: "Remove",
+                          label: isAdded ? "Remove" : "Add",
                           onPress: () =>
-                            dispatch(removeMealItem({ groupId: item.groupId })),
-                          variant: "danger",
+                            isAdded ? removeFood(food) : addFood(food),
+                          variant: isAdded ? "danger" : "primary",
                         },
                       ]}
                       style={logMealStyles.listCard}
                     />
-                  ),
-              )
-            ) : (
-              <View style={logMealStyles.emptyState}>
-                <ThemedText style={logMealStyles.emptyTitle}>
-                  No foods in the current meal yet
-                </ThemedText>
-                <ThemedText style={logMealStyles.emptyText}>
-                  Add items from Saved Foods or search for something new.
-                </ThemedText>
-              </View>
-            )}
-          </View>
-        ) : null}
-
-        {activeTab === "foods" ? (
-          <View style={logMealStyles.section}>
-            {displayedFoods.length ? (
-              displayedFoods.map((food) => {
-                const isAdded = meal.some((entry) => sameFoodKey(entry, food));
-                return (
-                  <FoodCard
-                    key={`${food.groupId}:${food.uid}`}
-                    title={buildDisplayFoodName(food.name, food.brand)}
-                    subtitle={buildFoodSubtitle(food)}
-                    description={
-                      hasSearched && searchTerm.trim().length > 0
-                        ? "Tap the card to edit this food before adding it."
-                        : "Favourite food"
-                    }
-                    onPress={() => openFoodDetails(food)}
-                    actions={[
-                      {
-                        label: isAdded ? "Remove" : "Add",
-                        onPress: () =>
-                          isAdded ? removeFood(food) : addFood(food),
-                        variant: isAdded ? "danger" : "primary",
-                      },
-                    ]}
-                    style={logMealStyles.listCard}
-                  />
-                );
-              })
-            ) : (
-              <View style={logMealStyles.emptyState}>
-                <ThemedText style={logMealStyles.emptyTitle}>
-                  {hasSearched && searchTerm.trim().length > 0
-                    ? "No foods found"
-                    : "No favourite foods yet"}
-                </ThemedText>
-                <ThemedText style={logMealStyles.emptyText}>
-                  {hasSearched && searchTerm.trim().length > 0
-                    ? 'Try a simple single-food search like "100g of carrots", then add the next item separately.'
-                    : "Foods you log twice will appear here automatically."}
-                </ThemedText>
-              </View>
-            )}
-          </View>
-        ) : null}
-
+                  );
+                })
+              ) : (
+                <View style={logMealStyles.emptyState}>
+                  <ThemedText style={logMealStyles.emptyTitle}>
+                    {hasSearched && searchTerm.trim().length > 0
+                      ? "No foods found"
+                      : "No favourite foods yet"}
+                  </ThemedText>
+                  <ThemedText style={logMealStyles.emptyText}>
+                    {hasSearched && searchTerm.trim().length > 0
+                      ? 'Try a simple single-food search like "100g of carrots", then add the next item separately.'
+                      : "Foods you log twice will appear here automatically."}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          ) : null}
         </ScrollView>
       </View>
 
@@ -670,25 +678,51 @@ export default function LogMeal() {
             />
             <View style={logMealStyles.footerRow}>
               <View style={logMealStyles.footerButtonCell}>
-                <AppButton label="Delete Meal" disabled={isPersistingMeal} fullWidth variant="danger" onPress={() => {
+                <AppButton
+                  label="Delete Meal"
+                  disabled={isPersistingMeal}
+                  fullWidth
+                  variant="danger"
+                  onPress={() => {
                     Alert.alert("Delete this meal?", "This cannot be undone.", [
                       { style: "cancel", text: "Cancel" },
-                      { onPress: deleteMeal, style: "destructive", text: "Delete" },
+                      {
+                        onPress: deleteMeal,
+                        style: "destructive",
+                        text: "Delete",
+                      },
                     ]);
-                  }} />
+                  }}
+                />
               </View>
               <View style={logMealStyles.footerButtonCell}>
-                <AppButton label="Cancel" fullWidth variant="secondary" onPress={() => confirmExit()} />
+                <AppButton
+                  label="Cancel"
+                  fullWidth
+                  variant="secondary"
+                  onPress={() => confirmExit()}
+                />
               </View>
             </View>
           </>
         ) : (
           <View style={logMealStyles.footerRow}>
             <View style={logMealStyles.footerButtonCell}>
-              <AppButton label={isPersistingMeal ? "Adding..." : "Add Meal"} disabled={isPersistingMeal || !canSubmitMeal} loading={isPersistingMeal} fullWidth onPress={persistMeal} />
+              <AppButton
+                label={isPersistingMeal ? "Adding..." : "Add Meal"}
+                disabled={isPersistingMeal || !canSubmitMeal}
+                loading={isPersistingMeal}
+                fullWidth
+                onPress={persistMeal}
+              />
             </View>
             <View style={logMealStyles.footerButtonCell}>
-              <AppButton label="Cancel" fullWidth variant="secondary" onPress={() => confirmExit()} />
+              <AppButton
+                label="Cancel"
+                fullWidth
+                variant="secondary"
+                onPress={() => confirmExit()}
+              />
             </View>
           </View>
         )}

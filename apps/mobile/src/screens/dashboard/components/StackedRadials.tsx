@@ -1,5 +1,5 @@
 import { DashboardRadial } from "../types";
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import React from "react";
 import { useWindowDimensions, View } from "react-native";
 import Svg, { Circle, G, Path } from "react-native-svg";
@@ -97,6 +97,13 @@ export function StackedRadialsCard({
 }
 
 function legendValue(radial: DashboardRadial) {
+  if (
+    radial.display === "actual" &&
+    radial.actual !== null &&
+    radial.actual !== undefined
+  ) {
+    return `${String(radial.actual)} ${radial.unit}`;
+  }
   if (radial.percent !== null && radial.percent !== undefined) {
     return `${toDisplayPercent(radial.percent)}%`;
   }

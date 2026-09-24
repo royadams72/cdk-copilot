@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
-import {
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { theme } from "@/constants/theme";
 
 type DateTimeModalProps = {
@@ -52,9 +46,9 @@ export function DateTimeModal({
   disallowFutureDates = false,
 }: DateTimeModalProps) {
   const [draft, setDraft] = useState(value);
-  const [activePicker, setActivePicker] = useState<
-    "date" | "time" | null
-  >(null);
+  const [activePicker, setActivePicker] = useState<"date" | "time" | null>(
+    null,
+  );
   const today = new Date();
 
   useEffect(() => {

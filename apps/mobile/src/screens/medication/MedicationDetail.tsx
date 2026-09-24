@@ -1,20 +1,16 @@
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  View,
-} from "react-native";
+import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
-import { FeedbackModal } from "@/components/feedback-modal";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { FeedbackModal } from "@/components/FeedBackModal";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { useGetMedicationByIdQuery } from "@/store/services/medicationApi";
 import { NutritionStyles } from "../nutrition/styles";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 
 export default function MedicationDetail() {
@@ -60,7 +56,9 @@ export default function MedicationDetail() {
           variant="secondary"
           size="compact"
         />
-        <ThemedText type="title" style={NutritionStyles.screenTitle}>Medication detail</ThemedText>
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
+          Medication detail
+        </ThemedText>
 
         {medication ? (
           <>
@@ -75,10 +73,18 @@ export default function MedicationDetail() {
                 Status: {medication.status}
               </ThemedText>
               <ThemedText style={{ opacity: 0.8 }}>
-                Started: {formatMobileDate(medication.startAt, { fallback: "Unknown", includeTime: true })}
+                Started:{" "}
+                {formatMobileDate(medication.startAt, {
+                  fallback: "Unknown",
+                  includeTime: true,
+                })}
               </ThemedText>
               <ThemedText style={{ opacity: 0.8 }}>
-                Ended: {formatMobileDate(medication.endAt, { fallback: "Unknown", includeTime: true })}
+                Ended:{" "}
+                {formatMobileDate(medication.endAt, {
+                  fallback: "Unknown",
+                  includeTime: true,
+                })}
               </ThemedText>
             </View>
 
@@ -112,7 +118,11 @@ export default function MedicationDetail() {
                           : "Details edited"}
                       </ThemedText>
                       <ThemedText style={{ fontSize: 13, opacity: 0.8 }}>
-                        At: {formatMobileDate(event.at, { fallback: "Unknown", includeTime: true })}
+                        At:{" "}
+                        {formatMobileDate(event.at, {
+                          fallback: "Unknown",
+                          includeTime: true,
+                        })}
                       </ThemedText>
                       {event.toStatus ? (
                         <ThemedText style={{ fontSize: 13, opacity: 0.8 }}>

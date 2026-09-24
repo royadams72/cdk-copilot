@@ -13,9 +13,9 @@ import { API } from "@/constants/api";
 import { APP_ROUTES } from "@/constants/routes";
 import { authFetch } from "@/lib/authFetch";
 
-import { ThemedText } from "@/components/themed-text";
-import { AppButton } from "@/components/ui/button";
-import { Card } from "@/screens/dashboard/components/Card";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import {
   type TargetDefinitionValue,
   type TargetDomain,
@@ -24,7 +24,7 @@ import {
   useGetTargetsQuery,
   useUpdateTargetMutation,
 } from "@/store/services/dashboardApi";
-import { AppScreen } from "@/components/app-screen";
+import { AppScreen } from "@/components/AppScreen";
 
 type PickerOption = {
   key: string;
@@ -532,7 +532,7 @@ export default function TargetsScreen({
         </ThemedText>
         {typeof data?.weightKg === "number" ? (
           <ThemedText style={{ opacity: 0.6 }}>
-            Weight-based references use {Math.round(data.weightKg)} kg.
+            Weight-based references used: {Math.round(data.weightKg)} kg.
           </ThemedText>
         ) : items.some(
             (item) =>
@@ -569,7 +569,7 @@ export default function TargetsScreen({
       ) : null}
 
       {screenError || error ? (
-        <Card>
+        <Section>
           <ThemedText type="defaultSemiBold">Could not load targets</ThemedText>
           <ThemedText style={{ opacity: 0.7 }}>{errorMessage}</ThemedText>
           <AppButton
@@ -579,27 +579,43 @@ export default function TargetsScreen({
             style={{ marginTop: 8 }}
             variant="outline"
           />
-        </Card>
+        </Section>
       ) : null}
 
       {!isLoading && items.length === 0 ? (
-        <Card>
+        <Section>
           <ThemedText type="defaultSemiBold">No targets found</ThemedText>
           <ThemedText style={{ opacity: 0.7 }}>
             This section does not have editable targets yet.
           </ThemedText>
-        </Card>
+        </Section>
       ) : null}
 
       {items.map((item) => {
         const savedKey = getSelectedOptionKey(item, onboarding);
         const currentKey = selectedKeys[item.metric] ?? savedKey;
         const pickerOptions = optionsByMetric[item.metric] ?? [];
+        const currentOption =
+          pickerOptions.find((option) => option.key === currentKey) ?? null;
         const isItemSaving = isSaving && savingMetric === item.metric;
         const hasChanged = currentKey !== savedKey;
+        const displayedTarget = item.careTeamTarget
+          ? item.effective
+          : currentKey === "__unset__"
+            ? null
+            : currentKey === "__recommended__"
+              ? item.recommended
+              : (currentOption?.value ?? item.effective);
+        const displayedSource = item.careTeamTarget
+          ? "Care-team target"
+          : currentKey === "__unset__"
+            ? "No target set"
+            : currentKey === "__recommended__"
+              ? "General reference"
+              : "Personal goal";
 
         return (
-          <Card key={item.metric}>
+          <Section key={item.metric}>
             <View style={{ gap: 6 }}>
               <View
                 style={{
@@ -614,22 +630,9 @@ export default function TargetsScreen({
                 <ThemedText style={{ opacity: 0.6 }}>{item.unit}</ThemedText>
               </View>
               <ThemedText style={{ opacity: 0.75 }}>
-                {item.careTeamTarget
-                  ? "Care-team target"
-                  : item.personalGoal
-                    ? "Personal goal"
-                    : item.generalReferenceSelected === false ||
-                        (onboarding && item.generalReferenceSelected !== true)
-                      ? "No target set"
-                      : "General reference"}
-                {item.effective &&
-                !(
-                  onboarding &&
-                  !item.careTeamTarget &&
-                  !item.personalGoal &&
-                  item.generalReferenceSelected !== true
-                )
-                  ? `: ${describeDefinition(item.effective, item.metric, item.unit)}`
+                {displayedSource}
+                {displayedTarget
+                  ? `: ${describeDefinition(displayedTarget, item.metric, item.unit)}`
                   : ""}
               </ThemedText>
               <View
@@ -749,7 +752,7 @@ export default function TargetsScreen({
                 </ThemedText>
               ) : null}
             </View>
-          </Card>
+          </Section>
         );
       })}
       {onboarding && !isLoading && !error && items.length > 0 ? (

@@ -1,11 +1,11 @@
 import { View } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { Card } from "./Card";
 import { styles } from "../styles";
 import { formatDateShort } from "../utils";
 import { DashboardData } from "../types";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 
 type MedicationSummary = DashboardData["medications"];
 
@@ -22,7 +22,9 @@ export function MedicationCard({
 }) {
   return (
     <Card>
-      <ThemedText type="defaultSemiBold" style={styles.panelTitle}>Medications</ThemedText>
+      <ThemedText type="defaultSemiBold" style={styles.panelTitle}>
+        Medications
+      </ThemedText>
       <ThemedText style={styles.helperText}>
         {medications.activeCount} active of {medications.totalCount} total
       </ThemedText>
@@ -56,7 +58,12 @@ export function MedicationCard({
 
       <View style={styles.medActionsRow}>
         <AppButton label="Add medication" onPress={onAdd} size="compact" />
-        <AppButton label="Med history" onPress={onHistory} variant="secondary" size="compact" />
+        <AppButton
+          label="Med history"
+          onPress={onHistory}
+          variant="secondary"
+          size="compact"
+        />
       </View>
     </Card>
   );

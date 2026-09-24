@@ -8,9 +8,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
 import { APP_ROUTES } from "@/constants/routes";
 import { type StepActivitySummary } from "@/lib/healthConnectStepSummary";
 import {
@@ -88,10 +88,14 @@ type TrendChart = {
 function buildHeartRateHourlyValues(
   entries: { measuredAt: string; value: number | null }[],
 ) {
-  const buckets = Array.from({ length: 24 }, () => [] as {
-    measuredAtMs: number;
-    value: number;
-  }[]);
+  const buckets = Array.from(
+    { length: 24 },
+    () =>
+      [] as {
+        measuredAtMs: number;
+        value: number;
+      }[],
+  );
 
   for (const entry of entries) {
     if (typeof entry.value !== "number" || !Number.isFinite(entry.value)) {
@@ -169,7 +173,9 @@ export default function FitnessMetricTrend() {
   const [saving, setSaving] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<MeasurementDayEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<MeasurementDayEntry | null>(
+    null,
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSleepFromPicker, setShowSleepFromPicker] = useState(false);
   const [showSleepToPicker, setShowSleepToPicker] = useState(false);
@@ -381,24 +387,36 @@ export default function FitnessMetricTrend() {
       if (kind === "exercise") {
         setSelectedExerciseId(entry.exerciseId ?? "");
         setExerciseMinutes(
-          typeof entry.value2 === "number" ? String(Math.round(entry.value2)) : "30",
+          typeof entry.value2 === "number"
+            ? String(Math.round(entry.value2))
+            : "30",
         );
       } else if (kind === "sleep") {
-        setSleepFromTime(entry.sleepFromAt ? new Date(entry.sleepFromAt) : measuredAt);
-        setSleepToTime(entry.sleepToAt ? new Date(entry.sleepToAt) : measuredAt);
+        setSleepFromTime(
+          entry.sleepFromAt ? new Date(entry.sleepFromAt) : measuredAt,
+        );
+        setSleepToTime(
+          entry.sleepToAt ? new Date(entry.sleepToAt) : measuredAt,
+        );
       } else if (kind === "blood_pressure") {
         setBpSystolic(
-          typeof entry.value === "number" ? Math.round(entry.value) : BP_TARGET_SYSTOLIC,
+          typeof entry.value === "number"
+            ? Math.round(entry.value)
+            : BP_TARGET_SYSTOLIC,
         );
         setBpDiastolic(
-          typeof entry.value2 === "number" ? Math.round(entry.value2) : BP_TARGET_DIASTOLIC,
+          typeof entry.value2 === "number"
+            ? Math.round(entry.value2)
+            : BP_TARGET_DIASTOLIC,
         );
       } else if (kind === "heart_rate") {
-        setHeartRateBpm(typeof entry.value === "number" ? Math.round(entry.value) : 72);
+        setHeartRateBpm(
+          typeof entry.value === "number" ? Math.round(entry.value) : 72,
+        );
       } else if (kind === "weight" && typeof entry.value === "number") {
         const displayValue =
           preferredWeightUnit === "lb"
-            ? Math.round((entry.value * 2.2046226218) * 10) / 10
+            ? Math.round(entry.value * 2.2046226218 * 10) / 10
             : Math.round(entry.value * 10) / 10;
         const whole = Math.max(0, Math.floor(displayValue));
         const decimal = Math.min(
@@ -432,7 +450,9 @@ export default function FitnessMetricTrend() {
               } catch (err: unknown) {
                 Alert.alert(
                   "Delete failed",
-                  err instanceof Error ? err.message : "Could not delete reading",
+                  err instanceof Error
+                    ? err.message
+                    : "Could not delete reading",
                 );
               }
             })();
@@ -600,10 +620,7 @@ export default function FitnessMetricTrend() {
   }, [kind, points]);
 
   const latestPoint = useMemo(() => {
-    const numeric = points.filter(
-      (point) =>
-        Number.isFinite(point.value),
-    );
+    const numeric = points.filter((point) => Number.isFinite(point.value));
     return numeric.length ? numeric[numeric.length - 1] : null;
   }, [points]);
 
@@ -749,11 +766,7 @@ export default function FitnessMetricTrend() {
 
     const loadHeartRateEntries = async () => {
       const provider = getCurrentHealthSyncProvider();
-      if (
-        kind !== "heart_rate" ||
-        !provider ||
-        !selectedDateKey
-      ) {
+      if (kind !== "heart_rate" || !provider || !selectedDateKey) {
         setHealthConnectHeartRateEntries((current) =>
           current.length ? [] : current,
         );
@@ -901,13 +914,19 @@ export default function FitnessMetricTrend() {
         const today = new Date();
         const todayKey = localDateKey(today);
 
-        const windowEnd = backfilledFromStr ? new Date(backfilledFromStr) : today;
-        const windowStart = new Date(windowEnd.getTime() - 60 * 24 * 60 * 60_000);
+        const windowEnd = backfilledFromStr
+          ? new Date(backfilledFromStr)
+          : today;
+        const windowStart = new Date(
+          windowEnd.getTime() - 60 * 24 * 60 * 60_000,
+        );
         // Floor at account creation date so we never backfill before the user existed.
         const accountCreatedAt = syncState.accountCreatedAt
           ? new Date(syncState.accountCreatedAt)
           : null;
-        const floor = accountCreatedAt ?? new Date(today.getTime() - 365 * 24 * 60 * 60_000);
+        const floor =
+          accountCreatedAt ??
+          new Date(today.getTime() - 365 * 24 * 60 * 60_000);
         if (windowStart < floor) windowStart.setTime(floor.getTime());
 
         if (windowEnd <= windowStart) return;
@@ -925,7 +944,9 @@ export default function FitnessMetricTrend() {
 
         // Always re-check the last 7 days for provisional entries
         for (let i = 1; i <= 7; i++) {
-          const key = localDateKey(new Date(today.getTime() - i * 24 * 60 * 60_000));
+          const key = localDateKey(
+            new Date(today.getTime() - i * 24 * 60 * 60_000),
+          );
           if (!datesToCheck.includes(key)) datesToCheck.push(key);
         }
 
@@ -944,10 +965,13 @@ export default function FitnessMetricTrend() {
         });
 
         if (datesToBackfill.length) {
-          await getCurrentHealthSyncProvider()?.backfillStepDates(datesToBackfill, {
-            reason: "steps-screen",
-            windowKey,
-          });
+          await getCurrentHealthSyncProvider()?.backfillStepDates(
+            datesToBackfill,
+            {
+              reason: "steps-screen",
+              windowKey,
+            },
+          );
         }
 
         // Only advance after all provider reads and uploads complete successfully.
@@ -955,23 +979,27 @@ export default function FitnessMetricTrend() {
       } catch (err) {
         // Allow retry next session
         completedBackfillWindowKeys.delete(sessionKey);
-        console.log("Steps history backfill failed", err instanceof Error ? err.message : err);
+        console.log(
+          "Steps history backfill failed",
+          err instanceof Error ? err.message : err,
+        );
       }
     };
 
     void run();
-  // entriesByDate reference is stable per history load; history is the trigger
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // entriesByDate reference is stable per history load; history is the trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history, kind]);
 
   // Backfill sleep, exercise, and heart_rate when their trend screens load.
   // Checks the last 30 days for missing entries and imports any HC data found.
   useEffect(() => {
     if (
-      kind !== "sleep" && kind !== "exercise" && kind !== "heart_rate" ||
+      (kind !== "sleep" && kind !== "exercise" && kind !== "heart_rate") ||
       Platform.OS !== "android" ||
       !history
-    ) return;
+    )
+      return;
 
     const sessionKey = `${kind}-history-backfill`;
     if (completedBackfillWindowKeys.has(sessionKey)) return;
@@ -984,7 +1012,9 @@ export default function FitnessMetricTrend() {
         const missingDateKeys: string[] = [];
 
         for (let i = 1; i <= 30; i++) {
-          const dk = localDateKey(new Date(today.getTime() - i * 24 * 60 * 60_000));
+          const dk = localDateKey(
+            new Date(today.getTime() - i * 24 * 60 * 60_000),
+          );
           if (dk >= todayKey) continue;
           const entries = entriesByDate[dk];
           if (!entries || entries.length === 0) {
@@ -1001,13 +1031,16 @@ export default function FitnessMetricTrend() {
         );
       } catch (err) {
         completedBackfillWindowKeys.delete(sessionKey);
-        console.log(`${kind} history backfill failed`, err instanceof Error ? err.message : err);
+        console.log(
+          `${kind} history backfill failed`,
+          err instanceof Error ? err.message : err,
+        );
       }
     };
 
     void run();
-  // entriesByDate is stable per history load; history is the trigger
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // entriesByDate is stable per history load; history is the trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history, kind]);
 
   const onSave = useCallback(async () => {
@@ -1221,257 +1254,251 @@ export default function FitnessMetricTrend() {
 
   return (
     <AppScreen>
-        <AppButton
-          label="Back"
-          onPress={() => router.replace(APP_ROUTES.healthDashboard)}
-          size="compact"
-          variant="outline"
-        />
+      <AppButton
+        label="Back"
+        onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+        size="compact"
+        variant="outline"
+      />
 
-        <View style={{ gap: 4 }}>
-          <ThemedText type="title">{label}</ThemedText>
-          <ThemedText style={{ opacity: 0.72 }}>
-            Daily readings trend (
-            {kind === "weight"
-              ? preferredWeightUnit === "lb"
-                ? "lbs"
-                : "kg"
-              : metricUnit(kind)}
-            )
+      <View style={{ gap: 4 }}>
+        <ThemedText type="title">{label}</ThemedText>
+        <ThemedText style={{ opacity: 0.72 }}>
+          Daily readings trend (
+          {kind === "weight"
+            ? preferredWeightUnit === "lb"
+              ? "lbs"
+              : "kg"
+            : metricUnit(kind)}
+          )
+        </ThemedText>
+        {kind === "weight" &&
+        latestPoint &&
+        typeof latestPoint.value === "number" &&
+        Number.isFinite(latestPoint.value) ? (
+          <ThemedText style={{ opacity: 0.7 }}>
+            Latest: {formatWeightValue(latestPoint.value, preferredWeightUnit)}
           </ThemedText>
-          {kind === "weight" &&
-          latestPoint &&
-          typeof latestPoint.value === "number" &&
-          Number.isFinite(latestPoint.value) ? (
-            <ThemedText style={{ opacity: 0.7 }}>
-              Latest:{" "}
-              {formatWeightValue(latestPoint.value, preferredWeightUnit)}
-            </ThemedText>
-          ) : null}
-          {kind === "exercise" &&
-          latestPoint &&
-          typeof latestPoint.value === "number" &&
-          Number.isFinite(latestPoint.value) &&
-          latestPoint.value > 0 ? (
-            <ThemedText style={{ opacity: 0.7 }}>
-              Latest burn: {Math.round(latestPoint.value)} kcal
-              {typeof latestPoint.value2 === "number"
-                ? ` in ${Math.round(latestPoint.value2)} min`
-                : ""}
-            </ThemedText>
-          ) : null}
+        ) : null}
+        {kind === "exercise" &&
+        latestPoint &&
+        typeof latestPoint.value === "number" &&
+        Number.isFinite(latestPoint.value) &&
+        latestPoint.value > 0 ? (
+          <ThemedText style={{ opacity: 0.7 }}>
+            Latest burn: {Math.round(latestPoint.value)} kcal
+            {typeof latestPoint.value2 === "number"
+              ? ` in ${Math.round(latestPoint.value2)} min`
+              : ""}
+          </ThemedText>
+        ) : null}
+      </View>
+
+      {showAdd ? (
+        <AppButton
+          label={addLabel(kind)}
+          onPress={openCreateModal}
+          size="standard"
+          variant="primary"
+        />
+      ) : (
+        <View style={{ gap: 4 }}>
+          <ThemedText style={{ opacity: 0.7 }}>
+            Steps are synced from your phone/watch.
+          </ThemedText>
         </View>
+      )}
 
-        {showAdd ? (
-          <AppButton
-            label={addLabel(kind)}
-            onPress={openCreateModal}
-            size="standard"
-            variant="primary"
-          />
-        ) : (
-          <View style={{ gap: 4 }}>
-            <ThemedText style={{ opacity: 0.7 }}>
-              Steps are synced from your phone/watch.
+      {loading ? (
+        <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>
+          <ActivityIndicator size="large" />
+          <ThemedText>Loading trend...</ThemedText>
+        </View>
+      ) : null}
+
+      {error ? (
+        <Card>
+          <ThemedText type="defaultSemiBold">Could not load trend</ThemedText>
+          <ThemedText style={{ opacity: 0.72 }}>{error}</ThemedText>
+          <TouchableOpacity onPress={() => void refetchHistory()}>
+            <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
+          </TouchableOpacity>
+        </Card>
+      ) : null}
+
+      {!loading && !error && kind === "sleep" && weeklySleepSummary ? (
+        <Card>
+          <View style={{ gap: 6 }}>
+            <ThemedText type="defaultSemiBold">Weekly sleep check</ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              {weeklySleepSummary.weekStart} to {weeklySleepSummary.weekEnd}
             </ThemedText>
+            <ThemedText style={{ opacity: 0.72 }}>
+              Weekly average:{" "}
+              {formatSleepHours(weeklySleepSummary.weeklyAverageDurationMin)} •
+              Logged days: {weeklySleepSummary.loggedDays}/7
+            </ThemedText>
+            {weeklySleepSummary.averageLoggedDurationMin !== null ? (
+              <ThemedText style={{ opacity: 0.72 }}>
+                Logged-night average:{" "}
+                {formatSleepHours(weeklySleepSummary.averageLoggedDurationMin)}
+              </ThemedText>
+            ) : null}
           </View>
-        )}
+        </Card>
+      ) : null}
 
-        {loading ? (
-          <View style={{ alignItems: "center", gap: 8, paddingVertical: 26 }}>
-            <ActivityIndicator size="large" />
-            <ThemedText>Loading trend...</ThemedText>
-          </View>
-        ) : null}
-
-        {error ? (
-          <Card>
-            <ThemedText type="defaultSemiBold">Could not load trend</ThemedText>
-            <ThemedText style={{ opacity: 0.72 }}>{error}</ThemedText>
-            <TouchableOpacity onPress={() => void refetchHistory()}>
-              <ThemedText style={{ fontWeight: "700" }}>Retry</ThemedText>
+      {__DEV__ && kind === "sleep" ? (
+        <Card>
+          <View style={{ gap: 10 }}>
+            <ThemedText type="defaultSemiBold">Dev sleep tools</ThemedText>
+            <TouchableOpacity
+              onPress={() => void handleDevSleepReminderTest()}
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: "rgba(15,118,110,0.12)",
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+              }}
+            >
+              <ThemedText style={{ color: "#115E59", fontWeight: "700" }}>
+                Test sleep reminder
+              </ThemedText>
             </TouchableOpacity>
-          </Card>
-        ) : null}
+            <TouchableOpacity
+              onPress={() => void handleDevWeeklySleepTest()}
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: "rgba(37,99,235,0.12)",
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+              }}
+            >
+              <ThemedText style={{ color: "#1D4ED8", fontWeight: "700" }}>
+                Test weekly summary
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </Card>
+      ) : null}
 
-        {!loading && !error && kind === "sleep" && weeklySleepSummary ? (
-          <Card>
-            <View style={{ gap: 6 }}>
-              <ThemedText type="defaultSemiBold">Weekly sleep check</ThemedText>
-              <ThemedText style={{ opacity: 0.72 }}>
-                {weeklySleepSummary.weekStart} to {weeklySleepSummary.weekEnd}
-              </ThemedText>
-              <ThemedText style={{ opacity: 0.72 }}>
-                Weekly average:{" "}
-                {formatSleepHours(weeklySleepSummary.weeklyAverageDurationMin)}{" "}
-                • Logged days: {weeklySleepSummary.loggedDays}/7
-              </ThemedText>
-              {weeklySleepSummary.averageLoggedDurationMin !== null ? (
-                <ThemedText style={{ opacity: 0.72 }}>
-                  Logged-night average:{" "}
-                  {formatSleepHours(
-                    weeklySleepSummary.averageLoggedDurationMin,
-                  )}
-                </ThemedText>
+      {!loading && !error ? (
+        <Card>
+          {chart.points.length === 0 ? (
+            <ThemedText style={{ opacity: 0.72 }}>No readings yet.</ThemedText>
+          ) : (
+            <>
+              <MetricBarChart
+                chartWidth={chart.chartWidth}
+                kind={kind}
+                points={chart.points}
+                selectedBarIndex={selectedBarIndex}
+                setSelectedBarIndex={(index) => {
+                  const nextDate =
+                    typeof index === "number"
+                      ? (chart.points[index]?.date ?? null)
+                      : null;
+                  setSelectedDateKey(nextDate);
+                }}
+                targetLines={chart.targetLines}
+              />
+
+              {kind === "steps" && resolvedStepSummary ? (
+                <StepSummary summary={resolvedStepSummary} />
               ) : null}
-            </View>
-          </Card>
-        ) : null}
 
-        {__DEV__ && kind === "sleep" ? (
-          <Card>
-            <View style={{ gap: 10 }}>
-              <ThemedText type="defaultSemiBold">Dev sleep tools</ThemedText>
-              <TouchableOpacity
-                onPress={() => void handleDevSleepReminderTest()}
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: "rgba(15,118,110,0.12)",
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                }}
-              >
-                <ThemedText style={{ color: "#115E59", fontWeight: "700" }}>
-                  Test sleep reminder
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => void handleDevWeeklySleepTest()}
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: "rgba(37,99,235,0.12)",
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                }}
-              >
-                <ThemedText style={{ color: "#1D4ED8", fontWeight: "700" }}>
-                  Test weekly summary
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </Card>
-        ) : null}
-
-        {!loading && !error ? (
-          <Card>
-            {chart.points.length === 0 ? (
-              <ThemedText style={{ opacity: 0.72 }}>
-                No readings yet.
-              </ThemedText>
-            ) : (
-              <>
-                <MetricBarChart
-                  chartWidth={chart.chartWidth}
-                  kind={kind}
-                  points={chart.points}
-                  selectedBarIndex={selectedBarIndex}
-                  setSelectedBarIndex={(index) => {
-                    const nextDate =
-                      typeof index === "number"
-                        ? (chart.points[index]?.date ?? null)
-                        : null;
-                    setSelectedDateKey(nextDate);
-                  }}
-                  targetLines={chart.targetLines}
-                />
-
-                {kind === "steps" && resolvedStepSummary ? (
-                  <StepSummary summary={resolvedStepSummary} />
-                ) : null}
-
-                {selectedDateKey && kind === "steps" ? (
-                  hourlyStepValues.length ? (
-                    <MetricHourlyBarChart
-                      emptyLabel="No step activity recorded for this day."
-                      formatSelectedValue={(value) =>
-                        typeof value === "number"
-                          ? `${Math.round(value).toLocaleString()} steps`
-                          : "--"
-                      }
-                      label="Hourly steps"
-                      values={hourlyStepValues}
-                    />
-                  ) : isSelectedToday &&
-                    (resolvedStepSummary?.steps ?? 0) > 0 ? (
-                    <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
-                      Hourly step breakdown is unavailable for this source.
-                    </ThemedText>
-                  ) : !isSelectedToday &&
-                    (resolvedStepSummary?.steps ?? 0) > 0 ? (
-                    <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
-                      Hourly step breakdown is only available for today.
-                    </ThemedText>
-                  ) : null
-                ) : null}
-
-                {selectedDateKey &&
-                kind === "heart_rate" &&
-                heartRateHourlyValues.length ? (
+              {selectedDateKey && kind === "steps" ? (
+                hourlyStepValues.length ? (
                   <MetricHourlyBarChart
-                    color="#DC2626"
-                    emptyLabel="No heart rate readings for this day."
+                    emptyLabel="No step activity recorded for this day."
                     formatSelectedValue={(value) =>
                       typeof value === "number"
-                        ? `${Math.round(value)} bpm`
+                        ? `${Math.round(value).toLocaleString()} steps`
                         : "--"
                     }
-                    label="Hourly heart rate"
-                    values={heartRateHourlyValues}
+                    label="Hourly steps"
+                    values={hourlyStepValues}
                   />
-                ) : selectedDateKey &&
-                  kind === "heart_rate" &&
-                  heartRateDayLoading ? (
+                ) : isSelectedToday && (resolvedStepSummary?.steps ?? 0) > 0 ? (
                   <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
-                    Loading device heart rate...
+                    Hourly step breakdown is unavailable for this source.
                   </ThemedText>
-                ) : null}
+                ) : !isSelectedToday &&
+                  (resolvedStepSummary?.steps ?? 0) > 0 ? (
+                  <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                    Hourly step breakdown is only available for today.
+                  </ThemedText>
+                ) : null
+              ) : null}
 
-                {selectedDateKey && kind !== "steps" ? (
-                  <MetricDayEntries
-                    kind={kind}
-                    onDeleteEntry={handleDeleteEntry}
-                    onEditEntry={handleEditEntry}
-                    selectedDateKey={selectedDateKey}
-                    selectedDayEntries={
-                      kind === "heart_rate"
-                        ? editableHeartRateEntries
-                        : selectedDayEntries
-                    }
-                    weightUnit={preferredWeightUnit}
-                  />
-                ) : null}
+              {selectedDateKey &&
+              kind === "heart_rate" &&
+              heartRateHourlyValues.length ? (
+                <MetricHourlyBarChart
+                  color="#DC2626"
+                  emptyLabel="No heart rate readings for this day."
+                  formatSelectedValue={(value) =>
+                    typeof value === "number"
+                      ? `${Math.round(value)} bpm`
+                      : "--"
+                  }
+                  label="Hourly heart rate"
+                  values={heartRateHourlyValues}
+                />
+              ) : selectedDateKey &&
+                kind === "heart_rate" &&
+                heartRateDayLoading ? (
+                <ThemedText style={{ marginTop: 14, opacity: 0.66 }}>
+                  Loading device heart rate...
+                </ThemedText>
+              ) : null}
 
-                {chart.targetLines.length ? (
-                  <View style={{ gap: 4, marginTop: 8 }}>
-                    {chart.targetLines.map((line) => (
+              {selectedDateKey && kind !== "steps" ? (
+                <MetricDayEntries
+                  kind={kind}
+                  onDeleteEntry={handleDeleteEntry}
+                  onEditEntry={handleEditEntry}
+                  selectedDateKey={selectedDateKey}
+                  selectedDayEntries={
+                    kind === "heart_rate"
+                      ? editableHeartRateEntries
+                      : selectedDayEntries
+                  }
+                  weightUnit={preferredWeightUnit}
+                />
+              ) : null}
+
+              {chart.targetLines.length ? (
+                <View style={{ gap: 4, marginTop: 8 }}>
+                  {chart.targetLines.map((line) => (
+                    <View
+                      key={`legend-${line.label}`}
+                      style={{
+                        alignItems: "center",
+                        flexDirection: "row",
+                        gap: 8,
+                      }}
+                    >
                       <View
-                        key={`legend-${line.label}`}
                         style={{
-                          alignItems: "center",
-                          flexDirection: "row",
-                          gap: 8,
+                          backgroundColor: line.color,
+                          height: 2,
+                          width: 18,
                         }}
-                      >
-                        <View
-                          style={{
-                            backgroundColor: line.color,
-                            height: 2,
-                            width: 18,
-                          }}
-                        />
-                        <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
-                          {line.label}
-                        </ThemedText>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-              </>
-            )}
-          </Card>
-        ) : null}
+                      />
+                      <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
+                        {line.label}
+                      </ThemedText>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </>
+          )}
+        </Card>
+      ) : null}
 
       <AddMeasurementModal
         bpDiastolic={bpDiastolic}

@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { ExerciseType } from "react-native-health-connect";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 
 import { Card } from "../../dashboard/components/Card";
 import type { DayEntry, MeasurementKind } from "../metricTrendTypes";
@@ -94,7 +94,11 @@ export function MetricDayEntries({
                 {entry.canEdit && onEditEntry ? (
                   <ThemedText
                     onPress={() => onEditEntry(entry)}
-                    style={{ color: "#1D4ED8", fontSize: 12, fontWeight: "700" }}
+                    style={{
+                      color: "#1D4ED8",
+                      fontSize: 12,
+                      fontWeight: "700",
+                    }}
                   >
                     Edit
                   </ThemedText>
@@ -102,7 +106,11 @@ export function MetricDayEntries({
                 {entry.canDelete && onDeleteEntry ? (
                   <ThemedText
                     onPress={() => onDeleteEntry(entry)}
-                    style={{ color: "#B91C1C", fontSize: 12, fontWeight: "700" }}
+                    style={{
+                      color: "#B91C1C",
+                      fontSize: 12,
+                      fontWeight: "700",
+                    }}
                   >
                     Delete
                   </ThemedText>
@@ -111,9 +119,13 @@ export function MetricDayEntries({
             ) : null;
             if (kind === "blood_pressure") {
               const sys =
-                typeof entry.value === "number" ? Math.round(entry.value) : null;
+                typeof entry.value === "number"
+                  ? Math.round(entry.value)
+                  : null;
               const dia =
-                typeof entry.value2 === "number" ? Math.round(entry.value2) : null;
+                typeof entry.value2 === "number"
+                  ? Math.round(entry.value2)
+                  : null;
               return (
                 <Card
                   key={entry.entryId || `${entry.measuredAt}-${idx}`}
@@ -132,7 +144,9 @@ export function MetricDayEntries({
 
             if (kind === "heart_rate") {
               const bpm =
-                typeof entry.value === "number" ? Math.round(entry.value) : null;
+                typeof entry.value === "number"
+                  ? Math.round(entry.value)
+                  : null;
               return (
                 <Card
                   key={entry.entryId || `${entry.measuredAt}-${idx}`}
@@ -151,9 +165,13 @@ export function MetricDayEntries({
 
             if (kind === "exercise") {
               const kcal =
-                typeof entry.value === "number" ? Math.round(entry.value) : null;
+                typeof entry.value === "number"
+                  ? Math.round(entry.value)
+                  : null;
               const mins =
-                typeof entry.value2 === "number" ? Math.round(entry.value2) : null;
+                typeof entry.value2 === "number"
+                  ? Math.round(entry.value2)
+                  : null;
               const name = exerciseEntryName(entry);
               return (
                 <Card
@@ -175,7 +193,9 @@ export function MetricDayEntries({
 
             if (kind === "sleep") {
               const mins =
-                typeof entry.value === "number" ? Math.round(entry.value) : null;
+                typeof entry.value === "number"
+                  ? Math.round(entry.value)
+                  : null;
               const fromTime = entry.sleepFromAt
                 ? formatTimeLabel(entry.sleepFromAt)
                 : "--:--";

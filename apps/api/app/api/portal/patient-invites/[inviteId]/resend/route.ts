@@ -9,6 +9,7 @@ import { bad, ok } from "@/apps/api/lib/http/responses";
 import {
   hashActivationCode,
   makeActivationCode,
+  sendPendingConsentReminderEmail,
   sendPatientInviteEmail,
 } from "@/apps/api/lib/portal/patientInviteDelivery";
 import { PortalPatientInviteDoc } from "@/apps/api/lib/portal/patientInvites";
@@ -47,12 +48,27 @@ export async function POST(
       facilityId: invite.facilityId,
     });
 
-    if (invite.activatedAt) {
-      return bad(
-        "Activated invites cannot be resent",
-        { code: "invite_resend_not_allowed" },
-        409,
+    if (invite.status === "activated" || invite.activatedAt) {
+      const pendingConsent = await db.collection(COLLECTIONS.PatientConsents).findOne({
+        careTeamId: invite.careTeamId,
+        facilityId: invite.facilityId,
+        orgId: invite.orgId,
+        patientId: invite.patientId,
+        status: "pending",
+      });
+      if (!pendingConsent) {
+        return bad("Only activated invites awaiting consent can be resent", { code: "invite_resend_not_allowed" }, 409);
+      }
+      const reminder = await sendPendingConsentReminderEmail({ email: invite.email });
+      if (!reminder.ok) {
+        return bad(reminder.errorMessage || "Unable to send consent reminder", { code: "invite_email_failed" }, 502);
+      }
+      const now = new Date();
+      await invites.updateOne(
+        { _id: invite._id },
+        { $set: { updatedAt: now, updatedBy: caller.principalId } },
       );
+      return ok({ activationCode: null, inviteId, status: "activated" });
     }
 
     if (!RESENDABLE_STATUSES.has(invite.status)) {

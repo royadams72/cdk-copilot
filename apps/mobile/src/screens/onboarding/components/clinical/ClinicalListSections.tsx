@@ -13,7 +13,7 @@ import {
 } from "@ckd/core";
 
 import { AutocompleteSelectionField } from "@/screens/onboarding/components/AutocompleteSelectionField";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import {
   LabeledInput,
   OptionSelectField,

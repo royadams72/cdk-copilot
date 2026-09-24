@@ -10,7 +10,7 @@ import {
 import type { TEdamamMeasure } from "@ckd/core";
 import type { TNutrientEstimate } from "../../../../../packages/core/src/isomorphic/schemas/nutrient_estimation";
 
-import { FoodCard } from "@/components/food-card";
+import { FoodCard } from "@/components/FoodCard";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useFetchNutritionDataMutation } from "@/store/services/logMealApi";
 import {
@@ -27,10 +27,10 @@ import {
 
 import { typeStyles } from "../styles";
 import { logMealStyles } from "./styles";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
-import { FormField } from "@/components/ui/form-field";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
+import { FormField } from "@/components/ui/FormField";
 import { theme } from "@/constants/theme";
 import {
   buildNutritionRequestKey,
@@ -84,7 +84,10 @@ export default function FoodDetails() {
       normalizeUnit(groupInfo.unit ?? selectedFood.unit),
     );
     if (requestedNutritionKeysRef.current.has(requestKey)) return;
-    const requestable = filterUnreservedNutritionKeys([requestKey], (key) => key);
+    const requestable = filterUnreservedNutritionKeys(
+      [requestKey],
+      (key) => key,
+    );
     if (!requestable.length) return;
 
     requestedNutritionKeysRef.current.add(requestKey);
@@ -209,9 +212,7 @@ export default function FoodDetails() {
 
   return (
     <>
-      <AppScreen
-        contentContainerStyle={logMealStyles.screenContent}
-      >
+      <AppScreen contentContainerStyle={logMealStyles.screenContent}>
         {selectedFood && groupInfo && portionConfig ? (
           <View style={logMealStyles.detailsWrap}>
             <Text style={typeStyles.title}>
@@ -220,7 +221,10 @@ export default function FoodDetails() {
 
             <Section variant="group">
               <View style={logMealStyles.controlRow}>
-                <FormField label="Unit" containerStyle={logMealStyles.controlField}>
+                <FormField
+                  label="Unit"
+                  containerStyle={logMealStyles.controlField}
+                >
                   <View style={logMealStyles.pickerShell}>
                     <Picker
                       selectedValue={portionConfig.mode}
@@ -241,7 +245,10 @@ export default function FoodDetails() {
                   </View>
                 </FormField>
 
-                <FormField label="Amount" containerStyle={logMealStyles.controlField}>
+                <FormField
+                  label="Amount"
+                  containerStyle={logMealStyles.controlField}
+                >
                   <View style={logMealStyles.pickerShell}>
                     <Picker
                       selectedValue={String(portionConfig.quantity)}
@@ -376,9 +383,7 @@ export default function FoodDetails() {
                 const dayParam = requestedDay
                   ? `&day=${encodeURIComponent(requestedDay)}`
                   : "";
-                router.replace(
-                  `/(log-meal)/log-meal?tab=current${dayParam}`,
-                );
+                router.replace(`/(log-meal)/log-meal?tab=current${dayParam}`);
               }}
             />
           </View>

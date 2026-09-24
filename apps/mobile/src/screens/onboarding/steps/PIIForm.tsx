@@ -21,7 +21,7 @@ import { authFetch } from "@/lib/authFetch";
 import { formatApiError } from "@/lib/formatApiError";
 import { onboardingDrafts } from "@/lib/onboarding";
 import { OptionSelectField, SelectionField } from "../components/FormFields";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { OnboardingFormScreen } from "../components/Onboarding";
 import {
   ControlledDateField,
@@ -29,6 +29,7 @@ import {
   ControlledTextField,
 } from "../components/ControlledFormFields";
 import { styles as onboardingStyles } from "../styles";
+import { FormFieldAnchor, useFormScroll } from "../components/FormScroll";
 import {
   ETHNICITY_GROUPS,
   ETHNICITY_LABELS,
@@ -91,6 +92,8 @@ export default function OnboardingPiiForm({
   });
 
   const showGenderIdentityPicker = genderIdentitySameAsBirth === "no";
+  const { registerField, scrollRef, scrollToFirstError } =
+    useFormScroll<TPiiFormInput>();
 
   useEffect(() => {
     let active = true;
@@ -179,106 +182,137 @@ export default function OnboardingPiiForm({
   return (
     <>
       <OnboardingFormScreen
+        scrollRef={scrollRef}
         title="Your information"
         subtitle="Add your details so we can set up your profile."
       >
-        <ControlledTextField
-          autoCapitalize="words"
-          control={control}
-          label="First name"
+        <FormFieldAnchor<TPiiFormInput>
           name="firstName"
-          onFieldBlur={() => void persistIfValid("firstName")}
-          placeholder="First name"
-        />
+          registerField={registerField}
+        >
+          <ControlledTextField
+            autoCapitalize="words"
+            control={control}
+            label="First name"
+            name="firstName"
+            onFieldBlur={() => void persistIfValid("firstName")}
+            placeholder="First name"
+          />
+        </FormFieldAnchor>
 
-        <ControlledTextField
-          autoCapitalize="words"
-          control={control}
-          label="Last name"
+        <FormFieldAnchor<TPiiFormInput>
           name="lastName"
-          onFieldBlur={() => void persistIfValid("lastName")}
-          onFocus={() => void persistIfValid("firstName")}
-          placeholder="Last name"
-        />
+          registerField={registerField}
+        >
+          <ControlledTextField
+            autoCapitalize="words"
+            control={control}
+            label="Last name"
+            name="lastName"
+            onFieldBlur={() => void persistIfValid("lastName")}
+            onFocus={() => void persistIfValid("firstName")}
+            placeholder="Last name"
+          />
+        </FormFieldAnchor>
 
-        <ControlledTextField
-          control={control}
-          keyboardType="number-pad"
-          label="NHS number"
+        <FormFieldAnchor<TPiiFormInput>
           name="nhsNumber"
-          onFieldBlur={() => void persistIfValid("nhsNumber")}
-          onFocus={() => void persistIfValid("lastName")}
-          placeholder="10 digit NHS number"
-        />
+          registerField={registerField}
+        >
+          <ControlledTextField
+            control={control}
+            keyboardType="number-pad"
+            label="NHS number"
+            name="nhsNumber"
+            onFieldBlur={() => void persistIfValid("nhsNumber")}
+            onFocus={() => void persistIfValid("lastName")}
+            placeholder="10 digit NHS number"
+          />
+        </FormFieldAnchor>
 
-        <Controller
-          control={control}
+        <FormFieldAnchor<TPiiFormInput>
           name="phoneE164"
-          render={({ field: { onChange, value } }) => (
-            <View style={onboardingStyles.fieldBlock}>
-              <Text style={onboardingStyles.label}>Phone number</Text>
-              <View style={styles.phoneRow}>
-                <View style={styles.phonePrefix}>
-                  <Text style={styles.phonePrefixText}>+44</Text>
+          registerField={registerField}
+        >
+          <Controller
+            control={control}
+            name="phoneE164"
+            render={({ field: { onChange, value } }) => (
+              <View style={onboardingStyles.fieldBlock}>
+                <Text style={onboardingStyles.label}>Phone number</Text>
+                <View style={styles.phoneRow}>
+                  <View style={styles.phonePrefix}>
+                    <Text style={styles.phonePrefixText}>+44</Text>
+                  </View>
+                  <TextInput
+                    value={formatPhoneForDisplay(value)}
+                    onChangeText={(text) => onChange(toUkPhoneE164(text))}
+                    onBlur={() => {
+                      void persistIfValid("phoneE164");
+                    }}
+                    onFocus={() => {
+                      void persistIfValid("lastName");
+                    }}
+                    placeholder="Phone number"
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    placeholderTextColor={theme.colors.textMuted}
+                    style={[onboardingStyles.input, styles.phoneInput]}
+                  />
                 </View>
-                <TextInput
-                  value={formatPhoneForDisplay(value)}
-                  onChangeText={(text) => onChange(toUkPhoneE164(text))}
-                  onBlur={() => {
-                    void persistIfValid("phoneE164");
-                  }}
-                  onFocus={() => {
-                    void persistIfValid("lastName");
-                  }}
-                  placeholder="Phone number"
-                  keyboardType="phone-pad"
-                  autoCapitalize="none"
-                  placeholderTextColor={theme.colors.textMuted}
-                  style={[onboardingStyles.input, styles.phoneInput]}
-                />
+                {!!errors.phoneE164 && (
+                  <Text style={onboardingStyles.errorText}>
+                    {String(errors.phoneE164.message)}
+                  </Text>
+                )}
               </View>
-              {!!errors.phoneE164 && (
-                <Text style={onboardingStyles.errorText}>
-                  {String(errors.phoneE164.message)}
-                </Text>
-              )}
-            </View>
-          )}
-        />
+            )}
+          />
+        </FormFieldAnchor>
 
-        <ControlledDateField
-          control={control}
-          label="Date of birth"
+        <FormFieldAnchor<TPiiFormInput>
           name="dateOfBirth"
-          onValueChange={() => void persistIfValid("dateOfBirth")}
-        />
+          registerField={registerField}
+        >
+          <ControlledDateField
+            control={control}
+            label="Date of birth"
+            name="dateOfBirth"
+            onValueChange={() => void persistIfValid("dateOfBirth")}
+          />
+        </FormFieldAnchor>
 
-        <Controller
-          control={control}
+        <FormFieldAnchor<TPiiFormInput>
           name="sexAtBirth"
-          render={({ field: { onChange, value } }) => (
-            <OptionSelectField
-              label="Sex at birth"
-              placeholder="Select"
-              value={(value as SexAtBirth) || undefined}
-              options={SEX_AT_BIRTH_OPTIONS.filter(
-                (option) => option.value !== "",
-              )}
-              onChange={(nextValue) => {
-                const sexValue = nextValue as SexAtBirth;
-                onChange(sexValue);
-                if (genderIdentitySameAsBirth === "yes") {
-                  setValue("genderIdentity", sexValue, {
-                    shouldValidate: false,
-                  });
-                }
-                void persistIfValid("sexAtBirth");
-                void saveDraft();
-              }}
-              error={errors.sexAtBirth?.message as string | undefined}
-            />
-          )}
-        />
+          registerField={registerField}
+        >
+          <Controller
+            control={control}
+            name="sexAtBirth"
+            render={({ field: { onChange, value } }) => (
+              <OptionSelectField
+                label="Sex at birth"
+                placeholder="Select"
+                value={(value as SexAtBirth) || undefined}
+                options={SEX_AT_BIRTH_OPTIONS.filter(
+                  (option) => option.value !== "",
+                )}
+                onChange={(nextValue) => {
+                  const sexValue = nextValue as SexAtBirth;
+                  onChange(sexValue);
+                  if (genderIdentitySameAsBirth === "yes") {
+                    setValue("genderIdentity", sexValue, {
+                      shouldValidate: false,
+                    });
+                  }
+                  void persistIfValid("sexAtBirth");
+                  void saveDraft();
+                }}
+                error={errors.sexAtBirth?.message as string | undefined}
+              />
+            )}
+          />
+        </FormFieldAnchor>
 
         <OptionSelectField
           label="Gender identity same as birth"
@@ -320,40 +354,50 @@ export default function OnboardingPiiForm({
         />
 
         {showGenderIdentityPicker ? (
+          <FormFieldAnchor<TPiiFormInput>
+            name="genderIdentity"
+            registerField={registerField}
+          >
+            <Controller
+              control={control}
+              name="genderIdentity"
+              render={({ field: { onChange, value } }) => (
+                <OptionSelectField
+                  label="Gender identity"
+                  value={value ?? "woman"}
+                  options={[...GENDER_IDENTITY_OPTIONS]}
+                  onChange={(nextValue) => {
+                    onChange(nextValue);
+                    void persistIfValid("genderIdentity");
+                  }}
+                  error={errors.genderIdentity?.message as string | undefined}
+                />
+              )}
+            />
+          </FormFieldAnchor>
+        ) : null}
+
+        <FormFieldAnchor<TPiiFormInput>
+          name="ethnicity"
+          registerField={registerField}
+        >
           <Controller
             control={control}
-            name="genderIdentity"
+            name="ethnicity"
             render={({ field: { onChange, value } }) => (
-              <OptionSelectField
-                label="Gender identity"
-                value={value ?? "woman"}
-                options={[...GENDER_IDENTITY_OPTIONS]}
-                onChange={(nextValue) => {
-                  onChange(nextValue);
-                  void persistIfValid("genderIdentity");
+              <SelectionField
+                label="Ethnicity"
+                value={value ? (ETHNICITY_LABELS[value] ?? value) : null}
+                placeholder="Select Ethnicity"
+                onPress={() => {
+                  setEthnicityDraft(value ?? null);
+                  setEthnicityModalVisible(true);
                 }}
-                error={errors.genderIdentity?.message as string | undefined}
+                error={errors.ethnicity?.message as string | undefined}
               />
             )}
           />
-        ) : null}
-
-        <Controller
-          control={control}
-          name="ethnicity"
-          render={({ field: { onChange, value } }) => (
-            <SelectionField
-              label="Ethnicity"
-              value={value ? (ETHNICITY_LABELS[value] ?? value) : null}
-              placeholder="Select Ethnicity"
-              onPress={() => {
-                setEthnicityDraft(value ?? null);
-                setEthnicityModalVisible(true);
-              }}
-              error={errors.ethnicity?.message as string | undefined}
-            />
-          )}
-        />
+        </FormFieldAnchor>
 
         <ControlledOptionField
           control={control}
@@ -428,7 +472,7 @@ export default function OnboardingPiiForm({
           variant="primary"
           label={isSubmitting || saving || isLoading ? "Saving..." : "Save"}
           disabled={isSubmitting || saving || isLoading}
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(onSubmit, scrollToFirstError)}
         />
       </OnboardingFormScreen>
 

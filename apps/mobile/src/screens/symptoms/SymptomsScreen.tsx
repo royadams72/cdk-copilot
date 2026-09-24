@@ -1,18 +1,14 @@
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  View,
-} from "react-native";
+import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { DateTimeModal } from "@/components/date-time-modal";
-import { FeedbackModal } from "@/components/feedback-modal";
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { FormField, TextField } from "@/components/ui/form-field";
-import { Section } from "@/components/ui/section";
+import { DateTimeModal } from "@/components/DateTimeModal";
+import { FeedbackModal } from "@/components/FeedBackModal";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { FormField, TextField } from "@/components/ui/FormField";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import {
@@ -20,9 +16,7 @@ import {
   useGetSymptomsQuery,
   useUpdateSymptomMutation,
 } from "@/store/services/symptomsApi";
-import type {
-  SymptomCurrent,
-} from "@/store/services/types";
+import type { SymptomCurrent } from "@/store/services/types";
 
 import { styles } from "../dashboard/styles";
 import { NutritionStyles } from "../nutrition/styles";
@@ -202,7 +196,9 @@ export default function SymptomsScreen() {
         />
 
         <View style={{ gap: theme.spacing.xs }}>
-          <ThemedText type="title" style={NutritionStyles.screenTitle}>Symptoms</ThemedText>
+          <ThemedText type="title" style={NutritionStyles.screenTitle}>
+            Symptoms
+          </ThemedText>
           <ThemedText style={NutritionStyles.pageHelperText}>
             Log symptoms in a structured way so your care team can review them.
           </ThemedText>
@@ -219,31 +215,36 @@ export default function SymptomsScreen() {
 
         {!loading && error ? (
           <Section title="We couldn't load your symptoms">
-            <ThemedText style={{ color: theme.colors.copy }}>{currentError}</ThemedText>
+            <ThemedText style={{ color: theme.colors.copy }}>
+              {currentError}
+            </ThemedText>
             <AppButton label="Retry" onPress={() => refetch()} />
           </Section>
         ) : null}
 
         <Section
-          title={editing
+          title={
+            editing
               ? `Update ${editing.name}`
               : prefillSource
                 ? `Report ${prefillSource.name} again`
-                : "Log a symptom"}
-          description={editing
+                : "Log a symptom"
+          }
+          description={
+            editing
               ? "Update the current symptom entry."
               : prefillSource
                 ? "This form is prefilled from a previous symptom report."
-                : "Severity uses a simple 1 to 5 scale."}
+                : "Severity uses a simple 1 to 5 scale."
+          }
         >
-
-            <TextField
-              label="Symptom name"
-              editable={!editing}
-              onChangeText={setName}
-              placeholder="e.g. nausea"
-              value={name}
-            />
+          <TextField
+            label="Symptom name"
+            editable={!editing}
+            onChangeText={setName}
+            placeholder="e.g. nausea"
+            value={name}
+          />
 
           <View style={{ gap: 8 }}>
             <ThemedText style={{ fontWeight: "600" }}>Severity</ThemedText>
@@ -290,25 +291,31 @@ export default function SymptomsScreen() {
             />
           </FormField>
 
-            <TextField
-              label="Triggers"
-              onChangeText={setTriggersText}
-              placeholder="e.g. after dialysis, walking"
-              value={triggersText}
-            />
+          <TextField
+            label="Triggers"
+            onChangeText={setTriggersText}
+            placeholder="e.g. after dialysis, walking"
+            value={triggersText}
+          />
 
-            <TextField
-              label="Note"
-              multiline
-              onChangeText={setNote}
-              placeholder="Optional detail for your care team"
-              numberOfLines={4}
-              value={note}
-            />
+          <TextField
+            label="Note"
+            multiline
+            onChangeText={setNote}
+            placeholder="Optional detail for your care team"
+            numberOfLines={4}
+            value={note}
+          />
 
           <View style={{ flexDirection: "row", gap: 8 }}>
             <AppButton
-              label={editing ? "Update symptom" : prefillSource ? "Save new report" : "Save symptom"}
+              label={
+                editing
+                  ? "Update symptom"
+                  : prefillSource
+                    ? "Save new report"
+                    : "Save symptom"
+              }
               disabled={saving}
               onPress={onSubmit}
               loading={saving}
@@ -348,7 +355,9 @@ export default function SymptomsScreen() {
                   Recorded {formatDateTime(item.recordedAt)}
                 </ThemedText>
                 {item.note ? <ThemedText>{item.note}</ThemedText> : null}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
                   <AppButton
                     label="Edit"
                     onPress={() => beginEditing(item)}
@@ -418,7 +427,6 @@ export default function SymptomsScreen() {
             </ThemedText>
           )}
         </Section>
-
       </AppScreen>
 
       <DateTimeModal

@@ -6,7 +6,7 @@ import { API } from "@/constants/api";
 import { getOrCreateAuthDeviceId } from "@/lib/authDevice";
 import { LabeledInput } from "./components/FormFields";
 import { OnboardingFormScreen } from "@/screens/onboarding/components/Onboarding";
-import { AppButton } from "@/components/ui/button";
+import { AppButton } from "@/components/ui/Button";
 import { styles } from "./styles";
 
 export default function EmailSignup() {

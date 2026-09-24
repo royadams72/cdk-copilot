@@ -7,13 +7,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
 import { useGetCarePlansQuery } from "@/store/services/carePlanApi";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
 import { NutritionStyles } from "@/screens/nutrition/styles";
@@ -32,7 +32,10 @@ export default function CarePlanList() {
   );
   const loading = isLoading && !data;
   const refreshing = isFetching && !!data;
-  const errorMessage = toQueryErrorMessage(error, "We couldn't load your care plans.");
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't load your care plans.",
+  );
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -42,7 +45,9 @@ export default function CarePlanList() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
-        <ThemedText style={styles.helperText}>Loading your care plans...</ThemedText>
+        <ThemedText style={styles.helperText}>
+          Loading your care plans...
+        </ThemedText>
       </View>
     );
   }
@@ -53,10 +58,17 @@ export default function CarePlanList() {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <AppButton label="Back" onPress={() => router.replace("/(dashboard)/dashboard")} variant="secondary" size="compact" />
+      <AppButton
+        label="Back"
+        onPress={() => router.replace("/(dashboard)/dashboard")}
+        variant="secondary"
+        size="compact"
+      />
 
       <View style={{ gap: theme.spacing.xs }}>
-        <ThemedText type="title" style={NutritionStyles.screenTitle}>Care plans</ThemedText>
+        <ThemedText type="title" style={NutritionStyles.screenTitle}>
+          Care plans
+        </ThemedText>
         <ThemedText style={NutritionStyles.pageHelperText}>
           Active and completed care plans linked to your account.
         </ThemedText>
@@ -64,8 +76,15 @@ export default function CarePlanList() {
 
       {error && !data ? (
         <Section title="Care plans unavailable">
-          <ThemedText style={{ color: theme.colors.copy }}>{errorMessage}</ThemedText>
-          <AppButton label="Retry" onPress={handleRefresh} variant="outline" size="compact" />
+          <ThemedText style={{ color: theme.colors.copy }}>
+            {errorMessage}
+          </ThemedText>
+          <AppButton
+            label="Retry"
+            onPress={handleRefresh}
+            variant="outline"
+            size="compact"
+          />
         </Section>
       ) : null}
 
@@ -81,7 +100,9 @@ export default function CarePlanList() {
               )
             }
           >
-            <Section style={plan.reviewDue ? styles.carePlanReviewCard : undefined}>
+            <Section
+              style={plan.reviewDue ? styles.carePlanReviewCard : undefined}
+            >
               <View style={styles.carePlanTaskHeader}>
                 <ThemedText type="defaultSemiBold">{plan.title}</ThemedText>
                 <ThemedText style={styles.carePlanTaskMeta}>
@@ -90,7 +111,9 @@ export default function CarePlanList() {
               </View>
               <ThemedText style={styles.helperText}>
                 {plan.taskCount} active task{plan.taskCount === 1 ? "" : "s"}
-                {plan.reviewLabelDisplay ? ` · Review in ${plan.reviewLabelDisplay}` : ""}
+                {plan.reviewLabelDisplay
+                  ? ` · Review in ${plan.reviewLabelDisplay}`
+                  : ""}
               </ThemedText>
               {plan.reviewDue ? (
                 <ThemedText style={styles.helperText}>

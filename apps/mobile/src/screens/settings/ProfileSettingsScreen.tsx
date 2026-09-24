@@ -9,12 +9,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import { AppScreen } from "@/components/app-screen";
-import { ThemedText } from "@/components/themed-text";
-import { formControlStyles, TextField } from "@/components/ui/form-field";
-import { AppButton } from "@/components/ui/button";
+import { AppScreen } from "@/components/AppScreen";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { formControlStyles, TextField } from "@/components/ui/FormField";
+import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
-import { Card } from "@/screens/dashboard/components/Card";
+import { Section } from "@/components/ui/Section";
 import {
   useGetCurrentUserSettingsQuery,
   useRequestEmailChangeMutation,
@@ -150,7 +150,7 @@ export default function ProfileSettingsScreen() {
         </ThemedText>
       </View>
 
-      <Card style={styles.card}>
+      <Section>
         <ThemedText type="defaultSemiBold">Personal details</ThemedText>
         <TextField
           description="Changing this sends a verification link. Your current email remains active until confirmed."
@@ -182,9 +182,9 @@ export default function ProfileSettingsScreen() {
             { label: "Imperial (lb, ft)", value: "imperial" },
           ]}
         />
-      </Card>
+      </Section>
 
-      <Card style={styles.card}>
+      <Section>
         <ThemedText type="defaultSemiBold">Kidney health</ThemedText>
         <PickerField
           label="CKD stage"
@@ -244,9 +244,9 @@ export default function ProfileSettingsScreen() {
             </View>
           </View>
         )}
-      </Card>
+      </Section>
 
-      <Card style={styles.card}>
+      <Section>
         <ThemedText type="defaultSemiBold">Care team</ThemedText>
         <ThemedText style={styles.readOnly}>
           Managed by your renal service and shown here as read-only.
@@ -269,7 +269,7 @@ export default function ProfileSettingsScreen() {
             No care-team details have been added yet.
           </ThemedText>
         )}
-      </Card>
+      </Section>
 
       <TouchableOpacity
         disabled={isSaving || isSendingEmail}

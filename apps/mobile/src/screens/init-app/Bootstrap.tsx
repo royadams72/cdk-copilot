@@ -11,12 +11,15 @@ import {
   refreshSessionTokenOnce,
 } from "@/lib/authSession";
 import { API } from "@/constants/api";
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { syncAuthenticatedAppState } from "@/lib/pushNotifications";
 import { ActivityIndicator, View } from "react-native";
 import { styles } from "../dashboard/styles";
 import { ErrorState } from "../dashboard/Dashboard";
-import { logPostAuthRouteDecision, resolvePostAuthRoute } from "@/lib/onboarding";
+import {
+  logPostAuthRouteDecision,
+  resolvePostAuthRoute,
+} from "@/lib/onboarding";
 
 async function restoreUserSession() {
   const res = await authFetch(`${API}/api/users/get-user`);
@@ -51,7 +54,8 @@ const Bootstrap = () => {
 
     (async () => {
       try {
-        const hasInactiveMembership = await loadMembershipInactiveSessionState();
+        const hasInactiveMembership =
+          await loadMembershipInactiveSessionState();
         if (hasInactiveMembership) {
           router.replace(APP_ROUTES.accessEnded);
           return;
@@ -77,7 +81,10 @@ const Bootstrap = () => {
               if (retried.data?.hasActiveAssignments !== false) {
                 void syncAuthenticatedAppState();
               }
-              logPostAuthRouteDecision("bootstrap:refresh-only", retried.data ?? {});
+              logPostAuthRouteDecision(
+                "bootstrap:refresh-only",
+                retried.data ?? {},
+              );
               router.replace(resolvePostAuthRoute(retried.data ?? {}) as never);
               return;
             }

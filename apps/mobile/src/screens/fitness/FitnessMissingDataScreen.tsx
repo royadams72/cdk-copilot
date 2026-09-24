@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Platform, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import type { MeasurementKind } from "@/store/services/types";
 
@@ -55,7 +61,9 @@ function buildHistoricalDateKeys(days: number) {
 
 export default function FitnessMissingDataScreen() {
   const router = useRouter();
-  const [repairState, setRepairState] = useState<Record<RepairKind, RepairState>>({
+  const [repairState, setRepairState] = useState<
+    Record<RepairKind, RepairState>
+  >({
     blood_pressure: { error: null, running: false, summary: null },
     exercise: { error: null, running: false, summary: null },
     heart_rate: { error: null, running: false, summary: null },
@@ -68,7 +76,10 @@ export default function FitnessMissingDataScreen() {
   const runRepair = async (kind: RepairKind) => {
     const provider = getCurrentHealthSyncProvider();
     if (!provider) {
-      Alert.alert("Repair unavailable", "Health sync is not available on this device.");
+      Alert.alert(
+        "Repair unavailable",
+        "Health sync is not available on this device.",
+      );
       return;
     }
 
@@ -103,10 +114,7 @@ export default function FitnessMissingDataScreen() {
         [kind]: { error: null, running: false, summary },
       }));
 
-      Alert.alert(
-        `${REPAIR_LABELS[kind]} repair finished`,
-        summary,
-      );
+      Alert.alert(`${REPAIR_LABELS[kind]} repair finished`, summary);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setRepairState((current) => ({
@@ -118,78 +126,80 @@ export default function FitnessMissingDataScreen() {
 
   return (
     <AppScreen>
-        <View
-          style={{
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "space-between",
-          }}
-        >
-          <AppButton
-            label="Back"
-            onPress={() => router.replace(APP_ROUTES.healthDashboard)}
-            size="compact"
-            variant="outline"
-          />
-        </View>
+      <View
+        style={{
+          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
+      >
+        <AppButton
+          label="Back"
+          onPress={() => router.replace(APP_ROUTES.healthDashboard)}
+          size="compact"
+          variant="outline"
+        />
+      </View>
 
-        <View style={{ gap: 4 }}>
-          <ThemedText type="title">Missing data</ThemedText>
-          <ThemedText style={{ opacity: 0.72 }}>
-            {Platform.OS === "ios"
-              ? "Repair historical Apple Health gaps for the last 30 completed days."
-              : "Repair historical Health Connect gaps for the last 30 completed days."}
-          </ThemedText>
-        </View>
+      <View style={{ gap: 4 }}>
+        <ThemedText type="title">Missing data</ThemedText>
+        <ThemedText style={{ opacity: 0.72 }}>
+          {Platform.OS === "ios"
+            ? "Repair historical Apple Health gaps for the last 30 completed days."
+            : "Repair historical Health Connect gaps for the last 30 completed days."}
+        </ThemedText>
+      </View>
 
-        {(Object.keys(REPAIR_LABELS) as RepairKind[]).map((kind) => {
-          const state = repairState[kind];
+      {(Object.keys(REPAIR_LABELS) as RepairKind[]).map((kind) => {
+        const state = repairState[kind];
 
-          return (
-            <Card key={kind}>
-              <View style={{ gap: 12 }}>
-                <View style={{ gap: 4 }}>
-                  <ThemedText type="defaultSemiBold">{REPAIR_LABELS[kind]}</ThemedText>
-                  <ThemedText style={{ opacity: 0.72 }}>
-                    {Platform.OS === "ios"
-                      ? `Check Apple Health for missing historical ${REPAIR_LABELS[
-                          kind
-                        ].toLowerCase()} data and import any gaps found.`
-                      : `Check Health Connect for missing historical ${REPAIR_LABELS[
-                          kind
-                        ].toLowerCase()} data and import any gaps found.`}
+        return (
+          <Card key={kind}>
+            <View style={{ gap: 12 }}>
+              <View style={{ gap: 4 }}>
+                <ThemedText type="defaultSemiBold">
+                  {REPAIR_LABELS[kind]}
+                </ThemedText>
+                <ThemedText style={{ opacity: 0.72 }}>
+                  {Platform.OS === "ios"
+                    ? `Check Apple Health for missing historical ${REPAIR_LABELS[
+                        kind
+                      ].toLowerCase()} data and import any gaps found.`
+                    : `Check Health Connect for missing historical ${REPAIR_LABELS[
+                        kind
+                      ].toLowerCase()} data and import any gaps found.`}
+                </ThemedText>
+                {state.summary ? (
+                  <ThemedText style={{ color: "#0F766E", opacity: 0.9 }}>
+                    {state.summary}
                   </ThemedText>
-                  {state.summary ? (
-                    <ThemedText style={{ color: "#0F766E", opacity: 0.9 }}>
-                      {state.summary}
-                    </ThemedText>
-                  ) : null}
-                  {state.error ? (
-                    <ThemedText style={{ color: "#B91C1C", opacity: 0.9 }}>
-                      {state.error}
-                    </ThemedText>
-                  ) : null}
-                </View>
-                <TouchableOpacity
-                  disabled={state.running}
-                  onPress={() => {
-                    void runRepair(kind);
-                  }}
-                >
-                  {state.running ? (
-                    <View style={{ alignItems: "flex-start", paddingTop: 2 }}>
-                      <ActivityIndicator />
-                    </View>
-                  ) : (
-                    <ThemedText style={{ fontWeight: "700" }}>
-                      Repair last 30 days
-                    </ThemedText>
-                  )}
-                </TouchableOpacity>
+                ) : null}
+                {state.error ? (
+                  <ThemedText style={{ color: "#B91C1C", opacity: 0.9 }}>
+                    {state.error}
+                  </ThemedText>
+                ) : null}
               </View>
-            </Card>
-          );
-        })}
+              <TouchableOpacity
+                disabled={state.running}
+                onPress={() => {
+                  void runRepair(kind);
+                }}
+              >
+                {state.running ? (
+                  <View style={{ alignItems: "flex-start", paddingTop: 2 }}>
+                    <ActivityIndicator />
+                  </View>
+                ) : (
+                  <ThemedText style={{ fontWeight: "700" }}>
+                    Repair last 30 days
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Card>
+        );
+      })}
     </AppScreen>
   );
 }

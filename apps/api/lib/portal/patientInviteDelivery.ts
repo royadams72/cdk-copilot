@@ -101,3 +101,33 @@ export async function sendPatientInviteEmail(args: {
     };
   }
 }
+
+export async function sendPendingConsentReminderEmail(args: {
+  email: string;
+}): Promise<PatientInviteDeliveryResult> {
+  const html = `
+    <p>Your CKD Copilot account has been activated, but your care-team access request is still waiting for your decision.</p>
+    <p>Open CKD Copilot and sign in with ${args.email} to review the request.</p>
+    <p>If you were not expecting this request, contact the care organisation that invited you.</p>
+  `;
+
+  if (!resend || !EMAIL_FROM) {
+    if (!isLocalDev()) {
+      return { activationCode: null, errorMessage: "Consent reminder email delivery is not configured", ok: false };
+    }
+    console.log("[DEV] Patient consent reminder", { email: args.email });
+    return { activationCode: null, ok: true };
+  }
+
+  try {
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      html,
+      subject: "Review your CKD Copilot care-team access request",
+      to: args.email,
+    });
+    return { activationCode: null, ok: true };
+  } catch (error: any) {
+    return { activationCode: null, errorMessage: error?.message || "Email send failed", ok: false };
+  }
+}

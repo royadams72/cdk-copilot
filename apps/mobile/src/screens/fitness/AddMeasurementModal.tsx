@@ -9,8 +9,8 @@ import {
   View,
 } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
-import { AppButton } from "@/components/ui/button";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { AppButton } from "@/components/ui/Button";
 
 import type {
   ExerciseRefCategory,
@@ -398,9 +398,7 @@ export function AddMeasurementModal({
                   >
                     <Picker
                       selectedValue={weightDecimal}
-                      onValueChange={(value) =>
-                        setWeightDecimal(Number(value))
-                      }
+                      onValueChange={(value) => setWeightDecimal(Number(value))}
                     >
                       {weightDecimalOptions.map((value) => (
                         <Picker.Item
@@ -413,8 +411,8 @@ export function AddMeasurementModal({
                   </View>
                 </View>
                 <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>
-                  Selected: {weightValue}
-                  .{weightDecimal} {weightUnit === "lb" ? "lbs" : "kg"}
+                  Selected: {weightValue}.{weightDecimal}{" "}
+                  {weightUnit === "lb" ? "lbs" : "kg"}
                 </ThemedText>
               </>
             ) : null}
@@ -466,8 +464,8 @@ export function AddMeasurementModal({
                   }}
                 >
                   <ThemedText style={{ fontSize: 12, opacity: 0.78 }}>
-                    If &quot;from&quot; is later than &quot;to&quot;, it will be saved as overnight
-                    sleep.
+                    If &quot;from&quot; is later than &quot;to&quot;, it will be
+                    saved as overnight sleep.
                   </ThemedText>
                 </View>
               </>

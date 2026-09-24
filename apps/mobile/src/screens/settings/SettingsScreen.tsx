@@ -8,9 +8,9 @@ import {
 import { useRouter } from "expo-router";
 import { APP_ROUTES } from "@/constants/routes";
 
-import { ThemedText } from "@/components/themed-text";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
+import { ThemedText } from "@/components/ThemedTextColorContext";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
 import { useStepCount } from "@/hooks/useStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import type { NativeHealthConnectBackgroundSyncStatus } from "@/lib/healthConnectNativeBridge";

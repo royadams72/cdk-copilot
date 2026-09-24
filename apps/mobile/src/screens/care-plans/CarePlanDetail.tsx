@@ -1,12 +1,8 @@
 import { useCallback, useEffect } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  View,
-} from "react-native";
+import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { setLastViewedCarePlanAt } from "@/lib/carePlans";
 import { formatMobileDate } from "@/lib/format/date";
 import { toQueryErrorMessage } from "@/store/services/appApi";
@@ -14,9 +10,9 @@ import {
   useGetCarePlanByIdQuery,
   useUpdateCarePlanTaskStatusMutation,
 } from "@/store/services/carePlanApi";
-import { AppScreen } from "@/components/app-screen";
-import { AppButton } from "@/components/ui/button";
-import { Section } from "@/components/ui/section";
+import { AppScreen } from "@/components/AppScreen";
+import { AppButton } from "@/components/ui/Button";
+import { Section } from "@/components/ui/Section";
 import { theme } from "@/constants/theme";
 import { styles } from "@/screens/dashboard/styles";
 
@@ -34,7 +30,10 @@ export default function CarePlanDetail() {
     useUpdateCarePlanTaskStatusMutation();
   const refreshing = isFetching && !!data;
   const loading = isLoading && !data;
-  const errorMessage = toQueryErrorMessage(error, "We couldn't load your care plan.");
+  const errorMessage = toQueryErrorMessage(
+    error,
+    "We couldn't load your care plan.",
+  );
 
   useEffect(() => {
     if (!data?.updatedAt) return;
@@ -67,7 +66,9 @@ export default function CarePlanDetail() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" />
-        <ThemedText style={styles.helperText}>Loading your care plan...</ThemedText>
+        <ThemedText style={styles.helperText}>
+          Loading your care plan...
+        </ThemedText>
       </View>
     );
   }
@@ -78,14 +79,24 @@ export default function CarePlanDetail() {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <AppButton label="Back" onPress={() => router.replace("/(dashboard)/care-plans")} variant="secondary" size="compact" />
+      <AppButton
+        label="Back"
+        onPress={() => router.replace("/(dashboard)/care-plans")}
+        variant="secondary"
+        size="compact"
+      />
 
       {!carePlanId || !data ? (
         <Section title="Care plan unavailable">
           <ThemedText style={styles.helperText}>
             {carePlanId ? errorMessage : "No care plan was selected."}
           </ThemedText>
-          <AppButton label="Return to care plans" onPress={() => router.replace("/(dashboard)/care-plans")} variant="outline" size="compact" />
+          <AppButton
+            label="Return to care plans"
+            onPress={() => router.replace("/(dashboard)/care-plans")}
+            variant="outline"
+            size="compact"
+          />
         </Section>
       ) : (
         <>
@@ -104,12 +115,15 @@ export default function CarePlanDetail() {
           {data.reviewDue ? (
             <Section title="Review ready" style={styles.carePlanReviewCard}>
               <ThemedText style={styles.helperText}>
-                Your care team wants a quick update on whether this plan is working for you.
+                Your care team wants a quick update on whether this plan is
+                working for you.
               </ThemedText>
               <AppButton
                 label="Review care plan"
                 onPress={() =>
-                  router.push(`/(dashboard)/care-plan-review?id=${carePlanId}` as never)
+                  router.push(
+                    `/(dashboard)/care-plan-review?id=${carePlanId}` as never,
+                  )
                 }
                 size="compact"
               />
@@ -119,15 +133,22 @@ export default function CarePlanDetail() {
           <Section title="Plan summary">
             <View style={styles.carePlanSummaryGrid}>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Associated diagnoses</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Associated diagnoses
+                </ThemedText>
                 {data.diagnoses.length ? (
                   data.diagnoses.map((diagnosis) => (
-                    <ThemedText key={diagnosis.id} style={styles.carePlanMetaValue}>
+                    <ThemedText
+                      key={diagnosis.id}
+                      style={styles.carePlanMetaValue}
+                    >
                       {diagnosis.label}
                     </ThemedText>
                   ))
                 ) : (
-                  <ThemedText style={styles.helperText}>No diagnoses linked</ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    No diagnoses linked
+                  </ThemedText>
                 )}
               </View>
               <View style={styles.carePlanSummaryCell}>
@@ -141,25 +162,33 @@ export default function CarePlanDetail() {
                 </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Review in</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Review in
+                </ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
                   {data.reviewLabelDisplay ?? "Not set"}
                 </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Activated</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Activated
+                </ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
                   {formatMobileDate(data.activatedAt)}
                 </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Next review</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Next review
+                </ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
                   {formatMobileDate(data.nextReviewAt)}
                 </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Last reviewed</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Last reviewed
+                </ThemedText>
                 <ThemedText style={styles.carePlanMetaValue}>
                   {formatMobileDate(data.reviewedAt)}
                 </ThemedText>
@@ -168,12 +197,17 @@ export default function CarePlanDetail() {
             {data.notes ? (
               <View style={styles.carePlanSection}>
                 <ThemedText style={styles.carePlanMetaLabel}>Notes</ThemedText>
-                <ThemedText style={styles.carePlanBodyText}>{data.notes}</ThemedText>
+                <ThemedText style={styles.carePlanBodyText}>
+                  {data.notes}
+                </ThemedText>
               </View>
             ) : null}
           </Section>
 
-          <Section title="Recent activity" description="Changes made by you or your care team on this plan.">
+          <Section
+            title="Recent activity"
+            description="Changes made by you or your care team on this plan."
+          >
             {data.activity?.length ? (
               data.activity.map((event) => (
                 <View key={event.id} style={styles.carePlanListRow}>
@@ -187,26 +221,40 @@ export default function CarePlanDetail() {
                       {formatMobileDate(event.at)}
                     </ThemedText>
                   </View>
-                  <ThemedText style={styles.carePlanBodyText}>{event.by}</ThemedText>
+                  <ThemedText style={styles.carePlanBodyText}>
+                    {event.by}
+                  </ThemedText>
                   {event.note ? (
-                    <ThemedText style={styles.carePlanBodyText}>{event.note}</ThemedText>
+                    <ThemedText style={styles.carePlanBodyText}>
+                      {event.note}
+                    </ThemedText>
                   ) : null}
                 </View>
               ))
             ) : (
-              <ThemedText style={styles.helperText}>No recent activity recorded.</ThemedText>
+              <ThemedText style={styles.helperText}>
+                No recent activity recorded.
+              </ThemedText>
             )}
           </Section>
 
           <Section title="People involved in this plan">
             <View style={styles.carePlanSummaryGrid}>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Created by</ThemedText>
-                <ThemedText style={styles.carePlanMetaValue}>{data.createdBy}</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Created by
+                </ThemedText>
+                <ThemedText style={styles.carePlanMetaValue}>
+                  {data.createdBy}
+                </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCell}>
-                <ThemedText style={styles.carePlanMetaLabel}>Updated by</ThemedText>
-                <ThemedText style={styles.carePlanMetaValue}>{data.updatedBy}</ThemedText>
+                <ThemedText style={styles.carePlanMetaLabel}>
+                  Updated by
+                </ThemedText>
+                <ThemedText style={styles.carePlanMetaValue}>
+                  {data.updatedBy}
+                </ThemedText>
               </View>
               <View style={styles.carePlanSummaryCellWide}>
                 <ThemedText style={styles.carePlanMetaLabel}>Owners</ThemedText>
@@ -217,7 +265,9 @@ export default function CarePlanDetail() {
                     </ThemedText>
                   ))
                 ) : (
-                  <ThemedText style={styles.helperText}>No owners linked</ThemedText>
+                  <ThemedText style={styles.helperText}>
+                    No owners linked
+                  </ThemedText>
                 )}
               </View>
             </View>
@@ -227,23 +277,32 @@ export default function CarePlanDetail() {
             {data.goals.length ? (
               data.goals.map((goal) => (
                 <View key={goal.id} style={styles.carePlanListRow}>
-                  <ThemedText style={styles.carePlanListTitle}>{goal.label}</ThemedText>
+                  <ThemedText style={styles.carePlanListTitle}>
+                    {goal.label}
+                  </ThemedText>
                   <ThemedText style={styles.carePlanBodyText}>
                     {goal.targetSummary ?? "No target summary"}
                   </ThemedText>
                 </View>
               ))
             ) : (
-              <ThemedText style={styles.helperText}>No goals recorded.</ThemedText>
+              <ThemedText style={styles.helperText}>
+                No goals recorded.
+              </ThemedText>
             )}
           </Section>
 
-          <Section title="Tasks" description="Daily, weekly, or once-off actions to support your plan.">
+          <Section
+            title="Tasks"
+            description="Daily, weekly, or once-off actions to support your plan."
+          >
             {data.tasks.length ? (
               data.tasks.map((task) => (
                 <View key={task.id} style={styles.carePlanListRow}>
                   <View style={styles.carePlanTaskHeader}>
-                    <ThemedText style={styles.carePlanListTitle}>{task.label}</ThemedText>
+                    <ThemedText style={styles.carePlanListTitle}>
+                      {task.label}
+                    </ThemedText>
                     <ThemedText style={styles.carePlanTaskMeta}>
                       {formatStatus(task.status)} · {task.freq}
                     </ThemedText>
@@ -255,12 +314,16 @@ export default function CarePlanDetail() {
                   ) : null}
                   {data.status === "active" ? (
                     <AppButton
-                      label={task.status === "done" ? "Mark as open" : "Mark as done"}
+                      label={
+                        task.status === "done" ? "Mark as open" : "Mark as done"
+                      }
                       disabled={isUpdatingTask}
                       onPress={() =>
                         void handleTaskAction(
                           task.id,
-                          task.status === "done" ? "reopen_task" : "complete_task",
+                          task.status === "done"
+                            ? "reopen_task"
+                            : "complete_task",
                           task.label,
                         )
                       }
@@ -271,7 +334,9 @@ export default function CarePlanDetail() {
                 </View>
               ))
             ) : (
-              <ThemedText style={styles.helperText}>No tasks recorded.</ThemedText>
+              <ThemedText style={styles.helperText}>
+                No tasks recorded.
+              </ThemedText>
             )}
           </Section>
         </>

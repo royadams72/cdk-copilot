@@ -1,5 +1,5 @@
 import React from "react";
-import { Section as AppSection } from "@/components/ui/section";
+import { Section as AppSection } from "@/components/ui/Section";
 
 export function Section({
   title,

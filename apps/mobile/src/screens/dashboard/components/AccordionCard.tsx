@@ -1,7 +1,7 @@
 import { PropsWithChildren, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ThemedTextColorContext";
 import { styles } from "../styles";
 import { Card } from "./Card";
 
@@ -39,7 +39,9 @@ export function AccordionCard({
         style={styles.accordionHeader}
       >
         <View style={styles.accordionHeaderCopy}>
-          <ThemedText type="defaultSemiBold" style={styles.panelTitle}>{title}</ThemedText>
+          <ThemedText type="defaultSemiBold" style={styles.panelTitle}>
+            {title}
+          </ThemedText>
           <ThemedText style={styles.helperText}>{subtitle}</ThemedText>
         </View>
         <ThemedText
