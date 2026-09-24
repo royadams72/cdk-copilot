@@ -97,6 +97,13 @@ export function StackedRadialsCard({
 }
 
 function legendValue(radial: DashboardRadial) {
+  if (
+    radial.display === "actual" &&
+    radial.actual !== null &&
+    radial.actual !== undefined
+  ) {
+    return `${String(radial.actual)} ${radial.unit}`;
+  }
   if (radial.percent !== null && radial.percent !== undefined) {
     return `${toDisplayPercent(radial.percent)}%`;
   }

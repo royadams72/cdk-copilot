@@ -38,6 +38,8 @@ import { AppButton } from "@/components/ui/Button";
 import { theme } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
+const EXERCISE_DAILY_TARGET_MIN = 30;
+
 function localDateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -188,9 +190,13 @@ export default function Dashboard() {
       {
         id: "minutes-exercise",
         actual: exerciseMinutes,
+        display: "actual",
         label: "Exercise",
-        percent: null,
-        target: null,
+        percent:
+          exerciseMinutes === null
+            ? null
+            : exerciseMinutes / EXERCISE_DAILY_TARGET_MIN,
+        target: EXERCISE_DAILY_TARGET_MIN,
         unit: "min",
       },
       {

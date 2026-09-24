@@ -5,6 +5,7 @@ export type DashboardRadial = {
   label: string;
   unit: string;
   actual: number | null;
+  display?: "actual" | "percent";
   target: number | null;
   percent: number | null;
 };
