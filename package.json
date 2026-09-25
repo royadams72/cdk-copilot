@@ -27,7 +27,6 @@
   },
   "keywords": [],
   "license": "ISC",
-  "main": "index.js",
   "name": "ckd-copilot",
   "packageManager": "pnpm@10.16.1",
   "scripts": {
