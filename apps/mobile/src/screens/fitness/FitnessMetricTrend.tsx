@@ -14,6 +14,10 @@ import { AppButton } from "@/components/ui/Button";
 import { APP_ROUTES } from "@/constants/routes";
 import { type StepActivitySummary } from "@/lib/healthConnectStepSummary";
 import {
+  estimateActivityCalories,
+  type ActivityCaloriesEstimate,
+} from "@/lib/activityCalories";
+import {
   getServerHealthConnectSyncState,
   updateServerStepsBackfilledFrom,
 } from "@/lib/healthConnectSyncCommon";
@@ -23,6 +27,7 @@ import { completedBackfillWindowKeys } from "@/lib/healthConnectSyncState";
 import { scheduleDevSleepReminderNotification } from "@/lib/pushNotifications";
 import { useStepCount } from "@/hooks/useStepCount";
 import { toQueryErrorMessage } from "@/store/services/appApi";
+import { useGetTargetsQuery } from "@/store/services/dashboardApi";
 import {
   useCreateMeasurementMutation,
   useDeleteMeasurementMutation,
@@ -229,6 +234,13 @@ export default function FitnessMetricTrend() {
     isLoading: isHistoryLoading,
     refetch: refetchHistory,
   } = useGetMeasurementHistoryQuery(kind);
+  const { data: exerciseHistoryForSteps } = useGetMeasurementHistoryQuery(
+    "exercise",
+    { skip: kind !== "steps" },
+  );
+  const { data: lifestyleTargets } = useGetTargetsQuery("lifestyle", {
+    skip: kind !== "steps",
+  });
   const { data: currentUserSettings } = useGetCurrentUserSettingsQuery();
   const {
     status: liveStepStatus,
@@ -750,6 +762,34 @@ export default function FitnessMetricTrend() {
         healthConnectStepSummary?.steps ?? selectedStepSummary.steps ?? null,
     } satisfies StepActivitySummary;
   }, [healthConnectStepSummary, kind, selectedStepSummary]);
+
+  const activityCalories = useMemo(() => {
+    const weightKg = lifestyleTargets?.weightKg;
+    if (
+      kind !== "steps" ||
+      !selectedDateKey ||
+      !resolvedStepSummary ||
+      typeof weightKg !== "number" ||
+      weightKg <= 0
+    ) {
+      return null;
+    }
+
+    return estimateActivityCalories({
+      averageSpeedKph: resolvedStepSummary.averageSpeedKph,
+      distanceMeters: resolvedStepSummary.distanceMeters,
+      exerciseEntries:
+        exerciseHistoryForSteps?.entriesByDate[selectedDateKey] ?? [],
+      steps: resolvedStepSummary.steps,
+      weightKg,
+    });
+  }, [
+    exerciseHistoryForSteps?.entriesByDate,
+    kind,
+    lifestyleTargets?.weightKg,
+    resolvedStepSummary,
+    selectedDateKey,
+  ]);
 
   const heartRateHourlyValues = useMemo(() => {
     if (kind !== "heart_rate") {
@@ -1406,7 +1446,14 @@ export default function FitnessMetricTrend() {
               />
 
               {kind === "steps" && resolvedStepSummary ? (
-                <StepSummary summary={resolvedStepSummary} />
+                <StepSummary
+                  activityCalories={activityCalories}
+                  hasWeight={
+                    typeof lifestyleTargets?.weightKg === "number" &&
+                    lifestyleTargets.weightKg > 0
+                  }
+                  summary={resolvedStepSummary}
+                />
               ) : null}
 
               {selectedDateKey && kind === "steps" ? (
@@ -1553,8 +1600,12 @@ export default function FitnessMetricTrend() {
 }
 
 function StepSummary({
+  activityCalories,
+  hasWeight,
   summary,
 }: {
+  activityCalories: ActivityCaloriesEstimate | null;
+  hasWeight: boolean;
   summary: {
     averageSpeedKph: number | null;
     caloriesKcal: number | null;
@@ -1572,8 +1623,22 @@ function StepSummary({
       value: formatDistanceValue(summary.distanceMeters),
     },
     {
-      label: "Calories",
-      value: formatStepMetric(summary.caloriesKcal, { suffix: "kcal" }),
+      label: "Estimated total active calories",
+      value: formatStepMetric(activityCalories?.totalKcal ?? null, {
+        suffix: "kcal",
+      }),
+    },
+    {
+      label: "From walking / running",
+      value: formatStepMetric(activityCalories?.stepKcal ?? null, {
+        suffix: "kcal",
+      }),
+    },
+    {
+      label: "From other exercise",
+      value: formatStepMetric(activityCalories?.exerciseKcal ?? null, {
+        suffix: "kcal",
+      }),
     },
     {
       label: "Avg speed",
@@ -1601,9 +1666,9 @@ function StepSummary({
             borderColor: "#E2E8F0",
             borderRadius: 10,
             borderWidth: 1,
-            minWidth: "47%",
             paddingHorizontal: 12,
             paddingVertical: 10,
+            width: "100%",
           }}
         >
           <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
@@ -1614,6 +1679,11 @@ function StepSummary({
           </ThemedText>
         </View>
       ))}
+      {!hasWeight ? (
+        <ThemedText style={{ fontSize: 12, opacity: 0.72 }}>
+          Add your weight to calculate estimated activity calories.
+        </ThemedText>
+      ) : null}
     </View>
   );
 }
