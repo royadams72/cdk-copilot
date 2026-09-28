@@ -137,7 +137,9 @@ function StackedRadialChart({
             const rawPercent =
               radial.percent !== null && radial.percent !== undefined
                 ? Math.max(radial.percent, 0)
-                : 0;
+                : radial.actual !== null && radial.actual !== undefined
+                  ? 1
+                  : 0;
             const percent = Math.min(rawPercent, 1);
             const overTargetPercent = clampValue(rawPercent - 1, 0, 1);
             const overTargetColor = darkenHexColor(radial.color, 0.68);

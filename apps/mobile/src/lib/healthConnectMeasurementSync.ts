@@ -653,7 +653,7 @@ export async function syncRecentHealthConnectMeasurements(
       }
       if (changedKinds.size > 0) {
         for (const kind of changedKinds) {
-          invalidateMeasurementCaches(kind);
+          invalidateMeasurementCaches(kind, { includeHistory: true });
         }
       }
       healthConnectRuntimeState.healthConnectSyncPromise = null;

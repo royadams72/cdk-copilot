@@ -68,7 +68,6 @@
   "scripts": {
     "dev": "expo start",
     "dev:tunnel": "expo start --tunnel -c",
-    "reset-project": "node ./scripts/reset-project.js",
     "test": "jest --watchman=false",
     "test:watch": "jest --watchman=false --watch",
     "android": "expo run:android",

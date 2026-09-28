@@ -30,6 +30,7 @@ import { describeRange } from "./utils";
 import { DashboardRadial } from "./types";
 import { useStepCount } from "@/hooks/useStepCount";
 import { useSyncHealthConnectMeasurements } from "@/hooks/useSyncHealthConnectMeasurements";
+import { estimateActivityCalories } from "@/lib/activityCalories";
 import { useSyncStepCount } from "@/hooks/useSyncStepCount";
 import { getCurrentHealthSyncProvider } from "@/lib/currentHealthSyncProvider";
 import { useGetMeasurementHistoryQuery } from "@/store/services/measurementsApi";
@@ -166,9 +167,21 @@ export default function Dashboard() {
     const todayExercise = exerciseHistory?.points.find(
       (point) => point.date === localDateKey(new Date()),
     );
+    const todayKey = localDateKey(new Date());
+    const weightKg = targetData?.weightKg;
+    const todayExerciseEntries =
+      exerciseHistory?.entriesByDate[todayKey] ?? [];
     const caloriesBurned =
-      typeof stepSummary?.caloriesKcal === "number"
-        ? Math.max(0, Math.round(stepSummary.caloriesKcal))
+      typeof weightKg === "number" &&
+      weightKg > 0 &&
+      (typeof stepsToday === "number" || todayExerciseEntries.length > 0)
+        ? estimateActivityCalories({
+            averageSpeedKph: stepSummary?.averageSpeedKph,
+            distanceMeters: stepSummary?.distanceMeters,
+            exerciseEntries: todayExerciseEntries,
+            steps: stepsToday,
+            weightKg,
+          }).totalKcal
         : null;
     const exerciseMinutes =
       typeof todayExercise?.value2 === "number"
@@ -210,9 +223,11 @@ export default function Dashboard() {
     ];
   }, [
     exerciseHistory?.points,
-    stepSummary?.caloriesKcal,
+    exerciseHistory?.entriesByDate,
+    stepSummary,
     stepsToday,
     stepTarget,
+    targetData?.weightKg,
   ]);
 
   useEffect(() => {
